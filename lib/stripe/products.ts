@@ -1,7 +1,7 @@
 import { stripe } from "./client";
 import { db } from "@/lib/db/client";
 import { products } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 /**
  * Returns a Stripe Price ID for a given product, creating the underlying
@@ -25,10 +25,20 @@ export async function getOrCreateStripePrice(productId: string): Promise<string>
     currency: "usd",
   });
 
-  await db
+  // Same atomic-conditional-update pattern as the Stripe webhook handler's
+  // idempotency guard: two concurrent first-time checkouts of a product with
+  // no stripePriceId yet could otherwise both create their own Stripe
+  // Product + Price. The WHERE here makes only one write win; the losing
+  // caller falls back to the ID the winner actually persisted, rather than
+  // handing back a Stripe price the DB will never again reference.
+  const [updated] = await db
     .update(products)
     .set({ stripeProductId: stripeProduct.id, stripePriceId: stripePrice.id })
-    .where(eq(products.id, product.id));
+    .where(and(eq(products.id, product.id), isNull(products.stripePriceId)))
+    .returning();
 
-  return stripePrice.id;
+  if (updated) return updated.stripePriceId!;
+
+  const winner = await db.query.products.findFirst({ where: eq(products.id, product.id) });
+  return winner!.stripePriceId!;
 }

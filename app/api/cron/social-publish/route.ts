@@ -27,9 +27,20 @@ export async function POST(req: NextRequest) {
   const results: { targetId: string; ok: boolean; error?: string }[] = [];
 
   for (const target of due) {
-    // Mark as sending immediately, so a slow publish call or an overlapping
-    // cron invocation (if the previous run hasn't finished) can't double-send.
-    await db.update(socialPostTargets).set({ status: "sending" }).where(eq(socialPostTargets.id, target.id));
+    // Claim this target with an atomic conditional update — the same
+    // UPDATE...WHERE status=<previous> RETURNING pattern the Stripe webhook
+    // handler uses — rather than a plain UPDATE by id. Two overlapping cron
+    // invocations (a scheduler retry, a misfire, a slow previous run still
+    // in flight) both run the `due` SELECT above before either one's update
+    // commits, so an unconditional UPDATE can't actually prevent both from
+    // proceeding to publish the same target twice; only making the claim
+    // itself the WHERE-guarded check can.
+    const [claimed] = await db
+      .update(socialPostTargets)
+      .set({ status: "sending" })
+      .where(and(eq(socialPostTargets.id, target.id), eq(socialPostTargets.status, "scheduled")))
+      .returning();
+    if (!claimed) continue; // another concurrent invocation already claimed it
 
     const post = await db.query.socialPosts.findFirst({ where: eq(socialPosts.id, target.postId) });
     if (!post) {
