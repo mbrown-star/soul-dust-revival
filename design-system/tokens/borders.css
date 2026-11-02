@@ -1,0 +1,15 @@
+:root{
+/* The source app is flat and border-based, not shadow-based — almost every panel uses
+   `border` + `rounded-lg` instead of a shadow. The one shadow in the whole codebase is a
+   popover menu (`shadow-lg`), kept here as --shadow-popover for that one case only. */
+--radius-sm:4px;
+--radius-md:8px;
+--radius-full:9999px;
+
+--border-width:1px;
+
+--shadow-popover:0 10px 15px -3px rgb(0 0 0 / 0.1),0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+--focus-ring-width:2px;
+--focus-ring-offset:2px;
+}

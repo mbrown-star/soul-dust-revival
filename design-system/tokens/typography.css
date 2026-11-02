@@ -1,0 +1,19 @@
+:root{
+/* Fraunces — display/headlines. Source Serif 4 — body (long-form reading is this app's job). Archivo — nav/UI. */
+--font-display:"Fraunces",Georgia,serif;
+--font-serif:"Source Serif 4",Georgia,serif;
+--font-sans:"Archivo",system-ui,-apple-system,sans-serif;
+--font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+
+--text-xs:12px;--leading-xs:16px;
+--text-sm:14px;--leading-sm:20px;
+--text-base:16px;--leading-base:24px;
+--text-lg:18px;--leading-lg:28px;
+--text-xl:20px;--leading-xl:28px;
+--text-2xl:24px;--leading-2xl:32px;
+--text-3xl:30px;--leading-3xl:36px;
+--text-4xl:36px;--leading-4xl:40px;
+
+--weight-normal:400;--weight-medium:500;--weight-semibold:600;--weight-bold:700;--weight-black:900;
+--tracking-wide:0.2em;
+}

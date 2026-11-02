@@ -1,0 +1,86 @@
+import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/admin/guard";
+import { db } from "@/lib/db/client";
+import { leaderResources } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+import DOMPurify from "isomorphic-dompurify";
+import {
+  leaderResourceCreateSchema,
+  leaderResourceUpdateSchema,
+  leaderResourceReorderSchema,
+} from "@/lib/validation/schemas";
+
+export async function POST(req: NextRequest) {
+  const session = await requireAdmin();
+  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const json = await req.json();
+  const parsed = leaderResourceCreateSchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
+  }
+
+  const existing = await db.select().from(leaderResources);
+
+  const [resource] = await db
+    .insert(leaderResources)
+    .values({
+      title: parsed.data.title,
+      orderIndex: existing.length,
+      published: false,
+    })
+    .returning();
+
+  return NextResponse.json(resource);
+}
+
+export async function PATCH(req: NextRequest) {
+  const session = await requireAdmin();
+  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const json = await req.json();
+
+  if (Array.isArray(json.reorder)) {
+    const parsed = leaderResourceReorderSchema.safeParse(json);
+    if (!parsed.success) return NextResponse.json({ error: "invalid_input" }, { status: 400 });
+
+    for (const { id, orderIndex } of parsed.data.reorder) {
+      await db.update(leaderResources).set({ orderIndex }).where(eq(leaderResources.id, id));
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  const parsed = leaderResourceUpdateSchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
+  }
+  const body = parsed.data;
+
+  // Sanitize on write, same defense-in-depth pattern as lesson content and
+  // studies import — see SECURITY.md.
+  const sanitizedBody = body.body != null ? DOMPurify.sanitize(body.body) : body.body;
+
+  const [updated] = await db
+    .update(leaderResources)
+    .set({
+      title: body.title,
+      body: sanitizedBody,
+      fileUrl: body.fileUrl,
+      fileName: body.fileName,
+      published: body.published,
+    })
+    .where(eq(leaderResources.id, body.id))
+    .returning();
+
+  return NextResponse.json(updated);
+}
+
+export async function DELETE(req: NextRequest) {
+  const session = await requireAdmin();
+  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const { id } = await req.json();
+  await db.delete(leaderResources).where(eq(leaderResources.id, id));
+
+  return NextResponse.json({ ok: true });
+}

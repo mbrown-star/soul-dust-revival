@@ -1,0 +1,20 @@
+:root{
+/* Tailwind's default 4px-based spacing scale, as used across the app */
+--space-1:4px;
+--space-2:8px;
+--space-3:12px;
+--space-4:16px;
+--space-5:20px;
+--space-6:24px;
+--space-8:32px;
+--space-10:40px;
+--space-12:48px;
+--space-16:64px;
+--space-20:80px;
+
+--content-sm:24rem;   /* max-w-sm — login form */
+--content-md:32rem;   /* max-w-lg — admin forms */
+--content-lg:36rem;   /* max-w-xl — checkout, success */
+--content-xl:42rem;   /* max-w-2xl — lesson reading column */
+--content-2xl:56rem;  /* max-w-4xl — admin shell */
+}

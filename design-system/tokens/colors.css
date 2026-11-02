@@ -1,0 +1,24 @@
+:root{
+/* Real Soul Dust Revival brand palette — from tailwind.config.js in mbrown-star/study-platform-scaffold */
+--ink:#17231f;
+--dusk:#2a4038;
+--parchment:#f7f2e6;
+--ember:#de3a2e;
+--gold:#f0b93e;
+--moss:#4b6358;
+
+/* Semantic aliases used throughout components/pages */
+--surface-page:var(--parchment);
+--surface-sunken:color-mix(in oklch,var(--parchment) 92%,var(--dusk));
+--surface-inverted:var(--ink);
+--surface-dusk:var(--dusk);
+--border-default:color-mix(in oklch,var(--moss) 20%,transparent);
+--text-primary:var(--ink);
+--text-secondary:var(--moss);
+--text-inverted:var(--parchment);
+--text-link:var(--ink);
+--accent-ember:var(--ember);
+--accent-gold:var(--gold);
+--focus-ring:var(--gold);
+--state-error:var(--ember);
+}
