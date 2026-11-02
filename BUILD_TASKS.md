@@ -138,8 +138,12 @@ deployment before treating any of it as launch-ready:
   `lib/env.ts` validates. `eslint.config.mjs` now excludes the separate
   "Soul Dust Revival Design System" brand-assets repo that lives inside this
   folder. `npm audit` flagged 2 critical / 12 high findings in dependencies
-  (`next`, `dompurify` via `isomorphic-dompurify`, and others) — not yet
-  remediated, see build report.
+  (`next`, `dompurify` via `isomorphic-dompurify`, and others); `npm audit
+  fix` (non-breaking) resolved all critical findings and 9 of 12 high ones,
+  down to 54 total (3 high: `drizzle-orm`, `next`'s bundled `postcss`,
+  `zod`), each requiring a `--force` semver-major bump — deferred pending
+  deliberate review of breaking changes to the ORM, framework, and
+  validation layer.
 - Closed all three previously-flagged gaps: (1) print stylesheet added, with
   study/lesson content deliberately excluded from printing since the physical book is
   a separately sold product — CSS-based, not DRM, honestly documented as such;
