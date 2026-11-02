@@ -26,9 +26,19 @@ anything that doesn't match — rather than trusting client-shaped JSON directly
   admin cannot change their own role through that endpoint — a deliberate guard against
   a single misclick locking the only admin account out of the admin section with no one
   left able to restore it.
-- The `responses` API route verifies the content block's parent study is one the
-  requesting user actually has an entitlement for — not just that they're logged in —
-  before accepting a submitted answer.
+- The `responses` and `progress` API routes both verify the content block's/lesson's
+  parent study is one the requesting user actually has an entitlement for — not just
+  that they're logged in — before accepting a submitted answer or progress update.
+  (`progress` was missing this check until a build-time review caught it; fixed to
+  mirror `responses`.)
+- `/checkout/success?orderId=...` checks the order belongs to the requesting session
+  before rendering it (items, total, shipping name/address) — an order UUID alone isn't
+  enough. Guest orders (no `userId`) have no account to check against, so the link
+  itself is the credential there, the same trade-off most storefronts' guest-order
+  confirmation pages make.
+- `/api/cron/*` compares the `Authorization` header against `CRON_SECRET` via a
+  SHA-256-digest + `crypto.timingSafeEqual` comparison, not plain `===`, so a timing
+  attack can't be used to recover the secret byte-by-byte.
 
 ## Signup vs. login trade-off (account enumeration)
 `/login` and `/signup` are functionally distinct, not just different copy on the same

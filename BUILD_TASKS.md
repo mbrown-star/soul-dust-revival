@@ -139,6 +139,22 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- Full security review against the scaffold-specific checklist in
+  SECURITY_REVIEW.md (not just this session's diff — per CLAUDE.md,
+  scaffold code is always in scope). Three real findings, all fixed: (1)
+  High — `/api/progress` checked authentication but not entitlement,
+  letting any logged-in user write progress for lessons they never
+  purchased (named verbatim in SECURITY_REVIEW.md's test list); (2) Medium
+  — `/checkout/success?orderId=` rendered any order's items/total/shipping
+  address with no ownership check, an IDOR exposing PII to anyone holding
+  the link; (3) Low — the cron secret was compared with plain `===`
+  instead of a constant-time comparison. Also fixed one code-quality item:
+  `app/leader/layout.tsx` re-implemented the leader/admin role check
+  instead of calling `requireLeaderOrAdmin()`. The `/api/progress` fix's
+  authorization logic was verified directly against real local Postgres
+  rows (not just that it compiles); the other two rest on code review since
+  they need a real logged-in session to exercise end-to-end. `SECURITY.md`
+  updated to reflect all three. See git log for full detail per finding.
 - First real local run-through: installed Postgres 16 via Homebrew, ran
   `db:migrate` + `db:seed` against it, started `next dev`, and clicked
   through the homepage, `/books`, `/blog`, `/login`, a product detail page,
