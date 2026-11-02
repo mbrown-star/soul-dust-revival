@@ -1,8 +1,4 @@
-import { FlatCompat } from "@eslint/eslintrc";
-
-const compat = new FlatCompat({
-  baseDirectory: import.meta.dirname,
-});
+import nextConfig from "eslint-config-next";
 
 const eslintConfig = [
   {
@@ -22,11 +18,14 @@ const eslintConfig = [
       "Soul Dust Revival Design System/**",
     ],
   },
-  // "next/core-web-vitals" bundles eslint-plugin-jsx-a11y, which is what
-  // actually enforces accessibility rules (alt text, label associations,
-  // ARIA correctness) at lint time — without this config existing at all,
-  // none of that was ever running, on top of no unused-var/hook-rule checks.
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  // eslint-config-next@16 ships as a native ESLint 9 flat config array
+  // (previously required the @eslint/eslintrc FlatCompat bridge to load the
+  // old next/core-web-vitals + next/typescript shareable configs). It still
+  // bundles eslint-plugin-jsx-a11y, which is what actually enforces
+  // accessibility rules (alt text, label associations, ARIA correctness) at
+  // lint time — without this config existing at all, none of that was ever
+  // running, on top of no unused-var/hook-rule checks.
+  ...nextConfig,
 ];
 
 export default eslintConfig;

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useSyncExternalStore, ReactNode } from "react";
 
 export type CartItem = {
   productId: string;
@@ -25,19 +25,55 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 const STORAGE_KEY = "cart";
 
-export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
+// Module-level store (the cart is a single, page-wide singleton) read via
+// useSyncExternalStore instead of hydrating in a useEffect + setState, which
+// both trips react-hooks/set-state-in-effect and risks a hydration mismatch
+// since localStorage isn't available during the server render.
+let cartItems: CartItem[] = [];
+let hydrated = false;
+const listeners = new Set<() => void>();
 
-  // Load from localStorage on mount
-  useEffect(() => {
+function hydrateFromStorage() {
+  if (hydrated || typeof window === "undefined") return;
+  hydrated = true;
+  try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) setItems(JSON.parse(stored));
-  }, []);
+    if (stored) cartItems = JSON.parse(stored);
+  } catch {
+    // Corrupted or inaccessible storage — fall back to an empty cart.
+  }
+}
 
-  // Persist on every change
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items]);
+function persist() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cartItems));
+  } catch {
+    // Storage unavailable (private browsing, quota) — cart still works in-memory.
+  }
+}
+
+function setItems(updater: CartItem[] | ((prev: CartItem[]) => CartItem[])) {
+  cartItems = typeof updater === "function" ? updater(cartItems) : updater;
+  persist();
+  for (const listener of listeners) listener();
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function getSnapshot() {
+  hydrateFromStorage();
+  return cartItems;
+}
+
+function getServerSnapshot() {
+  return cartItems; // always [] on the server
+}
+
+export function CartProvider({ children }: { children: ReactNode }) {
+  const items = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   function addItem(item: Omit<CartItem, "quantity">, quantity = 1) {
     setItems((prev) => {
