@@ -130,6 +130,16 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- Scaffold imported into the Soul Dust Revival project folder as the build
+  base (study-platform-scaffold @ `1e497e7`), with its own git history
+  started here. `npm install` and `npm run verify` (typecheck/lint/build)
+  pass clean with placeholder env values in a local-only `.env.local`.
+  `.env.example` added (wasn't present in the scaffold) covering every var
+  `lib/env.ts` validates. `eslint.config.mjs` now excludes the separate
+  "Soul Dust Revival Design System" brand-assets repo that lives inside this
+  folder. `npm audit` flagged 2 critical / 12 high findings in dependencies
+  (`next`, `dompurify` via `isomorphic-dompurify`, and others) — not yet
+  remediated, see build report.
 - Closed all three previously-flagged gaps: (1) print stylesheet added, with
   study/lesson content deliberately excluded from printing since the physical book is
   a separately sold product — CSS-based, not DRM, honestly documented as such;
