@@ -144,6 +144,12 @@ deployment before treating any of it as launch-ready:
   `zod`), each requiring a `--force` semver-major bump — deferred pending
   deliberate review of breaking changes to the ORM, framework, and
   validation layer.
+- Reviewed and applied the `zod` v3 -> v4 bump (3.25.76 -> 4.6.7) after
+  checking every usage in `lib/validation/schemas.ts`/`lib/env.ts` against
+  the breaking-changes list — none of the removed v4 APIs are used here.
+  Runtime-verified `checkoutSchema` behavior is unchanged. `npm audit` down
+  to 53 (2 high remaining: `drizzle-orm`, `next`'s bundled `postcss` —
+  still deferred, each needs its own major-bump review).
 - Closed all three previously-flagged gaps: (1) print stylesheet added, with
   study/lesson content deliberately excluded from printing since the physical book is
   a separately sold product — CSS-based, not DRM, honestly documented as such;
