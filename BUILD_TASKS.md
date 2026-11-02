@@ -139,6 +139,22 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- Code quality review against CODE_QUALITY_REVIEW.md, continuing the build's
+  mandated reviews (security review above covers that half). Found and
+  fixed three real issues: (1) `/api/cron/social-publish` claimed to
+  prevent double-publishing on an overlapping cron run but used a plain
+  `UPDATE...WHERE id=` with no status guard — fixed with the same atomic
+  claim pattern the Stripe webhook handler already uses correctly; (2)
+  `getOrCreateStripePrice` had the same read-then-write race on a brand-new
+  product's `stripePriceId`, fixed the same way; (3) the public
+  `SiteHeader` nav wrapped mid-label ("Books &" / "Studies", "Log" / "in")
+  at mobile widths — caught by actually testing at 375px in a browser, not
+  just reading code — fixed with the same `overflow-x-auto
+  whitespace-nowrap` pattern RESPONSIVE.md already documents for the admin
+  nav. No unwired-column bugs found (the historical `imageAlt`/
+  `coverImageAlt` pattern AUDIT.md warns about) — all alt-text columns are
+  fully wired through validation, API, and `alt=` rendering. No debug
+  console.log/TODO/suppressed-lint leftovers found.
 - Full security review against the scaffold-specific checklist in
   SECURITY_REVIEW.md (not just this session's diff — per CLAUDE.md,
   scaffold code is always in scope). Three real findings, all fixed: (1)

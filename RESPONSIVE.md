@@ -25,8 +25,10 @@ design for a phone first, then expand.
 - Multi-column rows (price/format fields, cart line items, admin list headers) stack
   vertically below the `sm:` breakpoint (`flex-col sm:flex-row`) rather than
   compressing into a cramped horizontal squeeze on narrow screens.
-- The admin nav scrolls horizontally on narrow phones (`overflow-x-auto
-  whitespace-nowrap`) instead of wrapping into a cramped multi-line stack.
+- The admin nav and the public `SiteHeader` both scroll horizontally on narrow
+  phones (`overflow-x-auto whitespace-nowrap`) instead of wrapping into a cramped
+  multi-line stack. (`SiteHeader` was missed when this was first fixed for the admin
+  nav — caught later via actual mobile-viewport testing, not just code review.)
 
 **Touch targets**
 - The lesson-block drag handle and Move Up/Down buttons were originally sized for
