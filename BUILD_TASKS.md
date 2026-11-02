@@ -34,6 +34,15 @@ what's left, roughly in the order they need doing.
   update users set role = 'admin' where email = 'you@example.com';
   ```
 
+> These three steps are verified *mechanically* against a throwaway local
+> Postgres (Homebrew `postgresql@16`, installed only for this local
+> smoke-test, not a project dependency) — still unchecked above because
+> that's not the real Supabase project. See "Recently completed" below for
+> what full local dev setup looks like once you have one: `brew install
+> postgresql@16`, `brew services start postgresql@16` (run `initdb` first
+> if it's a fresh install), `createdb <name>`, point `DATABASE_URL` in
+> `.env.local` at it, then the three commands above.
+
 ## 4. Deployment
 - [ ] Deploy the Next.js app to Cloudflare Pages
 - [ ] Set every `.env` value in the Cloudflare Pages environment variables dashboard
@@ -130,6 +139,15 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- First real local run-through: installed Postgres 16 via Homebrew, ran
+  `db:migrate` + `db:seed` against it, started `next dev`, and clicked
+  through the homepage, `/books`, `/blog`, `/login`, a product detail page,
+  and added an item to cart in a real browser — all pages 200, no console
+  errors. Fixed `drizzle.config.ts` to load `.env.local` itself (via
+  Node's built-in `process.loadEnvFile()`, no new dependency), since
+  `drizzle-kit` is a separate CLI that doesn't get this from Next.js the
+  way `next dev`/`next build` do. Added `.claude/launch.json` so the dev
+  server can be started/previewed directly going forward.
 - Scaffold imported into the Soul Dust Revival project folder as the build
   base (study-platform-scaffold @ `1e497e7`), with its own git history
   started here. `npm install` and `npm run verify` (typecheck/lint/build)
