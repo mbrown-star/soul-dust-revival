@@ -3,6 +3,7 @@ import { orders, orderItems, products } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth/session";
 
 export default async function CheckoutSuccessPage({
   searchParams,
@@ -14,6 +15,17 @@ export default async function CheckoutSuccessPage({
 
   const order = await db.query.orders.findFirst({ where: eq(orders.id, orderId) });
   if (!order) redirect("/");
+
+  // Orders placed while logged in belong to that account — without this
+  // check, anyone who obtains any order's UUID (a forwarded link, browser
+  // history, a referrer leak) could view another customer's full order,
+  // including their shipping name and address. Guest orders (no userId)
+  // have no account to check against, so — same as most storefolks'
+  // guest-order confirmation pages — the link itself is the credential.
+  if (order.userId) {
+    const session = await getSession();
+    if (!session || session.userId !== order.userId) redirect("/");
+  }
 
   const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
   const productIds = items.map((i) => i.productId);

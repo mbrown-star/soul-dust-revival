@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { db } from "@/lib/db/client";
-import { lessonProgress } from "@/lib/db/schema";
+import { lessonProgress, lessons, studies } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { progressSchema } from "@/lib/validation/schemas";
+import { hasEntitlement } from "@/lib/entitlements/check";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -15,6 +16,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
   }
   const { lessonId, status } = parsed.data;
+
+  // Verify the lesson belongs to a study this user actually has access to —
+  // without this, any authenticated user could write progress against any
+  // lesson ID, including ones from studies they never purchased (mirrors
+  // the same check in /api/responses and /api/stream/sign-url).
+  const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
+  if (!lesson) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const study = await db.query.studies.findFirst({ where: eq(studies.id, lesson.studyId) });
+  if (!study || !(await hasEntitlement(session.userId, study.productId))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const existing = await db.query.lessonProgress.findFirst({
     where: and(
