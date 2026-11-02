@@ -10,7 +10,17 @@ const eslintConfig = [
     // run — its triple-slash reference is intentional and not something to
     // hand-fix. tailwind/postcss configs are legitimately CommonJS, since
     // that's the format their own tooling expects to load.
-    ignores: [".next/**", "node_modules/**", "drizzle/**", "next-env.d.ts", "tailwind.config.js", "postcss.config.js"],
+    ignores: [
+      ".next/**",
+      "node_modules/**",
+      "drizzle/**",
+      "next-env.d.ts",
+      "tailwind.config.js",
+      "postcss.config.js",
+      // Separate, independently-versioned repo of brand assets that lives
+      // inside this folder but isn't part of the app's source.
+      "Soul Dust Revival Design System/**",
+    ],
   },
   // "next/core-web-vitals" bundles eslint-plugin-jsx-a11y, which is what
   // actually enforces accessibility rules (alt text, label associations,
