@@ -150,6 +150,17 @@ deployment before treating any of it as launch-ready:
   Runtime-verified `checkoutSchema` behavior is unchanged. `npm audit` down
   to 53 (2 high remaining: `drizzle-orm`, `next`'s bundled `postcss` —
   still deferred, each needs its own major-bump review).
+- Reviewed and applied the `drizzle-orm` bump (0.36.4 -> 0.45.4) after
+  reading the full changelog across that range against this codebase's
+  usage — no `$onUpdate`, `sql.identifier()`/`sql.as()`, vector/array
+  columns, explicit `.prepare()`, or `db.transaction()` calls exist here,
+  and the relational `db.query.*` API in use is the untouched RQBv1 (the
+  breaking RQBv2 changes are 1.0.0-rc only). `npx drizzle-kit generate` ran
+  as a compatibility check and produced the first real migration,
+  `drizzle/0000_spotty_barracuda.sql` (17 tables, correct `gen_random_uuid()`
+  defaults and FKs) — not yet applied to any database. `npm audit` down to
+  52 (1 high remaining: `next`'s bundled `postcss`, needs a Next 15->16
+  bump, still deferred).
 - Closed all three previously-flagged gaps: (1) print stylesheet added, with
   study/lesson content deliberately excluded from printing since the physical book is
   a separately sold product — CSS-based, not DRM, honestly documented as such;
