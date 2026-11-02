@@ -39,6 +39,13 @@ anything that doesn't match — rather than trusting client-shaped JSON directly
 - `/api/cron/*` compares the `Authorization` header against `CRON_SECRET` via a
   SHA-256-digest + `crypto.timingSafeEqual` comparison, not plain `===`, so a timing
   attack can't be used to recover the secret byte-by-byte.
+- The admin rich-text editor (`components/admin/RichTextEditor.tsx`) runs Tiptap v3+,
+  not v2 — v2.x had a real XSS (GHSA-cp6q-959q-f8rh, `mergeAttributes()` turning an own
+  `__proto__` key into inherited executable DOM attributes). This mattered here
+  specifically because the `.docx`/`.pdf` study-import feature loads hostile document
+  content into this exact editor for the importing admin to review, a path the
+  DOMPurify-sanitize-on-write/render pattern elsewhere doesn't cover (that protects the
+  public render, not the editor's own HTML parsing while editing).
 
 ## Signup vs. login trade-off (account enumeration)
 `/login` and `/signup` are functionally distinct, not just different copy on the same

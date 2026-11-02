@@ -139,6 +139,25 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- Fixed a real moderate XSS finding surfaced by `npm audit` review: bumped
+  Tiptap v2 -> v3 (GHSA-cp6q-959q-f8rh, `mergeAttributes()` prototype
+  pollution). This mattered specifically because the admin `.docx`/`.pdf`
+  study-import feature feeds hostile document content into this exact
+  editor for review — a path the DOMPurify sanitize-on-write/render
+  pattern elsewhere doesn't cover. Removed the now-redundant
+  `@tiptap/extension-link` package (StarterKit bundles Link as of v3) and
+  added `shouldRerenderOnTransaction: true` to prevent a real regression in
+  the toolbar's live active-state highlighting, which v3 would otherwise
+  have silently broken. Verified beyond typecheck/build by building a
+  temporary, uncommitted test route to exercise the editor in a browser
+  (the real component is admin-gated, no real auth exists yet) — confirmed
+  Bold/Heading active-state highlighting and the Link command both still
+  work correctly. `npm audit` now 52 -> 26 vulnerabilities, still 0
+  critical/high. This also closes out the review of every remaining `npm
+  audit` finding from this build's dependency work: everything left is
+  either a devDependency with no production attack surface (`eslint`,
+  `drizzle-kit`, their plugin ecosystems) or a low-severity finding in
+  `resend` needing its own major-version review later.
 - Code quality review against CODE_QUALITY_REVIEW.md, continuing the build's
   mandated reviews (security review above covers that half). Found and
   fixed three real issues: (1) `/api/cron/social-publish` claimed to
