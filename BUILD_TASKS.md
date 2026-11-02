@@ -161,6 +161,20 @@ deployment before treating any of it as launch-ready:
   defaults and FKs) — not yet applied to any database. `npm audit` down to
   52 (1 high remaining: `next`'s bundled `postcss`, needs a Next 15->16
   bump, still deferred).
+- Reviewed and applied the Next.js bump (15.5.28 -> 16.4.4) after reading
+  the official upgrade guide in full against this codebase: no middleware,
+  no `revalidateTag`, no parallel routes, already-async
+  cookies()/headers()/draftMode(), no custom image quality/local images
+  with query strings, no custom webpack config, Node/TypeScript already
+  above the new minimums. Two things the bump itself required: rewrote
+  `eslint.config.mjs` for `eslint-config-next@16`'s new native flat-config
+  export (no more `@eslint/eslintrc` FlatCompat bridge), and rewrote
+  `lib/cart/CartContext.tsx`'s localStorage hydration from
+  `useEffect`+`setState` to `useSyncExternalStore` — the new
+  `react-hooks/set-state-in-effect` rule correctly flagged a real latent
+  hydration-mismatch risk, not just style. Now builds with Turbopack.
+  `npm audit`: **0 critical, 0 high** remaining (52 total, all
+  moderate/low).
 - Closed all three previously-flagged gaps: (1) print stylesheet added, with
   study/lesson content deliberately excluded from printing since the physical book is
   a separately sold product — CSS-based, not DRM, honestly documented as such;
