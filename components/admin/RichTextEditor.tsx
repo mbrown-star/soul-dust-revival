@@ -2,7 +2,6 @@
 
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Link from "@tiptap/extension-link";
 import TiptapImage from "@tiptap/extension-image";
 
 export function RichTextEditor({
@@ -13,7 +12,10 @@ export function RichTextEditor({
   onChange: (html: string) => void;
 }) {
   const editor = useEditor({
-    extensions: [StarterKit, Link, TiptapImage],
+    // StarterKit bundles Link as of Tiptap v3 (it didn't in v2, hence the
+    // separate @tiptap/extension-link import this used to need) — setLink()
+    // below still works the same, just via StarterKit's own copy now.
+    extensions: [StarterKit, TiptapImage],
     content,
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     editorProps: {
@@ -21,6 +23,12 @@ export function RichTextEditor({
         class: "prose max-w-none border rounded-lg p-3 min-h-[150px] focus:outline-none",
       },
     },
+    // Tiptap v3 no longer re-renders the React editor on every transaction
+    // by default — without this, the toolbar buttons' active-state
+    // highlighting (editor.isActive("bold"), etc., below) would stop
+    // updating live as the cursor moves/selection changes, which reads as a
+    // silently broken toolbar rather than an intentional behavior change.
+    shouldRerenderOnTransaction: true,
   });
 
   if (!editor) return null;
