@@ -8,7 +8,10 @@ what's left, roughly in the order they need doing.
 ---
 
 ## 1. Accounts & services to set up
-- [ ] Cloudflare account (hosting, Stream, R2)
+- [ ] Cloudflare account (hosting, Stream, R2) — **note:** a dry-run build
+      shows the bundled Worker at ~5.2MB gzipped, over the Free plan's 3MiB
+      script-size limit, so budget for Workers Paid ($5/mo) to actually
+      deploy this. See "Known gaps" below.
 - [ ] Supabase project (Auth + Postgres — one project covers both)
 - [ ] Stripe account
 - [ ] Resend account
@@ -135,10 +138,39 @@ deployment before treating any of it as launch-ready:
 - [ ] Decide a retention window for `login_events` and implement pruning
 - [ ] Have counsel review `/privacy` for legal sufficiency in your actual jurisdictions
       (the content is real and accurate, just not attorney-reviewed yet)
+- [ ] Worker bundle size: `wrangler deploy --dry-run` shows ~5.2MB gzipped,
+      over the Workers Free plan's 3MiB script limit (10MiB on Paid, so this
+      deploys fine there). If staying on Free matters, the likely win is
+      splitting the heavy, rarely-hit `.docx`/`.pdf` study-import route
+      (`mammoth`/`pdf-parse`) into its own OpenNext server function so it's
+      not bundled into every request's cold start — an OpenNext feature
+      ("splitting") not set up yet. Not attempted this session: real
+      effort, and 3MiB is unlikely to matter once you're paying Cloudflare
+      for Stream/R2 anyway.
 
 ---
 
 ## Recently completed (most recent first)
+- Added the Cloudflare deployment adapter (`@opennextjs/cloudflare` +
+  `wrangler`, both devDependencies since they're build-time only and never
+  ship in the deployed Worker). The scaffold's docs always said hosting was
+  Cloudflare Pages/Workers, but nothing actually wired that up — the app
+  only ran as a plain Node server. Added `wrangler.jsonc`,
+  `open-next.config.ts`, `public/_headers`, the dev-platform init call in
+  `next.config.js`, and `preview`/`cf:deploy`/`cf:upload`/`cf-typegen`
+  scripts. Confirmed Next.js 16 is supported by the adapter before doing
+  this (the one named gap, Node Middleware, doesn't apply — no
+  `middleware.ts` in this app). Verified beyond typecheck: ran
+  `opennextjs-cloudflare build` and `wrangler deploy --dry-run` for real,
+  both completing and producing a working `worker.js` — no Cloudflare
+  account needed for either. That dry-run surfaced a real, not-yet-decided
+  finding: the bundled Worker is ~5.2MB gzipped, over the Free plan's 3MiB
+  script limit (fine on the $5/mo Paid plan) — logged under "Known gaps"
+  rather than addressed, since fixing it means splitting the
+  `.docx`/`.pdf` import route into its own OpenNext function, a real
+  change, not a quick one. Still not exercised: an actual `wrangler
+  deploy` to a real Cloudflare account, R2 incremental-cache wiring (needs
+  a real bucket), and Cloudflare Stream/R2 bindings in production.
 - Bumped `resend` 4 -> 6 to close the last production `npm audit` finding
   (deepmerge prototype-poisoning advisory, GHSA-gcqx-w48m-w2h4, reached via
   `html-to-text` -> `@react-email/render` -> `resend`). Checked `resend`

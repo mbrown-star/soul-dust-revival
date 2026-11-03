@@ -99,8 +99,13 @@ One Supabase project covers both Auth and the database — no separate DB vendor
   What's still needed from you is creating accounts and filling in `.env` values.
 
 ## Hosting
-Cloudflare Pages/Workers. Zero egress fees, and the same Cloudflare account also covers
-Stream (video/audio) and R2 (images/files) below — one account, three products.
+Cloudflare Workers via the OpenNext adapter (`@opennextjs/cloudflare`, configured in
+`wrangler.jsonc`/`open-next.config.ts`). Zero egress fees, and the same Cloudflare
+account also covers Stream (video/audio) and R2 (images/files) below — one account,
+three products. `npm run preview` builds and runs the app in the real Workers runtime
+locally (via `wrangler`); `npm run cf:deploy` builds and deploys it. The bundled Worker
+is currently ~5.2MB gzipped — over the Workers Free plan's 3MiB script limit, fine on
+the $5/mo Paid plan — see BUILD_TASKS.md's "Known gaps" for the tradeoff.
 
 ## Email
 Order confirmation emails go through **Resend** (`lib/email/send.ts`) — picked for its
