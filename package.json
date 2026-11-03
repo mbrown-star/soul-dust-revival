@@ -51,7 +51,7 @@
     "@types/pdf-parse": "^1.1.4",
     "@types/react": "^19.0.0",
     "autoprefixer": "^10.4.20",
-    "drizzle-kit": "^0.28.0",
+    "drizzle-kit": "^0.31.11",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.4.4",
     "postcss": "^8.4.47",
