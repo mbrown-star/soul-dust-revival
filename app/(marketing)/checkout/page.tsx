@@ -48,8 +48,9 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <div className="max-w-xl mx-auto px-4 py-16 sm:py-20 text-center font-serif text-ink">
-        Your cart is empty.
+      <div className="max-w-xl mx-auto px-4 py-16 sm:py-20 text-center">
+        <h1 className="font-display font-bold text-2xl text-ink mb-2">Checkout</h1>
+        <p className="font-serif text-ink">Your cart is empty.</p>
       </div>
     );
   }
@@ -58,6 +59,7 @@ export default function CheckoutPage() {
   if (hasDigital && loggedIn === false) {
     return (
       <div className="max-w-xl mx-auto px-4 py-16 sm:py-20 text-center space-y-4">
+        <h1 className="font-display font-bold text-2xl text-ink">Checkout</h1>
         <p className="font-serif text-ink">
           Your cart includes digital content, which requires an account.
         </p>
