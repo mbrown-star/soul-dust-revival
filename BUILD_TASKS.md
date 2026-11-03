@@ -176,19 +176,6 @@ deployment before treating any of it as launch-ready:
 ## 7. Known gaps worth deciding on, not yet built
 - [ ] Have counsel review `/privacy` for legal sufficiency in your actual jurisdictions
       (the content is real and accurate, just not attorney-reviewed yet)
-- [ ] `pdf-parse` (parses untrusted uploaded PDFs — see SECURITY_REVIEW.md's named
-      dependency-attention list) has an odd version history worth a real look before
-      launch: the installed `1.1.4` was published *after* `2.1.1` (Oct 29 vs Oct 2,
-      2025) under the same maintainer, strongly suggesting a maintainer
-      takeover/rewrite of a previously different/abandoned package rather than an
-      ordinary patch release — `2.x`'s own description changed from "Pure javascript
-      ... extract text from PDFs" to "Pure TypeScript ... extracting text, images, and
-      tabular data," consistent with a full rewrite, not a drop-in bump. No known CVE
-      currently affects `1.1.4` (`npm audit` is clean), and `2.x` would need real code
-      changes in `lib/import/parsePdf.ts`, so not touched now — this needs someone to
-      actually look at the package's GitHub history/issues to judge whether the
-      current maintainer is trustworthy and whether migrating is worth it, not an
-      automated version bump.
 - [ ] Worker bundle size: `wrangler deploy --dry-run` shows ~5.2MB gzipped,
       over the Workers Free plan's 3MiB script limit (10MiB on Paid, so this
       deploys fine there). If staying on Free matters, the likely win is
@@ -223,6 +210,20 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- Upgraded `pdf-parse` 1.1.4 -> 2.4.5, resolving the provenance question
+  flagged just below in this log. Further digging (full publish-history
+  check, not just the two version dates that first looked suspicious)
+  showed the same maintainer has owned this package since its original
+  2018 release — the package went dormant for ~7 years, then that same
+  original author resumed work with a full rewrite, not a takeover.
+  `2.x` is built on Mozilla's `pdfjs-dist`, has a security policy and test
+  coverage, and explicitly supports Cloudflare Workers. Migrated
+  `lib/import/parsePdf.ts` to the new class-based API, removed the now-
+  obsolete `@types/pdf-parse` (v2 ships its own types), and verified text
+  extraction against real generated PDFs rather than trusting the
+  type-check alone — including tracking down one apparent regression (a
+  mid-word line break) to the test PDF generator's own crude rendering,
+  not an actual pdf-parse defect.
 - Checked every package SECURITY_REVIEW.md names for "particular attention"
   (`jsonwebtoken`, `pdf-parse`, `mammoth`, `marked`, plus `isomorphic-dompurify`
   as the actual XSS sanitizer) against their latest releases, not just
@@ -234,8 +235,8 @@ deployment before treating any of it as launch-ready:
   support, not the sanitizer itself. `marked` is a few majors behind but
   its HTML output is always passed through DOMPurify before storage/
   render (`lib/markdown.ts`), so the practical exposure is low. `pdf-parse`
-  turned up something genuinely worth flagging — logged under "Known
-  gaps" rather than silently bumped or ignored.
+  turned up something that first looked like a provenance red flag —
+  resolved above, see the entry just above this one.
 - Implemented the `login_events` retention gap from "Known gaps": a new
   `POST /api/cron/prune-login-events` (13-month default window — see
   `PRIVACY.md`) deletes rows older than the cutoff, following the same
