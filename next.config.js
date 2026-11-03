@@ -47,3 +47,9 @@ const nextConfig = {
 };
 
 module.exports = nextConfig;
+
+// Wires up Cloudflare bindings (R2, etc.) for `next dev`, so local dev sees
+// the same platform bindings `wrangler`/the deployed Worker would. No-op in
+// production (that path runs through the OpenNext-built Worker instead).
+const { initOpenNextCloudflareForDev } = require("@opennextjs/cloudflare");
+initOpenNextCloudflareForDev();

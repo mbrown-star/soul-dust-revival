@@ -7,6 +7,12 @@ out/
 build/
 dist/
 
+# Cloudflare (OpenNext build output, wrangler state, local worker bindings)
+.open-next/
+.wrangler/
+.dev.vars
+cloudflare-env.d.ts
+
 # Environment variables
 .env
 .env*.local
