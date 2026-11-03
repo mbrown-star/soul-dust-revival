@@ -210,6 +210,36 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- Fixed a `npm run db:seed` bug caught by actually running the documented
+  command from a clean shell: it never loaded `.env.local` (same class of
+  bug `drizzle.config.ts` had earlier — fixed there via
+  `process.loadEnvFile()`, but that approach doesn't transfer to the seed
+  script since it has to run before the `db` import is evaluated, and
+  executable code can't precede an import in the same file). Fixed with
+  Node's `--env-file` CLI flag instead. Verified by running it from a
+  clean shell: now reaches the real DB.
+- Ran an automated code-review pass for N+1/unbounded-query patterns
+  across `app/admin/**` and `app/api/admin/**`, per
+  CODE_QUALITY_REVIEW.md's Performance checklist item, and fixed every
+  real finding: (1) `/admin/reports/social` loaded an **entire
+  ever-growing metrics table** on every page view (its own comment admits
+  it's an append-only time-series table) — replaced with a `DISTINCT ON`
+  query scoped to the targets actually displayed, verified against real
+  Postgres with out-of-order timestamp fixtures; (2) the `.docx`/`.pdf`
+  study import route did **2 sequential DB round-trips per lesson** — a
+  real document can split into dozens — batched into 2 queries total,
+  verified the batching doesn't mismatch lesson content under real
+  Postgres; (3) the admin users list query was duplicated across the page
+  and its API route, both unbounded — extracted to one helper with a
+  safety-cap limit; (4) products/studies/blog/leader-resources admin
+  lists all unbounded — added safety caps; (5) three POST routes
+  (leader-resources, lessons, content-blocks) fetched every existing row
+  just to read `.length` — replaced with `db.$count()`, verified directly
+  against real Postgres; (6) the social posts list fetched the *entire*
+  targets table and filtered it in JS — scoped with `inArray()` instead.
+  Left the reorder-loop N+1s and the webhook entitlement-insert loop
+  alone — all bounded to small, human-driven lists, genuinely low
+  severity, not worth the complexity of batching.
 - Ran a real automated accessibility audit (axe-core, against the running
   dev server — not just `jsx-a11y` lint, which only catches static-markup
   issues) across the storefront/checkout/account pages. Found and fixed 3
