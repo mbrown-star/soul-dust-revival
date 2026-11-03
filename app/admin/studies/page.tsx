@@ -5,7 +5,9 @@ import Link from "next/link";
 import Image from "next/image";
 
 export default async function AdminStudiesPage() {
-  const allStudies = await db.select().from(studies).orderBy(desc(studies.createdAt));
+  // Safety cap, not real pagination -- this list is admin-curated and
+  // realistically stays in the dozens, but nothing should fetch unbounded.
+  const allStudies = await db.select().from(studies).orderBy(desc(studies.createdAt)).limit(100);
 
   return (
     <div className="space-y-6">

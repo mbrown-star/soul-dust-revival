@@ -22,14 +22,16 @@ export async function POST(req: NextRequest) {
   }
   const body = parsed.data;
 
-  const existing = await db.select().from(contentBlocks).where(eq(contentBlocks.lessonId, body.lessonId));
+  // Only the count is needed here (to append at the end), so count in SQL
+  // rather than fetching every row across the wire.
+  const existingCount = await db.$count(contentBlocks, eq(contentBlocks.lessonId, body.lessonId));
 
   const [block] = await db
     .insert(contentBlocks)
     .values({
       lessonId: body.lessonId,
       type: body.type,
-      orderIndex: existing.length, // append to end
+      orderIndex: existingCount, // append to end
     })
     .returning();
 

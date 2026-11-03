@@ -1,6 +1,6 @@
 import { db } from "@/lib/db/client";
 import { socialPosts, socialPostTargets } from "@/lib/db/schema";
-import { desc } from "drizzle-orm";
+import { desc, inArray } from "drizzle-orm";
 import Link from "next/link";
 import { PLATFORM_LABELS } from "@/lib/data/socialPlatforms";
 
@@ -17,7 +17,13 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default async function SocialPostsPage() {
   const allPosts = await db.select().from(socialPosts).orderBy(desc(socialPosts.createdAt)).limit(100);
-  const allTargets = await db.select().from(socialPostTargets);
+
+  // Scoped to just the posts this page displays, rather than the whole
+  // targets table -- that table only grows as more posts/platforms get
+  // scheduled, while this page always shows at most the 100 most recent posts.
+  const postIds = allPosts.map((p) => p.id);
+  const allTargets =
+    postIds.length === 0 ? [] : await db.select().from(socialPostTargets).where(inArray(socialPostTargets.postId, postIds));
 
   return (
     <div className="space-y-6">

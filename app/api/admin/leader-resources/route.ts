@@ -20,13 +20,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const existing = await db.select().from(leaderResources);
+  // Only the count is needed here (to append at the end of the existing
+  // order), so count in SQL rather than fetching every row across the wire.
+  const existingCount = await db.$count(leaderResources);
 
   const [resource] = await db
     .insert(leaderResources)
     .values({
       title: parsed.data.title,
-      orderIndex: existing.length,
+      orderIndex: existingCount,
       published: false,
     })
     .returning();

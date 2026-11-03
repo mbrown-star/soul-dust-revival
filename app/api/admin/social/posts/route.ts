@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/guard";
 import { db } from "@/lib/db/client";
 import { socialPosts, socialPostTargets } from "@/lib/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { socialPostCreateSchema, socialPostTargetUpdateSchema } from "@/lib/validation/schemas";
 import { PLATFORM_LIMITS } from "@/lib/data/socialPlatforms";
 
@@ -107,7 +107,13 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const allPosts = await db.select().from(socialPosts).orderBy(desc(socialPosts.createdAt)).limit(100);
-  const allTargets = await db.select().from(socialPostTargets);
+
+  // Scoped to just the posts this page displays, rather than the whole
+  // targets table -- that table only grows as more posts/platforms get
+  // scheduled, while this route always returns at most the 100 most recent posts.
+  const postIds = allPosts.map((p) => p.id);
+  const allTargets =
+    postIds.length === 0 ? [] : await db.select().from(socialPostTargets).where(inArray(socialPostTargets.postId, postIds));
 
   const withTargets = allPosts.map((post) => ({
     ...post,

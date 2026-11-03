@@ -5,7 +5,9 @@ import Link from "next/link";
 import { NewLeaderResourceButton } from "@/components/admin/NewLeaderResourceButton";
 
 export default async function AdminLeaderResourcesPage() {
-  const resources = await db.select().from(leaderResources).orderBy(asc(leaderResources.orderIndex));
+  // Safety cap, not real pagination -- this list is admin-curated and
+  // realistically stays in the dozens, but nothing should fetch unbounded.
+  const resources = await db.select().from(leaderResources).orderBy(asc(leaderResources.orderIndex)).limit(100);
 
   return (
     <div className="space-y-6">

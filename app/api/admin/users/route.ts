@@ -2,24 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/guard";
 import { db } from "@/lib/db/client";
 import { users } from "@/lib/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { roleUpdateSchema } from "@/lib/validation/schemas";
+import { listUsersForAdmin } from "@/lib/admin/listUsers";
 
 export async function GET() {
   const session = await requireAdmin();
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const allUsers = await db
-    .select({
-      id: users.id,
-      email: users.email,
-      fullName: users.fullName,
-      role: users.role,
-      country: users.country,
-      createdAt: users.createdAt,
-    })
-    .from(users)
-    .orderBy(desc(users.createdAt));
+  const allUsers = await listUsersForAdmin();
 
   return NextResponse.json(allUsers);
 }

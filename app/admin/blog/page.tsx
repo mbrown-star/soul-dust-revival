@@ -4,7 +4,11 @@ import { desc } from "drizzle-orm";
 import Link from "next/link";
 
 export default async function AdminBlogPage() {
-  const allPosts = await db.select().from(posts).orderBy(desc(posts.createdAt));
+  // Safety cap, not real pagination -- unlike the other admin-curated lists,
+  // blog posts can realistically accumulate like a real content archive, so
+  // this uses a higher cap than the others; add real pagination before this
+  // gets anywhere near it.
+  const allPosts = await db.select().from(posts).orderBy(desc(posts.createdAt)).limit(1000);
 
   return (
     <div className="space-y-6">

@@ -1,25 +1,13 @@
-import { db } from "@/lib/db/client";
-import { users } from "@/lib/db/schema";
-import { desc } from "drizzle-orm";
 import { requireAdmin } from "@/lib/admin/guard";
 import { redirect } from "next/navigation";
 import { UserRoleTable } from "@/components/admin/UserRoleTable";
+import { listUsersForAdmin } from "@/lib/admin/listUsers";
 
 export default async function AdminUsersPage() {
   const session = await requireAdmin();
   if (!session) redirect("/login?next=/admin/users");
 
-  const allUsers = await db
-    .select({
-      id: users.id,
-      email: users.email,
-      fullName: users.fullName,
-      role: users.role,
-      country: users.country,
-      createdAt: users.createdAt,
-    })
-    .from(users)
-    .orderBy(desc(users.createdAt));
+  const allUsers = await listUsersForAdmin();
 
   return (
     <div className="space-y-6">
