@@ -6,6 +6,9 @@ import * as schema from "./schema";
 // URL for serverless/edge runtimes like Cloudflare Workers).
 const connectionString = process.env.DATABASE_URL!;
 
-const client = postgres(connectionString, { prepare: false });
+// Supabase requires TLS; the `postgres` driver does not infer this from the
+// connection string, so without `ssl: "require"` it fails closed (ECONNRESET
+// or an immediate "SSL connection is required" error from Postgres).
+const client = postgres(connectionString, { prepare: false, ssl: "require" });
 
 export const db = drizzle(client, { schema });

@@ -55,7 +55,7 @@ export async function sendOrderConfirmationEmail(params: OrderConfirmationParams
   `;
 
   await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL ?? "orders@yourdomain.com",
+    from: `Soul Dust Revival <${process.env.RESEND_FROM_EMAIL}>`,
     to: params.to,
     subject: "Your order confirmation",
     html,

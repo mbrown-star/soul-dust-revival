@@ -14,7 +14,9 @@ what's left, roughly in the order they need doing.
       deploy this. See "Known gaps" below.
 - [ ] Supabase project (Auth + Postgres — one project covers both)
 - [ ] Stripe account
-- [ ] Resend account
+- [x] Resend account — `souldustrevival.com` domain created and verifying
+      (nameservers moved to Cloudflare); sending-only API key scoped to the
+      domain created and in `.env`. See "Recently completed" below.
 - [ ] Meta Developer app (Facebook Login + Instagram Graph API products)
 - [ ] X Developer Portal app (OAuth 2.0 enabled; confirm your access tier can post — see SOCIAL.md)
 
@@ -210,6 +212,33 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- Set up Resend for transactional app email (order confirmations only —
+  no marketing/broadcast or inbound-inbox usage). Created the
+  `souldustrevival.com` sending domain in Resend via the official Resend
+  MCP connector (no API key ever pasted in chat). The domain's DNS was on
+  Squarespace with a live site (A records) and active Google Workspace
+  mail (MX/SPF) already on it, so moved DNS management to Cloudflare
+  first (Free plan — "Add a domain", not "Transfer", so registration
+  stays at Squarespace) and re-created every existing record there before
+  cutting over nameservers, specifically: the 4 Squarespace `A` records,
+  `CNAME www`, `CNAME _domainconnect`, root `MX`/`TXT` for Google
+  Workspace, and the Google DKIM TXT record — all set to Cloudflare's
+  "DNS only" (unproxied), since Squarespace manages its own SSL/CDN and
+  breaks if also proxied. Added Resend's 4 DNS records (DKIM TXT, SPF MX,
+  SPF TXT, `rsend` CNAME) alongside them. Verified via `dig` before and
+  after the nameserver cutover that the existing Google MX/SPF and
+  Squarespace A/CNAME records were untouched. Created a `sending_access`
+  API key scoped to just this domain (not `full_access`) and wrote it
+  directly to local `.env` (git-ignored, never committed or restated in
+  chat after creation). `lib/email/send.ts`'s `from` address now reads
+  `RESEND_FROM_EMAIL` from env and prefixes the display name in code
+  (`RESEND_FROM_EMAIL` is validated as a bare email by `lib/env.ts`'s
+  `z.string().email()`, so the display name can't live in the env value
+  itself — see "Scaffold deviations" in CLAUDE.md). Domain verification
+  completed shortly after the build (`rsend` CNAME verified quickest;
+  DKIM and SPF took longer — AWS SES-side propagation, not DNS) and a
+  real test send via the Resend API succeeded to an inbox at the domain.
+  Order-confirmation sending is confirmed working end-to-end.
 - Upgraded `pdf-parse` 1.1.4 -> 2.4.5, resolving the provenance question
   flagged just below in this log. Further digging (full publish-history
   check, not just the two version dates that first looked suspicious)
