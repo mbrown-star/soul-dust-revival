@@ -83,8 +83,9 @@ what's left, roughly in the order they need doing.
 - [ ] Configure the Stripe webhook endpoint (`/api/webhooks/stripe`) in the Stripe
       dashboard, pointed at the deployed domain, and copy the signing secret into
       the Worker's `STRIPE_WEBHOOK_SECRET` (dashboard, not `.env`)
-- [ ] Set up a scheduler to call `/api/cron/social-publish` every 5-15 min and
-      `/api/cron/social-metrics` daily, both with the `CRON_SECRET` bearer token —
+- [ ] Set up a scheduler to call `/api/cron/social-publish` every 5-15 min,
+      `/api/cron/social-metrics` daily, and `/api/cron/prune-login-events` daily or
+      weekly (see PRIVACY.md), all three with the `CRON_SECRET` bearer token —
       see SOCIAL.md (a companion Worker or an external scheduler like
       cron-job.org/GitHub Actions both still work unchanged; this app's own Worker
       doesn't export a native `scheduled` handler, so a native Cron Trigger on the
@@ -210,6 +211,19 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- Implemented the `login_events` retention gap from "Known gaps": a new
+  `POST /api/cron/prune-login-events` (13-month default window — see
+  `PRIVACY.md`) deletes rows older than the cutoff, following the same
+  `isValidCronRequest`-authenticated pattern as `social-publish`/
+  `social-metrics`. Verified against real Postgres with fixture rows at
+  20/14/10/1 months old (via `next dev`, real `curl` calls, not just a
+  code read): confirmed exactly the two rows older than 13 months were
+  deleted, the two newer ones survived, and the endpoint correctly
+  rejects both a missing and a wrong `CRON_SECRET` (403 either way).
+  Added a permanent regression test (`route.test.ts`) codifying that same
+  verification. `PRIVACY.md`/`BUILD_TASKS.md` updated; still needs an
+  external scheduler calling it once deployed, same as the two existing
+  cron endpoints.
 - Fixed a `npm run db:seed` bug caught by actually running the documented
   command from a clean shell: it never loaded `.env.local` (same class of
   bug `drizzle.config.ts` had earlier — fixed there via

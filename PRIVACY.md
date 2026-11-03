@@ -63,6 +63,16 @@ implementation.
     actually revokes the ability to log in, distinct from the DB-side anonymization.
   - An admin cannot delete their own account if they're the only admin — same
     lockout-prevention rationale as the "can't change your own role" guard.
+- **A retention window on `login_events`** — `POST /api/cron/prune-login-events`
+  deletes rows older than 13 months (covers a full year of year-over-year engagement
+  reporting at `/admin/reports/engagement` plus a one-month buffer), addressing the
+  GDPR Art. 5 data-minimization concern of otherwise-indefinite access-log retention.
+  Like the social-publish/social-metrics cron endpoints, it's authenticated via the
+  `CRON_SECRET` bearer token and needs an external scheduler to actually call it on a
+  schedule — see SOCIAL.md's "Deploy a cron trigger" section for the same setup
+  (a companion Worker or an external scheduler, called daily or weekly is plenty for
+  a retention job). The 13-month window is a default, not a mandate — change
+  `RETENTION_MONTHS` in that route if your actual retention policy differs.
 
 ## What a real compliance posture still needs (not built here)
 - **Cookie/tracking consent**, if you ever add analytics, ads, or any non-essential
@@ -70,10 +80,6 @@ implementation.
   scaffold, and the Supabase auth cookie is generally treated as "strictly necessary"
   (not requiring consent under most cookie-law frameworks), but re-evaluate this the
   moment any tracking/analytics tool gets added.
-- **Data retention limits.** `login_events` grows one row per login indefinitely with
-  no pruning — decide a retention window (e.g., delete rows older than N months) and
-  implement it, both for storage cost and because indefinite retention of access logs
-  is itself a data-minimization concern under GDPR Art. 5.
 - **Sub-processor agreements.** Supabase, Stripe, Cloudflare, and Resend are all
   reputable processors with their own compliance programs, but *you* (the business)
   are still the data controller and are responsible for having appropriate data
