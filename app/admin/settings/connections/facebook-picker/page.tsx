@@ -26,7 +26,7 @@ export default async function FacebookPagePickerPage() {
   return (
     <div className="max-w-md mx-auto space-y-4">
       <h1 className="text-xl font-semibold">Choose a Facebook Page</h1>
-      <p className="text-sm text-neutral-500">
+      <p className="text-sm text-neutral-600">
         This account manages more than one Page — choose which one to connect for
         scheduled posts.
       </p>

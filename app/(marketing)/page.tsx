@@ -56,7 +56,7 @@ export default async function HomePage() {
                       className="object-cover group-hover:scale-105 transition-transform"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-parchment/40 font-display text-sm">
+                    <div className="w-full h-full flex items-center justify-center text-parchment/70 font-display text-sm">
                       Soul Dust Revival
                     </div>
                   )}

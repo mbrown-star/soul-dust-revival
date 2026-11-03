@@ -36,13 +36,13 @@ export default async function AdminStudiesPage() {
             )}
             <div className="flex-1">
               <p className="font-medium">{s.title}</p>
-              <p className="text-sm text-neutral-500">
+              <p className="text-sm text-neutral-600">
                 /{s.slug} {!s.published && "· draft"}
               </p>
             </div>
           </Link>
         ))}
-        {allStudies.length === 0 && <p className="p-4 text-neutral-500">No studies yet.</p>}
+        {allStudies.length === 0 && <p className="p-4 text-neutral-600">No studies yet.</p>}
       </div>
     </div>
   );

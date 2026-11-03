@@ -63,7 +63,7 @@ export function ConnectionsPanel({
         <div className="flex justify-between items-start mb-2">
           <div>
             <h2 className="font-medium">Claude</h2>
-            <p className="text-sm text-neutral-500">Powers AI-suggested draft posts.</p>
+            <p className="text-sm text-neutral-600">Powers AI-suggested draft posts.</p>
           </div>
           <StatusBadge status={state.anthropic?.status ?? "disconnected"} />
         </div>
@@ -99,7 +99,7 @@ export function ConnectionsPanel({
         <div className="flex justify-between items-start mb-2">
           <div>
             <h2 className="font-medium">X</h2>
-            <p className="text-sm text-neutral-500">{state.x?.displayName ?? "Not connected"}</p>
+            <p className="text-sm text-neutral-600">{state.x?.displayName ?? "Not connected"}</p>
           </div>
           <StatusBadge status={state.x?.status ?? "disconnected"} />
         </div>
@@ -119,7 +119,7 @@ export function ConnectionsPanel({
         <div className="flex justify-between items-start mb-2">
           <div>
             <h2 className="font-medium">Facebook</h2>
-            <p className="text-sm text-neutral-500">{state.facebook?.displayName ?? "Not connected"}</p>
+            <p className="text-sm text-neutral-600">{state.facebook?.displayName ?? "Not connected"}</p>
           </div>
           <StatusBadge status={state.facebook?.status ?? "disconnected"} />
         </div>
@@ -139,7 +139,7 @@ export function ConnectionsPanel({
         <div className="flex justify-between items-start mb-2">
           <div>
             <h2 className="font-medium">Instagram</h2>
-            <p className="text-sm text-neutral-500">
+            <p className="text-sm text-neutral-600">
               {state.instagram?.displayName ?? "Connects automatically with Facebook, if the Page has a linked Instagram professional account"}
             </p>
           </div>
@@ -158,7 +158,7 @@ export function ConnectionsPanel({
 function StatusBadge({ status }: { status: "connected" | "disconnected" | "error" }) {
   const styles = {
     connected: "bg-green-100 text-green-800",
-    disconnected: "bg-neutral-100 text-neutral-500",
+    disconnected: "bg-neutral-100 text-neutral-600",
     error: "bg-red-100 text-red-700",
   };
   return (

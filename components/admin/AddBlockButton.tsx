@@ -55,7 +55,7 @@ export function AddBlockButton({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
-        className="border border-dashed rounded-lg px-4 py-3 w-full text-neutral-500 hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+        className="border border-dashed rounded-lg px-4 py-3 w-full text-neutral-600 hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900"
       >
         + Add block
       </button>

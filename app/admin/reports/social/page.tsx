@@ -45,7 +45,7 @@ export default async function SocialAnalyticsPage() {
       <div>
         <Link href="/admin/reports" className="text-sm text-neutral-400">← Reports</Link>
         <h1 className="text-xl font-semibold">Social analytics</h1>
-        <p className="text-sm text-neutral-500 mt-1">
+        <p className="text-sm text-neutral-600 mt-1">
           Metrics refresh periodically via a scheduled job — see SOCIAL.md — so numbers
           here may lag a live view on the platform itself by up to that job&apos;s interval.
         </p>
@@ -54,22 +54,22 @@ export default async function SocialAnalyticsPage() {
       <div className="flex gap-8">
         <div>
           <p className="text-2xl font-semibold">{totals.likes}</p>
-          <p className="text-sm text-neutral-500">Likes</p>
+          <p className="text-sm text-neutral-600">Likes</p>
         </div>
         <div>
           <p className="text-2xl font-semibold">{totals.comments}</p>
-          <p className="text-sm text-neutral-500">Comments</p>
+          <p className="text-sm text-neutral-600">Comments</p>
         </div>
         <div>
           <p className="text-2xl font-semibold">{totals.shares}</p>
-          <p className="text-sm text-neutral-500">Shares/reposts</p>
+          <p className="text-sm text-neutral-600">Shares/reposts</p>
         </div>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse text-sm">
           <thead>
-            <tr className="border-b text-neutral-500">
+            <tr className="border-b text-neutral-600">
               <th scope="col" className="py-2 pr-4 font-medium">Post</th>
               <th scope="col" className="py-2 pr-4 font-medium">Platform</th>
               <th scope="col" className="py-2 pr-4 font-medium">Published</th>
@@ -85,7 +85,7 @@ export default async function SocialAnalyticsPage() {
                 <tr key={t.id} className="border-b border-neutral-100">
                   <td className="py-3 pr-4 max-w-xs truncate">{t.body}</td>
                   <td className="py-3 pr-4">{PLATFORM_LABELS[t.platform]}</td>
-                  <td className="py-3 pr-4 text-neutral-500">
+                  <td className="py-3 pr-4 text-neutral-600">
                     {t.publishedAt ? new Date(t.publishedAt).toLocaleDateString() : "—"}
                   </td>
                   <td className="py-3 pr-4">{m?.likes ?? "—"}</td>

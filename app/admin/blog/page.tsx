@@ -25,7 +25,7 @@ export default async function AdminBlogPage() {
             </span>
           </Link>
         ))}
-        {allPosts.length === 0 && <p className="p-4 text-neutral-500">No blog posts yet.</p>}
+        {allPosts.length === 0 && <p className="p-4 text-neutral-600">No blog posts yet.</p>}
       </div>
     </div>
   );

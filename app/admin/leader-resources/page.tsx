@@ -25,7 +25,7 @@ export default async function AdminLeaderResourcesPage() {
             <span className="text-sm text-neutral-400">{!r.published && "draft"}</span>
           </Link>
         ))}
-        {resources.length === 0 && <p className="p-4 text-neutral-500">No leader resources yet.</p>}
+        {resources.length === 0 && <p className="p-4 text-neutral-600">No leader resources yet.</p>}
       </div>
     </div>
   );

@@ -126,7 +126,7 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
                 className="block w-full text-left border rounded-lg p-3 text-sm bg-white hover:border-neutral-400"
               >
                 <p className="font-medium mb-1">{draft.title}</p>
-                <p className="text-neutral-500 line-clamp-2">{draft.body.slice(0, 160)}...</p>
+                <p className="text-neutral-600 line-clamp-2">{draft.body.slice(0, 160)}...</p>
               </button>
             ))}
           </div>

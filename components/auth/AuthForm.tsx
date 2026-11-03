@@ -76,7 +76,7 @@ export function AuthForm({ mode, next }: { mode: Mode; next: string }) {
     >
       <h1 className="text-xl font-semibold">{isSignup ? "Create your account" : "Log in"}</h1>
       {isSignup && (
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-neutral-600">
           First time buying a study or book? Start here — we&apos;ll send a link to confirm your email.
         </p>
       )}
@@ -120,7 +120,7 @@ export function AuthForm({ mode, next }: { mode: Mode; next: string }) {
         {loading ? "Sending..." : isSignup ? "Sign up" : "Send login link"}
       </button>
 
-      <p className="text-sm text-neutral-500 text-center">
+      <p className="text-sm text-neutral-600 text-center">
         {isSignup ? (
           <>
             Already have an account?{" "}

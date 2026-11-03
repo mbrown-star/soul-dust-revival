@@ -7,12 +7,12 @@ import { PLATFORM_LABELS } from "@/lib/data/socialPlatforms";
 export const dynamic = "force-dynamic";
 
 const STATUS_STYLES: Record<string, string> = {
-  draft: "bg-neutral-100 text-neutral-500",
+  draft: "bg-neutral-100 text-neutral-600",
   scheduled: "bg-blue-100 text-blue-800",
   sending: "bg-amber-100 text-amber-800",
   published: "bg-green-100 text-green-800",
   failed: "bg-red-100 text-red-700",
-  paused: "bg-neutral-100 text-neutral-500",
+  paused: "bg-neutral-100 text-neutral-600",
 };
 
 export default async function SocialPostsPage() {
@@ -45,7 +45,7 @@ export default async function SocialPostsPage() {
             </div>
           );
         })}
-        {allPosts.length === 0 && <p className="p-4 text-neutral-500">No social posts yet.</p>}
+        {allPosts.length === 0 && <p className="p-4 text-neutral-600">No social posts yet.</p>}
       </div>
     </div>
   );

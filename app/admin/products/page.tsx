@@ -36,7 +36,7 @@ export default async function AdminProductsPage() {
             )}
             <div className="flex-1">
               <p className="font-medium">{p.title}</p>
-              <p className="text-sm text-neutral-500">
+              <p className="text-sm text-neutral-600">
                 {p.format} · ${(p.priceCents / 100).toFixed(2)}
                 {!p.active && " · inactive"}
               </p>
@@ -44,7 +44,7 @@ export default async function AdminProductsPage() {
           </Link>
         ))}
         {allProducts.length === 0 && (
-          <p className="p-4 text-neutral-500">No products yet.</p>
+          <p className="p-4 text-neutral-600">No products yet.</p>
         )}
       </div>
     </div>

@@ -25,7 +25,7 @@ export default async function AdminUsersPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold">Users &amp; roles</h1>
-        <p className="text-sm text-neutral-500 mt-1">
+        <p className="text-sm text-neutral-600 mt-1">
           Admins get full admin access. Leaders get the leader resource section. Users
           get regular studies/books access. You can&apos;t change your own role here —
           have another admin do it if that&apos;s ever needed.

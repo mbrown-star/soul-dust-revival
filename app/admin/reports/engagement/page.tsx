@@ -61,7 +61,7 @@ export default async function EngagementReportPage() {
           ← Reports
         </Link>
         <h1 className="text-xl font-semibold">Engagement</h1>
-        <p className="text-sm text-neutral-500 mt-1">
+        <p className="text-sm text-neutral-600 mt-1">
           Session length is approximate — based on periodic activity pings while a page
           is open, not an exact measurement of when someone closes a tab.
         </p>
@@ -70,7 +70,7 @@ export default async function EngagementReportPage() {
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse text-sm">
           <thead>
-            <tr className="border-b text-neutral-500">
+            <tr className="border-b text-neutral-600">
               <th scope="col" className="py-2 pr-4 font-medium">User</th>
               <th scope="col" className="py-2 pr-4 font-medium">Logins</th>
               <th scope="col" className="py-2 pr-4 font-medium">Last login</th>
@@ -82,7 +82,7 @@ export default async function EngagementReportPage() {
               <tr key={row.userId} className="border-b border-neutral-100">
                 <td className="py-3 pr-4">{row.email ?? row.userId}</td>
                 <td className="py-3 pr-4">{row.logins}</td>
-                <td className="py-3 pr-4 text-neutral-500">
+                <td className="py-3 pr-4 text-neutral-600">
                   {row.lastLogin ? row.lastLogin.toLocaleString() : "—"}
                 </td>
                 <td className="py-3">{row.avgMinutes.toFixed(1)} min</td>

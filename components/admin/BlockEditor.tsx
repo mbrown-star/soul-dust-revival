@@ -126,7 +126,7 @@ export function BlockEditor({
             aria-label="Upload image"
             onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])}
           />
-          <p role="status" aria-live="polite" className="text-sm text-neutral-500 h-5">
+          <p role="status" aria-live="polite" className="text-sm text-neutral-600 h-5">
             {uploading ? "Uploading..." : ""}
           </p>
 
@@ -159,7 +159,7 @@ export function BlockEditor({
       {(block.type === "video" || block.type === "audio") && (
         <div className="space-y-3">
           {block.mediaId && (
-            <p className="text-sm text-neutral-500">Uploaded (media ID: {block.mediaId})</p>
+            <p className="text-sm text-neutral-600">Uploaded (media ID: {block.mediaId})</p>
           )}
           <input
             type="file"
@@ -167,7 +167,7 @@ export function BlockEditor({
             aria-label={`Upload ${block.type}`}
             onChange={(e) => e.target.files?.[0] && uploadMedia(e.target.files[0])}
           />
-          <p role="status" aria-live="polite" className="text-sm text-neutral-500 h-5">
+          <p role="status" aria-live="polite" className="text-sm text-neutral-600 h-5">
             {uploading ? "Uploading..." : ""}
           </p>
 

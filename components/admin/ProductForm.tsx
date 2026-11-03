@@ -175,7 +175,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
           aria-labelledby="product-image-label"
           onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
         />
-        <p role="status" aria-live="polite" className="text-sm text-neutral-500 h-5">
+        <p role="status" aria-live="polite" className="text-sm text-neutral-600 h-5">
           {uploading ? "Uploading..." : ""}
         </p>
 

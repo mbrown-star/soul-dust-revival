@@ -202,7 +202,7 @@ export default function NewSocialPostPage() {
           <img src={imageUrl} alt="" className="max-h-40 rounded mb-2" />
         )}
         <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])} />
-        <p role="status" aria-live="polite" className="text-sm text-neutral-500 h-5">{uploading ? "Uploading..." : ""}</p>
+        <p role="status" aria-live="polite" className="text-sm text-neutral-600 h-5">{uploading ? "Uploading..." : ""}</p>
         {imageUrl && (
           <div className="mt-2">
             <label htmlFor={altId} className="block text-sm font-medium mb-1">Alt text</label>
@@ -228,7 +228,7 @@ export default function NewSocialPostPage() {
             {selected[platform] && (
               <div className="grid grid-cols-2 gap-3 pl-6">
                 <div>
-                  <label className="block text-xs text-neutral-500 mb-1">Frequency</label>
+                  <label className="block text-xs text-neutral-600 mb-1">Frequency</label>
                   <select
                     className="w-full border rounded-lg p-2 text-sm"
                     value={configs[platform].frequency}
@@ -243,7 +243,7 @@ export default function NewSocialPostPage() {
                 </div>
                 {configs[platform].frequency === "weekly" && (
                   <div>
-                    <label className="block text-xs text-neutral-500 mb-1">Day of week</label>
+                    <label className="block text-xs text-neutral-600 mb-1">Day of week</label>
                     <select
                       className="w-full border rounded-lg p-2 text-sm"
                       value={configs[platform].dayOfWeek}
@@ -258,7 +258,7 @@ export default function NewSocialPostPage() {
                   </div>
                 )}
                 <div>
-                  <label className="block text-xs text-neutral-500 mb-1">Start date</label>
+                  <label className="block text-xs text-neutral-600 mb-1">Start date</label>
                   <input
                     type="date"
                     className="w-full border rounded-lg p-2 text-sm"
@@ -267,7 +267,7 @@ export default function NewSocialPostPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-neutral-500 mb-1">Time (UTC)</label>
+                  <label className="block text-xs text-neutral-600 mb-1">Time (UTC)</label>
                   <input
                     type="time"
                     className="w-full border rounded-lg p-2 text-sm"
@@ -277,7 +277,7 @@ export default function NewSocialPostPage() {
                 </div>
                 {configs[platform].frequency !== "once" && (
                   <div>
-                    <label className="block text-xs text-neutral-500 mb-1">End date (optional)</label>
+                    <label className="block text-xs text-neutral-600 mb-1">End date (optional)</label>
                     <input
                       type="date"
                       className="w-full border rounded-lg p-2 text-sm"
