@@ -82,30 +82,46 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "study_creation_failed" }, { status: 500 });
   }
 
-  for (let i = 0; i < importedLessons.length; i++) {
-    const importedLesson = importedLessons[i];
-    if (!importedLesson) continue; // unreachable given the loop bound, but keeps TS honest
-
-    const [lesson] = await db
+  // Batched as two multi-row inserts rather than one DB round-trip per lesson
+  // — a real study document can split into dozens of heading-delimited
+  // lessons, so the old per-lesson loop was a genuine N+1 on this route's hot
+  // path (parse + N*2 sequential inserts). Lessons are matched back up with
+  // their source text by `orderIndex` rather than by trusting RETURNING to
+  // preserve insertion order, which Postgres doesn't formally guarantee.
+  if (importedLessons.length > 0) {
+    const insertedLessons = await db
       .insert(lessons)
-      .values({
-        studyId: study.id,
-        title: importedLesson.title.slice(0, 200),
-        orderIndex: i,
-        published: false,
-      })
+      .values(
+        importedLessons.map((importedLesson, i) => ({
+          studyId: study.id,
+          title: importedLesson.title.slice(0, 200),
+          orderIndex: i,
+          published: false,
+        }))
+      )
       .returning();
 
-    if (!lesson) continue; // skip content-block creation if this row somehow failed to insert
+    const lessonsByOrderIndex = new Map(insertedLessons.map((lesson) => [lesson.orderIndex, lesson]));
 
-    await db.insert(contentBlocks).values({
-      lessonId: lesson.id,
-      orderIndex: 0,
-      type: "text",
-      // Sanitize extracted document HTML before storing — imported documents
-      // are a form of untrusted input even when uploaded by an admin.
-      body: DOMPurify.sanitize(importedLesson.bodyHtml),
+    const contentBlockValues = importedLessons.flatMap((importedLesson, i) => {
+      const lesson = lessonsByOrderIndex.get(i);
+      if (!lesson) return []; // skip if this row somehow failed to insert
+
+      return [
+        {
+          lessonId: lesson.id,
+          orderIndex: 0,
+          type: "text" as const,
+          // Sanitize extracted document HTML before storing — imported
+          // documents are a form of untrusted input even when uploaded by an admin.
+          body: DOMPurify.sanitize(importedLesson.bodyHtml),
+        },
+      ];
     });
+
+    if (contentBlockValues.length > 0) {
+      await db.insert(contentBlocks).values(contentBlockValues);
+    }
   }
 
   return NextResponse.json({ studyId: study.id, lessonCount: importedLessons.length });
