@@ -23,7 +23,7 @@ Before building anything, read the scaffold docs relevant to the task and follow
 | `SOCIAL.md` | Social scheduling, platform registrations, cron worker |
 
 ### Stack
-Next.js 15 (App Router, React 19, strict TypeScript) · Cloudflare Pages/Workers · Supabase Auth (magic link) + Postgres via Drizzle ORM · Stripe (webhook-driven entitlements) · Cloudflare Stream and R2 · Resend · Zod · Tiptap · DOMPurify · Tailwind.
+Next.js 16 (App Router, React 19, strict TypeScript) · Cloudflare Workers via the OpenNext adapter (`@opennextjs/cloudflare`) · Supabase Auth (magic link) + Postgres via Drizzle ORM · Stripe (webhook-driven entitlements) · Cloudflare Stream and R2 · Resend · Zod · Tiptap · DOMPurify · Tailwind.
 
 ### Commands
 ```
@@ -31,11 +31,17 @@ npm run dev          # local dev server
 npm run typecheck    # tsc --noEmit
 npm run lint         # eslint
 npm run build        # next build
+npm run test         # vitest — needs a running local Postgres (see BUILD_TASKS.md)
 npm run verify       # typecheck + lint + build — must pass clean
+npm run preview      # build + run in the real Workers runtime locally (wrangler)
+npm run cf:deploy    # build + deploy to Cloudflare
 npm run db:generate && npm run db:migrate
 npm run db:seed
 ```
-There is no test runner yet. See "Tests" in CODE_QUALITY_REVIEW.md.
+`npm test` isn't part of `npm run verify` — it needs a real database connection,
+which isn't guaranteed in every environment that runs `verify` (e.g. CI without a
+Postgres service configured). Run it explicitly, and always before calling checkout/
+webhook/entitlement changes done.
 
 ### Scaffold rules
 - **Reuse before writing.** Use the scaffold's existing modules and patterns, especially these single sources of truth:

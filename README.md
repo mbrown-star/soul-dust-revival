@@ -51,7 +51,7 @@ build would otherwise freeze that content until the next deploy.
   than a generic hero pattern. Respects `prefers-reduced-motion` (see `ACCESSIBILITY.md`).
 
 ## Stack
-- **Hosting:** Cloudflare Pages/Workers
+- **Hosting:** Cloudflare Workers via the OpenNext adapter
 - **DB:** Supabase Postgres via Drizzle ORM
 - **Auth:** Supabase Auth (magic link), wired in `lib/auth/session.ts`, `lib/supabase/`, `app/auth/callback`
 - **Payments:** Stripe, webhook-driven entitlements
