@@ -135,7 +135,58 @@ dependency (e.g. Redis) for a concern the hosting platform already handles well:
 
 ## Security headers
 `next.config.js` sets `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
-`Strict-Transport-Security`, and a restrictive `Permissions-Policy` on every route.
+`Strict-Transport-Security`, and a restrictive `Permissions-Policy` on every route (and
+`public/_headers` mirrors the same set for the handful of pages Cloudflare serves as
+static assets, bypassing the Worker entirely — see "Cloudflare deploys specifically"
+above).
+
+**Content-Security-Policy** is set in `proxy.ts` (Next.js's proxy/middleware file) with
+a fresh, random nonce generated per request:
+- `script-src` is strict: `'nonce-{random}' 'strict-dynamic'`, no `'unsafe-inline'` —
+  an attacker who manages to inject an inline `<script>` (e.g. a gap in the
+  DOMPurify-sanitized rich text elsewhere in this doc) still can't get it to execute,
+  since it won't carry the per-request nonce. Next.js automatically applies the nonce
+  to its own framework/hydration scripts; this app doesn't yet load any third-party
+  script that would need the nonce threaded through manually (see Next's docs on
+  reading `headers().get('x-nonce')` in a Server Component if one gets added later).
+- `style-src` deliberately has **no** nonce, just `'self' 'unsafe-inline'` — this app
+  uses inline `style={{}}` React props in a few places (e.g. the homepage's animated
+  decorative dust motes). CSP's nonce mechanism only covers `<style>` elements, never
+  `style=""` attributes, and once a nonce is present in a directive, nonce-aware
+  browsers ignore `'unsafe-inline'` for that whole directive — so a nonce on
+  `style-src` would have silently broken every inline style with no working fallback.
+  Confirmed this exact failure mode by testing against the real `wrangler dev` runtime
+  before settling on this split. Style-based injection is a much narrower attack
+  surface than script execution, so keeping the strict nonce on `script-src` only is
+  the standard, accepted tradeoff.
+- `connect-src`/`img-src`/`media-src` allow exactly the external hosts this app
+  actually calls from the browser: Supabase Auth (`*.supabase.co`), direct-to-R2
+  presigned uploads (`*.r2.cloudflarestorage.com`) and reads (the real
+  `R2_PUBLIC_BASE_URL` hostname, derived the same way `next.config.js`'s image
+  `remotePatterns` does), and Cloudflare Stream (direct creator upload + signed HLS
+  playback). Stripe checkout needs no entry — it's a full top-level redirect
+  (`window.location.href`), not an embedded fetch or frame.
+- `frame-ancestors 'none'` is the modern equivalent of the `X-Frame-Options: DENY`
+  header above; both are set, since older browsers only understand the latter.
+
+**Why `proxy.ts` and not `next.config.js`'s `headers()`:** a per-request nonce can only
+be generated in code that runs per-request, which `next.config.js`'s `headers()`
+cannot do (it's evaluated once at build/startup). Using a nonce also means every page
+must be dynamically rendered (Next.js disables static optimization for nonce'd pages) —
+true of every route in this app already except `/account`, which now has `export const
+dynamic = "force-dynamic"` in its (now server-only) `page.tsx` for exactly this reason;
+the actual page content moved to `AccountPageClient.tsx` since route segment config
+exports are silently ignored in a `"use client"` file.
+
+**A known risk worth naming:** `proxy.ts` makes this app's Worker run through
+`@opennextjs/cloudflare`'s Node.js-middleware support, which the adapter's own build
+output explicitly warns is "experimental ... and not officially maintained by OpenNext
+maintainers." This is unavoidable in Next.js 16 specifically — `middleware.ts` was
+renamed to `proxy.ts` and now always runs in the Node.js runtime, with no edge-runtime
+option to fall back to. Verified working against the real local Workers runtime
+(`wrangler dev`) across the homepage, `/login`, and `/account` — hydration, styling,
+and the CSP header itself all behaved correctly — but this hasn't been exercised
+against a real Cloudflare deploy. Revisit if this ever causes real deploy issues.
 
 ## TypeScript
 `tsconfig.json` runs in `strict` mode with `noUncheckedIndexedAccess` enabled — catches
