@@ -74,6 +74,32 @@ are outside what code can determine.
   `role="menu"`/`role="menuitem"` semantics, closes on Escape, and returns focus to the
   trigger button after a selection — standard WAI-ARIA menu-button behavior.
 
+## Automated audit run (axe-core, against the real dev server)
+Ran axe-core directly against the running app (not just the `jsx-a11y` lint rules,
+which only catch static-markup issues) across the homepage, `/books`, `/books/[slug]`,
+`/login`, `/signup`, `/blog`, `/privacy`, `/checkout`, `/account`, and a 404 — chosen as
+the storefront/checkout/account pages this file's own "run automated audits regularly"
+item below calls for. Found and fixed three real, previously-missed issues:
+- **No `<title>` on almost every page** (WCAG 2.4.2) — the root layout had no `metadata`
+  export and no fallback. Only the 3 pages that happened to set their own title had one
+  at all. Fixed with a title template in `app/layout.tsx` plus real per-page titles,
+  including `generateMetadata` for dynamic/gated pages that mirrors each page's own
+  entitlement/role check so a gated title can't leak to someone without access.
+- **`ember` on `parchment` failed contrast** (3.96:1, needs 4.5:1) in ~20 places
+  site-wide. Darkened the token to the smallest shade that clears it (confirmed with
+  the user first, since brand colors are protected — see CLAUDE.md).
+- **Two pages missing a heading in some render states** (`/checkout`'s empty-cart and
+  login-required screens, `/account`'s loading state) — each has a correct `<h1>` in its
+  main path, but these early returns didn't.
+
+Also found `text-neutral-500` (a generic Tailwind gray, not a brand token) failing
+contrast at 4.24:1 in 24 files — bumped to `text-neutral-600` (6.99:1) throughout.
+
+This is a real automated pass, not exhaustive manual testing — the admin authoring
+flow, leader section, and studies/lessons pages still need the full manual run this
+file already calls for below (the gated pages weren't exercised beyond `generateMetadata`
+without real auth), and no screen reader was used.
+
 ## What still needs manual verification (can't be fully automated)
 - **Color contrast of any custom brand colors.** Structural UI uses near-black on white,
   which passes comfortably. But callout blocks (`components/study/LessonBlock.tsx`) let

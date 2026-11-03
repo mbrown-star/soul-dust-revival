@@ -161,7 +161,10 @@ deployment before treating any of it as launch-ready:
 
 **Accessibility & responsive**
 - [ ] Run axe DevTools or Lighthouse against storefront, checkout, a lesson page,
-      and the admin authoring flow
+      and the admin authoring flow — **partially done:** storefront, checkout, and
+      account already audited with axe-core directly (see "Recently completed" and
+      ACCESSIBILITY.md); a lesson page and the admin authoring flow still need this,
+      since both require real auth to reach
 - [ ] Full keyboard-only pass through checkout and lesson authoring
 - [ ] Test on at least one real phone and one real tablet, not just DevTools' device toolbar
 
@@ -207,6 +210,26 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- Ran a real automated accessibility audit (axe-core, against the running
+  dev server — not just `jsx-a11y` lint, which only catches static-markup
+  issues) across the storefront/checkout/account pages. Found and fixed 3
+  real, previously-missed issues: (1) almost every page had **no
+  `<title>` at all** (WCAG 2.4.2) — only 3 pages happened to set their
+  own, and the root layout had no fallback; fixed with a title template
+  plus real per-page titles, including `generateMetadata` for gated pages
+  that mirrors each page's own entitlement/role check so a gated title
+  can't leak to someone without access; (2) the brand color `ember` on
+  `parchment` failed contrast (3.96:1, needs 4.5:1) in ~20 places —
+  darkened to the smallest shade that clears it, confirmed with the user
+  first since it's a protected design-system token; (3) two pages
+  (`/checkout`, `/account`) were missing a heading in some render states
+  even though their main path has one. Also fixed `text-neutral-500`
+  (generic Tailwind gray, 4.24:1) failing contrast across 24 files,
+  bumped to `text-neutral-600` (6.99:1). See ACCESSIBILITY.md for the
+  full writeup. Not a substitute for the full manual run ACCESSIBILITY.md
+  already calls for — admin, leader, and studies/lessons pages weren't
+  exercised beyond `generateMetadata` without real auth, and no screen
+  reader was used.
 - Added Vitest and 17 tests covering the checkout → webhook → entitlement
   flow specifically, per CODE_QUALITY_REVIEW.md's own explicit
   recommendation ("no test runner... add tests around the checkout →
