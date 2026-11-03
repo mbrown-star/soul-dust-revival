@@ -1,4 +1,4 @@
-import pdfParse from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 
 /**
  * Extracts plain text from a PDF. Unlike DOCX, PDFs don't preserve heading
@@ -6,6 +6,11 @@ import pdfParse from "pdf-parse";
  * detection for lesson-splitting is done heuristically (see splitIntoLessons.ts).
  */
 export async function parsePdfToText(buffer: Buffer): Promise<string> {
-  const data = await pdfParse(buffer);
-  return data.text;
+  const parser = new PDFParse({ data: buffer });
+  try {
+    const result = await parser.getText();
+    return result.text;
+  } finally {
+    await parser.destroy();
+  }
 }
