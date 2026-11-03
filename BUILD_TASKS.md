@@ -47,15 +47,50 @@ what's left, roughly in the order they need doing.
 > `.env.local` at it, then the three commands above.
 
 ## 4. Deployment
-- [ ] Deploy the Next.js app to Cloudflare Pages
-- [ ] Set every `.env` value in the Cloudflare Pages environment variables dashboard
+
+> ⚠️ **Read this before your first real `npm run cf:deploy`.** `opennextjs-cloudflare
+> build` reads whatever `.env`/`.env.local` is present at build time and bakes its
+> *entire* contents — every secret, not just `NEXT_PUBLIC_*` ones — as plaintext into
+> `.open-next/cloudflare/next-env.mjs`, which gets bundled straight into the deployed
+> `worker.js`. Confirmed locally: building with dummy `.env.local` values produced a
+> `next-env.mjs` containing the literal `DATABASE_URL`, `TOKEN_ENCRYPTION_KEY`,
+> `CRON_SECRET`, etc. If you build with your *real* production secrets in `.env`/
+> `.env.local`, those secrets ship inside the Worker's bundled source — not sent to the
+> browser, but baked into an artifact that's a very different exposure profile than a
+> proper runtime secret (visible to anyone with "view Worker source" access, cached in
+> CI/build logs, etc.), and rotating one then means a full rebuild+redeploy. This is
+> standard Next.js/OpenNext build behavior, not a bug in this app's code — see
+> opennext.js.org/cloudflare/howtos/env-vars ("you should always set the runtime
+> environment variables in the [Cloudflare] dashboard").
+>
+> **The safe order of operations:**
+> 1. Build and deploy with `.env`/`.env.local` containing only dummy/placeholder
+>    values (exactly what `.env.example` has) — never your real Supabase/Stripe/
+>    encryption-key values at build time.
+> 2. *After* the first deploy, set every real value as a Cloudflare dashboard
+>    variable/secret (Workers & Pages → this Worker → Settings → Variables), or via
+>    `wrangler secret put <NAME>`. These are what the Worker actually reads at request
+>    time; they override the baked-in build-time defaults.
+> 3. On every later deploy, run `opennextjs-cloudflare deploy -- --keep-vars`
+>    (or update the `cf:deploy` script to include it) so redeploying doesn't wipe the
+>    dashboard-configured secrets back to the build-time placeholders.
+
+- [ ] Deploy with `npm run cf:deploy` (builds via OpenNext, deploys the Worker —
+      see `wrangler.jsonc`/`open-next.config.ts`), using placeholder env values per
+      the warning above
+- [ ] Set every real `.env` value as a Cloudflare dashboard variable/secret on the
+      deployed Worker (not baked into the build — see warning above)
 - [ ] Configure the Stripe webhook endpoint (`/api/webhooks/stripe`) in the Stripe
       dashboard, pointed at the deployed domain, and copy the signing secret into
-      `STRIPE_WEBHOOK_SECRET`
-- [ ] Deploy the companion Cloudflare Worker for cron (see SOCIAL.md for the
-      `wrangler.toml` + worker script) — hits `/api/cron/social-publish` every
-      5-15 min and `/api/cron/social-metrics` daily, both with the `CRON_SECRET`
-      bearer token
+      the Worker's `STRIPE_WEBHOOK_SECRET` (dashboard, not `.env`)
+- [ ] Set up a scheduler to call `/api/cron/social-publish` every 5-15 min and
+      `/api/cron/social-metrics` daily, both with the `CRON_SECRET` bearer token —
+      see SOCIAL.md (a companion Worker or an external scheduler like
+      cron-job.org/GitHub Actions both still work unchanged; this app's own Worker
+      doesn't export a native `scheduled` handler, so a native Cron Trigger on the
+      same Worker isn't wired up — not attempted here, since OpenNext's generated
+      `worker.js` is fully regenerated on every build and wrapping it safely with a
+      custom entrypoint needs real deploy testing to verify)
 
 ## 5. Platform-specific approval steps (these take real calendar time — start early)
 - [ ] Submit Meta App Review for `pages_manage_posts` and `instagram_content_publish`

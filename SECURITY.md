@@ -99,6 +99,19 @@ rendered with `dangerouslySetInnerHTML`. To keep this safe:
 (`instrumentation.ts`), so a missing or malformed credential fails immediately with a
 clear message — instead of surfacing later as a confusing runtime error mid-request.
 
+**Cloudflare deploys specifically:** `opennextjs-cloudflare build` bakes whatever
+`.env`/`.env.local` is present at build time — every value, not just
+`NEXT_PUBLIC_*` ones — as plaintext into the deployed Worker's bundled source
+(`.open-next/cloudflare/next-env.mjs`), confirmed locally by building with dummy
+values and finding every secret name/value from `.env.local` present verbatim in the
+build output. **Never build/deploy with real production secrets in `.env`/
+`.env.local`.** Build and deploy with placeholder values, then set every real value
+as a Cloudflare dashboard variable/secret on the Worker (or `wrangler secret put`)
+*after* deploying — those are what the Worker actually reads at request time, and
+`opennextjs-cloudflare deploy -- --keep-vars` on later deploys keeps a redeploy from
+reverting them to the build-time placeholders. See BUILD_TASKS.md's Deployment
+section for the full sequence.
+
 ## Database access model (important to understand)
 This app connects to Postgres directly via Drizzle using a connection string, **not**
 through `supabase-js` with Row Level Security policies. That means **RLS policies you

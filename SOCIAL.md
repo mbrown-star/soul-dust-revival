@@ -57,11 +57,15 @@ Two endpoints need to be hit on a schedule by something external:
 Both require `Authorization: Bearer {CRON_SECRET}` — set `CRON_SECRET` to a long random
 string in `.env`, and configure whatever calls these endpoints to send that same value.
 
-**Cloudflare Pages doesn't run cron itself** — Cron Triggers are a Workers feature.
-The simplest path is a small companion Cloudflare Worker:
+**This app's own Worker doesn't run cron itself.** It's deployed via the OpenNext
+Cloudflare adapter (see BUILD_TASKS.md's Deployment section), whose generated
+`worker.js` only exports a `fetch` handler, not `scheduled` — and that file is fully
+regenerated on every build, so hand-adding a `scheduled` export to it directly doesn't
+stick. The simplest path is still a small, separate companion Cloudflare Worker that
+just calls this app's cron endpoints over HTTP on a schedule:
 
 ```toml
-# wrangler.toml for the companion worker (separate from the Pages app)
+# wrangler.toml for the companion worker (separate from this app's own Worker)
 name = "soul-dust-social-cron"
 main = "src/index.ts"
 compatibility_date = "2026-01-01"
