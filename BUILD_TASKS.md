@@ -207,6 +207,25 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- Added Vitest and 17 tests covering the checkout → webhook → entitlement
+  flow specifically, per CODE_QUALITY_REVIEW.md's own explicit
+  recommendation ("no test runner... add tests around the checkout →
+  webhook → entitlement flow first, since a bug there costs money").
+  All run against the real local Postgres, not a mocked DB (`vi.mock()`
+  used only for genuine external services — Stripe, Resend): entitlement
+  checks (permanent/expiring/expired, no cross-user leakage), webhook
+  idempotency (a second call for the same Stripe redelivery is a true
+  no-op — the actual bug class that guard exists to prevent), a
+  regression test for the `getOrCreateStripePrice` race-condition fix
+  from earlier in this build (concurrent checkouts of the same new
+  product now provably converge on one winning Stripe price), and
+  checkout pricing integrity (a tampered client price is ignored, the
+  order total always reflects the DB price). `npm test` deliberately
+  isn't part of `npm run verify`, since it needs a real DB connection
+  `verify` can't assume exists everywhere it runs. Confirmed zero test
+  data leaks into the dev database after a full suite run. Also fixed two
+  stale "Next.js 15"/"Cloudflare Pages" mentions in CLAUDE.md/README.md
+  left over from this build's earlier Next 16 and Cloudflare-adapter work.
 - Added a nonce-based Content-Security-Policy via `proxy.ts` (Next 16's
   mandatory rename of `middleware.ts`) — a real gap in
   SECURITY_REVIEW.md's own checklist ("Security headers set (CSP, HSTS,
