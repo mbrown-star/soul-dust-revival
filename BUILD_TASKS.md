@@ -139,6 +139,28 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- Bumped `resend` 4 -> 6 to close the last production `npm audit` finding
+  (deepmerge prototype-poisoning advisory, GHSA-gcqx-w48m-w2h4, reached via
+  `html-to-text` -> `@react-email/render` -> `resend`). Checked `resend`
+  v6.37.0's `.d.mts` before bumping: the `Resend` constructor and
+  `emails.send()` payload shape are unchanged from v4, and
+  `lib/email/send.ts` only calls that one method with a plain HTML string
+  it builds itself (no React Email templates), so no code changes were
+  needed. `npm audit --omit=dev` now reports **0 vulnerabilities**. The 22
+  remaining moderate findings (`eslint-plugin-react`/minimatch,
+  `@tailwindcss/typography`/postcss-selector-parser, `drizzle-kit`/esbuild
+  dev-server) are devDependency-only — never shipped to production, and
+  their automated fixes would force absurd downgrades (e.g. `eslint@4.0.0`)
+  that npm's resolver is proposing incorrectly, so left alone.
+- Reviewed OAuth authorize/callback flows (X and Facebook — PKCE, CSRF
+  `state` validation via httpOnly cookies), token encryption wiring in
+  `lib/social/connections.ts` (AES-256-GCM encrypt/decrypt on every
+  write/read path, proper nulling on disconnect), and accessibility beyond
+  lint: confirmed in a real browser that the skip-link appears on first Tab
+  press with a visible focus style, that the nav's focus ring resolves to
+  an actual 2px box-shadow via computed styles, and that
+  `prefers-reduced-motion` is handled globally in `app/globals.css` as
+  `ACCESSIBILITY.md` documents. No issues found — no code changes.
 - Fixed a real moderate XSS finding surfaced by `npm audit` review: bumped
   Tiptap v2 -> v3 (GHSA-cp6q-959q-f8rh, `mergeAttributes()` prototype
   pollution). This mattered specifically because the admin `.docx`/`.pdf`
