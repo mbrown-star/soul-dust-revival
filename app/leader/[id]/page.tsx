@@ -4,8 +4,27 @@ import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import DOMPurify from "isomorphic-dompurify";
 import Link from "next/link";
+import { requireLeaderOrAdmin } from "@/lib/admin/guard";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+// Mirrors the parent layout's own role check (see leader/layout.tsx) --
+// metadata generation runs independently of the layout/page render, so a
+// naive lookup would leak a gated resource's real title to a visitor who
+// isn't a leader/admin, even though the layout correctly blocks the content.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const leaderSession = await requireLeaderOrAdmin();
+  if (!leaderSession) return { title: "Leader Resources" };
+
+  const { id } = await params;
+  const resource = await db.query.leaderResources.findFirst({ where: eq(leaderResources.id, id) });
+  return { title: resource?.title ?? "Leader Resources" };
+}
 
 export default async function LeaderResourceDetailPage({
   params,

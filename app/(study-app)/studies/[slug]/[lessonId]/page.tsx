@@ -5,6 +5,32 @@ import { hasEntitlement } from "@/lib/entitlements/check";
 import { getSession } from "@/lib/auth/session";
 import { LessonBlock } from "@/components/study/LessonBlock";
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+
+// Mirrors the page's own entitlement check rather than just looking the
+// lesson up directly -- metadata generation runs independently of the page
+// body, so a naive lookup would leak a gated lesson's real title into the
+// page <title>/browser tab for a visitor who isn't logged in or doesn't have
+// access to it, even though the page itself correctly redirects them away.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string; lessonId: string }>;
+}): Promise<Metadata> {
+  const { slug, lessonId } = await params;
+
+  const study = await db.query.studies.findFirst({ where: eq(studies.slug, slug) });
+  if (!study) return { title: "Studies" };
+
+  const session = await getSession();
+  if (!session) return { title: "Studies" };
+
+  const allowed = await hasEntitlement(session.userId, study.productId);
+  if (!allowed) return { title: "Studies" };
+
+  const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
+  return { title: lesson?.title ?? "Studies" };
+}
 
 export default async function LessonPage({
   params,

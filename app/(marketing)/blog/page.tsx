@@ -10,7 +10,7 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Blog — Soul Dust Revival",
+  title: "Blog",
 };
 
 export default async function BlogPage() {

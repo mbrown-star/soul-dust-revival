@@ -4,12 +4,23 @@ import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { renderMarkdown } from "@/lib/markdown";
 import Link from "next/link";
+import type { Metadata } from "next";
 
 // Rendered dynamically per-request rather than statically at build time —
 // this reads live product/post data an admin can change anytime, and a
 // static build would otherwise freeze this content as of the last deploy
 // (and would require a live database reachable during the build itself).
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const post = await db.query.posts.findFirst({ where: eq(posts.slug, slug) });
+  return { title: post?.title ?? "Not found" };
+}
 
 export default async function BlogPostPage({
   params,

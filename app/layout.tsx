@@ -1,7 +1,22 @@
 import { CartProvider } from "@/lib/cart/CartContext";
-import type { Viewport } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, Source_Serif_4, Archivo } from "next/font/google";
 import "./globals.css";
+
+// Fallback title/description for every page that doesn't set its own —
+// without this, pages with no `metadata` export render with no <title> at
+// all (confirmed with axe-core: a real WCAG 2.4.2 "Documents must have
+// <title>" violation, not just a style nicety). Pages that do set their own
+// short `title` (e.g. "Login") get it interpolated into this template
+// rather than needing to repeat "— Soul Dust Revival" themselves.
+export const metadata: Metadata = {
+  title: {
+    default: "Soul Dust Revival",
+    template: "%s — Soul Dust Revival",
+  },
+  description:
+    "Studies, devotionals, and a discipleship path for men willing to be honest about the dust — and willing to be revived.",
+};
 
 // Display face: carries the weight/character of the brand (headlines, wordmark).
 const fraunces = Fraunces({

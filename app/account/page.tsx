@@ -1,4 +1,5 @@
 import AccountPageClient from "./AccountPageClient";
+import type { Metadata } from "next";
 
 // Needed for the nonce-based CSP in proxy.ts: nonces require a fresh
 // per-request render, which only happens for dynamically-rendered pages.
@@ -8,6 +9,10 @@ import AccountPageClient from "./AccountPageClient";
 // segment config exports are silently ignored in a "use client" file,
 // which is why the actual page content lives in AccountPageClient instead.
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Your account",
+};
 
 export default function AccountPage() {
   return <AccountPageClient />;

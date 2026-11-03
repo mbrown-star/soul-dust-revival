@@ -4,12 +4,23 @@ import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { AddToCartButton } from "@/components/commerce/AddToCartButton";
+import type { Metadata } from "next";
 
 // Rendered dynamically per-request rather than statically at build time —
 // this reads live product/post data an admin can change anytime, and a
 // static build would otherwise freeze this content as of the last deploy
 // (and would require a live database reachable during the build itself).
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const product = await db.query.products.findFirst({ where: eq(products.slug, slug) });
+  return { title: product?.title ?? "Not found" };
+}
 
 export default async function BookDetailPage({
   params,
@@ -37,7 +48,7 @@ export default async function BookDetailPage({
               className="object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-parchment/40 font-display">
+            <div className="w-full h-full flex items-center justify-center text-parchment/70 font-display">
               Soul Dust Revival
             </div>
           )}
