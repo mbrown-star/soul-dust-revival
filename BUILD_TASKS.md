@@ -195,10 +195,45 @@ deployment before treating any of it as launch-ready:
       pooler. Didn't chase further since testing that properly needs the
       real target environment. Re-test this explicitly once Supabase is
       set up, before trusting any DB-backed route in production.
+- [ ] Watch for issues from `proxy.ts` (the CSP) once deployed for real —
+      it depends on `@opennextjs/cloudflare`'s Node.js-middleware support,
+      which the adapter itself labels experimental/unmaintained. Worked
+      correctly in local `wrangler dev` testing across several pages, but
+      that's not the same as a real deploy. If it ever causes a production
+      issue, the fallback is the simpler CSP (no proxy.ts, no nonce, set
+      via `next.config.js`'s `headers()` instead) — see SECURITY.md for
+      what that loses (script-src would need `'unsafe-inline'` too).
 
 ---
 
 ## Recently completed (most recent first)
+- Added a nonce-based Content-Security-Policy via `proxy.ts` (Next 16's
+  mandatory rename of `middleware.ts`) — a real gap in
+  SECURITY_REVIEW.md's own checklist ("Security headers set (CSP, HSTS,
+  X-Content-Type-Options, frame protections)") that an earlier review pass
+  missed, caught now going through the checklist again. Strict nonce +
+  `'strict-dynamic'` on `script-src`, no `'unsafe-inline'`; `style-src`
+  deliberately has no nonce (`'self' 'unsafe-inline'` only) after finding
+  via a real `wrangler dev` test that this app's inline `style={{}}` props
+  (e.g. the homepage's animated dust motes) get silently blocked by a
+  nonce'd style-src with no working fallback, since CSP nonces never cover
+  `style=""` attributes. `connect-src`/`img-src`/`media-src` scoped to
+  exactly what the browser actually calls (Supabase, direct-to-R2,
+  Cloudflare Stream) — see SECURITY.md for the full writeup. Before
+  implementing, flagged and got explicit confirmation on a real risk this
+  surfaced: a nonce requires `proxy.ts`, which on this adapter routes
+  through `@opennextjs/cloudflare`'s Node.js-middleware support — the
+  adapter's own build output calls this "experimental ... not officially
+  maintained," unavoidable in Next 16 since proxy always runs Node.js
+  runtime now with no edge-runtime option. `/account` needed `export const
+  dynamic = "force-dynamic"` (nonces require dynamic rendering everywhere)
+  — moved its content to `AccountPageClient.tsx` since that export is
+  silently ignored in a `"use client"` file, caught by the build output
+  still showing `/account` as static after the first attempt. Verified
+  against the real `wrangler dev` runtime, not just a code read: correct
+  CSP header, zero console violations, intact hydration/styling across
+  the homepage, `/login`, and `/account`. Not yet exercised against a real
+  Cloudflare deploy.
 - Found and fixed a real security-header gap in this build's own
   Cloudflare adapter setup, by actually running the app under `wrangler
   dev` (the real local Workers runtime) rather than trusting the config
