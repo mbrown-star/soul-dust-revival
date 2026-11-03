@@ -147,10 +147,43 @@ deployment before treating any of it as launch-ready:
       ("splitting") not set up yet. Not attempted this session: real
       effort, and 3MiB is unlikely to matter once you're paying Cloudflare
       for Stream/R2 anyway.
+- [ ] Verify DB connections are stable under the real Workers runtime once
+      the real Supabase project exists. Running `wrangler dev` locally
+      against the raw (non-pooled) local Postgres, dynamic routes that hit
+      the DB intermittently errored with "the Workers runtime canceled
+      this request because it detected that your Worker's code had hung."
+      `/account` (no DB read) was solid; `/` (does a DB read) was flaky.
+      This may just be the local throwaway Postgres having no pooler —
+      README/SECURITY.md already call out using the **Supabase pooler
+      URL** specifically because Workers churn through short-lived
+      connections — so this might be a non-issue once pointed at the real
+      pooler. Didn't chase further since testing that properly needs the
+      real target environment. Re-test this explicitly once Supabase is
+      set up, before trusting any DB-backed route in production.
 
 ---
 
 ## Recently completed (most recent first)
+- Found and fixed a real security-header gap in this build's own
+  Cloudflare adapter setup, by actually running the app under `wrangler
+  dev` (the real local Workers runtime) rather than trusting the config
+  by inspection. With OpenNext's default `run_worker_first=false`,
+  statically-prerendered pages (e.g. `/account`) are served directly from
+  the Cloudflare ASSETS binding, bypassing the Worker — so
+  `next.config.js`'s `headers()` (X-Frame-Options, HSTS, nosniff,
+  Permissions-Policy) silently never applied to them. This mattered
+  concretely: `/account` renders a "permanently delete my account"
+  control behind a typed confirmation, exactly the kind of page
+  X-Frame-Options/clickjacking protection exists for. Fixed by mirroring
+  the same header set in `public/_headers` (Cloudflare's own
+  static-asset-headers mechanism, which OpenNext's docs recommend for
+  this exact case). Verified via `curl` against `wrangler dev` — all five
+  headers now present on `/account`, matching `next.config.js` exactly.
+  The same test run surfaced a second, unresolved finding: DB-backed
+  dynamic routes intermittently hung under `wrangler dev` against the
+  local (non-pooled) Postgres — logged under "Known gaps" to re-check
+  once the real Supabase pooler exists, since that's plausibly a
+  local-only artifact, not a real bug.
 - Caught and fixed a real bug introduced by this build's own Cloudflare
   work: `eslint.config.mjs` never excluded `.open-next/`/`.wrangler/`
   (OpenNext's generated Worker bundle — tens of MB of bundled JS), so
