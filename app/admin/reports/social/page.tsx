@@ -1,6 +1,6 @@
 import { db } from "@/lib/db/client";
 import { socialPostTargets, socialPosts, socialPostMetrics } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 import Link from "next/link";
 import { PLATFORM_LABELS } from "@/lib/data/socialPlatforms";
 
@@ -20,18 +20,22 @@ export default async function SocialAnalyticsPage() {
     .orderBy(desc(socialPostTargets.publishedAt))
     .limit(100);
 
-  const allMetrics = await db.select().from(socialPostMetrics);
-
   // Latest metrics snapshot per target — social_post_metrics keeps every
-  // fetch as its own row for trend history, but this view just needs the
-  // most recent one per post.
-  const latestByTarget = new Map<string, (typeof allMetrics)[number]>();
-  for (const m of allMetrics) {
-    const existing = latestByTarget.get(m.targetId);
-    if (!existing || (m.fetchedAt && existing.fetchedAt && m.fetchedAt > existing.fetchedAt)) {
-      latestByTarget.set(m.targetId, m);
-    }
-  }
+  // fetch as its own row for trend history and only grows over time, so this
+  // scopes to the targets this page actually displays (DISTINCT ON picks the
+  // newest row per target_id directly in SQL) rather than pulling the whole
+  // ever-growing history table and reducing it in JS.
+  const targetIds = publishedTargets.map((t) => t.id);
+  const latestMetrics =
+    targetIds.length === 0
+      ? []
+      : await db
+          .selectDistinctOn([socialPostMetrics.targetId])
+          .from(socialPostMetrics)
+          .where(inArray(socialPostMetrics.targetId, targetIds))
+          .orderBy(socialPostMetrics.targetId, desc(socialPostMetrics.fetchedAt));
+
+  const latestByTarget = new Map(latestMetrics.map((m) => [m.targetId, m]));
 
   const totals = { likes: 0, comments: 0, shares: 0 };
   for (const m of latestByTarget.values()) {
