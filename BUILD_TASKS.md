@@ -151,6 +151,20 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- Caught and fixed a real bug introduced by this build's own Cloudflare
+  work: `eslint.config.mjs` never excluded `.open-next/`/`.wrangler/`
+  (OpenNext's generated Worker bundle — tens of MB of bundled JS), so
+  `npm run lint` crashed with a JS heap out-of-memory the first time those
+  directories existed on disk. Also excluded `design-system/` (confirmed
+  via grep: a Claude Code skill package for AI-assisted prototyping that
+  came in with the scaffold copy, not imported anywhere in `app`/`lib`/
+  `components`) — same treatment the separate "Soul Dust Revival Design
+  System" brand-assets repo already got. `npm run lint` now completes
+  clean (0 errors). Also bumped `drizzle-kit` 0.28 -> 0.31 (latest stable)
+  for currency; verified `generate`/`migrate` still work against the real
+  local Postgres. Didn't move the audit count — drizzle-kit's own
+  `@esbuild-kit/esm-loader` dependency carries the esbuild dev-server
+  advisory at every version up to 1.0, devDependency-only, left alone.
 - Added the Cloudflare deployment adapter (`@opennextjs/cloudflare` +
   `wrangler`, both devDependencies since they're build-time only and never
   ship in the deployed Worker). The scaffold's docs always said hosting was
