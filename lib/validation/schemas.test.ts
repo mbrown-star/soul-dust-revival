@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  adminUserCreateSchema,
+  adminUserUpdateSchema,
   anthropicKeySchema,
   blogPostCreateSchema,
   blogPostUpdateSchema,
@@ -373,6 +375,63 @@ describe("roleUpdateSchema", () => {
 
   it("rejects an unknown role (no self-serve escalation path via a bogus value)", () => {
     expect(roleUpdateSchema.safeParse({ userId: uuid, role: "superadmin" }).success).toBe(false);
+  });
+});
+
+describe("adminUserCreateSchema", () => {
+  it("accepts an email and role with no optional fields", () => {
+    expect(adminUserCreateSchema.safeParse({ email: "new@example.com", role: "user" }).success).toBe(true);
+  });
+
+  it("accepts optional fullName and country", () => {
+    expect(
+      adminUserCreateSchema.safeParse({
+        email: "new@example.com",
+        role: "leader",
+        fullName: "Jamie Rivera",
+        country: "US",
+      }).success
+    ).toBe(true);
+  });
+
+  it("rejects an invalid email", () => {
+    expect(adminUserCreateSchema.safeParse({ email: "not-an-email", role: "user" }).success).toBe(false);
+  });
+
+  it("rejects an unknown role (no self-serve escalation path via a bogus value)", () => {
+    expect(adminUserCreateSchema.safeParse({ email: "new@example.com", role: "superadmin" }).success).toBe(false);
+  });
+
+  it("rejects an invalid country code", () => {
+    expect(
+      adminUserCreateSchema.safeParse({ email: "new@example.com", role: "user", country: "usa" }).success
+    ).toBe(false);
+  });
+
+  it("rejects a blank fullName", () => {
+    expect(
+      adminUserCreateSchema.safeParse({ email: "new@example.com", role: "user", fullName: "" }).success
+    ).toBe(false);
+  });
+});
+
+describe("adminUserUpdateSchema", () => {
+  it("accepts just a userId with no fields to change", () => {
+    expect(adminUserUpdateSchema.safeParse({ userId: uuid }).success).toBe(true);
+  });
+
+  it("accepts null to clear fullName and country", () => {
+    expect(
+      adminUserUpdateSchema.safeParse({ userId: uuid, fullName: null, country: null }).success
+    ).toBe(true);
+  });
+
+  it("rejects a non-uuid userId", () => {
+    expect(adminUserUpdateSchema.safeParse({ userId: "not-a-uuid" }).success).toBe(false);
+  });
+
+  it("rejects an invalid email", () => {
+    expect(adminUserUpdateSchema.safeParse({ userId: uuid, email: "not-an-email" }).success).toBe(false);
   });
 });
 

@@ -13,6 +13,11 @@ a codebase can't determine on its own. Get real legal review before treating thi
 |---|---|---|
 | Email | `users.email`, `orders.guestEmail` | Account identity; order confirmation |
 | Country | `orders.country`, `users.country` | Determines which data-protection regime applies to that person (see below) |
+| Full name (optional) | `users.fullName` | Convenience display only — never required, never used to gate access |
+
+**Source of `users` rows**: usually the person's own magic-link signup (`app/auth/callback/route.ts`),
+but an admin can also create or edit a `users` row directly from `/admin/users` (e.g. onboarding
+someone who won't self-signup) — same columns, same purpose, same access rules as above.
 | Full shipping address | `orders.shipping*` | Only collected for physical orders, only via Stripe's own checkout page — never stored anywhere except what Stripe's Checkout session collects |
 | Login timestamps + user agent | `login_events` | Access/engagement reporting (`/admin/reports/engagement`) |
 | Study answers | `responses.answerText` | The product's actual function — saving a user's own study responses |

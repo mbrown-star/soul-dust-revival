@@ -31,10 +31,14 @@ what's left, roughly in the order they need doing.
 
 ## 2. Environment configuration
 - [ ] `cp .env.example .env` and fill in every value
-- [ ] Find `SUPABASE_SERVICE_ROLE_KEY` in Supabase Project Settings → API (used only
-      for account self-deletion — never exposed to the client)
+- [x] Find `SUPABASE_SERVICE_ROLE_KEY` in Supabase Project Settings → API (used only
+      for account self-deletion — never exposed to the client). Note: Supabase has
+      moved to a new key format (`sb_secret_...` replacing the old JWT-style
+      `service_role` key, `sb_publishable_...` replacing the old `anon` key) — both
+      are set in `.env.local` using the new format; confirmed `lib/env.ts`'s schema
+      has no format restriction, so this is a drop-in match.
 - [x] Generate `TOKEN_ENCRYPTION_KEY`: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
-- [ ] Generate `CRON_SECRET`: any long random string
+- [x] Generate `CRON_SECRET`: any long random string
 - [ ] Register OAuth redirect URIs with X and Meta once you know your real domain:
   - `https://yourdomain.com/api/admin/connections/x/callback`
   - `https://yourdomain.com/api/admin/connections/facebook/callback`
@@ -231,6 +235,33 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- Added admin user creation and editing to `/admin/users`. `POST /api/admin/users`
+  lets an admin invite a new user by email (role, optional full name/country) —
+  Supabase Auth's `inviteUserByEmail` mints the account (magic-link only, no
+  password) and emails the sign-in link, and the `users` row is only inserted
+  after that succeeds, with the auth account rolled back if the insert fails
+  (e.g. a duplicate-email race). `PUT /api/admin/users` edits an existing
+  user's email/full name/country, syncing an email change to Supabase Auth
+  first so magic-link sign-in keeps working. Role changes are untouched —
+  still exclusively the existing `PATCH` endpoint and its self-role-change
+  guard, so neither new endpoint is a privilege-escalation path (both still
+  require `requireAdmin()`, same as every other `/admin/users` method). New
+  `adminUserCreateSchema`/`adminUserUpdateSchema` in `lib/validation/schemas.ts`
+  (a shared `countryCodeSchema` was factored out of `checkoutSchema` in the
+  process). UI: `components/admin/AddUserForm.tsx` (new) and an inline edit
+  row added to `components/admin/UserRoleTable.tsx`. `users.fullName` was
+  already a column but had never been documented in `PRIVACY.md` — added it,
+  plus a note that `/admin/users` is a second source of `users` rows besides
+  self-signup. 17 new tests (schema validation + route behavior, including
+  the rollback-on-insert-failure and email-sync-failure regression cases);
+  161 tests pass, `npm run verify` is clean. **Not exercised against the real
+  Supabase project**: `inviteUserByEmail`/`updateUserById` are mocked in tests
+  per this project's convention for genuine external services, and the
+  authenticated `/admin/users` UI itself wasn't driven live in this session
+  (no admin session available in the dev browser) — confirmed only that the
+  page still renders with no console errors and correctly redirects to
+  `/login` when unauthenticated. Verify the actual invite-email round trip and
+  the new-user flow against the real Supabase project before relying on it.
 - Connected real X and Facebook/Instagram accounts end-to-end against the
   local dev server. Created the X Developer app and Meta Developer app, wired
   `X_CLIENT_ID`/`X_CLIENT_SECRET`/`FACEBOOK_APP_ID`/`FACEBOOK_APP_SECRET` into

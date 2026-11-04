@@ -45,6 +45,17 @@ anything that doesn't match — rather than trusting client-shaped JSON directly
   admin cannot change their own role through that endpoint — a deliberate guard against
   a single misclick locking the only admin account out of the admin section with no one
   left able to restore it.
+- **Creating and editing users is also admin-only** (`/admin/users`, `POST`/`PUT
+  /api/admin/users`). `POST` invites a new user through Supabase Auth's admin API
+  (`inviteUserByEmail` — this app only supports magic-link auth, so there's no password
+  to set) and only then inserts the corresponding `users` row, rolling back the just-created
+  auth account if the insert fails (e.g. a concurrent duplicate-email race), so a failed
+  create never leaves an orphaned login with no app-side row. `PUT` edits an existing
+  user's email/full name/country; an email change is pushed to Supabase Auth first via
+  `updateUserById` and the `users` row is only updated once that succeeds, keeping the two
+  in sync. Neither endpoint touches `role` — role changes stay exclusively on the existing
+  `PATCH` endpoint and its self-role-change guard above, so creating/editing a user is never
+  a path to self-escalation (only an existing admin can call these routes at all).
 - The `responses` and `progress` API routes both verify the content block's/lesson's
   parent study is one the requesting user actually has an entitlement for — not just
   that they're logged in — before accepting a submitted answer or progress update.

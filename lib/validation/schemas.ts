@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+// ISO 3166-1 alpha-2 country code, or the "OTHER" sentinel for a buyer/user
+// whose country isn't in the shorter selector lists (checkout, admin user
+// form) built from lib/data/countries.ts.
+export const countryCodeSchema = z
+  .string()
+  .refine((v) => v === "OTHER" || /^[A-Z]{2}$/.test(v), "Invalid country code");
+
 // ---------- Checkout ----------
 export const checkoutSchema = z.object({
   items: z
@@ -13,12 +20,8 @@ export const checkoutSchema = z.object({
     .max(50), // cap cart size — prevents pathological Stripe line-item payloads
   guestEmail: z.string().email().optional(),
   // Required for every order regardless of format/guest status — see
-  // orders.country in the schema and PRIVACY.md for why. "OTHER" is an
-  // accepted sentinel alongside real ISO 3166-1 alpha-2 codes, for buyers
-  // whose country isn't in the checkout page's shorter selector list.
-  country: z
-    .string()
-    .refine((v) => v === "OTHER" || /^[A-Z]{2}$/.test(v), "Invalid country code"),
+  // orders.country in the schema and PRIVACY.md for why.
+  country: countryCodeSchema,
 });
 
 // ---------- Responses (study answers) ----------
@@ -214,6 +217,21 @@ export const resourceFileUploadUrlSchema = z.object({
 export const roleUpdateSchema = z.object({
   userId: z.string().uuid(),
   role: z.enum(["admin", "leader", "user"]),
+});
+
+// ---------- Admin: user management ----------
+export const adminUserCreateSchema = z.object({
+  email: z.string().email(),
+  role: z.enum(["admin", "leader", "user"]),
+  fullName: z.string().trim().min(1).max(200).optional(),
+  country: countryCodeSchema.optional(),
+});
+
+export const adminUserUpdateSchema = z.object({
+  userId: z.string().uuid(),
+  email: z.string().email().optional(),
+  fullName: z.string().trim().min(1).max(200).optional().nullable(),
+  country: countryCodeSchema.optional().nullable(),
 });
 
 // ---------- Admin: leader resources ----------
