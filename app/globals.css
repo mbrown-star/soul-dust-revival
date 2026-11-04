@@ -42,26 +42,6 @@ body {
   left: 0;
 }
 
-/* The hero's signature element: dust motes drifting upward off the
-   horizon line, directly rendering Psalm 119:25 ("my soul clings to the
-   dust... revive me") rather than decorating an otherwise generic hero. */
-@keyframes dust-rise {
-  0% {
-    transform: translateY(0) scale(1);
-    opacity: 0;
-  }
-  15% {
-    opacity: 0.9;
-  }
-  100% {
-    transform: translateY(-140px) scale(0.4);
-    opacity: 0;
-  }
-}
-.dust-mote {
-  animation: dust-rise linear infinite;
-}
-
 /* Respect the user's OS-level reduced-motion preference (WCAG 2.3.3). */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -90,8 +70,8 @@ body {
    screenshots. That limitation applies to any web content and is worth
    being direct about rather than implying this is unbreakable. */
 @media print {
-  /* Anything explicitly marked no-print (nav, footer, buttons, the dust-mote
-     hero background) — added via this utility class where it applies. */
+  /* Anything explicitly marked no-print (nav, footer, buttons) — added via
+     this utility class where it applies. */
   .no-print {
     display: none !important;
   }
