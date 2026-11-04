@@ -8,11 +8,15 @@ what's left, roughly in the order they need doing.
 ---
 
 ## 1. Accounts & services to set up
-- [ ] Cloudflare account (hosting, Stream, R2) — **note:** a dry-run build
-      shows the bundled Worker at ~5.2MB gzipped, over the Free plan's 3MiB
-      script-size limit, so budget for Workers Paid ($5/mo) to actually
-      deploy this. See "Known gaps" below.
-- [ ] Supabase project (Auth + Postgres — one project covers both)
+- [x] Cloudflare account (hosting, Stream, R2) — `wrangler whoami` confirms an
+      authenticated real account. **note:** a dry-run build shows the bundled
+      Worker at ~5.2MB gzipped, over the Free plan's 3MiB script-size limit,
+      so budget for Workers Paid ($5/mo) to actually deploy this. See "Known
+      gaps" below. Stream/R2 bindings themselves still untested against a
+      real deploy.
+- [x] Supabase project (Auth + Postgres — one project covers both) — connected
+      to the existing "Soul Dust Revival Website/Web App Project"; see
+      "Recently completed" below.
 - [ ] Stripe account
 - [x] Resend account — `souldustrevival.com` domain created and verifying
       (nameservers moved to Cloudflare); sending-only API key scoped to the
@@ -31,9 +35,11 @@ what's left, roughly in the order they need doing.
   - `https://yourdomain.com/api/admin/connections/facebook/callback`
 
 ## 3. Database
-- [ ] `npm install`
-- [ ] `npm run db:generate && npm run db:migrate`
-- [ ] `npm run db:seed` (loads one sample study + lesson + blog post)
+- [x] `npm install`
+- [x] `npm run db:generate && npm run db:migrate` — ran against the real
+      Supabase project; see "Recently completed" below for a `drizzle-kit`
+      env bug worked around and an untracked-migration fix along the way
+- [x] `npm run db:seed` (loads one sample study + lesson + blog post) — done
 - [ ] Promote your own account to admin after signing up once:
   ```sql
   update users set role = 'admin' where email = 'you@example.com';
@@ -217,6 +223,25 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- Connected the real Supabase project ("Soul Dust Revival Website/Web App
+  Project") and ran migrations + seed against it. The project already had
+  the full 17-table schema from earlier manual work (all rows empty). Hit
+  the known `drizzle-kit` env-loading bug again (`MIGRATION_DATABASE_URL`
+  resolves empty inside drizzle-kit's own process) and worked around it the
+  same way as before (parent-process env preload + `spawnSync`). That run
+  then surfaced a second, real bug: migration 0002 had been applied by hand
+  previously (to route around the same env bug) but was never recorded in
+  `drizzle.__drizzle_migrations`, so `drizzle-kit migrate` tried to re-run
+  its `ALTER TABLE ADD COLUMN` statements against columns that already
+  existed, failing with no useful error message. Fixed by inserting the
+  correct tracking row directly (sha256 hash of the migration file's exact
+  contents, confirmed against the two already-correct rows for migrations
+  0000/0001). `db:migrate` now runs clean; `db:seed` loaded 2 products, 1
+  study, 1 lesson, 1 blog post. See the `2026-11-04` entry in CLAUDE.md for
+  the exact method, since any future hand-applied migration needs the same
+  manual tracking-row fix. Also corrected this file's own stale checklist:
+  Cloudflare was already set up (`wrangler whoami` confirms a real
+  authenticated account) — it had just never been checked off.
 - Added dual purchase routing for products: physical books (mostly sold via
   Amazon) can now offer either or both of a Stripe "Buy Now" button and an
   "Buy on Amazon" link-out button. New `products` columns: `amazonUrl`,
