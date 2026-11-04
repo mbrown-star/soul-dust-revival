@@ -13,6 +13,11 @@ type ProductFormValues = {
   type: string;
   imageUrl: string | null;
   imageAlt: string;
+  backImageUrl: string | null;
+  backImageAlt: string;
+  coverPdfUrl: string | null;
+  amazonUrl: string | null;
+  sellOnStripe: boolean;
   active: boolean;
 };
 
@@ -24,6 +29,8 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
   const priceId = useId();
   const formatId = useId();
   const altId = useId();
+  const backAltId = useId();
+  const amazonUrlId = useId();
   const [values, setValues] = useState<ProductFormValues>({
     title: initial?.title ?? "",
     slug: initial?.slug ?? "",
@@ -33,13 +40,25 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
     type: initial?.type ?? "book",
     imageUrl: initial?.imageUrl ?? null,
     imageAlt: initial?.imageAlt ?? "",
+    backImageUrl: initial?.backImageUrl ?? null,
+    backImageAlt: initial?.backImageAlt ?? "",
+    coverPdfUrl: initial?.coverPdfUrl ?? null,
+    amazonUrl: initial?.amazonUrl ?? null,
+    sellOnStripe: initial?.sellOnStripe ?? true,
     active: initial?.active ?? true,
   });
   const [slugTouched, setSlugTouched] = useState(!!initial?.slug);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
-  const altTextMissing = !!values.imageUrl && values.imageAlt.trim().length === 0;
+  const altTextMissing =
+    (!!values.imageUrl && values.imageAlt.trim().length === 0) ||
+    (!!values.backImageUrl && values.backImageAlt.trim().length === 0);
+  const isBook = values.type === "book";
+  const isPhysical = values.format === "physical";
+  const noPurchaseRoute = !values.sellOnStripe && !values.amazonUrl;
 
   function handleTitleChange(title: string) {
     setValues((v) => ({
@@ -70,19 +89,52 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
     setUploading(false);
   }
 
+  async function handleCoverPdfUpload(file: File) {
+    setUploading(true);
+    setUploadError(null);
+
+    const formData = new FormData();
+    formData.set("file", file);
+
+    const res = await fetch("/api/admin/products/cover-pdf", { method: "POST", body: formData });
+
+    if (!res.ok) {
+      const { message } = await res.json().catch(() => ({ message: null }));
+      setUploadError(message || "Couldn't process that cover PDF. Please try a different file.");
+      setUploading(false);
+      return;
+    }
+
+    const { coverPdfUrl, backImageUrl, frontImageUrl } = await res.json();
+    setValues((v) => ({ ...v, coverPdfUrl, backImageUrl, imageUrl: frontImageUrl }));
+    setUploading(false);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setValidationError(null);
     if (altTextMissing) return; // guard: never save an image with no alt text
+    if (noPurchaseRoute) return;
     setSaving(true);
 
     const method = initial?.id ? "PATCH" : "POST";
-    const body = initial?.id ? { ...values, id: initial.id } : values;
+    // An enabled-but-empty Amazon URL field submits as "" — normalize to
+    // null so it doesn't fail the server's url() validation.
+    const payload = { ...values, amazonUrl: values.amazonUrl ? values.amazonUrl : null };
+    const body = initial?.id ? { ...payload, id: initial.id } : payload;
 
-    await fetch("/api/admin/products", {
+    const res = await fetch("/api/admin/products", {
       method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: "Save failed" }));
+      setValidationError(typeof error === "string" ? error : "Couldn't save — check the form for errors.");
+      setSaving(false);
+      return;
+    }
 
     router.push("/admin/products");
     router.refresh();
@@ -151,7 +203,17 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
             id={formatId}
             className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
             value={values.format}
-            onChange={(e) => setValues((v) => ({ ...v, format: e.target.value as "physical" | "digital" }))}
+            onChange={(e) => {
+              const format = e.target.value as "physical" | "digital";
+              setValues((v) => ({
+                ...v,
+                format,
+                // Amazon isn't a valid route for digital products (no way to
+                // grant entitlements off an Amazon sale), and digital must
+                // always go through Stripe.
+                ...(format === "digital" ? { amazonUrl: null, sellOnStripe: true } : {}),
+              }));
+            }}
           >
             <option value="physical">Physical (ships)</option>
             <option value="digital">Digital / web app access</option>
@@ -159,50 +221,191 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
         </div>
       </div>
 
-      <div>
-        <span className="block text-sm font-medium mb-1" id="product-image-label">Product image</span>
-        {values.imageUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={values.imageUrl}
-            alt={values.imageAlt || "Untitled product image — add alt text below"}
-            className="w-24 h-24 object-cover rounded mb-2"
-          />
-        )}
-        <input
-          type="file"
-          accept="image/*"
-          aria-labelledby="product-image-label"
-          onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
-        />
-        <p role="status" aria-live="polite" className="text-sm text-neutral-600 h-5">
-          {uploading ? "Uploading..." : ""}
-        </p>
+      <fieldset className="border rounded-lg p-4">
+        <legend className="text-sm font-medium px-1">Purchase options</legend>
 
-        {values.imageUrl && (
-          <div className="mt-2">
-            <label htmlFor={altId} className="block text-sm font-medium mb-1">
-              Alt text <span aria-hidden="true" className="text-red-600">*</span>
-              <span className="sr-only"> (required)</span>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={values.sellOnStripe}
+            disabled={!isPhysical}
+            onChange={(e) => setValues((v) => ({ ...v, sellOnStripe: e.target.checked }))}
+          />
+          <span className="text-sm">
+            Sell via Stripe (shows a &quot;Buy Now&quot; button){!isPhysical && " — required for digital products"}
+          </span>
+        </label>
+
+        {isPhysical && (
+          <div className="mt-3">
+            <label className="flex items-center gap-2 mb-2">
+              <input
+                type="checkbox"
+                checked={values.amazonUrl !== null}
+                onChange={(e) => setValues((v) => ({ ...v, amazonUrl: e.target.checked ? "" : null }))}
+              />
+              <span className="text-sm">Sell via Amazon (shows a &quot;Buy on Amazon&quot; button)</span>
             </label>
-            <input
-              id={altId}
-              required
-              aria-describedby={altTextMissing ? `${altId}-error` : undefined}
-              aria-invalid={altTextMissing}
-              className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
-              placeholder="Describe the image for screen reader users"
-              value={values.imageAlt}
-              onChange={(e) => setValues((v) => ({ ...v, imageAlt: e.target.value }))}
-            />
-            {altTextMissing && (
-              <p id={`${altId}-error`} className="text-sm text-red-600 mt-1">
-                Alt text is required whenever an image is attached (WCAG 1.1.1).
-              </p>
+
+            {values.amazonUrl !== null && (
+              <div>
+                <label htmlFor={amazonUrlId} className="block text-sm font-medium mb-1">
+                  Amazon product URL
+                </label>
+                <input
+                  id={amazonUrlId}
+                  required
+                  type="url"
+                  placeholder="https://www.amazon.com/dp/XXXXXXXXXX"
+                  className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                  value={values.amazonUrl}
+                  onChange={(e) => setValues((v) => ({ ...v, amazonUrl: e.target.value }))}
+                />
+              </div>
             )}
           </div>
         )}
-      </div>
+
+        {noPurchaseRoute && (
+          <p className="text-sm text-red-600 mt-2" role="alert">
+            Enable at least one purchase route.
+          </p>
+        )}
+      </fieldset>
+
+      {isBook ? (
+        <div>
+          <span className="block text-sm font-medium mb-1" id="cover-pdf-label">
+            Cover PDF (full wrap: back cover + spine + front cover, as exported for KDP print)
+          </span>
+          <div className="flex gap-3 mb-2">
+            {values.backImageUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={values.backImageUrl}
+                alt={values.backImageAlt || "Untitled back cover — add alt text below"}
+                className="w-24 h-24 object-cover rounded"
+              />
+            )}
+            {values.imageUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={values.imageUrl}
+                alt={values.imageAlt || "Untitled front cover — add alt text below"}
+                className="w-24 h-24 object-cover rounded"
+              />
+            )}
+          </div>
+          <input
+            type="file"
+            accept="application/pdf"
+            aria-labelledby="cover-pdf-label"
+            onChange={(e) => e.target.files?.[0] && handleCoverPdfUpload(e.target.files[0])}
+          />
+          <p role="status" aria-live="polite" className="text-sm text-neutral-600 h-5">
+            {uploading ? "Processing cover PDF..." : ""}
+          </p>
+          {values.coverPdfUrl && (
+            <p className="text-sm">
+              <a href={values.coverPdfUrl} target="_blank" rel="noreferrer" className="underline">
+                View current cover PDF
+              </a>
+            </p>
+          )}
+          {uploadError && (
+            <p role="alert" className="text-sm text-red-600 mt-1">
+              {uploadError}
+            </p>
+          )}
+
+          {values.backImageUrl && (
+            <div className="mt-2">
+              <label htmlFor={backAltId} className="block text-sm font-medium mb-1">
+                Back cover alt text <span aria-hidden="true" className="text-red-600">*</span>
+                <span className="sr-only"> (required)</span>
+              </label>
+              <input
+                id={backAltId}
+                required
+                aria-invalid={!!values.backImageUrl && values.backImageAlt.trim().length === 0}
+                className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                placeholder="Describe the back cover for screen reader users"
+                value={values.backImageAlt}
+                onChange={(e) => setValues((v) => ({ ...v, backImageAlt: e.target.value }))}
+              />
+            </div>
+          )}
+
+          {values.imageUrl && (
+            <div className="mt-2">
+              <label htmlFor={altId} className="block text-sm font-medium mb-1">
+                Front cover alt text <span aria-hidden="true" className="text-red-600">*</span>
+                <span className="sr-only"> (required)</span>
+              </label>
+              <input
+                id={altId}
+                required
+                aria-describedby={altTextMissing ? `${altId}-error` : undefined}
+                aria-invalid={!!values.imageUrl && values.imageAlt.trim().length === 0}
+                className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                placeholder="Describe the front cover for screen reader users"
+                value={values.imageAlt}
+                onChange={(e) => setValues((v) => ({ ...v, imageAlt: e.target.value }))}
+              />
+              {altTextMissing && (
+                <p id={`${altId}-error`} className="text-sm text-red-600 mt-1">
+                  Alt text is required whenever an image is attached (WCAG 1.1.1).
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div>
+          <span className="block text-sm font-medium mb-1" id="product-image-label">Product image</span>
+          {values.imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={values.imageUrl}
+              alt={values.imageAlt || "Untitled product image — add alt text below"}
+              className="w-24 h-24 object-cover rounded mb-2"
+            />
+          )}
+          <input
+            type="file"
+            accept="image/*"
+            aria-labelledby="product-image-label"
+            onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
+          />
+          <p role="status" aria-live="polite" className="text-sm text-neutral-600 h-5">
+            {uploading ? "Uploading..." : ""}
+          </p>
+
+          {values.imageUrl && (
+            <div className="mt-2">
+              <label htmlFor={altId} className="block text-sm font-medium mb-1">
+                Alt text <span aria-hidden="true" className="text-red-600">*</span>
+                <span className="sr-only"> (required)</span>
+              </label>
+              <input
+                id={altId}
+                required
+                aria-describedby={altTextMissing ? `${altId}-error` : undefined}
+                aria-invalid={altTextMissing}
+                className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                placeholder="Describe the image for screen reader users"
+                value={values.imageAlt}
+                onChange={(e) => setValues((v) => ({ ...v, imageAlt: e.target.value }))}
+              />
+              {altTextMissing && (
+                <p id={`${altId}-error`} className="text-sm text-red-600 mt-1">
+                  Alt text is required whenever an image is attached (WCAG 1.1.1).
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <label className="flex items-center gap-2">
         <input
@@ -213,9 +416,15 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
         <span className="text-sm">Active (visible for purchase)</span>
       </label>
 
+      {validationError && (
+        <p className="text-sm text-red-600" role="alert">
+          {validationError}
+        </p>
+      )}
+
       <button
         type="submit"
-        disabled={saving || uploading || altTextMissing}
+        disabled={saving || uploading || altTextMissing || noPurchaseRoute}
         className="bg-neutral-900 text-white rounded-lg px-6 py-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-900"
       >
         {saving ? "Saving..." : "Save product"}

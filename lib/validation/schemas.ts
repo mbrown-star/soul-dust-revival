@@ -27,6 +27,11 @@ export const responseSchema = z.object({
   answerText: z.string().max(20_000), // generous but bounded — prevents unbounded payloads
 });
 
+// ---------- Stream ----------
+export const streamSignUrlSchema = z.object({
+  contentBlockId: z.string().uuid(),
+});
+
 // ---------- Progress ----------
 export const progressSchema = z.object({
   lessonId: z.string().uuid(),
@@ -34,22 +39,82 @@ export const progressSchema = z.object({
 });
 
 // ---------- Admin: products ----------
-export const productSchema = z.object({
-  id: z.string().uuid().optional(),
-  title: z.string().min(1).max(200),
-  slug: z
-    .string()
-    .min(1)
-    .max(200)
-    .regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers, and hyphens only"),
-  description: z.string().max(5_000).optional().nullable(),
-  priceCents: z.number().int().min(0).max(100_000_00), // sanity ceiling: $100,000
-  format: z.enum(["physical", "digital"]),
-  type: z.enum(["book", "study_access", "bundle"]),
-  imageUrl: z.string().url().optional().nullable(),
-  imageAlt: z.string().max(300).optional().nullable(), // required in the UI whenever imageUrl is set
-  active: z.boolean(),
-});
+export const productSchema = z
+  .object({
+    id: z.string().uuid().optional(),
+    title: z.string().min(1).max(200),
+    slug: z
+      .string()
+      .min(1)
+      .max(200)
+      .regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers, and hyphens only"),
+    description: z.string().max(5_000).optional().nullable(),
+    priceCents: z.number().int().min(0).max(100_000_00), // sanity ceiling: $100,000
+    format: z.enum(["physical", "digital"]),
+    type: z.enum(["book", "study_access", "bundle"]),
+    imageUrl: z.string().url().optional().nullable(), // front cover, for book products
+    imageAlt: z.string().max(300).optional().nullable(), // required in the UI whenever imageUrl is set
+    backImageUrl: z.string().url().optional().nullable(),
+    backImageAlt: z.string().max(300).optional().nullable(), // required in the UI whenever backImageUrl is set
+    coverPdfUrl: z.string().url().optional().nullable(),
+    // This becomes an <a href> rendered to every visitor, so it's checked
+    // against the *parsed hostname* (https-only, host ending in a real
+    // amazon.<tld>) rather than a regex over the raw URL string. A regex
+    // against the whole string is bypassable — e.g. requiring the string to
+    // start with "https://...amazon.<tld>/" still accepts
+    // "https://amazon.com.evil.com/x", whose actual host is evil.com, since
+    // the match isn't anchored to the end of the hostname. Parsing the URL
+    // and anchoring the regex to the full hostname closes that.
+    amazonUrl: z
+      .string()
+      .url()
+      .max(2000)
+      .optional()
+      .nullable()
+      .refine(
+        (v) => {
+          if (!v) return true;
+          let url: URL;
+          try {
+            url = new URL(v);
+          } catch {
+            return false;
+          }
+          return (
+            url.protocol === "https:" &&
+            /^([a-z0-9-]+\.)*amazon\.[a-z]{2,}(\.[a-z]{2,})?$/i.test(url.hostname)
+          );
+        },
+        { message: "Must be an https://amazon.<tld> product link" }
+      ),
+    sellOnStripe: z.boolean().default(true),
+    active: z.boolean(),
+  })
+  .refine((p) => p.format === "physical" || p.amazonUrl == null, {
+    message: "Amazon purchase links are only supported for physical products",
+    path: ["amazonUrl"],
+  })
+  .refine((p) => p.format === "physical" || p.sellOnStripe, {
+    message: "Digital products must sell through Stripe (required to grant entitlements)",
+    path: ["sellOnStripe"],
+  })
+  .refine((p) => p.sellOnStripe || !!p.amazonUrl, {
+    message: "At least one purchase route (Stripe or Amazon) is required",
+    path: ["sellOnStripe"],
+  })
+  // Enforced here, not just in the admin UI -- the UI's disabled-submit-button
+  // guard doesn't stop a direct API call from setting an image with no alt
+  // text (WCAG 1.1.1). This exact class of gap (alt text shipped unwired)
+  // has happened twice before per CLAUDE.md/AUDIT.md; closing it at the
+  // schema level means it can't recur a third time regardless of UI changes.
+  .refine((p) => !p.imageUrl || !!p.imageAlt?.trim(), {
+    message: "Alt text is required whenever a front cover image is set",
+    path: ["imageAlt"],
+  })
+  .refine((p) => !p.backImageUrl || !!p.backImageAlt?.trim(), {
+    message: "Alt text is required whenever a back cover image is set",
+    path: ["backImageAlt"],
+  });
 
 // ---------- Admin: studies ----------
 export const studySchema = z.object({
@@ -120,12 +185,18 @@ export const contentBlockDeleteSchema = z.object({
 // ---------- Admin: uploads ----------
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
+// The character allowlist alone permits "." and "/", so "../../etc/passwd"
+// passes it -- reject any ".." path segment explicitly so a crafted key
+// can't escape the intended R2 prefix.
+const r2KeySchema = z
+  .string()
+  .min(1)
+  .max(300)
+  .regex(/^[a-zA-Z0-9/_.-]+$/, "Key contains invalid characters")
+  .refine((key) => !key.split("/").includes(".."), "Key must not contain '..' path segments");
+
 export const uploadUrlSchema = z.object({
-  key: z
-    .string()
-    .min(1)
-    .max(300)
-    .regex(/^[a-zA-Z0-9/_.-]+$/, "Key contains invalid characters"),
+  key: r2KeySchema,
   contentType: z.enum(ALLOWED_IMAGE_TYPES as [string, ...string[]]),
 });
 
@@ -135,11 +206,7 @@ export const uploadUrlSchema = z.object({
 const ALLOWED_RESOURCE_FILE_TYPES = ["application/pdf"];
 
 export const resourceFileUploadUrlSchema = z.object({
-  key: z
-    .string()
-    .min(1)
-    .max(300)
-    .regex(/^[a-zA-Z0-9/_.-]+$/, "Key contains invalid characters"),
+  key: r2KeySchema,
   contentType: z.enum(ALLOWED_RESOURCE_FILE_TYPES as [string, ...string[]]),
 });
 
@@ -165,6 +232,10 @@ export const leaderResourceUpdateSchema = z.object({
 
 export const leaderResourceReorderSchema = z.object({
   reorder: z.array(z.object({ id: z.string().uuid(), orderIndex: z.number().int().min(0) })),
+});
+
+export const leaderResourceDeleteSchema = z.object({
+  id: z.string().uuid(),
 });
 
 // ---------- Admin: study import ----------

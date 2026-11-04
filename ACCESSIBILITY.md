@@ -36,9 +36,17 @@ are outside what code can determine.
 
 **Images**
 - `alt` text is a **required field in the admin UI** wherever an image can be attached
-  (product images, study cover images, in-lesson image blocks) — the save button is
-  disabled until it's filled in, rather than defaulting to an empty `alt=""` and hoping
-  someone fills it in later (WCAG 1.1.1).
+  (product images, study cover images, in-lesson image blocks, book front/back covers)
+  — the save button is disabled until it's filled in, rather than defaulting to an
+  empty `alt=""` and hoping someone fills it in later (WCAG 1.1.1). Also enforced at
+  the API layer (`productSchema`'s `.refine()` checks) so a direct API call can't skip
+  the UI's guard — this specific gap (alt text shipped unwired) happened twice before
+  per `AUDIT.md`, so it's closed at both layers now.
+- `components/commerce/CoverGallery.tsx` (book front/back cover gallery): each cover
+  image gets its own distinct alt text; prev/next controls and the position dots are
+  real `<button>`s with `aria-label`s, fully keyboard-operable; `prefers-reduced-motion`
+  is respected for the scroll animation (both via CSS and a JS `matchMedia` check,
+  since programmatic `scrollTo({behavior: "smooth"})` ignores the CSS declaration).
 
 **Video & audio**
 - Video blocks require a `.vtt` captions file before the admin UI treats the block as

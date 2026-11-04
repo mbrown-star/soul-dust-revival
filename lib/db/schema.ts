@@ -60,12 +60,28 @@ export const products = pgTable("products", {
   title: text("title").notNull(),
   slug: text("slug").notNull().unique(), // used for public /books/[slug] pages
   description: text("description"),
-  imageUrl: text("image_url"), // Cloudflare R2 public URL
+  imageUrl: text("image_url"), // Cloudflare R2 public URL -- front cover, for book products
   imageAlt: text("image_alt"), // required alt text for the product image (WCAG 1.1.1)
+  // Book products: the back-cover image and the original full-wrap cover PDF
+  // it (and imageUrl) were split from -- see lib/images/bookCover.ts. Null
+  // for non-book products and for any book product using the older
+  // plain-image upload path instead of the PDF-split flow.
+  backImageUrl: text("back_image_url"),
+  backImageAlt: text("back_image_alt"), // required alt text whenever backImageUrl is set (WCAG 1.1.1)
+  coverPdfUrl: text("cover_pdf_url"), // retained for reference/reprints
   priceCents: integer("price_cents").notNull(),
   active: boolean("active").notNull().default(true),
   stripeProductId: text("stripe_product_id"), // created lazily on first checkout
   stripePriceId: text("stripe_price_id"),      // created lazily on first checkout
+  // Purchase routing: physical books are mostly sold through Amazon rather
+  // than our own Stripe checkout. A product can offer either route, both
+  // (two buttons), or just Stripe. Digital products always sell through
+  // Stripe only — entitlements are granted off the Stripe webhook, and an
+  // Amazon sale would have no way to unlock app access — so amazonUrl/
+  // sellOnStripe=false are only meaningful (and only validated as allowed)
+  // for format: "physical". See productSchema in lib/validation/schemas.ts.
+  amazonUrl: text("amazon_url"),
+  sellOnStripe: boolean("sell_on_stripe").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 

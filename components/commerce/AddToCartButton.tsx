@@ -29,7 +29,7 @@ export function AddToCartButton({
         onClick={handleClick}
         className="font-sans font-semibold bg-ink text-parchment rounded-lg px-6 py-3 hover:bg-dusk focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink"
       >
-        Add to cart
+        Buy Now
       </button>
       {/* Confirms the click for screen reader users too — a silent state
           change on a button click is otherwise only perceivable visually. */}

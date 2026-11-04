@@ -18,9 +18,14 @@ export async function POST(req: NextRequest) {
   const productIds = items.map((i) => i.productId);
   const dbProducts = await db.select().from(products).where(inArray(products.id, productIds));
 
-  // Every requested product must exist and be active — prevents checking out
-  // with a stale/removed product ID crafted by the client.
-  if (dbProducts.length !== new Set(productIds).size || dbProducts.some((p) => !p.active)) {
+  // Every requested product must exist, be active, and be sold through
+  // Stripe — prevents checking out with a stale/removed product ID, or with
+  // one an admin has marked Amazon-exclusive (sellOnStripe: false), crafted
+  // directly in the request body.
+  if (
+    dbProducts.length !== new Set(productIds).size ||
+    dbProducts.some((p) => !p.active || !p.sellOnStripe)
+  ) {
     return NextResponse.json({ error: "invalid_product" }, { status: 400 });
   }
 

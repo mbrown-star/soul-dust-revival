@@ -60,6 +60,15 @@ export async function publishToX(params: {
   let mediaId: string | null = null;
 
   if (params.imageUrl) {
+    // SSRF guard: imageUrl is only ever supposed to be one of our own R2
+    // public object URLs, never an arbitrary admin-supplied host -- fetching
+    // anything else server-side could be used to probe/exfiltrate from
+    // internal network addresses via the connected X account.
+    const allowedOrigin = new URL(process.env.R2_PUBLIC_BASE_URL!).origin;
+    if (new URL(params.imageUrl).origin !== allowedOrigin) {
+      throw new Error("imageUrl must be hosted on this app's own R2 bucket");
+    }
+
     const imageRes = await fetch(params.imageUrl);
     if (!imageRes.ok) throw new Error(`Couldn't fetch image for upload: ${imageRes.status}`);
     const imageBuffer = Buffer.from(await imageRes.arrayBuffer());

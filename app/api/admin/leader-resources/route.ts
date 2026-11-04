@@ -8,6 +8,7 @@ import {
   leaderResourceCreateSchema,
   leaderResourceUpdateSchema,
   leaderResourceReorderSchema,
+  leaderResourceDeleteSchema,
 } from "@/lib/validation/schemas";
 
 export async function POST(req: NextRequest) {
@@ -81,8 +82,13 @@ export async function DELETE(req: NextRequest) {
   const session = await requireAdmin();
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { id } = await req.json();
-  await db.delete(leaderResources).where(eq(leaderResources.id, id));
+  const json = await req.json();
+  const parsed = leaderResourceDeleteSchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
+  }
+
+  await db.delete(leaderResources).where(eq(leaderResources.id, parsed.data.id));
 
   return NextResponse.json({ ok: true });
 }

@@ -119,6 +119,11 @@ deployment before treating any of it as launch-ready:
 
 **Content authoring**
 - [ ] Create a product; image upload requires alt text before saving
+- [ ] Create a physical product with Amazon selling enabled; confirm the "Buy on
+      Amazon" button appears and links out correctly, and (if Stripe is also
+      enabled) "Buy Now" still adds to cart alongside it
+- [ ] Mark a physical product Amazon-exclusive (Stripe off); confirm no "Buy Now"
+      button renders and a direct `/api/checkout` POST for that product is rejected
 - [ ] Create a study with lessons and at least one of every content block type
       (text, image, video, audio, question, callout)
 - [ ] Import a `.docx` and a `.pdf` and confirm lessons are created and reviewable
@@ -212,6 +217,52 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- Added dual purchase routing for products: physical books (mostly sold via
+  Amazon) can now offer either or both of a Stripe "Buy Now" button and an
+  "Buy on Amazon" link-out button. New `products` columns: `amazonUrl`,
+  `sellOnStripe` (default `true`). Digital products are still Stripe-only
+  (entitlements require the webhook). Security review of this build found and
+  fixed a High-severity domain-validation bypass in the admin's `amazonUrl`
+  input (a regex over the raw URL string, not anchored to the end of the
+  hostname, accepted lookalike hosts like `amazon.com.evil.com`) and a
+  Medium-severity business-logic gap (`/api/checkout` didn't check
+  `sellOnStripe`, so a crafted request could still buy an Amazon-exclusive
+  product through Stripe). Both fixed; see the `2026-11-03` "Amazon/Stripe
+  purchase routing" entry in CLAUDE.md. 138 tests pass, `npm run verify` is
+  clean.
+- Added book cover PDF upload for `type: "book"` products: admins upload a single
+  full-wrap KDP-style cover PDF, the server splits it into back/front cover images
+  (new `unpdf` + `@cf-wasm/photon` dependencies), and the storefront detail page
+  shows a scrollable front/back gallery. New `products` columns: `backImageUrl`,
+  `backImageAlt`, `coverPdfUrl`. Required code-quality and security reviews run
+  against this feature found and fixed a High-severity DoS risk (unbounded
+  image-decode memory from a crafted PDF) and a High-severity missing
+  server-side alt-text enforcement; see the `2026-11-03` "book cover PDF upload"
+  entry in CLAUDE.md for full details and two low-severity deferred items.
+  134 tests pass, `npm run verify` is clean.
+- Ran a full `SECURITY_REVIEW.md` checklist pass (5 parallel sub-reviews covering every
+  section) plus `npm audit`. Fixed an SSRF gap in X image publishing, a missing `Secure`
+  flag on the Supabase auth cookie, unsanitized blog markdown on write, and encrypted
+  OAuth tokens being over-serialized to the connections settings page's client bundle.
+  Two items deferred pending a decision — see the `2026-11-03` "full SECURITY_REVIEW.md
+  checklist pass" entry in CLAUDE.md for exactly what and why. 114 tests pass, `npm run
+  verify` is clean.
+- Expanded the automated test suite: added unit tests for `lib/validation/schemas.ts`,
+  `lib/crypto/tokenCipher.ts`, `lib/stream/signing.ts`, `lib/admin/guard.ts`, and
+  `lib/email/send.ts` (previously untested modules). 108 tests pass (`npm test`),
+  `npm run verify` is clean. Ran the project's `code-review` skill (5 finder
+  angles + verification) against the changeset; fixed a path-traversal gap in
+  the upload-key schema, a token-cipher malformed-check false positive/negative,
+  a Stream-signing test env-var leak across worker-shared test files, and a
+  checkout test cleanup bug that could mask a real pricing regression behind a
+  foreign-key error. See the `2026-11-03` entry in CLAUDE.md for details,
+  including one deferred finding (upload keys are still client-supplied rather
+  than always server-generated, per SECURITY.md's documented design — needs a
+  decision before changing those routes). Tests ran against the live Supabase
+  dev project (not a separate local/throwaway Postgres as this file's "Database"
+  section below assumes) since it was confirmed empty beforehand and left empty
+  after — see SECURITY_REVIEW.md's testing ground rules for why a dedicated
+  staging Supabase project should replace this once real data exists.
 - Set up Resend for transactional app email (order confirmations only —
   no marketing/broadcast or inbound-inbox usage). Created the
   `souldustrevival.com` sending domain in Resend via the official Resend

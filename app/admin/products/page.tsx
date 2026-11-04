@@ -40,6 +40,8 @@ export default async function AdminProductsPage() {
               <p className="font-medium">{p.title}</p>
               <p className="text-sm text-neutral-600">
                 {p.format} · ${(p.priceCents / 100).toFixed(2)}
+                {" · "}
+                {[p.sellOnStripe && "Stripe", p.amazonUrl && "Amazon"].filter(Boolean).join(" + ")}
                 {!p.active && " · inactive"}
               </p>
             </div>

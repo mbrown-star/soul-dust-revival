@@ -23,6 +23,11 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           type: product.type,
           imageUrl: product.imageUrl,
           imageAlt: product.imageAlt ?? "",
+          backImageUrl: product.backImageUrl,
+          backImageAlt: product.backImageAlt ?? "",
+          coverPdfUrl: product.coverPdfUrl,
+          amazonUrl: product.amazonUrl,
+          sellOnStripe: product.sellOnStripe,
           active: product.active,
         }}
       />

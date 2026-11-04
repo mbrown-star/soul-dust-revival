@@ -5,7 +5,15 @@ import { ConnectionsPanel } from "@/components/admin/ConnectionsPanel";
 export default async function ConnectionsPage() {
   const connections = await db.select().from(integrationConnections);
 
-  const byProvider = Object.fromEntries(connections.map((c) => [c.provider, c]));
+  // Only pass the fields the client component actually renders -- the full
+  // row includes encrypted token ciphertext, internal user/account ids, and
+  // token-expiry metadata that have no reason to reach the browser.
+  const byProvider = Object.fromEntries(
+    connections.map((c) => [
+      c.provider,
+      { displayName: c.displayName, status: c.status, lastError: c.lastError },
+    ])
+  );
 
   return (
     <div className="space-y-6 max-w-2xl">

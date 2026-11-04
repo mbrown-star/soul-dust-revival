@@ -16,6 +16,10 @@ export async function createSupabaseServerClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // Asserted explicitly rather than left to @supabase/ssr's library
+      // default, which doesn't set Secure at all -- this is the session
+      // cookie, so it should never be sent over a plaintext connection.
+      cookieOptions: { secure: true, sameSite: "lax" },
       cookies: {
         get(name: string) {
           return cookieStore.get(name)?.value;

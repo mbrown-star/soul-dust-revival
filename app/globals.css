@@ -8,6 +8,15 @@ body {
   margin: 0;
 }
 
+/* Hides the scrollbar on an intentionally-scrollable container (e.g. the
+   cover gallery) without disabling scroll itself. `scrollbar-width: none`
+   (set inline where used) only covers Firefox -- Chrome/Safari/Edge need
+   the -webkit- pseudo-element hidden explicitly, per RESPONSIVE.md's
+   browserslist targets. */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Visible focus outline everywhere, including elements with custom styling
    that might otherwise suppress the browser default (WCAG 2.4.7 Focus Visible).
    Gold rather than pure black, so it reads clearly on both the dark hero

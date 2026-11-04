@@ -2,8 +2,9 @@ import { db } from "@/lib/db/client";
 import { products } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import { AddToCartButton } from "@/components/commerce/AddToCartButton";
+import { AmazonBuyButton } from "@/components/commerce/AmazonBuyButton";
+import { CoverGallery } from "@/components/commerce/CoverGallery";
 import type { Metadata } from "next";
 
 // Rendered dynamically per-request rather than statically at build time —
@@ -38,21 +39,10 @@ export default async function BookDetailPage({
   return (
     <div className="max-w-4xl mx-auto px-4 py-12 sm:py-16">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
-        <div className="aspect-[3/4] bg-dusk rounded-lg overflow-hidden relative">
-          {product.imageUrl ? (
-            <Image
-              src={product.imageUrl}
-              alt={product.imageAlt ?? ""}
-              fill
-              sizes="(min-width: 640px) 50vw, 100vw"
-              className="object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-parchment/70 font-display">
-              Soul Dust Revival
-            </div>
-          )}
-        </div>
+        <CoverGallery
+          front={product.imageUrl ? { url: product.imageUrl, alt: product.imageAlt ?? "" } : null}
+          back={product.backImageUrl ? { url: product.backImageUrl, alt: product.backImageAlt ?? "" } : null}
+        />
 
         <div>
           <p className="font-sans text-xs uppercase tracking-wide text-moss mb-2">
@@ -68,12 +58,17 @@ export default async function BookDetailPage({
             ${(product.priceCents / 100).toFixed(2)}
           </p>
 
-          <AddToCartButton
-            productId={product.id}
-            title={product.title}
-            priceCents={product.priceCents}
-            format={product.format}
-          />
+          <div className="flex flex-wrap gap-3">
+            {product.sellOnStripe && (
+              <AddToCartButton
+                productId={product.id}
+                title={product.title}
+                priceCents={product.priceCents}
+                format={product.format}
+              />
+            )}
+            {product.amazonUrl && <AmazonBuyButton amazonUrl={product.amazonUrl} />}
+          </div>
 
           <p className="font-sans text-sm text-moss mt-6">
             {product.format === "digital"

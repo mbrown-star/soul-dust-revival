@@ -8,6 +8,20 @@
       "when": 1793654342319,
       "tag": "0000_spotty_barracuda",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793739017326,
+      "tag": "0001_warm_rockslide",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793739355604,
+      "tag": "0002_medical_madame_hydra",
+      "breakpoints": true
     }
   ]
 }

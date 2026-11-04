@@ -26,7 +26,6 @@ function checkoutRequest(body: unknown) {
 describe("POST /api/checkout", () => {
   let digitalProductId: string;
   let userId: string;
-  let createdOrderIds: string[];
 
   beforeEach(async () => {
     vi.mocked(getSession).mockReset();
@@ -54,15 +53,14 @@ describe("POST /api/checkout", () => {
       .values({ email: `test-${randomUUID()}@example.com`, role: "user" })
       .returning();
     userId = user!.id;
-
-    createdOrderIds = [];
   });
 
   afterEach(async () => {
-    for (const orderId of createdOrderIds) {
-      await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
-      await db.delete(orders).where(eq(orders.id, orderId));
-    }
+    // Scoped by userId (not a tracked-order-id array) so cleanup can never
+    // be skipped by an assertion throwing before an id gets recorded --
+    // every order this suite creates belongs to this test's own userId.
+    await db.delete(orderItems).where(eq(orderItems.productId, digitalProductId));
+    await db.delete(orders).where(eq(orders.userId, userId));
     await db.delete(products).where(eq(products.id, digitalProductId));
     await db.delete(users).where(eq(users.id, userId));
   });
@@ -83,9 +81,12 @@ describe("POST /api/checkout", () => {
 
     expect(res.status).toBe(200);
 
-    const [order] = await db.select().from(orders).where(eq(orders.totalCents, 2900));
+    // Scoped by this test's own userId, not just the price -- matching on
+    // totalCents alone isn't unique and can grab an unrelated order if one
+    // happens to exist with the same total.
+    const [order] = await db.select().from(orders).where(eq(orders.userId, userId));
     expect(order).toBeDefined();
-    createdOrderIds.push(order!.id);
+    expect(order!.totalCents).toBe(2900);
   });
 
   it("requires login for a cart containing digital content", async () => {
@@ -116,5 +117,34 @@ describe("POST /api/checkout", () => {
     const res = await POST(checkoutRequest({ items: [], country: "US" }));
 
     expect(res.status).toBe(400);
+  });
+
+  it("rejects checkout for a product an admin has marked Amazon-exclusive (sellOnStripe: false)", async () => {
+    vi.mocked(getSession).mockResolvedValue({ userId: randomUUID(), email: "buyer@example.com" });
+
+    const [amazonOnlyProduct] = await db
+      .insert(products)
+      .values({
+        type: "book",
+        format: "physical",
+        title: "Amazon-only Book",
+        slug: `amazon-only-${randomUUID()}`,
+        priceCents: 1999,
+        active: true,
+        sellOnStripe: false,
+        amazonUrl: "https://www.amazon.com/dp/B000000000",
+      })
+      .returning();
+
+    try {
+      const res = await POST(
+        checkoutRequest({ items: [{ productId: amazonOnlyProduct!.id, quantity: 1 }], country: "US" })
+      );
+
+      expect(res.status).toBe(400);
+      expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
+    } finally {
+      await db.delete(products).where(eq(products.id, amazonOnlyProduct!.id));
+    }
   });
 });

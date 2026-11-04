@@ -5,6 +5,25 @@ entitlement check, and every price comes from the server/DB, never from client i
 Below is what's enforced, where, and why — treat this as a starting checklist for review
 before launch, not a guarantee of completeness.
 
+## Auth cookie flags
+`lib/supabase/server.ts` and `lib/supabase/client.ts` both pass an explicit
+`cookieOptions: { secure: true, sameSite: "lax" }` to `@supabase/ssr`'s client
+constructors, rather than relying on the library's own default (which does not set
+`Secure` at all). `httpOnly: false` is the library default and is kept as-is — it's an
+inherent trade-off of this cookie-based SSR auth pattern (the browser client needs to
+read/refresh the session cookie), not a bug; it does mean a future XSS gap would have
+direct access to the session cookie, which is one more reason the DOMPurify
+sanitize-on-write/render pattern above matters.
+
+## Server-side fetches of external URLs (SSRF)
+`publishToX` (`lib/social/publishers/x.ts`) fetches a post's image server-side before
+uploading it to X's media endpoint. This `imageUrl` is restricted to the app's own
+`R2_PUBLIC_BASE_URL` origin (checked before the fetch) — it is never allowed to be an
+arbitrary admin-supplied URL, which would otherwise let a compromised/malicious admin
+session make the server fetch internal network addresses. Facebook/Instagram
+publishing passes the image URL to Meta's Graph API instead, which fetches it on Meta's
+own infrastructure, so this risk is specific to the X publisher.
+
 ## Input validation
 Every API route validates its input with a Zod schema (`lib/validation/schemas.ts`)
 before touching the database. This catches malformed requests, enforces sane bounds
@@ -67,6 +86,23 @@ The checkout route never trusts a price from the client. The client sends only
 the `products` table. This closes the common e-commerce vulnerability where a modified
 client request could check out at an arbitrary price.
 
+The checkout route also rejects any product with `sellOnStripe: false` — an admin can
+mark a physical product Amazon-exclusive, and that's enforced server-side, not just by
+hiding the "Buy Now" button in the UI.
+
+## Amazon purchase links
+Physical products can carry an `amazonUrl` the storefront renders as an outbound
+"Buy on Amazon" link (`components/commerce/AmazonBuyButton.tsx`). Because this becomes
+an `<a href>` shown to every visitor, `productSchema` (`lib/validation/schemas.ts`)
+validates it by *parsing the URL* and checking `protocol === "https:"` plus an
+end-anchored regex against `url.hostname` — never a regex over the raw URL string,
+which is bypassable by a lookalike host such as `amazon.com.evil.com` (the real
+registrable domain is `evil.com`, but a start-anchored/unanchored-at-the-end regex over
+the full string can still match). `amazonUrl` is admin-only input (behind
+`requireAdmin`) and is restricted to `format: "physical"` products — digital products
+can only sell through Stripe, since entitlements are granted off the Stripe webhook and
+an Amazon sale has no equivalent.
+
 ## Webhook idempotency
 Stripe redelivers webhook events (retries, at-least-once delivery). The checkout webhook
 handler checks `order.status === 'paid'` before granting entitlements or sending the
@@ -77,22 +113,52 @@ side-effect (duplicate entitlement rows, duplicate emails).
 Lesson content (text and callout blocks) is authored as HTML via a WYSIWYG editor and
 rendered with `dangerouslySetInnerHTML`. To keep this safe:
 - HTML is sanitized with DOMPurify **on write** (`app/api/admin/content-blocks/route.ts`,
-  `app/api/admin/studies/import/route.ts`) and **again on render**
-  (`components/study/LessonBlock.tsx`). Sanitizing twice is deliberate — it means the
-  stored data is safe even if a future change adds another way to write to this table.
+  `app/api/admin/studies/import/route.ts`, `app/api/admin/leader-resources/route.ts`,
+  `app/api/admin/blog/posts/route.ts`) and **again on render**
+  (`components/study/LessonBlock.tsx`, `lib/markdown.ts` for the blog). Sanitizing twice
+  is deliberate — it means the stored data is safe even if a future change adds another
+  way to write to this table.
 - This matters even though only admins can author content today, because "only trusted
   people can write this" is exactly the assumption that erodes over time as products add
   more contributors, imports, or integrations.
+- The blog post body is stored as markdown (not HTML), so DOMPurify runs against the raw
+  markdown source on write — this strips any literal HTML an author embeds, while
+  leaving normal markdown syntax untouched. The authoritative sanitize is still the one
+  at render time in `lib/markdown.ts`, after `marked` converts markdown to HTML.
 
 ## File uploads
 - **Product/study/lesson images**: only `image/jpeg`, `image/png`, `image/webp`,
   `image/gif` are accepted (enforced server-side in `uploadUrlSchema`) — the presigned
   R2 URL is never issued for other content types.
-- **Upload keys** are generated as `{random-uuid}.{extension}`, never incorporating the
-  original filename directly, to eliminate any path-traversal or injection risk from a
-  user-controlled filename.
+- **Upload keys**: the study document importer (`app/api/admin/studies/import/route.ts`)
+  always generates its own `crypto.randomUUID()` key server-side. The general-purpose
+  `uploadUrlSchema`/`resourceFileUploadUrlSchema` (used by product/study/lesson image
+  uploads and leader-resource PDFs), however, still accept a client-supplied key — the
+  UI always builds a safe `{random-uuid}.{extension}` key today, but the schema itself
+  only enforces a character allowlist plus a refine rejecting `..` path segments
+  (closing literal path traversal), not server-side key generation. **Known gap**: this
+  means any other caller hitting these routes directly (requires `requireAdmin()` first)
+  could overwrite an arbitrary existing R2 key. Fixing this properly means generating
+  the key server-side in the route and ignoring any client-supplied key entirely — not
+  done yet, flagged in CLAUDE.md's 2026-11-03 security-review entry pending a decision.
+- Direct-to-R2 presigned PUT URLs (`lib/r2/upload.ts`) have no enforced upload size cap
+  — also a known gap, see the same CLAUDE.md entry.
 - **Study document imports** (`.docx`/`.pdf`) are capped at 25MB server-side before
   parsing, bounding worst-case parse time from an oversized upload.
+- **Book cover PDF uploads** (`app/api/admin/products/cover-pdf/route.ts`,
+  `lib/images/bookCover.ts`): same 25MB input-size cap as study imports, enforced
+  before parsing. Unlike a plain image upload, this one is processed entirely
+  server-side (not a direct-to-R2 presigned PUT), so all three resulting R2 keys
+  (source PDF + back/front cover images) are fully server-generated, never
+  client-supplied. Because a PDF's declared image dimensions aren't bounded by its
+  compressed file size (a small file can decode to an enormous pixel buffer),
+  this also checks the page's physical size (rejects anything over ~60in per
+  side) before extracting the image, and the extracted image's pixel count
+  (rejects over 50 megapixels) before any further processing — both guard
+  against a crafted PDF trying to force a large decode allocation. The physical
+  page-size check is the more meaningful of the two, since it runs before pdf.js
+  decodes anything; see the code comment in `lib/images/bookCover.ts` for why it
+  isn't a complete guarantee on its own.
 
 ## Environment variables
 `lib/env.ts` validates all required environment variables at server startup

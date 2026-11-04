@@ -27,6 +27,11 @@ export async function POST(req: NextRequest) {
       type: body.type,
       imageUrl: body.imageUrl,
       imageAlt: body.imageAlt,
+      backImageUrl: body.backImageUrl,
+      backImageAlt: body.backImageAlt,
+      coverPdfUrl: body.coverPdfUrl,
+      amazonUrl: body.amazonUrl,
+      sellOnStripe: body.sellOnStripe,
       active: body.active,
     })
     .returning();
@@ -62,6 +67,11 @@ export async function PATCH(req: NextRequest) {
       type: body.type,
       imageUrl: body.imageUrl,
       imageAlt: body.imageAlt,
+      backImageUrl: body.backImageUrl,
+      backImageAlt: body.backImageAlt,
+      coverPdfUrl: body.coverPdfUrl,
+      amazonUrl: body.amazonUrl,
+      sellOnStripe: body.sellOnStripe,
       active: body.active,
       ...(priceChanged ? { stripePriceId: null, stripeProductId: null } : {}),
     })

@@ -35,12 +35,25 @@ export function encryptToken(plaintext: string): string {
 
 export function decryptToken(stored: string): string {
   const key = getKey();
-  const [ivB64, authTagB64, dataB64] = stored.split(":");
-  if (!ivB64 || !authTagB64 || !dataB64) {
+  const parts = stored.split(":");
+  if (parts.length !== 3) {
     throw new Error("Malformed encrypted token — expected iv:authTag:data");
   }
-  const decipher = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(ivB64, "base64"));
-  decipher.setAuthTag(Buffer.from(authTagB64, "base64"));
+  // Destructured directly, falsy segments (e.g. "" for an empty plaintext's
+  // ciphertext) would be wrongly rejected as malformed -- the length check
+  // above is the real validation, this just names the parts.
+  const [ivB64, authTagB64, dataB64] = parts as [string, string, string];
+  const iv = Buffer.from(ivB64, "base64");
+  const authTag = Buffer.from(authTagB64, "base64");
+  // Unlike the data segment, iv and authTag are always fixed-size (12 and 16
+  // bytes respectively) -- catch a malformed/truncated value here with the
+  // deliberate error, rather than letting it fall through to a lower-level
+  // crypto error from createDecipheriv/setAuthTag below.
+  if (iv.length !== 12 || authTag.length !== 16) {
+    throw new Error("Malformed encrypted token — expected iv:authTag:data");
+  }
+  const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+  decipher.setAuthTag(authTag);
   const decrypted = Buffer.concat([
     decipher.update(Buffer.from(dataB64, "base64")),
     decipher.final(),

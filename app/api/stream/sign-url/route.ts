@@ -5,16 +5,14 @@ import { contentBlocks, lessons, studies } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { hasEntitlement } from "@/lib/entitlements/check";
 import { generateSignedStreamUrl } from "@/lib/stream/signing";
-import { z } from "zod";
-
-const schema = z.object({ contentBlockId: z.string().uuid() });
+import { streamSignUrlSchema } from "@/lib/validation/schemas";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const json = await req.json();
-  const parsed = schema.safeParse(json);
+  const parsed = streamSignUrlSchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ error: "invalid_input" }, { status: 400 });
   const { contentBlockId } = parsed.data;
 
