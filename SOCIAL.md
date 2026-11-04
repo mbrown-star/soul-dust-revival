@@ -31,9 +31,19 @@ rather than short social copy.
   access tier (Basic or above as of this writing). Check current tier limits before
   assuming the free tier will let you actually publish.
 - **Facebook + Instagram**: [Meta for Developers](https://developers.facebook.com) →
-  create an app → add the "Facebook Login" and "Instagram Graph API" products → set
-  the redirect URI to `https://yourdomain.com/api/admin/connections/facebook/callback`.
-  **Important**: `pages_manage_posts` and `instagram_content_publish` are both
+  create an app → add **both** the "Manage messaging & content on Instagram" use case
+  **and** the "Manage everything on your Page" use case → set the redirect URI to
+  `https://yourdomain.com/api/admin/connections/facebook/callback`. Both use cases are
+  required: the Instagram one alone does not expose `pages_manage_posts` in the app's
+  permission catalog, which this code needs to post to the Facebook Page itself (found
+  the hard way — the OAuth dialog fails with "Invalid Scopes" until both are added).
+  The requested scope also needs `business_management`, even though this app doesn't
+  call the Business Manager API directly — without it, `/me/accounts` in
+  `app/api/admin/connections/facebook/callback/route.ts` silently returns an empty
+  Page list for any Page shared through Meta's current Business-asset picker dialog
+  (the "Choose the Pages you want Soul Dust Revival to access" / Business Integrations
+  flow), even when every other requested permission shows as genuinely granted on the
+  token. **Important**: `pages_manage_posts` and `instagram_content_publish` are both
   permissions Meta requires **App Review** for before they work for anyone other than
   your own test accounts/developers on the app. Budget real time for this — Meta's
   review process is not instant and can require a demo video and written justification.

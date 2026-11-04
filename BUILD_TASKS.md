@@ -21,14 +21,19 @@ what's left, roughly in the order they need doing.
 - [x] Resend account — `souldustrevival.com` domain created and verifying
       (nameservers moved to Cloudflare); sending-only API key scoped to the
       domain created and in `.env`. See "Recently completed" below.
-- [ ] Meta Developer app (Facebook Login + Instagram Graph API products)
-- [ ] X Developer Portal app (OAuth 2.0 enabled; confirm your access tier can post — see SOCIAL.md)
+- [x] Meta Developer app ("Soul Dust Revival") — Facebook Login for Business +
+      Instagram API (Manage messaging & content on Instagram) + Manage Pages
+      use cases added; `FACEBOOK_APP_ID`/`FACEBOOK_APP_SECRET` in `.env.local`.
+      See "Recently completed" below for a scope gap found while testing.
+- [x] X Developer Portal app ("Soul Dust Revival") — OAuth 2.0 (Web App,
+      Read and write) configured; `X_CLIENT_ID`/`X_CLIENT_SECRET` in
+      `.env.local`. Connected and tested end-to-end locally.
 
 ## 2. Environment configuration
 - [ ] `cp .env.example .env` and fill in every value
 - [ ] Find `SUPABASE_SERVICE_ROLE_KEY` in Supabase Project Settings → API (used only
       for account self-deletion — never exposed to the client)
-- [ ] Generate `TOKEN_ENCRYPTION_KEY`: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
+- [x] Generate `TOKEN_ENCRYPTION_KEY`: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
 - [ ] Generate `CRON_SECRET`: any long random string
 - [ ] Register OAuth redirect URIs with X and Meta once you know your real domain:
   - `https://yourdomain.com/api/admin/connections/x/callback`
@@ -153,8 +158,11 @@ deployment before treating any of it as launch-ready:
       the actual study content; confirm an order confirmation prints normally
 
 **Social media**
-- [ ] Connect Claude, X, and Facebook in Settings → Connections
-- [ ] Confirm Instagram auto-connects if the Facebook Page has a linked IG business account
+- [x] Connect X and Facebook in Settings → Connections — tested locally against
+      real accounts; see "Recently completed" below for a Facebook scope fix
+      this surfaced. Claude connection still untested (no real Anthropic key
+      wired in for this yet).
+- [x] Confirm Instagram auto-connects if the Facebook Page has a linked IG business account
 - [ ] Get AI suggestions for a social post, accept one, schedule it (once/daily/weekly)
       for each platform
 - [ ] Confirm the cron worker actually fires `/api/cron/social-publish` and the post
@@ -223,6 +231,37 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- Connected real X and Facebook/Instagram accounts end-to-end against the
+  local dev server. Created the X Developer app and Meta Developer app, wired
+  `X_CLIENT_ID`/`X_CLIENT_SECRET`/`FACEBOOK_APP_ID`/`FACEBOOK_APP_SECRET` into
+  `.env.local`, and tested the full OAuth connect flow for both through
+  `/admin/settings/connections`. Found and fixed three real setup/config gaps
+  along the way: (1) `TOKEN_ENCRYPTION_KEY` in `.env.local` was a leftover
+  placeholder that decoded to 48 bytes instead of the required 32, which threw
+  a 500 on the very first successful OAuth callback (`lib/crypto/tokenCipher.ts`);
+  regenerated a real key. (2) The Facebook app's permission catalog was
+  missing `pages_manage_posts` — it only gets exposed once the **"Manage
+  everything on your Page"** use case is added in the Meta dashboard (the
+  Instagram use case alone doesn't include it), so the first few connect
+  attempts failed with an "Invalid Scopes" error from Facebook's OAuth dialog.
+  (3) Even after all five scopes (`pages_show_list`, `pages_manage_posts`,
+  `pages_read_engagement`, `instagram_basic`, `instagram_content_publish`)
+  showed as genuinely granted on the token (confirmed via `/me/permissions`),
+  `/me/accounts` kept returning an empty Page list — because the Page was
+  shared through Meta's newer Business-asset picker dialog ("Choose the Pages
+  you want Soul Dust Revival to access" / Business Integrations), which
+  requires the `business_management` scope for `/me/accounts` to actually
+  return that Page; added it to the requested scopes in
+  `app/api/admin/connections/facebook/authorize/route.ts`. Also set up Resend
+  custom SMTP for Supabase Auth (Supabase's own default mailer has a very low
+  rate limit, which blocked repeated local signup testing) and registered
+  temporary `http://localhost:3000/...` callback URIs on both the X and
+  Facebook apps alongside the production ones, for local testing — these
+  should eventually be removed once no longer needed for local dev.
+  **Not yet exercised**: actually publishing a post through either platform
+  (only the OAuth connect flow was tested, not `lib/social/publish.ts`), the
+  X token-refresh path, and the Facebook multi-Page picker (this account only
+  has one Page).
 - Connected the real Supabase project ("Soul Dust Revival Website/Web App
   Project") and ran migrations + seed against it. The project already had
   the full 17-table schema from earlier manual work (all rows empty). Hit
