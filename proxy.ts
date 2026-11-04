@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 // Same R2-hostname derivation as next.config.js's image remotePatterns, so
 // the CSP's img-src/media-src stay in sync with whatever R2_PUBLIC_BASE_URL
@@ -16,7 +17,7 @@ function getR2Hostname() {
 // rendered to get a fresh nonce per request -- this app already is, except
 // /account, which has `export const dynamic = "force-dynamic"` for exactly
 // this reason.
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const isDev = process.env.NODE_ENV === "development";
   const r2Host = getR2Hostname();
@@ -56,7 +57,54 @@ export function proxy(request: NextRequest) {
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("Content-Security-Policy", cspHeader);
 
+  // Supabase's access token is short-lived; @supabase/ssr refreshes it using
+  // the refresh token whenever a server-side `getUser()` call sees it's
+  // expired. That refresh has to land somewhere Next.js allows a Set-Cookie
+  // header to be written -- a Server Action, a Route Handler, or (this)
+  // proxy/middleware -- not an ordinary Server Component render. Without
+  // this, any Server Component calling getUser() (e.g. SiteHeader, on every
+  // marketing page) throws "Cookies can only be modified in a Server Action
+  // or Route Handler" as soon as the access token needs refreshing, and the
+  // session silently fails to persist across requests.
+  //
+  // Collected into `pendingCookies` and applied once at the end, rather than
+  // building a fresh NextResponse inside each set/remove call -- a session
+  // refresh can write more than one cookie (e.g. a split/chunked auth
+  // cookie), and replacing the whole response object on every call would
+  // silently drop every cookie but the last.
+  const pendingCookies: { name: string; value: string; options: CookieOptions }[] = [];
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookieOptions: { secure: true, sameSite: "lax" },
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          request.cookies.set({ name, value, ...options });
+          pendingCookies.push({ name, value, options });
+        },
+        remove(name: string, options: CookieOptions) {
+          request.cookies.set({ name, value: "", ...options });
+          pendingCookies.push({ name, value: "", options });
+        },
+      },
+    }
+  );
+
+  await supabase.auth.getUser();
+
+  // Built once, after the refresh, so it carries both the up-to-date
+  // request headers (nonce/CSP, and any cookies Supabase just rewrote onto
+  // `request`) and every pending Set-Cookie for the browser.
   const response = NextResponse.next({ request: { headers: requestHeaders } });
+  for (const cookie of pendingCookies) {
+    response.cookies.set({ name: cookie.name, value: cookie.value, ...cookie.options });
+  }
+
   response.headers.set("Content-Security-Policy", cspHeader);
   return response;
 }

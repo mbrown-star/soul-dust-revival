@@ -50,7 +50,7 @@ export default function AccountPageClient() {
 
   if (!email) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-16 text-center">
+      <div className="max-w-5xl mx-auto px-4 py-16 text-center">
         <h1 className="text-2xl font-semibold">Your account</h1>
         <p className="text-neutral-600 mt-4">Loading...</p>
       </div>
@@ -58,7 +58,7 @@ export default function AccountPageClient() {
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-12 sm:py-16 space-y-8">
+    <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16 space-y-8">
       <div>
         <h1 className="text-2xl font-semibold">Your account</h1>
         <p className="text-neutral-600 mt-1">{email}</p>

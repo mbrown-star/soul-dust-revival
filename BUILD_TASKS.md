@@ -17,7 +17,9 @@ what's left, roughly in the order they need doing.
 - [x] Supabase project (Auth + Postgres — one project covers both) — connected
       to the existing "Soul Dust Revival Website/Web App Project"; see
       "Recently completed" below.
-- [ ] Stripe account
+- [x] Stripe account — "Bible Studies Inc sandbox" test-mode account connected;
+      `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` in `.env.local`; see
+      "Recently completed" below for the verified end-to-end test
 - [x] Resend account — `souldustrevival.com` domain created and verifying
       (nameservers moved to Cloudflare); sending-only API key scoped to the
       domain created and in `.env`. See "Recently completed" below.
@@ -128,7 +130,8 @@ deployment before treating any of it as launch-ready:
 
 **Commerce**
 - [ ] Guest checkout completes for a physical-only cart; confirmation email arrives
-- [ ] Digital purchase requires login; entitlement is granted after the Stripe webhook fires
+- [x] Digital purchase requires login; entitlement is granted after the Stripe webhook fires —
+      verified 2026-11-04 against real Stripe test mode + real Postgres, see "Recently completed"
 - [ ] Country is required and stored on every order, guest and logged-in alike
 - [ ] A Stripe promo code applies correctly and the order total reflects the discount
 
@@ -235,6 +238,90 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- **2026-11-04 — Built the missing `/studies` and `/studies/[slug]` pages,
+  found and fixed while testing checkout (see the entry below), plus a
+  round of nav/layout consistency fixes that came out of manually trying
+  the new pages.** `app/(study-app)/studies/page.tsx` lists the logged-in
+  user's entitled, published studies with a progress bar (completed/total
+  lessons, via `lessonProgress`); `app/(study-app)/studies/[slug]/page.tsx`
+  lists that study's published lessons with per-lesson status, gated the
+  same way the existing lesson page already is (`getSession` +
+  `hasEntitlement`, redirecting to `/login` or the product page exactly
+  like `[lessonId]/page.tsx` does) — both pages mirror that page's own
+  privacy-conscious `generateMetadata` (never leaking a gated study's title
+  to someone without access). `components/study/ProgressBar.tsx` (existing,
+  previously unused anywhere) switched from ad hoc `neutral-900`/`neutral-100`
+  to the brand tokens (`ink`/`dusk`) and gained `role="progressbar"` +
+  `aria-valuenow/min/max`. **Follow-on fixes found by actually using the new
+  pages, not just reviewing the diff:**
+  (1) the whole `(study-app)` route group had no header/nav at all (only an
+  activity-tracking heartbeat) — no logged-in indicator, no way back to the
+  rest of the site; fixed by reusing the existing marketing `SiteHeader` in
+  `app/(study-app)/layout.tsx` instead of building a second, different
+  header, so every page in the app now shares one nav.
+  (2) `SiteHeader`'s nav scrolled horizontally on narrow phones
+  (`overflow-x-auto`) — a real but unwanted interaction on any viewport, not
+  just a mobile compromise; replaced with `components/marketing/SiteNav.tsx`,
+  a client component with a fixed budget of 4 always-visible items (3 links
+  + cart) and the rest in an accessible "More" dropdown
+  (`aria-haspopup`/`aria-expanded`, closes on outside click/Escape/picking an
+  item, ~44px touch targets). Added "Your Studies" to the nav for logged-in
+  users while here — it didn't exist before and there was no way to get to
+  the new `/studies` page from the homepage at all. See `RESPONSIVE.md` for
+  the updated nav-behavior note.
+  (3) `/account` had no header either, for an unrelated reason: it lived at
+  `app/account/`, never moved into the `(marketing)` route group the way
+  `/login`, `/signup`, and `/checkout/success` all are — moved to
+  `app/(marketing)/account/` (`git mv`, URL unchanged, route groups don't
+  affect the path) so it picks up `SiteHeader`/`SiteFooter` like every other
+  authenticated-but-marketing-layout page.
+  (4) `/account`'s content column was `max-w-lg` (512px) against everything
+  else in `(marketing)` using `max-w-5xl` (1024px) — widened to match, since
+  there was no real reason for it to be narrower once it had the same header
+  sitting above it.
+  `npm run typecheck`/`lint`/`build` all clean throughout. Verified live,
+  repeatedly, against the real logged-in session from the Stripe test below
+  — not just a code read: the study list, lesson list, nav overflow, and
+  account page were all actually clicked through in a real browser after
+  each fix, which is how (2)-(4) were caught in the first place (none of
+  them would show up in `npm run verify`). **Not done:** no automated tests
+  were added for the new pages or `SiteNav` — this project has no
+  precedent for testing Server Component pages directly (all existing tests
+  are for API routes, schemas, and `lib/`), so this matches the existing
+  pattern rather than introducing a new one; `SiteNav`'s interactive
+  behavior (dropdown open/close, keyboard, outside-click) was verified
+  manually, not with a component test.
+- **2026-11-04 — Stripe account connected; checkout → webhook → entitlement
+  flow verified end-to-end against real Stripe test mode, real Supabase
+  Auth, and the real Supabase Postgres project.** `STRIPE_SECRET_KEY`
+  (`sk_test_...`) and a live `STRIPE_WEBHOOK_SECRET` from `stripe listen`
+  are in `.env.local`; the Stripe CLI is authorized against the "Bible
+  Studies Inc sandbox" Stripe account. Ran a real purchase: logged in via a
+  real magic-link email, bought "Foundations: A 6-Week Study" ($29.00) with
+  Stripe's `4242...` test card, confirmed `stripe listen` forwarded
+  `checkout.session.completed` and the app returned `200`, and confirmed
+  directly in Postgres that the order (`status: paid`) and a matching
+  `entitlements` row (`source: purchase`, no expiry, granted_at matching the
+  order) were both created. **Found and fixed a real bug along the way:**
+  `proxy.ts` (Next.js 16's middleware) only set CSP headers — it never
+  refreshed the Supabase session, so any Server Component calling
+  `getUser()` with an expiring/expired access token (e.g. `SiteHeader`,
+  rendered on every marketing page via `getSession()`) crashed with
+  "Cookies can only be modified in a Server Action or Route Handler" instead
+  of silently refreshing, which also meant sessions weren't reliably
+  persisting across requests. Fixed by adding the standard
+  `@supabase/ssr` session-refresh call to `proxy.ts`, writing refreshed
+  cookies onto both the request and response the same way
+  `lib/supabase/server.ts` already does for Route Handlers/Server Actions.
+  `npm run typecheck` and `npm run lint` are clean; verified live by
+  reproducing the crash, applying the fix, and confirming a fresh
+  login completed without it. **Also found, not fixed (see "Known gaps"
+  above):** `/studies` and `/studies/[slug]` don't exist — login, signup,
+  and purchase-success all redirect there and currently 404. Worked around
+  for this test by confirming the order/entitlement directly in Postgres
+  rather than via the study UI. **Not yet done:** the production webhook
+  endpoint (needs a deployed domain; see section 4), and a test promo code
+  hasn't been created/exercised yet.
 - Added admin user creation and editing to `/admin/users`. `POST /api/admin/users`
   lets an admin invite a new user by email (role, optional full name/country) —
   Supabase Auth's `inviteUserByEmail` mints the account (magic-link only, no

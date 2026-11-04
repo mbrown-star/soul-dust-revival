@@ -25,10 +25,17 @@ design for a phone first, then expand.
 - Multi-column rows (price/format fields, cart line items, admin list headers) stack
   vertically below the `sm:` breakpoint (`flex-col sm:flex-row`) rather than
   compressing into a cramped horizontal squeeze on narrow screens.
-- The admin nav and the public `SiteHeader` both scroll horizontally on narrow
-  phones (`overflow-x-auto whitespace-nowrap`) instead of wrapping into a cramped
-  multi-line stack. (`SiteHeader` was missed when this was first fixed for the admin
-  nav — caught later via actual mobile-viewport testing, not just code review.)
+- The admin nav scrolls horizontally on narrow phones (`overflow-x-auto
+  whitespace-nowrap`) instead of wrapping into a cramped multi-line stack.
+- The public `SiteHeader` originally used that same horizontal-scroll pattern,
+  but a scrolling primary nav turned out to be an unwanted interaction on
+  every viewport, not just a mobile-only compromise — replaced (2026-11-04)
+  with `components/marketing/SiteNav.tsx`: a fixed budget of 4 always-visible
+  slots (3 links plus the cart), with anything beyond that in a "More"
+  dropdown (`aria-haspopup`/`aria-expanded`, closes on outside click, Escape,
+  or navigation). Never actually overflows today (3 items logged out, 4
+  logged in, with "Account" the one item that overflows into the dropdown
+  today).
 
 **Touch targets**
 - The lesson-block drag handle and Move Up/Down buttons were originally sized for
