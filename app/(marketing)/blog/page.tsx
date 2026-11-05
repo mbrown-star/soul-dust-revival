@@ -21,7 +21,7 @@ export default async function BlogPage() {
     .orderBy(desc(posts.publishedAt));
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-12 sm:py-16">
+    <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16">
       <h1 className="font-display font-bold text-3xl sm:text-4xl text-ink mb-10">Blog</h1>
 
       {publishedPosts.length === 0 ? (

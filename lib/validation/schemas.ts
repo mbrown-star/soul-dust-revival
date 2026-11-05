@@ -305,6 +305,13 @@ export const connectionDisconnectSchema = z.object({
   provider: z.enum(["anthropic", "x", "facebook", "instagram"]),
 });
 
+// The body is authored as HTML via a Tiptap rich text editor (see
+// RichTextEditor.tsx), not plain text -- Tiptap's own "empty" output is
+// `<p></p>` (or similar), not an empty string, so a plain z.string().min(1)
+// alone wouldn't actually reject an empty post the way it does for plain
+// text. Stripping tags before checking length closes that gap.
+const hasVisibleText = (html: string) => html.replace(/<[^>]*>/g, "").trim().length > 0;
+
 // ---------- Admin: blog ----------
 export const blogPostCreateSchema = z.object({
   title: z.string().min(1).max(200),
@@ -313,7 +320,7 @@ export const blogPostCreateSchema = z.object({
     .min(1)
     .max(200)
     .regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers, and hyphens only"),
-  body: z.string().min(1).max(100_000),
+  body: z.string().min(1).max(100_000).refine(hasVisibleText, "Body can't be empty"),
   published: z.boolean().default(false),
   sourceType: z.enum(["manual", "ai_suggested"]).default("manual"),
   aiPrompt: z.string().max(2_000).optional().nullable(),
@@ -328,7 +335,12 @@ export const blogPostUpdateSchema = z.object({
     .max(200)
     .regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers, and hyphens only")
     .optional(),
-  body: z.string().min(1).max(100_000).optional(),
+  body: z
+    .string()
+    .min(1)
+    .max(100_000)
+    .refine(hasVisibleText, "Body can't be empty")
+    .optional(),
   published: z.boolean().optional(),
 });
 

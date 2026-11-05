@@ -121,21 +121,21 @@ confirmation email, so a redelivered event is a no-op rather than a duplicate ch
 side-effect (duplicate entitlement rows, duplicate emails).
 
 ## XSS / rich text
-Lesson content (text and callout blocks) is authored as HTML via a WYSIWYG editor and
-rendered with `dangerouslySetInnerHTML`. To keep this safe:
+Lesson content (text and callout blocks), leader resources, and blog posts are all
+authored as HTML via the same Tiptap WYSIWYG editor (`components/admin/RichTextEditor.tsx`)
+and rendered with `dangerouslySetInnerHTML`. To keep this safe:
 - HTML is sanitized with DOMPurify **on write** (`app/api/admin/content-blocks/route.ts`,
   `app/api/admin/studies/import/route.ts`, `app/api/admin/leader-resources/route.ts`,
   `app/api/admin/blog/posts/route.ts`) and **again on render**
-  (`components/study/LessonBlock.tsx`, `lib/markdown.ts` for the blog). Sanitizing twice
-  is deliberate — it means the stored data is safe even if a future change adds another
-  way to write to this table.
+  (`components/study/LessonBlock.tsx`, `app/(marketing)/blog/[slug]/page.tsx`). Sanitizing
+  twice is deliberate — it means the stored data is safe even if a future change adds
+  another way to write to this table.
 - This matters even though only admins can author content today, because "only trusted
   people can write this" is exactly the assumption that erodes over time as products add
   more contributors, imports, or integrations.
-- The blog post body is stored as markdown (not HTML), so DOMPurify runs against the raw
-  markdown source on write — this strips any literal HTML an author embeds, while
-  leaving normal markdown syntax untouched. The authoritative sanitize is still the one
-  at render time in `lib/markdown.ts`, after `marked` converts markdown to HTML.
+- The blog post body was markdown through 2026-11-05; it's now sanitized HTML like the
+  other rich-text fields (see `lib/db/schema.ts`'s `posts.body` comment and CLAUDE.md's
+  2026-11-05 entry for the migration).
 
 ## File uploads
 - **Product/study/lesson images**: only `image/jpeg`, `image/png`, `image/webp`,

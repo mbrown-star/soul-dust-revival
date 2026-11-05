@@ -13,7 +13,7 @@ export default async function LeaderResourcesPage() {
     .orderBy(asc(leaderResources.orderIndex));
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-12 sm:py-16">
+    <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16">
       <h1 className="font-display font-bold text-3xl text-ink mb-2">Leader Resources</h1>
       <p className="font-serif text-moss mb-10">
         Guides and notes for leading a group through a study.

@@ -2,7 +2,7 @@ import { db } from "@/lib/db/client";
 import { posts } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { renderMarkdown } from "@/lib/markdown";
+import DOMPurify from "isomorphic-dompurify";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -33,7 +33,12 @@ export default async function BlogPostPage({
   if (!post || !post.published) notFound();
 
   return (
-    <article className="max-w-2xl mx-auto px-4 py-12 sm:py-16">
+    // max-w-5xl matches the standard page width used site-wide (see
+    // CLAUDE.md's "Standard page width" rule) -- the prose block below
+    // keeps its own narrower, readable measure (Tailwind Typography's
+    // default ~65ch) rather than stretching the article text the full
+    // container width.
+    <article className="max-w-5xl mx-auto px-4 py-12 sm:py-16">
       <Link href="/blog" className="font-sans text-sm text-moss hover:text-ink focus:outline-none focus:ring-2 focus:ring-ink rounded">
         ← Blog
       </Link>
@@ -52,8 +57,8 @@ export default async function BlogPostPage({
       )}
 
       <div
-        className="prose max-w-none font-serif prose-headings:font-display prose-a:text-moss"
-        dangerouslySetInnerHTML={{ __html: renderMarkdown(post.body) }}
+        className="prose font-serif prose-headings:font-display prose-a:text-moss"
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.body) }}
       />
     </article>
   );

@@ -16,12 +16,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
   }
   const body = parsed.data;
-  // Stored body is markdown rendered (and sanitized) at display time via
-  // lib/markdown.ts -- also sanitized here on write, same defense-in-depth
-  // pattern as lesson content and leader resources (see SECURITY.md), so any
-  // raw HTML an author embeds in the markdown source can't sit unsanitized
-  // in the DB in case a future read path ever renders it without going
-  // through renderMarkdown.
+  // Stored body is Tiptap-authored HTML, sanitized here on write and again
+  // at render time (app/(marketing)/blog/[slug]/page.tsx) -- same
+  // defense-in-depth pattern as lesson content and leader resources (see
+  // SECURITY.md).
   const sanitizedBody = DOMPurify.sanitize(body.body);
 
   const [post] = await db

@@ -37,7 +37,7 @@ export default async function BookDetailPage({
   if (!product || !product.active) notFound();
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12 sm:py-16">
+    <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
         <CoverGallery
           front={product.imageUrl ? { url: product.imageUrl, alt: product.imageAlt ?? "" } : null}

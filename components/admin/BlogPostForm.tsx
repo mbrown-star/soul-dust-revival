@@ -2,6 +2,7 @@
 
 import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
+import { RichTextEditor } from "./RichTextEditor";
 
 type BlogFormValues = {
   id?: string;
@@ -31,6 +32,12 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
   const [usedAiDraft, setUsedAiDraft] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+
+  // Tiptap's "empty" output is markup like <p></p>, not an empty string, so
+  // checking values.body.length alone wouldn't catch an empty post -- same
+  // check the schema runs server-side (lib/validation/schemas.ts).
+  const bodyEmpty = values.body.replace(/<[^>]*>/g, "").trim().length === 0;
 
   function handleTitleChange(title: string) {
     setValues((v) => ({
@@ -66,6 +73,8 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setSubmitAttempted(true);
+    if (bodyEmpty) return;
     setSaving(true);
     setError(null);
 
@@ -126,7 +135,10 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
                 className="block w-full text-left border rounded-lg p-3 text-sm bg-white hover:border-neutral-400"
               >
                 <p className="font-medium mb-1">{draft.title}</p>
-                <p className="text-neutral-600 line-clamp-2">{draft.body.slice(0, 160)}...</p>
+                {/* The draft body is HTML -- strip tags for this plain-text preview snippet. */}
+                <p className="text-neutral-600 line-clamp-2">
+                  {draft.body.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160)}...
+                </p>
               </button>
             ))}
           </div>
@@ -160,15 +172,13 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
         </div>
 
         <div>
-          <label htmlFor={bodyId} className="block text-sm font-medium mb-1">Body (markdown)</label>
-          <textarea
-            id={bodyId}
-            required
-            rows={14}
-            className="w-full border rounded-lg p-3 font-mono text-sm"
-            value={values.body}
-            onChange={(e) => setValues((v) => ({ ...v, body: e.target.value }))}
-          />
+          <label id={bodyId} className="block text-sm font-medium mb-1">Body</label>
+          <div aria-labelledby={bodyId}>
+            <RichTextEditor content={values.body} onChange={(html) => setValues((v) => ({ ...v, body: html }))} />
+          </div>
+          {submitAttempted && bodyEmpty && (
+            <p role="alert" className="text-sm text-red-600 mt-1">Body can&apos;t be empty.</p>
+          )}
         </div>
 
         <label className="flex items-center gap-2">
@@ -184,7 +194,7 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
 
         <button
           type="submit"
-          disabled={saving}
+          disabled={saving || bodyEmpty}
           className="bg-neutral-900 text-white rounded-lg px-6 py-3 disabled:opacity-50"
         >
           {saving ? "Saving..." : values.published ? "Save & publish" : "Save draft"}

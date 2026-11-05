@@ -30,7 +30,7 @@ describe("admin blog posts route", () => {
     vi.mocked(requireAdmin).mockReset();
   });
 
-  it("sanitizes raw HTML out of the markdown body on create", async () => {
+  it("sanitizes a dangerous HTML tag out of the body on create", async () => {
     createdPostIds = [];
     const [admin] = await db
       .insert(users)
@@ -43,7 +43,7 @@ describe("admin blog posts route", () => {
       postRequest({
         title: "Hello",
         slug: `hello-${randomUUID()}`,
-        body: "Some **markdown** and <script>alert('xss')</script> text",
+        body: "<p>Some <strong>text</strong> and <script>alert('xss')</script> more</p>",
       })
     );
 
@@ -51,10 +51,10 @@ describe("admin blog posts route", () => {
     const json = (await res.json()) as { id: string; body: string };
     createdPostIds.push(json.id);
     expect(json.body).not.toContain("<script>");
-    expect(json.body).toContain("Some **markdown** and");
+    expect(json.body).toContain("Some <strong>text</strong> and");
   });
 
-  it("sanitizes raw HTML out of the markdown body on update", async () => {
+  it("sanitizes a dangerous HTML attribute out of the body on update", async () => {
     createdPostIds = [];
     const [admin] = await db
       .insert(users)
@@ -68,7 +68,7 @@ describe("admin blog posts route", () => {
       .values({
         title: "Original",
         slug: `original-${randomUUID()}`,
-        body: "original body",
+        body: "<p>original body</p>",
         createdByUserId: adminUserId,
       })
       .returning();

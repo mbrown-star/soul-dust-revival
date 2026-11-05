@@ -65,7 +65,7 @@ export default async function LessonPage({
     .orderBy(asc(contentBlocks.orderIndex));
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 sm:py-10 space-y-8 study-content-protected">
+    <div className="max-w-5xl mx-auto px-4 py-8 sm:py-10 space-y-8 study-content-protected">
       <h1 className="text-2xl font-semibold">{lesson.title}</h1>
       {blocks.map((block) => (
         <LessonBlock key={block.id} block={block} />

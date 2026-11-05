@@ -5,10 +5,13 @@ import { gatherProjectContext } from "@/lib/ai/projectContext";
 import { blogSuggestSchema } from "@/lib/validation/schemas";
 
 /**
- * Generates full blog post drafts (title + markdown body) grounded in this
+ * Generates full blog post drafts (title + HTML body) grounded in this
  * project's own recent studies/lessons/posts — same context source as the
  * social suggestion endpoint, so both draw from the same notion of
- * "current project content."
+ * "current project content." The body is HTML, not markdown, since it's
+ * loaded straight into the admin's Tiptap rich text editor
+ * (components/admin/BlogPostForm.tsx) and stored that way (see
+ * lib/db/schema.ts's posts.body comment).
  */
 export async function POST(req: NextRequest) {
   const session = await requireAdmin();
@@ -33,7 +36,7 @@ export async function POST(req: NextRequest) {
 
   const systemPrompt = `You write blog posts for Soul Dust Revival, a Christian men's discipleship platform centered on Psalm 119:25 ("My soul cleaves to the dust; Revive me according to Your word."). Voice: direct, honest, unadorned, first-person-plural or direct-address — never sales-y, no filler introductions, get to the point in the first sentence.
 
-Respond with ONLY a JSON array of 3 draft objects, nothing else — no preamble, no markdown code fences. Each object must have exactly these keys: "title" (a short, direct headline, no colons-as-clickbait), "body" (300-600 words of markdown — a few short paragraphs, may use a heading or two, no bullet-point-stuffed listicle structure unless the content is genuinely a list).`;
+Respond with ONLY a JSON array of 3 draft objects, nothing else — no preamble, no markdown code fences. Each object must have exactly these keys: "title" (a short, direct headline, no colons-as-clickbait), "body" (300-600 words as semantic HTML — a few "<p>" paragraphs, may use an "<h2>" or two, "<strong>"/"<em>" for emphasis; no "<script>", inline styles, or other markup beyond plain semantic text tags; no bullet-point-stuffed "<ul>" listicle structure unless the content is genuinely a list).`;
 
   const userPrompt = [
     `Project context:\n${context}`,

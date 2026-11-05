@@ -548,6 +548,21 @@ describe("blogPostCreateSchema / blogPostUpdateSchema", () => {
     ).toBe(false);
   });
 
+  it("rejects a body that's effectively empty HTML (Tiptap's empty-editor output)", () => {
+    expect(
+      blogPostCreateSchema.safeParse({ title: "T", slug: "t", body: "<p></p>" }).success
+    ).toBe(false);
+    expect(
+      blogPostUpdateSchema.safeParse({ id: uuid, body: "<p><br></p>" }).success
+    ).toBe(false);
+  });
+
+  it("accepts a body with real HTML content", () => {
+    expect(
+      blogPostCreateSchema.safeParse({ title: "T", slug: "t", body: "<p>Hello</p>" }).success
+    ).toBe(true);
+  });
+
   it("allows a partial update (all optional fields except id)", () => {
     expect(blogPostUpdateSchema.safeParse({ id: uuid }).success).toBe(true);
   });

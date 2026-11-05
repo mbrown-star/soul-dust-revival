@@ -188,7 +188,7 @@ export const posts = pgTable("posts", {
   id: uuid("id").primaryKey().defaultRandom(),
   title: text("title").notNull(),
   slug: text("slug").notNull().unique(),
-  body: text("body").notNull(), // markdown
+  body: text("body").notNull(), // sanitized HTML, authored via the Tiptap rich text editor
   published: boolean("published").notNull().default(false),
   publishedAt: timestamp("published_at", { withTimezone: true }),
   // Same provenance pattern as social_posts — tracks whether a post started

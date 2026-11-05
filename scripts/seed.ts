@@ -80,7 +80,7 @@ async function seed() {
   await db.insert(posts).values({
     title: "Why We Built Foundations",
     slug: "why-we-built-foundations",
-    body: "A short post about the heart behind this study.",
+    body: "<p>A short post about the heart behind this study.</p>",
     published: true,
     publishedAt: new Date(),
   });

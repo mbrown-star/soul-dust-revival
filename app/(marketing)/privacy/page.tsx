@@ -4,14 +4,14 @@ export const metadata = {
 
 export default function PrivacyPage() {
   return (
-    <div className="max-w-2xl mx-auto px-4 py-12 sm:py-16">
+    <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16">
       <h1 className="font-display font-bold text-3xl text-ink mb-2">Privacy Policy</h1>
       <p className="font-sans text-sm text-moss mb-10">
         Last updated:{" "}
         {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
       </p>
 
-      <div className="prose max-w-none font-serif prose-headings:font-display prose-a:text-moss space-y-6">
+      <div className="prose font-serif prose-headings:font-display prose-a:text-moss space-y-6">
         <p>
           This page explains what information Soul Dust Revival collects when you buy a
           book or study, create an account, or use the study web app — and what choices
