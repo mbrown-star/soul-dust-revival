@@ -1,9 +1,23 @@
-import { getSession } from "@/lib/auth/session";
+import { getSession, type Session } from "@/lib/auth/session";
 import { db } from "@/lib/db/client";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 export type Role = "admin" | "leader" | "user";
+
+/**
+ * Looks up the role for an already-fetched session (or null for a logged-out
+ * visitor), without re-running the Supabase auth call that getSession()
+ * itself makes. Used wherever a caller already has a session and just needs
+ * the role for display purposes (e.g. the site nav deciding whether to show
+ * an "Admin" link) rather than to gate access -- requireRole/requireAdmin/
+ * requireLeaderOrAdmin stay the single source of truth for actual gating.
+ */
+export async function getRoleForSession(session: Session | null): Promise<Role | null> {
+  if (!session) return null;
+  const user = await db.query.users.findFirst({ where: eq(users.id, session.userId) });
+  return user?.role ?? null;
+}
 
 /**
  * Returns the session + role if the current user's role is one of
@@ -13,12 +27,10 @@ export type Role = "admin" | "leader" | "user";
  */
 export async function requireRole(allowedRoles: Role[]) {
   const session = await getSession();
-  if (!session) return null;
+  const role = await getRoleForSession(session);
+  if (!session || !role || !allowedRoles.includes(role)) return null;
 
-  const user = await db.query.users.findFirst({ where: eq(users.id, session.userId) });
-  if (!user || !allowedRoles.includes(user.role)) return null;
-
-  return { ...session, role: user.role };
+  return { ...session, role };
 }
 
 /** Convenience wrapper — full admin UI, role management, reporting. */

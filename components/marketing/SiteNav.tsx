@@ -13,7 +13,7 @@ type NavItem = { label: string; href: string };
 // for hover, rather than an outline.
 const linkClass = "text-parchment/80 hover:text-gold focus:outline-none focus:text-gold p-1 -m-1";
 
-export function SiteNav({ loggedIn }: { loggedIn: boolean }) {
+export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAdmin?: boolean }) {
   const router = useRouter();
   const [profileOpen, setProfileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -125,6 +125,16 @@ export function SiteNav({ loggedIn }: { loggedIn: boolean }) {
                 >
                   Account
                 </Link>
+                {isAdmin && (
+                  <Link
+                    href="/admin/products"
+                    role="menuitem"
+                    onClick={() => setProfileOpen(false)}
+                    className="flex items-center min-h-[44px] px-4 text-parchment/90 hover:bg-parchment/10 hover:text-gold focus:outline-none focus:text-gold"
+                  >
+                    Admin
+                  </Link>
+                )}
                 <button
                   type="button"
                   role="menuitem"
