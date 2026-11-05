@@ -13,7 +13,9 @@ module.exports = {
         // set, retired the same day).
         ink: "#1a120c",
         dusk: "#3a281c",
-        parchment: "#f7ecd8",
+        // Lightened from the design system's original #f7ecd8 (noticeably
+        // tan) toward near-white with just a hint of warmth, per review.
+        parchment: "#fefdfa",
         // 2.62:1 on parchment — fills, gradients and large display type only.
         // For accent text use ember-700; for body-size text use ink or moss.
         ember: "#e2762c",
