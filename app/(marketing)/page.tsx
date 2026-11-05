@@ -1,9 +1,14 @@
 import { db } from "@/lib/db/client";
 import { products, posts } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { and, eq, desc } from "drizzle-orm";
 import Link from "next/link";
 import Image from "next/image";
 import { DustHero } from "@/components/marketing/DustHero";
+
+// The homepage's "Featured content" section -- an admin picks up to this
+// many products as "featured" (enforced in app/api/admin/products/route.ts);
+// the tile grid below is sized to comfortably hold this many.
+const MAX_FEATURED_PRODUCTS = 8;
 
 // Rendered dynamically per-request rather than statically at build time —
 // this reads live product/post data an admin can change anytime, and a
@@ -15,9 +20,9 @@ export default async function HomePage() {
   const featuredProducts = await db
     .select()
     .from(products)
-    .where(eq(products.active, true))
+    .where(and(eq(products.active, true), eq(products.featured, true)))
     .orderBy(desc(products.createdAt))
-    .limit(4);
+    .limit(MAX_FEATURED_PRODUCTS);
 
   const recentPosts = await db
     .select()
@@ -30,50 +35,53 @@ export default async function HomePage() {
     <>
       <DustHero />
 
-      {/* Featured studies & books */}
-      <section className="max-w-5xl mx-auto px-4 py-16 sm:py-20">
-        <h2 className="font-display font-bold text-2xl sm:text-3xl text-ink mb-8">
-          Start where you are
-        </h2>
+      {/* Featured content -- the heading stays at the site's standard
+          content width, but the tile grid gets its own wider container
+          (max-w-7xl, wider than the standard max-w-5xl) since up to 8 tiles
+          need more room to breathe than the standard width allows. */}
+      <section className="py-16 sm:py-20">
+        <div className="max-w-5xl mx-auto px-4">
+          <h2 className="font-display font-bold text-2xl sm:text-3xl text-ink mb-8">
+            Featured content
+          </h2>
+        </div>
 
-        {featuredProducts.length === 0 ? (
-          <p className="font-serif text-moss">New studies and books are on the way.</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredProducts.map((p) => (
-              <Link
-                key={p.id}
-                href={`/books/${p.slug}`}
-                className="group focus:outline-none focus:ring-2 focus:ring-ink rounded-lg"
-              >
-                <div className="aspect-[3/4] bg-dusk rounded-lg overflow-hidden mb-3 relative">
-                  {p.imageUrl ? (
-                    <Image
-                      src={p.imageUrl}
-                      alt={p.imageAlt ?? ""}
-                      fill
-                      sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-                      className="object-cover group-hover:scale-105 transition-transform"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-parchment/70 font-display text-sm">
-                      Soul Dust Revival
-                    </div>
-                  )}
-                </div>
-                <p className="font-sans text-xs uppercase tracking-wide text-moss mb-1">
-                  {p.format === "digital" ? "Study · Web app" : "Book · Ships to you"}
-                </p>
-                <h3 className="font-display font-semibold text-ink group-hover:text-moss">
-                  {p.title}
-                </h3>
-                <p className="font-sans text-sm text-moss mt-1">
-                  ${(p.priceCents / 100).toFixed(2)}
-                </p>
-              </Link>
-            ))}
-          </div>
-        )}
+        <div className="max-w-7xl mx-auto px-4">
+          {featuredProducts.length === 0 ? (
+            <p className="font-serif text-moss">New studies and books are on the way.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredProducts.map((p) => (
+                <Link key={p.id} href={`/books/${p.slug}`} className="group focus:outline-none">
+                  <div className="aspect-[3/4] bg-dusk rounded-lg overflow-hidden mb-3 relative">
+                    {p.imageUrl ? (
+                      <Image
+                        src={p.imageUrl}
+                        alt={p.imageAlt ?? ""}
+                        fill
+                        sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+                        className="object-cover group-hover:scale-105 group-focus:scale-105 transition-transform"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-parchment/70 font-display text-sm">
+                        Soul Dust Revival
+                      </div>
+                    )}
+                  </div>
+                  <p className="font-sans text-xs uppercase tracking-wide text-moss mb-1">
+                    {p.format === "digital" ? "Study · Web app" : "Book · Ships to you"}
+                  </p>
+                  <h3 className="font-display font-semibold text-ink group-hover:text-moss group-focus:text-moss">
+                    {p.title}
+                  </h3>
+                  <p className="font-sans text-sm text-moss mt-1">
+                    ${(p.priceCents / 100).toFixed(2)}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       </section>
 
       {/* How a study works — a genuine sequence, so numbered steps earn their place here */}
@@ -120,7 +128,7 @@ export default async function HomePage() {
             </h2>
             <Link
               href="/blog"
-              className="font-sans text-sm font-medium text-moss hover:underline focus:outline-none focus:ring-2 focus:ring-ink rounded p-1 -m-1"
+              className="font-sans text-sm font-medium text-moss hover:underline focus:outline-none focus:underline p-1 -m-1"
             >
               View all
             </Link>
@@ -130,9 +138,9 @@ export default async function HomePage() {
               <Link
                 key={post.id}
                 href={`/blog/${post.slug}`}
-                className="focus:outline-none focus:ring-2 focus:ring-ink rounded-lg"
+                className="group focus:outline-none"
               >
-                <h3 className="font-display font-semibold text-ink hover:text-moss mb-1">
+                <h3 className="font-display font-semibold text-ink group-hover:text-moss group-focus:text-moss mb-1">
                   {post.title}
                 </h3>
                 {post.publishedAt && (

@@ -17,11 +17,15 @@ are outside what code can determine.
   keyboard and screen reader users bypass repeated nav (WCAG 2.4.1).
 - Semantic `<main>` landmark wrapping page content.
 - Visible focus indicator (`:focus-visible`) applied globally in `globals.css`, so
-  keyboard users can always see where they are (WCAG 2.4.7). The site nav
-  (`SiteNav.tsx`, `CartLink.tsx`) and the admin nav (`app/admin/layout.tsx`) opt out of
-  the global ring for a text-color-only focus indicator instead (`focus:text-gold`,
-  the same color change already used on hover) — a deliberate, explicit exception for
-  those two nav bars specifically, not a site-wide change to focus styling.
+  keyboard users can always see where they are (WCAG 2.4.7). A few places opt out of
+  the global ring for a different, still-visible indicator, each a deliberate exception
+  rather than a site-wide change to focus styling: the site nav (`SiteNav.tsx`,
+  `CartLink.tsx`) and the admin nav (`app/admin/layout.tsx`) use a text-color-only
+  change instead (`focus:text-gold`, the same color already used on hover); the
+  homepage's featured-product tiles and blog teaser links (`app/(marketing)/page.tsx`)
+  reuse their existing hover effect on focus too (`group-focus:` alongside
+  `group-hover:` — the image scale, the title color change), since those tiles have no
+  obvious text to recolor the way a plain link does.
 - `prefers-reduced-motion` respected globally — animations/transitions collapse to
   near-zero duration for users who've asked their OS for that (WCAG 2.3.3).
 

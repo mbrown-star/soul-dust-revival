@@ -11,6 +11,7 @@ async function seed() {
       slug: "foundations-study",
       description: "A six-week study on the basics of faith, with video teaching and guided questions.",
       priceCents: 2900,
+      featured: true,
     })
     .returning();
   if (!product) throw new Error("Seed failed: product insert returned no row.");
@@ -22,6 +23,7 @@ async function seed() {
     slug: "foundations-companion-book",
     description: "The printed companion book for the Foundations study.",
     priceCents: 1899,
+    featured: true,
   });
 
   const [study] = await db

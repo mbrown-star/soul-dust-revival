@@ -92,6 +92,10 @@ export const productSchema = z
       ),
     sellOnStripe: z.boolean().default(true),
     active: z.boolean(),
+    // The "no more than 8 featured products" rule is a cross-row count, not
+    // something this per-row schema can check -- enforced in
+    // app/api/admin/products/route.ts instead, against the current DB state.
+    featured: z.boolean().default(false),
   })
   .refine((p) => p.format === "physical" || p.amazonUrl == null, {
     message: "Amazon purchase links are only supported for physical products",

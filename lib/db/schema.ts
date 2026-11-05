@@ -82,6 +82,11 @@ export const products = pgTable("products", {
   // for format: "physical". See productSchema in lib/validation/schemas.ts.
   amazonUrl: text("amazon_url"),
   sellOnStripe: boolean("sell_on_stripe").notNull().default(true),
+  // Shown in the homepage's "Featured content" section (up to 8 -- enforced
+  // in the API route, since "no more than 8 featured" is a cross-row count,
+  // not something a single-row Zod schema can check). Not an ordering
+  // field -- see the homepage query for how these are sorted.
+  featured: boolean("featured").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 

@@ -19,6 +19,7 @@ type ProductFormValues = {
   amazonUrl: string | null;
   sellOnStripe: boolean;
   active: boolean;
+  featured: boolean;
 };
 
 export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> }) {
@@ -46,6 +47,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
     amazonUrl: initial?.amazonUrl ?? null,
     sellOnStripe: initial?.sellOnStripe ?? true,
     active: initial?.active ?? true,
+    featured: initial?.featured ?? false,
   });
   const [slugTouched, setSlugTouched] = useState(!!initial?.slug);
   const [uploading, setUploading] = useState(false);
@@ -130,8 +132,10 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
     });
 
     if (!res.ok) {
-      const { error } = await res.json().catch(() => ({ error: "Save failed" }));
-      setValidationError(typeof error === "string" ? error : "Couldn't save — check the form for errors.");
+      const data = await res.json().catch(() => ({ message: "Save failed" }));
+      setValidationError(
+        typeof data.message === "string" ? data.message : "Couldn't save — check the form for errors."
+      );
       setSaving(false);
       return;
     }
@@ -402,6 +406,17 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
           onChange={(e) => setValues((v) => ({ ...v, active: e.target.checked }))}
         />
         <span className="text-sm">Active (visible for purchase)</span>
+      </label>
+
+      <label className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={values.featured}
+          onChange={(e) => setValues((v) => ({ ...v, featured: e.target.checked }))}
+        />
+        <span className="text-sm">
+          Featured (shown in the homepage&apos;s &quot;Featured content&quot; section — up to 8)
+        </span>
       </label>
 
       {validationError && (
