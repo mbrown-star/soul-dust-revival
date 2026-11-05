@@ -8,7 +8,7 @@ import { splitHtmlByHeadings, splitPlainTextByHeadings } from "@/lib/import/spli
 import { r2, R2_BUCKET, r2PublicUrl } from "@/lib/r2/client";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { studyImportFieldsSchema } from "@/lib/validation/schemas";
-import DOMPurify from "isomorphic-dompurify";
+import { sanitizeHtml } from "@/lib/sanitize/html";
 
 export const runtime = "nodejs"; // mammoth/pdf-parse need Node APIs, not the edge runtime
 
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
           type: "text" as const,
           // Sanitize extracted document HTML before storing — imported
           // documents are a form of untrusted input even when uploaded by an admin.
-          body: DOMPurify.sanitize(importedLesson.bodyHtml),
+          body: sanitizeHtml(importedLesson.bodyHtml),
         },
       ];
     });

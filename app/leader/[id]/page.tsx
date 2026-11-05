@@ -2,7 +2,7 @@ import { getDb } from "@/lib/db/client";
 import { leaderResources } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import DOMPurify from "isomorphic-dompurify";
+import { sanitizeHtml } from "@/lib/sanitize/html";
 import Link from "next/link";
 import { requireLeaderOrAdmin } from "@/lib/admin/guard";
 import type { Metadata } from "next";
@@ -66,7 +66,7 @@ export default async function LeaderResourceDetailPage({
       {resource.body && (
         <div
           className="prose max-w-none font-serif prose-headings:font-display prose-a:text-moss"
-          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(resource.body) }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(resource.body) }}
         />
       )}
     </article>

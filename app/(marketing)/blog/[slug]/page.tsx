@@ -2,7 +2,7 @@ import { getDb } from "@/lib/db/client";
 import { posts } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import DOMPurify from "isomorphic-dompurify";
+import { sanitizeHtml } from "@/lib/sanitize/html";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -59,7 +59,7 @@ export default async function BlogPostPage({
 
       <div
         className="prose max-w-none font-serif prose-headings:font-display prose-a:text-moss"
-        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.body) }}
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.body) }}
       />
     </article>
   );

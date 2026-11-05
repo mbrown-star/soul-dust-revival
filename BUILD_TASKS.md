@@ -85,8 +85,9 @@ what's left, roughly in the order they need doing.
 > **The safe order of operations:**
 > 1. Build and deploy with `.env`/`.env.local` containing only dummy/placeholder
 >    values (exactly what `.env.example` has) — never your real Supabase/Stripe/
->    encryption-key values at build time, **except** `NEXT_PUBLIC_SUPABASE_URL` and
->    `NEXT_PUBLIC_SUPABASE_ANON_KEY` (see note below — these two must be real).
+>    encryption-key values at build time, **except** `NEXT_PUBLIC_SUPABASE_URL`,
+>    `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `R2_PUBLIC_BASE_URL` (see note below — these
+>    three must be real).
 >    Also note: `STRIPE_SECRET_KEY` and `RESEND_API_KEY` can't be left truly blank the
 >    way `.env.example` has them — the `Stripe`/`Resend` SDK constructors run at
 >    *module* scope and throw immediately on an empty string, which fails the build
@@ -100,7 +101,7 @@ what's left, roughly in the order they need doing.
 >    variable/secret (Workers & Pages → this Worker → Settings → Variables), or via
 >    `wrangler secret put <NAME>`. These are what the Worker actually reads at request
 >    time; they override the baked-in build-time defaults **for every var except
->    `NEXT_PUBLIC_*` ones** (see note below).
+>    `NEXT_PUBLIC_*` ones and `R2_PUBLIC_BASE_URL`** (see note below).
 > 3. On every later deploy, run `opennextjs-cloudflare deploy -- --keep-vars`
 >    (or update the `cf:deploy` script to include it) so redeploying doesn't wipe the
 >    dashboard-configured secrets back to the build-time placeholders. This itself
@@ -129,6 +130,21 @@ what's left, roughly in the order they need doing.
 > against for genuine secrets like `DATABASE_URL`/`STRIPE_SECRET_KEY`. **Any future
 > `NEXT_PUBLIC_*` var added to this project must get its real value at build time,
 > not a placeholder** — add it to this exception list here and in step 1 above.
+>
+> **`R2_PUBLIC_BASE_URL` has the exact same problem, for a different reason — found
+> immediately after fixing the `NEXT_PUBLIC_*` issue above, 2026-11-05.** It isn't a
+> `NEXT_PUBLIC_*` var, but `next.config.js` itself reads `process.env.R2_PUBLIC_BASE_URL`
+> at *build* time to populate Next's image-optimizer allowlist
+> (`images.remotePatterns`), which is compiled into the build output the same way —
+> no runtime secret can change it afterward. Building with `.env.example`'s blank
+> value made the allowlist point at a dummy hostname, so every real R2-hosted
+> product/book-cover image got rejected by Next's image optimizer (images just didn't
+> render — no error page, easy to miss). Fixed by rebuilding with the real value, same
+> as the `NEXT_PUBLIC_*` fix — also safe to bake in, since it's a public CDN base URL
+> by design. **Moral for next time: before trusting a placeholder deploy, check every
+> env var `next.config.js` itself reads (`grep process.env next.config.js`), not just
+> the ones prefixed `NEXT_PUBLIC_*`** — anything read there shares this same build-time
+> bake-in behavior regardless of its name.
 
 - [x] Deploy with `npm run cf:deploy` (builds via OpenNext, deploys the Worker —
       see `wrangler.jsonc`/`open-next.config.ts`), using placeholder env values per
@@ -166,12 +182,41 @@ what's left, roughly in the order they need doing.
       to be public). Confirmed live: `/`, `/books`, and `/blog` all return 200 (real
       DB data, no more 500s), and `/studies`/`/leader` correctly 307-redirect
       logged-out visitors to `/login` rather than erroring.
-- [ ] Register a custom domain (e.g. `staging.souldustrevival.com`) for the deployed
-      Worker and put Cloudflare Access in front of it (email-allowlist gate) so it can
-      be shared privately before launch — neither done yet; this session's Cloudflare
-      API token has neither Zero Trust/Access permissions nor DNS/zone-edit
-      permissions, so both need the Cloudflare dashboard (Access: Zero Trust → Access →
-      Applications; custom domain: this Worker's Settings → Domains & Routes).
+- [x] **Fixed 2026-11-05 — product/book cover images not rendering, found right after
+      the redeploy above (by the user, clicking through the live site).** Same
+      build-time-env-baking issue as the `NEXT_PUBLIC_*` fix just above, this time in
+      `next.config.js`'s own `R2_PUBLIC_BASE_URL` read for the image-optimizer
+      allowlist — see the warning box above. Fixed by rebuilding with the real value
+      and redeploying. Confirmed live: the one product with a real uploaded cover
+      renders it via a successful `/_next/image` request; the other two show their
+      correct "no cover uploaded yet" placeholder tile, not a broken image.
+- [x] **Fixed 2026-11-05 — every blog post and leader resource page 500ing, found
+      right after the images fix above.** `isomorphic-dompurify` (this app's HTML
+      sanitizer for all Tiptap-authored rich text) pulls in `jsdom`, which isn't
+      Workers-compatible. **Took three attempts, not one:** two DOMPurify +
+      pure-JS-DOM-shim replacements (`linkedom`, then `happy-dom`) each passed
+      typecheck/build/the existing test suite but, caught only by manually testing a
+      `<script>`/`onerror` payload by hand, **silently left the dangerous markup in the
+      output** instead of sanitizing it — a worse failure than the crash they were
+      replacing. Fixed by switching to `sanitize-html` (parses HTML directly, no DOM
+      dependency at all) behind a new single `sanitizeHtml()` helper
+      (`lib/sanitize/html.ts`), with real regression tests
+      (`lib/sanitize/html.test.ts`) that actually assert specific attack payloads get
+      stripped — the gap that let the first two silent failures through. See CLAUDE.md's
+      2026-11-05 entry and SECURITY.md's "XSS / rich text" section for the full story.
+      `npm run verify`/`npm test` (177 tests) clean; redeployed; confirmed live: both
+      existing blog posts return 200 with correctly rendered content.
+- [x] Register a custom domain (`staging.souldustrevival.com`) for the deployed Worker
+      and put Cloudflare Access in front of it — done 2026-11-05, by the user via the
+      Cloudflare dashboard (this session's API token has neither Zero Trust/Access nor
+      DNS/zone-edit permissions, so this needed the dashboard either way). Access is
+      configured with an email-allowlist policy ("Allowed reviewers": the founder's and
+      the user's emails) plus both "Cloudflare" (the user's own account) and "One-time
+      PIN" (email-code login, no account needed) as login methods, so the founder — who
+      has no Cloudflare account — can get in. Confirmed from this session: an
+      unauthenticated request to `staging.souldustrevival.com` gets a `302` to
+      Cloudflare's Access login page, not the site; the login page itself shows both
+      login options.
 - [ ] Configure the Stripe webhook endpoint (`/api/webhooks/stripe`) in the Stripe
       dashboard, pointed at the deployed domain, and copy the signing secret into
       the Worker's `STRIPE_WEBHOOK_SECRET` (dashboard, not `.env`)
@@ -311,6 +356,7 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- **2026-11-05 — redeployed with the Hyperdrive fix, then found and fixed two more deploy-only bugs the redeploy surfaced: missing product/book images, and every blog/leader-resource page 500ing (jsdom isn't Workers-compatible, and the first two sanitizer replacements tried were silently broken).** Full story in CLAUDE.md's same-dated entries and SECURITY.md's "Database access model" and "XSS / rich text" sections; also set up the `staging.souldustrevival.com` custom domain and Cloudflare Access gate (dashboard work, done by the user). Headline lesson from this pass: **a build-time env-var bug doesn't error — it silently bakes in whatever placeholder was present**, and this bit twice in a row (`NEXT_PUBLIC_SUPABASE_*`, then `R2_PUBLIC_BASE_URL`) before the pattern was recognized; and **a passing test suite doesn't mean a security-critical function still works** — two DOMPurify-based sanitizer swaps passed typecheck/build/tests clean while silently leaving `<script>`/`onerror` payloads unsanitized, caught only by testing actual dangerous input by hand. `lib/sanitize/html.test.ts` now exists specifically to close that second gap.
 - **2026-11-05 — fixed the Cloudflare Workers DB-500 (Hyperdrive + node-postgres migration), a broken `next build` it introduced, and a pre-existing stale-typecheck-cache issue found along the way.** Three things in one pass, documented in full in CLAUDE.md's same-dated entry:
   (1) **Hyperdrive migration.** Created a Hyperdrive config (`wrangler hyperdrive create`) and switched `lib/db/client.ts` from a module-level `postgres`/postgres.js singleton to an async `getDb()` factory using `pg`/node-postgres, per Cloudflare's own documentation that Drizzle + postgres.js over Hyperdrive is unsupported and that a Workers DB client must be created fresh per request, never cached in module scope. All ~55 call sites (production code and tests) converted from `import { db }` to `const db = await getDb()`. Removed the now-unused `postgres` package dependency.
   (2) **Fixed a `next build` regression this introduced.** `next.config.js` called `initOpenNextCloudflareForDev()` unconditionally (its own comment claimed "No-op in production", which was true before this build but stopped being true the moment a `hyperdrive` binding existed in `wrangler.jsonc`) — with the binding present, the unconditional call made `next build` itself (so `npm run verify`, and CI, with no request ever handled) throw an unhandled rejection demanding a local Hyperdrive connection string it has no use for. Fixed by gating the call to `process.env.NODE_ENV === "development"`, so it only runs for the actual `next dev` server, which is the only place it was ever needed.

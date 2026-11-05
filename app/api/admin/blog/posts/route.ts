@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/admin/guard";
 import { getDb } from "@/lib/db/client";
 import { posts } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import DOMPurify from "isomorphic-dompurify";
+import { sanitizeHtml } from "@/lib/sanitize/html";
 import { blogPostCreateSchema, blogPostUpdateSchema } from "@/lib/validation/schemas";
 
 export async function POST(req: NextRequest) {
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   // at render time (app/(marketing)/blog/[slug]/page.tsx) -- same
   // defense-in-depth pattern as lesson content and leader resources (see
   // SECURITY.md).
-  const sanitizedBody = DOMPurify.sanitize(body.body);
+  const sanitizedBody = sanitizeHtml(body.body);
   const db = await getDb();
 
   const [post] = await db
@@ -60,7 +60,7 @@ export async function PATCH(req: NextRequest) {
   // Set publishedAt the first time a post transitions to published, but
   // don't overwrite it on every subsequent edit of an already-published post.
   const justPublished = body.published === true && !existing.published;
-  const sanitizedBody = body.body != null ? DOMPurify.sanitize(body.body) : body.body;
+  const sanitizedBody = body.body != null ? sanitizeHtml(body.body) : body.body;
 
   const [updated] = await db
     .update(posts)

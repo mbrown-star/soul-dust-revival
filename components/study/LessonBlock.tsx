@@ -1,4 +1,4 @@
-import DOMPurify from "isomorphic-dompurify";
+import { sanitizeHtml } from "@/lib/sanitize/html";
 import Image from "next/image";
 import { VideoBlock } from "./VideoBlock";
 import { AudioBlock } from "./AudioBlock";
@@ -29,7 +29,7 @@ export function LessonBlock({ block }: { block: ContentBlock }) {
       return (
         <div
           className="prose max-w-none"
-          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(block.body ?? "") }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.body ?? "") }}
         />
       );
     case "image":
@@ -74,7 +74,7 @@ export function LessonBlock({ block }: { block: ContentBlock }) {
           {block.calloutTitle && <p className="font-semibold mb-2">{block.calloutTitle}</p>}
           <div
             className="prose max-w-none"
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(block.body ?? "") }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.body ?? "") }}
           />
         </div>
       );

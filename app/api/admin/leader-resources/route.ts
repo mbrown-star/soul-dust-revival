@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/admin/guard";
 import { getDb } from "@/lib/db/client";
 import { leaderResources } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import DOMPurify from "isomorphic-dompurify";
+import { sanitizeHtml } from "@/lib/sanitize/html";
 import {
   leaderResourceCreateSchema,
   leaderResourceUpdateSchema,
@@ -63,7 +63,7 @@ export async function PATCH(req: NextRequest) {
 
   // Sanitize on write, same defense-in-depth pattern as lesson content and
   // studies import — see SECURITY.md.
-  const sanitizedBody = body.body != null ? DOMPurify.sanitize(body.body) : body.body;
+  const sanitizedBody = body.body != null ? sanitizeHtml(body.body) : body.body;
 
   const [updated] = await db
     .update(leaderResources)

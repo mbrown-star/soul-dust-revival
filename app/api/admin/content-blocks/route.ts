@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/admin/guard";
 import { getDb } from "@/lib/db/client";
 import { contentBlocks } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import DOMPurify from "isomorphic-dompurify";
+import { sanitizeHtml } from "@/lib/sanitize/html";
 import {
   contentBlockCreateSchema,
   contentBlockUpdateSchema,
@@ -68,7 +68,7 @@ export async function PATCH(req: NextRequest) {
   // write this content today, but sanitizing at the write boundary means the
   // stored data is safe even if that assumption changes later (e.g. multiple
   // content contributors, a future public-submission feature).
-  const sanitizedBody = body.body != null ? DOMPurify.sanitize(body.body) : body.body;
+  const sanitizedBody = body.body != null ? sanitizeHtml(body.body) : body.body;
 
   const [updated] = await db
     .update(contentBlocks)

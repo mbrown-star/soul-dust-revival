@@ -124,18 +124,30 @@ side-effect (duplicate entitlement rows, duplicate emails).
 Lesson content (text and callout blocks), leader resources, and blog posts are all
 authored as HTML via the same Tiptap WYSIWYG editor (`components/admin/RichTextEditor.tsx`)
 and rendered with `dangerouslySetInnerHTML`. To keep this safe:
-- HTML is sanitized with DOMPurify **on write** (`app/api/admin/content-blocks/route.ts`,
-  `app/api/admin/studies/import/route.ts`, `app/api/admin/leader-resources/route.ts`,
-  `app/api/admin/blog/posts/route.ts`) and **again on render**
-  (`components/study/LessonBlock.tsx`, `app/(marketing)/blog/[slug]/page.tsx`). Sanitizing
-  twice is deliberate — it means the stored data is safe even if a future change adds
-  another way to write to this table.
+- HTML is sanitized through the single `sanitizeHtml()` helper in `lib/sanitize/html.ts`
+  **on write** (`app/api/admin/content-blocks/route.ts`, `app/api/admin/studies/import/route.ts`,
+  `app/api/admin/leader-resources/route.ts`, `app/api/admin/blog/posts/route.ts`) and
+  **again on render** (`components/study/LessonBlock.tsx`, `app/(marketing)/blog/[slug]/page.tsx`,
+  `app/leader/[id]/page.tsx`). Sanitizing twice is deliberate — it means the stored data is
+  safe even if a future change adds another way to write to this table.
 - This matters even though only admins can author content today, because "only trusted
   people can write this" is exactly the assumption that erodes over time as products add
   more contributors, imports, or integrations.
 - The blog post body was markdown through 2026-11-05; it's now sanitized HTML like the
   other rich-text fields (see `lib/db/schema.ts`'s `posts.body` comment and CLAUDE.md's
   2026-11-05 entry for the migration).
+- **`sanitizeHtml()` uses `sanitize-html` with an explicit tag/attribute allowlist, not
+  DOMPurify.** The original `isomorphic-dompurify` dependency pulled in `jsdom`, which isn't
+  Cloudflare Workers-compatible (crashes on a missing filesystem the moment `.sanitize()` is
+  actually called — invisible in local dev, which has a real filesystem). Two DOMPurify +
+  pure-JS-DOM-shim replacements (`linkedom`, then `happy-dom`) were tried and both **silently
+  returned dangerous input unsanitized** instead of crashing — confirmed by hand with
+  `<script>`/`onerror` payloads before either shipped. `sanitize-html` parses HTML directly
+  with no DOM dependency at all, avoiding that whole failure class. `lib/sanitize/html.test.ts`
+  has regression tests asserting specific dangerous payloads are actually stripped — don't
+  touch `lib/sanitize/html.ts` without running that file's tests, since a green `npm test` run
+  on its own previously provided false confidence here (nothing in the existing suite asserted
+  on sanitize() output at all).
 
 ## File uploads
 - **Product/study/lesson images**: only `image/jpeg`, `image/png`, `image/webp`,
