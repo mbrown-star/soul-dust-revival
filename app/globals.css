@@ -22,7 +22,7 @@ body {
    Gold rather than pure black, so it reads clearly on both the dark hero
    panel and the light parchment body. */
 :focus-visible {
-  outline: 2px solid #f0b93e;
+  outline: 2px solid #f6c453;
   outline-offset: 2px;
 }
 
@@ -33,8 +33,8 @@ body {
   left: -9999px;
   top: 0;
   z-index: 100;
-  background: #17231f;
-  color: #f7f2e6;
+  background: #1a120c;
+  color: #f7ecd8;
   padding: 12px 20px;
   border-radius: 0 0 8px 0;
 }

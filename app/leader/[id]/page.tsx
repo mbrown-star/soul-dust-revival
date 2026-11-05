@@ -43,7 +43,7 @@ export default async function LeaderResourceDetailPage({
     <article className="max-w-2xl mx-auto px-4 py-12 sm:py-16">
       <Link
         href="/leader"
-        className="font-sans text-sm text-moss hover:text-ember focus:outline-none focus:ring-2 focus:ring-ink rounded"
+        className="font-sans text-sm text-moss hover:text-ink focus:outline-none focus:ring-2 focus:ring-ink rounded"
       >
         ← Leader Resources
       </Link>
@@ -63,7 +63,7 @@ export default async function LeaderResourceDetailPage({
 
       {resource.body && (
         <div
-          className="prose max-w-none font-serif prose-headings:font-display prose-a:text-ember"
+          className="prose max-w-none font-serif prose-headings:font-display prose-a:text-moss"
           dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(resource.body) }}
         />
       )}

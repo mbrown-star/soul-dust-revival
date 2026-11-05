@@ -7,7 +7,7 @@ import { CartLink } from "./CartLink";
 type NavItem = { label: string; href: string };
 
 const linkClass =
-  "text-ink hover:text-ember focus:outline-none focus:ring-2 focus:ring-ink rounded p-1 -m-1";
+  "text-ink hover:text-moss focus:outline-none focus:ring-2 focus:ring-ink rounded p-1 -m-1";
 
 // Cart is rendered separately below via CartLink (it needs live client-side
 // cart state, not a static href) but still counts as one of the 4 visible

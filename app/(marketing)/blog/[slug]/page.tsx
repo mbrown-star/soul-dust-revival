@@ -34,7 +34,7 @@ export default async function BlogPostPage({
 
   return (
     <article className="max-w-2xl mx-auto px-4 py-12 sm:py-16">
-      <Link href="/blog" className="font-sans text-sm text-moss hover:text-ember focus:outline-none focus:ring-2 focus:ring-ink rounded">
+      <Link href="/blog" className="font-sans text-sm text-moss hover:text-ink focus:outline-none focus:ring-2 focus:ring-ink rounded">
         ← Blog
       </Link>
 
@@ -52,7 +52,7 @@ export default async function BlogPostPage({
       )}
 
       <div
-        className="prose max-w-none font-serif prose-headings:font-display prose-a:text-ember"
+        className="prose max-w-none font-serif prose-headings:font-display prose-a:text-moss"
         dangerouslySetInnerHTML={{ __html: renderMarkdown(post.body) }}
       />
     </article>

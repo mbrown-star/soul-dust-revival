@@ -64,7 +64,7 @@ export default async function HomePage() {
                 <p className="font-sans text-xs uppercase tracking-wide text-moss mb-1">
                   {p.format === "digital" ? "Study · Web app" : "Book · Ships to you"}
                 </p>
-                <h3 className="font-display font-semibold text-ink group-hover:text-ember">
+                <h3 className="font-display font-semibold text-ink group-hover:text-moss">
                   {p.title}
                 </h3>
                 <p className="font-sans text-sm text-moss mt-1">
@@ -120,7 +120,7 @@ export default async function HomePage() {
             </h2>
             <Link
               href="/blog"
-              className="font-sans text-sm font-medium text-ember hover:underline focus:outline-none focus:ring-2 focus:ring-ink rounded p-1 -m-1"
+              className="font-sans text-sm font-medium text-moss hover:underline focus:outline-none focus:ring-2 focus:ring-ink rounded p-1 -m-1"
             >
               View all
             </Link>
@@ -132,7 +132,7 @@ export default async function HomePage() {
                 href={`/blog/${post.slug}`}
                 className="focus:outline-none focus:ring-2 focus:ring-ink rounded-lg"
               >
-                <h3 className="font-display font-semibold text-ink hover:text-ember mb-1">
+                <h3 className="font-display font-semibold text-ink hover:text-moss mb-1">
                   {post.title}
                 </h3>
                 {post.publishedAt && (

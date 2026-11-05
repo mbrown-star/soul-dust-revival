@@ -29,7 +29,7 @@ export default async function LeaderResourcesPage() {
               href={`/leader/${r.id}`}
               className="block py-4 focus:outline-none focus:ring-2 focus:ring-ink rounded"
             >
-              <h2 className="font-display font-semibold text-lg text-ink hover:text-ember">
+              <h2 className="font-display font-semibold text-lg text-ink hover:text-ember-700">
                 {r.title}
               </h2>
               {r.fileName && <p className="font-sans text-sm text-moss mt-1">Includes 📄 {r.fileName}</p>}

@@ -10,7 +10,7 @@ export function CartLink() {
   return (
     <Link
       href="/checkout"
-      className="text-ink hover:text-ember focus:outline-none focus:ring-2 focus:ring-ink rounded p-1 -m-1"
+      className="text-ink hover:text-moss focus:outline-none focus:ring-2 focus:ring-ink rounded p-1 -m-1"
     >
       Cart{count > 0 && <span aria-label={`, ${count} items`}> ({count})</span>}
     </Link>

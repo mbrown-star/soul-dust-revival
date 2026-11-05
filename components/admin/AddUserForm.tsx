@@ -80,14 +80,14 @@ export function AddUserForm({ onCreated }: { onCreated: (user: NewUserRow) => vo
       <h2 className="font-sans text-sm font-semibold text-ink">Add user</h2>
 
       {error && (
-        <p role="alert" className="font-sans text-sm text-ember">
+        <p role="alert" className="font-sans text-sm text-error">
           {error}
         </p>
       )}
 
       <div>
         <label htmlFor={emailId} className="block font-sans text-sm font-medium text-ink mb-1">
-          Email <span aria-hidden="true" className="text-ember">*</span>
+          Email <span aria-hidden="true" className="text-error">*</span>
           <span className="sr-only"> (required)</span>
         </label>
         <input

@@ -64,7 +64,7 @@ function EditUserRow({
       <td colSpan={5} className="py-3">
         <form onSubmit={handleSave} aria-label={`Edit ${user.email}`} className="flex flex-wrap items-end gap-3">
           {error && (
-            <p role="alert" className="font-sans text-sm text-ember basis-full">
+            <p role="alert" className="font-sans text-sm text-error basis-full">
               {error}
             </p>
           )}
@@ -188,7 +188,7 @@ export function UserRoleTable({
       <AddUserForm onCreated={handleCreated} />
 
       {error && (
-        <p role="alert" className="text-sm text-ember">
+        <p role="alert" className="text-sm text-error">
           {error}
         </p>
       )}

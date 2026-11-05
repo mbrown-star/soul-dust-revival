@@ -12,7 +12,7 @@ export async function SiteHeader() {
           href="/"
           className="font-display font-black text-lg sm:text-xl text-ink tracking-tight focus:outline-none focus:ring-2 focus:ring-ink rounded"
         >
-          Soul Dust <span className="text-ember">Revival</span>
+          Soul Dust <span className="text-ember-700">Revival</span>
         </Link>
         <SiteNav loggedIn={!!session} />
       </div>

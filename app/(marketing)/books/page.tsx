@@ -58,7 +58,7 @@ export default async function BooksPage() {
               <p className="font-sans text-xs uppercase tracking-wide text-moss mb-1">
                 {p.format === "digital" ? "Study · Web app" : "Book · Ships to you"}
               </p>
-              <h2 className="font-display font-semibold text-ink group-hover:text-ember">
+              <h2 className="font-display font-semibold text-ink group-hover:text-moss">
                 {p.title}
               </h2>
               <p className="font-sans text-sm text-moss mt-1">${(p.priceCents / 100).toFixed(2)}</p>

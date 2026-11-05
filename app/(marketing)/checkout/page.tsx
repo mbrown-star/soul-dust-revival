@@ -141,7 +141,7 @@ export default function CheckoutPage() {
           buyer's country regardless of what they bought. See PRIVACY.md. */}
       <div>
         <label htmlFor={countryId} className="block font-sans text-sm font-medium text-ink mb-1">
-          Country <span aria-hidden="true" className="text-ember">*</span>
+          Country <span aria-hidden="true" className="text-error">*</span>
           <span className="sr-only"> (required)</span>
         </label>
         <select
@@ -169,7 +169,7 @@ export default function CheckoutPage() {
           otherwise appears silently between a click and a failed redirect
           (WCAG 3.3.1 Error Identification, 4.1.3 Status Messages). */}
       {error && (
-        <p role="alert" className="font-sans text-ember text-sm">
+        <p role="alert" className="font-sans text-error text-sm">
           {error}
         </p>
       )}
