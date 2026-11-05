@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isValidCronRequest } from "@/lib/social/cronAuth";
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { socialPostTargets, socialPosts } from "@/lib/db/schema";
 import { eq, and, lte } from "drizzle-orm";
 import { publishTarget } from "@/lib/social/publish";
@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const db = await getDb();
   const due = await db
     .select()
     .from(socialPostTargets)

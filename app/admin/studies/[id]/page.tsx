@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { studies, products, lessons } from "@/lib/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -8,6 +8,7 @@ import { NewLessonButton } from "@/components/admin/NewLessonButton";
 
 export default async function StudyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const db = await getDb();
   const study = await db.query.studies.findFirst({ where: eq(studies.id, id) });
   if (!study) redirect("/admin/studies");
 

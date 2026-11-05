@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/guard";
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { adminUserCreateSchema, adminUserUpdateSchema, roleUpdateSchema } from "@/lib/validation/schemas";
@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const db = await getDb();
     const [created] = await db
       .insert(users)
       .values({ id: data.user.id, email, role, fullName: fullName ?? null, country: country ?? null })
@@ -76,6 +77,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
   }
   const { userId, email, fullName, country } = parsed.data;
+  const db = await getDb();
 
   const existing = await db.query.users.findFirst({ where: eq(users.id, userId) });
   if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
@@ -136,6 +138,7 @@ export async function PATCH(req: NextRequest) {
     );
   }
 
+  const db = await getDb();
   const [updated] = await db.update(users).set({ role }).where(eq(users.id, userId)).returning();
   if (!updated) return NextResponse.json({ error: "not_found" }, { status: 404 });
 

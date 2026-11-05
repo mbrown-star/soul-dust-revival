@@ -22,7 +22,7 @@ export async function publishToFacebook(params: {
     throw new Error(`Facebook post failed: ${res.status} ${detail}`);
   }
 
-  const data = await res.json();
+  const data = (await res.json()) as { id: string; post_id?: string };
   // The /photos endpoint returns { id, post_id }; /feed returns just { id }.
   return { externalPostId: data.post_id ?? data.id };
 }

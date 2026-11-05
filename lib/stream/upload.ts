@@ -21,7 +21,7 @@ export async function createStreamDirectUploadUrl() {
     }
   );
 
-  const data = await res.json();
+  const data = (await res.json()) as { success: boolean; result: { uploadURL: string; uid: string } };
   if (!data.success) throw new Error("Failed to create Stream upload URL");
 
   return {

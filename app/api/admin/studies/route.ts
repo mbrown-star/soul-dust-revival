@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/guard";
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { studies } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { studySchema } from "@/lib/validation/schemas";
@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
   }
   const body = parsed.data;
+  const db = await getDb();
 
   const [study] = await db
     .insert(studies)
@@ -42,6 +43,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "invalid_input" }, { status: 400 });
   }
   const body = parsed.data;
+  const db = await getDb();
 
   const [updated] = await db
     .update(studies)

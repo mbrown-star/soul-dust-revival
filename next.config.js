@@ -48,8 +48,16 @@ const nextConfig = {
 
 module.exports = nextConfig;
 
-// Wires up Cloudflare bindings (R2, etc.) for `next dev`, so local dev sees
-// the same platform bindings `wrangler`/the deployed Worker would. No-op in
-// production (that path runs through the OpenNext-built Worker instead).
-const { initOpenNextCloudflareForDev } = require("@opennextjs/cloudflare");
-initOpenNextCloudflareForDev();
+// Wires up Cloudflare bindings (R2, Hyperdrive, etc.) for `next dev`, so
+// local dev sees the same platform bindings `wrangler`/the deployed Worker
+// would. Explicitly gated to the dev server only -- unlike before adding the
+// Hyperdrive binding, this is no longer a no-op during `next build`: with a
+// `hyperdrive` entry in wrangler.jsonc, calling this unconditionally makes
+// `next build` itself (including `npm run verify`, which never touches a
+// request handler) fail with an unhandled rejection demanding a local
+// Hyperdrive connection string it has no use for. `next build` runs through
+// the OpenNext-built Worker instead, so this genuinely isn't needed there.
+if (process.env.NODE_ENV === "development") {
+  const { initOpenNextCloudflareForDev } = require("@opennextjs/cloudflare");
+  initOpenNextCloudflareForDev();
+}

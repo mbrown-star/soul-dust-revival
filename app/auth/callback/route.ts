@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { users, loginEvents } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
     const { data } = await supabase.auth.exchangeCodeForSession(code);
 
     if (data.user) {
+      const db = await getDb();
       const existing = await db.query.users.findFirst({ where: eq(users.id, data.user.id) });
       if (!existing) {
         await db.insert(users).values({

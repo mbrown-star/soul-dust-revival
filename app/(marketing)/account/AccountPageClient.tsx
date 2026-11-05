@@ -34,7 +34,7 @@ export default function AccountPageClient() {
     setError(null);
 
     const res = await fetch("/api/account/delete", { method: "POST" });
-    const data = await res.json();
+    const data = (await res.json()) as { message?: string };
 
     if (!res.ok) {
       setError(data.message ?? "Couldn't delete your account.");

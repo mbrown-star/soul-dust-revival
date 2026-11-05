@@ -45,7 +45,7 @@ export async function refreshXTokenIfNeeded(params: {
     throw new Error(`X token refresh failed: ${res.status} ${detail}`);
   }
 
-  const data = await res.json();
+  const data = (await res.json()) as { access_token: string; refresh_token?: string; expires_in: number };
   return {
     accessToken: data.access_token,
     refreshToken: data.refresh_token ?? params.refreshToken, // X may or may not rotate the refresh token itself
@@ -86,7 +86,7 @@ export async function publishToX(params: {
       const detail = await uploadRes.text();
       throw new Error(`X media upload failed: ${uploadRes.status} ${detail}`);
     }
-    const uploadData = await uploadRes.json();
+    const uploadData = (await uploadRes.json()) as { media_id_string: string };
     mediaId = uploadData.media_id_string;
   }
 
@@ -107,6 +107,6 @@ export async function publishToX(params: {
     throw new Error(`X post failed: ${tweetRes.status} ${detail}`);
   }
 
-  const data = await tweetRes.json();
+  const data = (await tweetRes.json()) as { data: { id: string } };
   return { externalPostId: data.data.id };
 }

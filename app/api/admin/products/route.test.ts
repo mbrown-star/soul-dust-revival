@@ -1,7 +1,7 @@
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db/client";
+import { getDb, type Db } from "@/lib/db/client";
 import { products, users } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 
@@ -38,7 +38,7 @@ function baseProduct(overrides: Record<string, unknown> = {}) {
 // DB), so a test can't just assume it starts from zero featured products:
 // it fills up to whatever headroom actually exists right now, rather than
 // hardcoding 8 iterations.
-async function currentFeaturedCount(): Promise<number> {
+async function currentFeaturedCount(db: Db): Promise<number> {
   const rows = await db.select({ id: products.id }).from(products).where(eq(products.featured, true));
   return rows.length;
 }
@@ -46,6 +46,7 @@ async function currentFeaturedCount(): Promise<number> {
 describe("admin products route — featured limit", () => {
   let createdProductIds: string[];
   let adminUserId: string;
+  let db: Db;
 
   afterEach(async () => {
     if (createdProductIds?.length) {
@@ -61,10 +62,12 @@ describe("admin products route — featured limit", () => {
   // leaking test data into production. Scoped to this file's own
   // distinctive title so it can never touch a real admin's product.
   afterAll(async () => {
+    const db = await getDb();
     await db.delete(products).where(eq(products.title, TEST_PRODUCT_TITLE));
   });
 
   async function signInAsAdmin() {
+    db = await getDb();
     const [admin] = await db
       .insert(users)
       .values({ email: `admin-${randomUUID()}@example.com`, role: "admin" })
@@ -78,7 +81,7 @@ describe("admin products route — featured limit", () => {
   // a failed create, which previously corrupted this test's own cleanup
   // query and masked the real failure behind an unrelated DB error).
   async function fillFeaturedToLimit() {
-    const toCreate = Math.max(0, MAX_FEATURED_PRODUCTS - (await currentFeaturedCount()));
+    const toCreate = Math.max(0, MAX_FEATURED_PRODUCTS - (await currentFeaturedCount(db)));
     for (let i = 0; i < toCreate; i++) {
       const res = await POST(request(baseProduct({ featured: true })));
       expect(res.status).toBe(200);

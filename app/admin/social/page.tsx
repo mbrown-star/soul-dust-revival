@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { socialPosts, socialPostTargets } from "@/lib/db/schema";
 import { desc, inArray } from "drizzle-orm";
 import Link from "next/link";
@@ -16,6 +16,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export default async function SocialPostsPage() {
+  const db = await getDb();
   const allPosts = await db.select().from(socialPosts).orderBy(desc(socialPosts.createdAt)).limit(100);
 
   // Scoped to just the posts this page displays, rather than the whole

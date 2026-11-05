@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
       `${req.nextUrl.origin}/admin/settings/connections?error=facebook_token_exchange_failed`
     );
   }
-  const { access_token: shortLivedToken } = await tokenRes.json();
+  const { access_token: shortLivedToken } = (await tokenRes.json()) as { access_token: string };
 
   // Step 2: exchange for a long-lived user token (~60 days vs. ~1-2 hours) —
   // scheduled posts need to outlive a short-lived token.
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   longLivedUrl.searchParams.set("fb_exchange_token", shortLivedToken);
 
   const longLivedRes = await fetch(longLivedUrl.toString());
-  const longLivedData = longLivedRes.ok ? await longLivedRes.json() : null;
+  const longLivedData = longLivedRes.ok ? ((await longLivedRes.json()) as { access_token?: string }) : null;
   const userAccessToken = longLivedData?.access_token ?? shortLivedToken;
 
   // Step 3: list the Pages this user manages, with each Page's own access
@@ -53,7 +53,9 @@ export async function GET(req: NextRequest) {
   const pagesRes = await fetch(
     `https://graph.facebook.com/v21.0/me/accounts?access_token=${encodeURIComponent(userAccessToken)}`
   );
-  const pagesData = pagesRes.ok ? await pagesRes.json() : null;
+  const pagesData = pagesRes.ok
+    ? ((await pagesRes.json()) as { data?: { id: string; name: string; access_token: string }[] })
+    : null;
   const pages: { id: string; name: string; access_token: string }[] = pagesData?.data ?? [];
 
   if (pages.length === 0) {

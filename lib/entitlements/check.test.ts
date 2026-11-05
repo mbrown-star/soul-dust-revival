@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
-import { db } from "@/lib/db/client";
+import { getDb, type Db } from "@/lib/db/client";
 import { entitlements, products, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { hasEntitlement } from "./check";
@@ -10,8 +10,10 @@ import { hasEntitlement } from "./check";
 describe("hasEntitlement", () => {
   let userId: string;
   let productId: string;
+  let db: Db;
 
   beforeEach(async () => {
+    db = await getDb();
     const [user] = await db
       .insert(users)
       .values({ email: `test-${randomUUID()}@example.com`, role: "user" })

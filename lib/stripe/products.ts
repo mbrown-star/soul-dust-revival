@@ -1,5 +1,5 @@
 import { stripe } from "./client";
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { products } from "@/lib/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
 
@@ -9,6 +9,7 @@ import { and, eq, isNull } from "drizzle-orm";
  * This means you manage products only in your own DB — Stripe stays in sync.
  */
 export async function getOrCreateStripePrice(productId: string): Promise<string> {
+  const db = await getDb();
   const product = await db.query.products.findFirst({ where: eq(products.id, productId) });
   if (!product) throw new Error(`Product ${productId} not found`);
 

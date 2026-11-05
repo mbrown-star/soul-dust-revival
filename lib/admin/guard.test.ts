@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { db } from "@/lib/db/client";
+import { getDb, type Db } from "@/lib/db/client";
 import { users } from "@/lib/db/schema";
 
 // getSession wraps Supabase Auth, a genuine external service -- mocked per
@@ -20,24 +20,27 @@ describe("guard", () => {
   let adminId: string;
   let leaderId: string;
   let userId: string;
+  let db: Db;
 
   beforeEach(async () => {
-    const [[admin], [leader], [user]] = await Promise.all([
-      db.insert(users).values({ email: `admin-${randomUUID()}@example.com`, role: "admin" }).returning(),
-      db.insert(users).values({ email: `leader-${randomUUID()}@example.com`, role: "leader" }).returning(),
-      db.insert(users).values({ email: `user-${randomUUID()}@example.com`, role: "user" }).returning(),
-    ]);
+    db = await getDb();
+    // Sequential, not Promise.all -- these all run on the same single
+    // node-postgres Client (per getDb()'s per-request-client model), and a
+    // plain (non-pooled) Client doesn't support concurrent queries: pg emits
+    // a (soon-to-be-hard-error) deprecation warning if you try.
+    const [admin] = await db.insert(users).values({ email: `admin-${randomUUID()}@example.com`, role: "admin" }).returning();
+    const [leader] = await db.insert(users).values({ email: `leader-${randomUUID()}@example.com`, role: "leader" }).returning();
+    const [user] = await db.insert(users).values({ email: `user-${randomUUID()}@example.com`, role: "user" }).returning();
     adminId = admin!.id;
     leaderId = leader!.id;
     userId = user!.id;
   });
 
   afterEach(async () => {
-    await Promise.all([
-      db.delete(users).where(eq(users.id, adminId)),
-      db.delete(users).where(eq(users.id, leaderId)),
-      db.delete(users).where(eq(users.id, userId)),
-    ]);
+    // Sequential for the same reason as beforeEach above.
+    await db.delete(users).where(eq(users.id, adminId));
+    await db.delete(users).where(eq(users.id, leaderId));
+    await db.delete(users).where(eq(users.id, userId));
     vi.clearAllMocks();
   });
 

@@ -21,7 +21,7 @@ export function FacebookPagePickerForm({ pages }: { pages: { id: string; name: s
     });
 
     if (!res.ok) {
-      const data = await res.json();
+      const data = (await res.json()) as { message?: string };
       setError(data.message ?? "Couldn't connect that Page.");
       setSaving(false);
       return;

@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { posts, studies, lessons, contentBlocks } from "@/lib/db/schema";
 import { desc, eq, and, inArray } from "drizzle-orm";
 
@@ -19,6 +19,7 @@ function stripHtml(html: string): string {
  * endpoints so the two draw from the same notion of "recent content."
  */
 export async function gatherProjectContext(): Promise<string> {
+  const db = await getDb();
   const recentPosts = await db
     .select({ title: posts.title, body: posts.body })
     .from(posts)

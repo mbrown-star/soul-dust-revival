@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { studies, lessons, contentBlocks, products } from "@/lib/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { hasEntitlement } from "@/lib/entitlements/check";
@@ -18,6 +18,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string; lessonId: string }>;
 }): Promise<Metadata> {
   const { slug, lessonId } = await params;
+  const db = await getDb();
 
   const study = await db.query.studies.findFirst({ where: eq(studies.slug, slug) });
   if (!study) return { title: "Studies" };
@@ -38,6 +39,7 @@ export default async function LessonPage({
   params: Promise<{ slug: string; lessonId: string }>;
 }) {
   const { slug, lessonId } = await params;
+  const db = await getDb();
 
   const study = await db.query.studies.findFirst({ where: eq(studies.slug, slug) });
   if (!study) redirect("/studies");

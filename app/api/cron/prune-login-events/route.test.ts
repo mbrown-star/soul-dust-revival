@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db/client";
+import { getDb, type Db } from "@/lib/db/client";
 import { loginEvents, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -20,8 +20,10 @@ function monthsAgo(n: number) {
 
 describe("POST /api/cron/prune-login-events", () => {
   let userId: string;
+  let db: Db;
 
   beforeEach(async () => {
+    db = await getDb();
     const [user] = await db.insert(users).values({ email: `test-${randomUUID()}@example.com`, role: "user" }).returning();
     userId = user!.id;
   });
@@ -46,10 +48,13 @@ describe("POST /api/cron/prune-login-events", () => {
 
     const res = await POST(cronRequest(process.env.CRON_SECRET));
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as { deleted: number };
     expect(body.deleted).toBe(2);
 
     const remaining = await db.select().from(loginEvents).where(eq(loginEvents.userId, userId));
-    expect(remaining.map((r) => r.userAgent).sort()).toEqual(["recent-10mo", "recent-1mo"]);
+    expect(remaining.map((r: typeof loginEvents.$inferSelect) => r.userAgent).sort()).toEqual([
+      "recent-10mo",
+      "recent-1mo",
+    ]);
   });
 });

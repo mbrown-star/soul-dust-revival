@@ -46,13 +46,19 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const tokenData = await tokenRes.json();
+  const tokenData = (await tokenRes.json()) as {
+    access_token: string;
+    refresh_token?: string;
+    expires_in?: number;
+  };
 
   // Fetch the connected account's handle for display in the Connections UI.
   const meRes = await fetch("https://api.twitter.com/2/users/me", {
     headers: { Authorization: `Bearer ${tokenData.access_token}` },
   });
-  const me = meRes.ok ? await meRes.json() : null;
+  const me = meRes.ok
+    ? ((await meRes.json()) as { data?: { username?: string; id?: string } })
+    : null;
 
   await upsertConnection({
     provider: "x",

@@ -68,7 +68,7 @@ Respond with ONLY a JSON array of 3 draft post strings, nothing else — no prea
     return NextResponse.json({ error: "anthropic_request_failed", message: detail }, { status: 502 });
   }
 
-  const data = await res.json();
+  const data = (await res.json()) as { content?: { text?: string }[] };
   const text = data.content?.[0]?.text ?? "[]";
 
   let drafts: string[];

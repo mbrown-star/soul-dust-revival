@@ -28,7 +28,7 @@ export function ConnectionsPanel({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ apiKey }),
     });
-    const data = await res.json();
+    const data = (await res.json()) as { message?: string };
 
     if (!res.ok) {
       setError(data.message ?? "Couldn't connect that key.");

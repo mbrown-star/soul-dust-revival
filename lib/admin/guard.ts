@@ -1,5 +1,5 @@
 import { getSession, type Session } from "@/lib/auth/session";
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -15,6 +15,7 @@ export type Role = "admin" | "leader" | "user";
  */
 export async function getRoleForSession(session: Session | null): Promise<Role | null> {
   if (!session) return null;
+  const db = await getDb();
   const user = await db.query.users.findFirst({ where: eq(users.id, session.userId) });
   return user?.role ?? null;
 }

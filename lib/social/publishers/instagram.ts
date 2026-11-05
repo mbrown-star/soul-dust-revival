@@ -20,7 +20,7 @@ export async function publishToInstagram(params: {
     const detail = await containerRes.text();
     throw new Error(`Instagram container creation failed: ${containerRes.status} ${detail}`);
   }
-  const { id: creationId } = await containerRes.json();
+  const { id: creationId } = (await containerRes.json()) as { id: string };
 
   // Step 2: publish the container.
   const publishRes = await fetch(`https://graph.facebook.com/v21.0/${params.igUserId}/media_publish`, {
@@ -36,6 +36,6 @@ export async function publishToInstagram(params: {
     throw new Error(`Instagram publish failed: ${publishRes.status} ${detail}`);
   }
 
-  const data = await publishRes.json();
+  const data = (await publishRes.json()) as { id: string };
   return { externalPostId: data.id };
 }

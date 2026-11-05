@@ -41,7 +41,7 @@ export function LeaderResourceForm({ initial }: { initial: ResourceFormValues })
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key, contentType: "application/pdf" }),
     });
-    const { uploadUrl, publicUrl } = await res.json();
+    const { uploadUrl, publicUrl } = (await res.json()) as { uploadUrl: string; publicUrl: string };
     await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": "application/pdf" } });
     await save({ fileUrl: publicUrl, fileName: file.name });
     setUploading(false);

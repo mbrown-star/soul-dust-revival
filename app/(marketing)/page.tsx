@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { products, posts } from "@/lib/db/schema";
 import { and, eq, desc } from "drizzle-orm";
 import Link from "next/link";
@@ -17,6 +17,7 @@ const MAX_FEATURED_PRODUCTS = 8;
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  const db = await getDb();
   const featuredProducts = await db
     .select()
     .from(products)

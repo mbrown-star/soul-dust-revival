@@ -20,7 +20,7 @@ export function VideoBlock({
       body: JSON.stringify({ contentBlockId }),
     })
       .then((r) => r.json())
-      .then((data) => setUrl(data.url));
+      .then((data) => setUrl((data as { url: string }).url));
   }, [contentBlockId]);
 
   if (!url) return <div className="aspect-video bg-neutral-100 animate-pulse rounded-lg" aria-hidden="true" />;

@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { products } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
@@ -19,6 +19,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  const db = await getDb();
   const product = await db.query.products.findFirst({ where: eq(products.slug, slug) });
   return { title: product?.title ?? "Not found" };
 }
@@ -29,6 +30,7 @@ export default async function BookDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const db = await getDb();
 
   const product = await db.query.products.findFirst({
     where: eq(products.slug, slug),

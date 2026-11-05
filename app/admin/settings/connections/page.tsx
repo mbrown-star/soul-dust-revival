@@ -1,8 +1,9 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { integrationConnections } from "@/lib/db/schema";
 import { ConnectionsPanel } from "@/components/admin/ConnectionsPanel";
 
 export default async function ConnectionsPage() {
+  const db = await getDb();
   const connections = await db.select().from(integrationConnections);
 
   // Only pass the fields the client component actually renders -- the full

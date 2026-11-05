@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { lessonProgress, lessons, studies } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { progressSchema } from "@/lib/validation/schemas";
@@ -16,6 +16,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
   }
   const { lessonId, status } = parsed.data;
+  const db = await getDb();
 
   // Verify the lesson belongs to a study this user actually has access to —
   // without this, any authenticated user could write progress against any

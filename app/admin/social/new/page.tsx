@@ -56,7 +56,7 @@ export default function NewSocialPostPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key, contentType: file.type }),
     });
-    const { uploadUrl, publicUrl } = await res.json();
+    const { uploadUrl, publicUrl } = (await res.json()) as { uploadUrl: string; publicUrl: string };
     await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
     setImageUrl(publicUrl);
     setUploading(false);
@@ -74,7 +74,7 @@ export default function NewSocialPostPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ platforms: activePlatforms, customInstruction: customInstruction || undefined }),
     });
-    const data = await res.json();
+    const data = (await res.json()) as { message?: string; drafts: string[] };
     if (!res.ok) {
       setError(data.message ?? "Couldn't get suggestions.");
       setSuggesting(false);
@@ -112,7 +112,7 @@ export default function NewSocialPostPage() {
         targets,
       }),
     });
-    const data = await res.json();
+    const data = (await res.json()) as { message?: string };
 
     if (!res.ok) {
       setError(data.message ?? "Couldn't schedule that post.");

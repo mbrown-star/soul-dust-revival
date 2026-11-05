@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/guard";
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { lessons } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { lessonCreateSchema, lessonUpdateSchema, lessonReorderSchema } from "@/lib/validation/schemas";
@@ -9,12 +9,13 @@ export async function POST(req: NextRequest) {
   const session = await requireAdmin();
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const json = await req.json();
+  const json = (await req.json()) as Record<string, unknown>;
   const parsed = lessonCreateSchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
   }
   const body = parsed.data;
+  const db = await getDb();
 
   // Only the count is needed here (to append at the end), so count in SQL
   // rather than fetching every row across the wire.
@@ -37,7 +38,8 @@ export async function PATCH(req: NextRequest) {
   const session = await requireAdmin();
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const json = await req.json();
+  const json = (await req.json()) as Record<string, unknown>;
+  const db = await getDb();
 
   // Bulk reorder: [{ id, orderIndex }, ...]
   if (Array.isArray(json.reorder)) {

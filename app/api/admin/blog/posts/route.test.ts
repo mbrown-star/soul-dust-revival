@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db/client";
+import { getDb, type Db } from "@/lib/db/client";
 import { posts, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -21,6 +21,7 @@ function postRequest(body: unknown, method: "POST" | "PATCH" = "POST") {
 describe("admin blog posts route", () => {
   let createdPostIds: string[];
   let adminUserId: string;
+  let db: Db;
 
   afterEach(async () => {
     for (const id of createdPostIds ?? []) {
@@ -32,6 +33,7 @@ describe("admin blog posts route", () => {
 
   it("sanitizes a dangerous HTML tag out of the body on create", async () => {
     createdPostIds = [];
+    db = await getDb();
     const [admin] = await db
       .insert(users)
       .values({ email: `admin-${randomUUID()}@example.com`, role: "admin" })
@@ -56,6 +58,7 @@ describe("admin blog posts route", () => {
 
   it("sanitizes a dangerous HTML attribute out of the body on update", async () => {
     createdPostIds = [];
+    db = await getDb();
     const [admin] = await db
       .insert(users)
       .values({ email: `admin-${randomUUID()}@example.com`, role: "admin" })

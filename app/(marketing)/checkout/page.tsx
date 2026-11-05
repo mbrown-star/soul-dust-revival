@@ -35,7 +35,7 @@ export default function CheckoutPage() {
       }),
     });
 
-    const data = await res.json();
+    const data = (await res.json()) as { message?: string; url?: string };
 
     if (!res.ok) {
       setError(data.message ?? "Something went wrong.");
@@ -43,7 +43,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    window.location.href = data.url;
+    window.location.href = data.url!;
   }
 
   if (items.length === 0) {

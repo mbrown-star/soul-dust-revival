@@ -18,7 +18,7 @@ export function AudioBlock({
       body: JSON.stringify({ contentBlockId }),
     })
       .then((r) => r.json())
-      .then((data) => setUrl(data.url));
+      .then((data) => setUrl((data as { url: string }).url));
   }, [contentBlockId]);
 
   if (!url) return <div className="h-12 bg-neutral-100 animate-pulse rounded-lg" aria-hidden="true" />;

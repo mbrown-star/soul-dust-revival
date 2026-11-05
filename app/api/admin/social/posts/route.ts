@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/guard";
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { socialPosts, socialPostTargets } from "@/lib/db/schema";
 import { desc, eq, inArray } from "drizzle-orm";
 import { socialPostCreateSchema, socialPostTargetUpdateSchema } from "@/lib/validation/schemas";
@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const db = await getDb();
   const [post] = await db
     .insert(socialPosts)
     .values({
@@ -105,6 +106,7 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   const session = await requireAdmin();
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const db = await getDb();
 
   const allPosts = await db.select().from(socialPosts).orderBy(desc(socialPosts.createdAt)).limit(100);
 
@@ -131,6 +133,7 @@ export async function PATCH(req: NextRequest) {
   const parsed = socialPostTargetUpdateSchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ error: "invalid_input" }, { status: 400 });
 
+  const db = await getDb();
   const [updated] = await db
     .update(socialPostTargets)
     .set({ status: parsed.data.status })

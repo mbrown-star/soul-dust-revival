@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { products } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
@@ -15,6 +15,7 @@ export const metadata = {
 };
 
 export default async function BooksPage() {
+  const db = await getDb();
   const allProducts = await db
     .select()
     .from(products)

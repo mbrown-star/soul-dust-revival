@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/guard";
-import { db } from "@/lib/db/client";
+import { getDb, type Db } from "@/lib/db/client";
 import { products } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { productSchema } from "@/lib/validation/schemas";
@@ -11,7 +11,7 @@ import { productSchema } from "@/lib/validation/schemas";
 // here instead, against the current DB state.
 const MAX_FEATURED_PRODUCTS = 8;
 
-async function featuredCount(excludeProductId?: string): Promise<number> {
+async function featuredCount(db: Db, excludeProductId?: string): Promise<number> {
   const featured = await db.query.products.findMany({
     where: eq(products.featured, true),
     columns: { id: true },
@@ -29,8 +29,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
   }
   const body = parsed.data;
+  const db = await getDb();
 
-  if (body.featured && (await featuredCount()) >= MAX_FEATURED_PRODUCTS) {
+  if (body.featured && (await featuredCount(db)) >= MAX_FEATURED_PRODUCTS) {
     return NextResponse.json(
       { error: "too_many_featured", message: `Only ${MAX_FEATURED_PRODUCTS} products can be featured at once.` },
       { status: 400 }
@@ -71,6 +72,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "invalid_input", details: parsed.success ? "Missing id" : parsed.error.flatten() }, { status: 400 });
   }
   const body = parsed.data;
+  const db = await getDb();
 
   // If price or core details change after a Stripe Price already exists,
   // clear the cached Stripe IDs so getOrCreateStripePrice creates a fresh one
@@ -81,7 +83,7 @@ export async function PATCH(req: NextRequest) {
   // Only a transition into "featured" counts toward the limit -- re-saving a
   // product that's already featured isn't a new addition, so it's excluded
   // from its own count.
-  if (body.featured && !existing?.featured && (await featuredCount(body.id)) >= MAX_FEATURED_PRODUCTS) {
+  if (body.featured && !existing?.featured && (await featuredCount(db, body.id)) >= MAX_FEATURED_PRODUCTS) {
     return NextResponse.json(
       { error: "too_many_featured", message: `Only ${MAX_FEATURED_PRODUCTS} products can be featured at once.` },
       { status: 400 }

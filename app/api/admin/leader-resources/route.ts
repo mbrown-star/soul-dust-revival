@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/guard";
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { leaderResources } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import DOMPurify from "isomorphic-dompurify";
@@ -15,12 +15,13 @@ export async function POST(req: NextRequest) {
   const session = await requireAdmin();
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const json = await req.json();
+  const json = (await req.json()) as Record<string, unknown>;
   const parsed = leaderResourceCreateSchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
   }
 
+  const db = await getDb();
   // Only the count is needed here (to append at the end of the existing
   // order), so count in SQL rather than fetching every row across the wire.
   const existingCount = await db.$count(leaderResources);
@@ -41,7 +42,8 @@ export async function PATCH(req: NextRequest) {
   const session = await requireAdmin();
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const json = await req.json();
+  const json = (await req.json()) as Record<string, unknown>;
+  const db = await getDb();
 
   if (Array.isArray(json.reorder)) {
     const parsed = leaderResourceReorderSchema.safeParse(json);
@@ -82,12 +84,13 @@ export async function DELETE(req: NextRequest) {
   const session = await requireAdmin();
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const json = await req.json();
+  const json = (await req.json()) as Record<string, unknown>;
   const parsed = leaderResourceDeleteSchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
   }
 
+  const db = await getDb();
   await db.delete(leaderResources).where(eq(leaderResources.id, parsed.data.id));
 
   return NextResponse.json({ ok: true });

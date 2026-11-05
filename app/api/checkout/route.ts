@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { orders, orderItems, products, users } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { stripe } from "@/lib/stripe/client";
@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
   }
   const { items, guestEmail, country } = parsed.data;
+  const db = await getDb();
 
   const productIds = items.map((i) => i.productId);
   const dbProducts = await db.select().from(products).where(inArray(products.id, productIds));

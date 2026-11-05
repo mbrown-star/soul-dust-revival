@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
-import { db } from "@/lib/db/client";
+import { getDb, type Db } from "@/lib/db/client";
 import { products } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -19,8 +19,10 @@ const { stripe } = await import("./client");
 
 describe("getOrCreateStripePrice", () => {
   let productId: string;
+  let db: Db;
 
   beforeEach(async () => {
+    db = await getDb();
     vi.mocked(stripe.products.create).mockReset();
     vi.mocked(stripe.prices.create).mockReset();
 

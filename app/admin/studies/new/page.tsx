@@ -1,9 +1,10 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { products } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { NewStudyTabs } from "@/components/admin/NewStudyTabs";
 
 export default async function NewStudyPage() {
+  const db = await getDb();
   const digitalProducts = await db
     .select({ id: products.id, title: products.title })
     .from(products)

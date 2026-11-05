@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { lessons, contentBlocks, studies } from "@/lib/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -11,6 +11,7 @@ export default async function LessonEditorPage({
   params: Promise<{ id: string; lessonId: string }>;
 }) {
   const { id, lessonId } = await params;
+  const db = await getDb();
   const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
   if (!lesson) redirect(`/admin/studies/${id}`);
 

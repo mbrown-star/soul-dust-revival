@@ -104,14 +104,23 @@ what's left, roughly in the order they need doing.
 - [x] Set every real `.env` value as a Cloudflare dashboard variable/secret on the
       deployed Worker (not baked into the build — see warning above) — done
       2026-11-05 via `wrangler secret put` for all ~21 vars.
-- [ ] **New, found via the first real deploy:** every DB-backed page 500s on the
-      deployed Worker with `Error [ERR_OPTION_NOT_IMPLEMENTED]: The options.rejectUnauthorized
-      option is not implemented`, from `lib/db/client.ts`'s `postgres(..., { ssl: "require" })`
-      — Cloudflare Workers' `nodejs_compat` TLS socket shim doesn't implement the TLS
-      options the `postgres` npm driver (direct TCP/TLS to Postgres) needs. This only
-      surfaces under a real Workers deploy, never in local Node dev/test. Likely fix:
-      Cloudflare Hyperdrive (built for exactly this — Workers reaching a normal Postgres
-      database), not yet set up. **Blocks the deployed site from actually working.**
+- [x] **Fixed 2026-11-05 — the DB-500 found via the first real deploy.** Every
+      DB-backed page 500'd on the deployed Worker with `Error [ERR_OPTION_NOT_IMPLEMENTED]:
+      The options.rejectUnauthorized option is not implemented`, from `lib/db/client.ts`'s
+      `postgres(..., { ssl: "require" })` — Cloudflare Workers' `nodejs_compat` TLS socket
+      shim doesn't implement the TLS options the `postgres` npm driver (direct TCP/TLS to
+      Postgres) needs. Fixed by setting up Cloudflare Hyperdrive and switching the driver
+      from `postgres` (postgres.js) to `pg` (node-postgres), per Cloudflare's own
+      documentation that pairing Drizzle with postgres.js over Hyperdrive is unsupported.
+      This also required converting `lib/db/client.ts`'s `db` export from a module-level
+      singleton to an async `getDb()` factory, since Workers forbids reusing a database
+      client across requests and Hyperdrive expects a fresh client per request (it pools
+      the real connection on Cloudflare's side, so this is cheap) — every one of the ~55
+      files that previously imported `db` now calls `const db = await getDb()` instead.
+      See CLAUDE.md's 2026-11-05 entry and SECURITY.md's "Database access model" section
+      for the full writeup. **Not yet done:** the Worker has not been redeployed with this
+      fix — the live site at `https://soul-dust-revival.matt-brown-8a1.workers.dev` is
+      still running the old, broken code until the next `npm run cf:deploy`.
 - [ ] Register a custom domain (e.g. `staging.souldustrevival.com`) for the deployed
       Worker and put Cloudflare Access in front of it (email-allowlist gate) so it can
       be shared privately before launch — neither done yet; this session's Cloudflare
@@ -257,6 +266,12 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- **2026-11-05 — fixed the Cloudflare Workers DB-500 (Hyperdrive + node-postgres migration), a broken `next build` it introduced, and a pre-existing stale-typecheck-cache issue found along the way.** Three things in one pass, documented in full in CLAUDE.md's same-dated entry:
+  (1) **Hyperdrive migration.** Created a Hyperdrive config (`wrangler hyperdrive create`) and switched `lib/db/client.ts` from a module-level `postgres`/postgres.js singleton to an async `getDb()` factory using `pg`/node-postgres, per Cloudflare's own documentation that Drizzle + postgres.js over Hyperdrive is unsupported and that a Workers DB client must be created fresh per request, never cached in module scope. All ~55 call sites (production code and tests) converted from `import { db }` to `const db = await getDb()`. Removed the now-unused `postgres` package dependency.
+  (2) **Fixed a `next build` regression this introduced.** `next.config.js` called `initOpenNextCloudflareForDev()` unconditionally (its own comment claimed "No-op in production", which was true before this build but stopped being true the moment a `hyperdrive` binding existed in `wrangler.jsonc`) — with the binding present, the unconditional call made `next build` itself (so `npm run verify`, and CI, with no request ever handled) throw an unhandled rejection demanding a local Hyperdrive connection string it has no use for. Fixed by gating the call to `process.env.NODE_ENV === "development"`, so it only runs for the actual `next dev` server, which is the only place it was ever needed.
+  (3) **Fixed a stale `.tsbuildinfo` masking ~60 pre-existing type errors.** Unrelated to the Hyperdrive work, found while confirming a clean typecheck after it: `tsconfig.json`'s `"incremental": true` cache had been silently hiding ~60 real `TS18046`/`TS2339` errors (all `await res.json()` typed as `unknown`, then a property accessed on it directly) across ~30 files, all pre-existing on `main` before this build (confirmed via `git stash` + a clean `tsc --noEmit` against the committed branch). Fixed each with a minimal `as {...}` type assertion matching the properties actually accessed, rather than modeling full API response types.
+  Also fixed a real (if minor) test bug found in the same pass: `lib/admin/guard.test.ts`'s `beforeEach`/`afterEach` ran three `db.insert()`/`db.delete()` calls via `Promise.all` on one shared `Client` — a single (non-pooled) `pg` `Client`, unlike the old postgres.js client, doesn't support concurrent queries and logs a deprecation warning that becomes a hard error in `pg@9`; changed to sequential `await`s.
+  `npm run verify` (typecheck + lint + build) and `npm test` (169 tests) both clean. **Not yet done:** the Worker has not been redeployed with this fix (see "4. Deployment" above) — the live site is still running the pre-fix code.
 - **2026-11-04 — Built the missing `/studies` and `/studies/[slug]` pages,
   found and fixed while testing checkout (see the entry below), plus a
   round of nav/layout consistency fixes that came out of manually trying

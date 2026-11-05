@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { entitlements } from "@/lib/db/schema";
 import { and, eq, or, isNull, gt } from "drizzle-orm";
 
@@ -9,6 +9,7 @@ import { and, eq, or, isNull, gt } from "drizzle-orm";
  */
 export async function hasEntitlement(userId: string, productId: string): Promise<boolean> {
   const now = new Date();
+  const db = await getDb();
 
   const rows = await db
     .select({ id: entitlements.id })

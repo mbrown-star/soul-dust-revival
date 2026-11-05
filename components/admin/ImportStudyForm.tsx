@@ -38,7 +38,7 @@ export function ImportStudyForm({
     formData.append("productId", productId);
 
     const res = await fetch("/api/admin/studies/import", { method: "POST", body: formData });
-    const data = await res.json();
+    const data = (await res.json()) as { studyId: string; error?: string };
 
     if (!res.ok) {
       setError(data.error ?? "Import failed.");

@@ -47,7 +47,7 @@ function EditUserRow({
         country: country || null,
       }),
     });
-    const data = await res.json();
+    const data = (await res.json()) as UserRow & { message?: string };
 
     if (!res.ok) {
       setError(data.message ?? "Couldn't save those changes.");
@@ -155,7 +155,7 @@ export function UserRoleTable({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, role }),
     });
-    const data = await res.json();
+    const data = (await res.json()) as { message?: string };
 
     if (!res.ok) {
       setError(data.message ?? "Couldn't update that role.");

@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { orders, orderItems, products } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import Link from "next/link";
@@ -17,6 +17,7 @@ export default async function CheckoutSuccessPage({
 }) {
   const { orderId } = await searchParams;
   if (!orderId) redirect("/");
+  const db = await getDb();
 
   const order = await db.query.orders.findFirst({ where: eq(orders.id, orderId) });
   if (!order) redirect("/");

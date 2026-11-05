@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { posts } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
@@ -14,6 +14,7 @@ export const metadata = {
 };
 
 export default async function BlogPage() {
+  const db = await getDb();
   const publishedPosts = await db
     .select()
     .from(posts)

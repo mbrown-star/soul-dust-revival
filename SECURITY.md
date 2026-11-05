@@ -200,6 +200,19 @@ client**, and any future direct-from-browser Supabase client usage you add would
 its own RLS policies, since it would bypass the checks in `lib/entitlements` and
 `lib/admin/guard` entirely.
 
+**On the deployed Worker, the connection goes through Cloudflare Hyperdrive, not
+`DATABASE_URL` directly.** `lib/db/client.ts`'s `getDb()` is an async factory — a
+Workers environment forbids reusing a database client/connection created during one
+request's handling in a later request, so a fresh `node-postgres` `Client` is created
+per call, pointed at `env.HYPERDRIVE.connectionString` when that binding is present
+(the deployed Worker) and at `DATABASE_URL` directly otherwise (local dev, vitest,
+`scripts/seed.ts`). Hyperdrive pools and TLS-terminates the real connection to Supabase
+on Cloudflare's side, so creating a client per request is cheap, not a new TCP+TLS
+handshake per request. Every caller of `db` therefore calls `await getDb()` locally
+rather than importing a shared singleton — do not reintroduce a module-level `db`
+export, since that reintroduces the cross-request I/O error Workers raises for exactly
+this pattern.
+
 ## Rate limiting (not built into the app — configure at the platform level)
 No custom rate limiter is built into the app code, to avoid adding a stateful
 dependency (e.g. Redis) for a concern the hosting platform already handles well:

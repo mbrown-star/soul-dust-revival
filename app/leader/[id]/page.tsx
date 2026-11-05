@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { leaderResources } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
@@ -22,6 +22,7 @@ export async function generateMetadata({
   if (!leaderSession) return { title: "Leader Resources" };
 
   const { id } = await params;
+  const db = await getDb();
   const resource = await db.query.leaderResources.findFirst({ where: eq(leaderResources.id, id) });
   return { title: resource?.title ?? "Leader Resources" };
 }
@@ -32,6 +33,7 @@ export default async function LeaderResourceDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const db = await getDb();
 
   const resource = await db.query.leaderResources.findFirst({
     where: eq(leaderResources.id, id),

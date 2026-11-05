@@ -55,7 +55,7 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ customInstruction: customInstruction || undefined }),
     });
-    const data = await res.json();
+    const data = (await res.json()) as { message?: string; drafts: { title: string; body: string }[] };
     if (!res.ok) {
       setError(data.message ?? "Couldn't get suggestions.");
       setSuggesting(false);
@@ -88,7 +88,7 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const data = await res.json();
+    const data = (await res.json()) as { id: string; message?: string };
 
     if (!res.ok) {
       setError(data.message ?? "Couldn't save that post.");

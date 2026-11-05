@@ -43,7 +43,7 @@ export function AddUserForm({ onCreated }: { onCreated: (user: NewUserRow) => vo
         country: country || undefined,
       }),
     });
-    const data = await res.json();
+    const data = (await res.json()) as NewUserRow & { message?: string };
 
     if (!res.ok) {
       setError(data.message ?? "Couldn't create that user.");

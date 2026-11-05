@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/guard";
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { posts } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import DOMPurify from "isomorphic-dompurify";
@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
   // defense-in-depth pattern as lesson content and leader resources (see
   // SECURITY.md).
   const sanitizedBody = DOMPurify.sanitize(body.body);
+  const db = await getDb();
 
   const [post] = await db
     .insert(posts)
@@ -51,6 +52,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
   }
   const body = parsed.data;
+  const db = await getDb();
 
   const existing = await db.query.posts.findFirst({ where: eq(posts.id, body.id) });
   if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });

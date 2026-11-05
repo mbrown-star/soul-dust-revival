@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { orders, orderItems, entitlements, products } from "@/lib/db/schema";
 import { eq, inArray, and, ne } from "drizzle-orm";
 import type Stripe from "stripe";
@@ -16,6 +16,7 @@ export async function handleCheckoutCompleted(session: Stripe.Checkout.Session, 
   if (!orderId) return;
 
   const shipping = session.shipping_details;
+  const db = await getDb();
 
   // Idempotency guard, done as a single atomic conditional update rather
   // than a separate read-then-write: Stripe can redeliver the same event,

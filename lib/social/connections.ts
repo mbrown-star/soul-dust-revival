@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { integrationConnections } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { encryptToken, decryptToken } from "@/lib/crypto/tokenCipher";
@@ -6,6 +6,7 @@ import { encryptToken, decryptToken } from "@/lib/crypto/tokenCipher";
 export type Provider = "anthropic" | "x" | "facebook" | "instagram";
 
 export async function getConnection(provider: Provider) {
+  const db = await getDb();
   const row = await db.query.integrationConnections.findFirst({
     where: eq(integrationConnections.provider, provider),
   });
@@ -27,6 +28,7 @@ export async function upsertConnection(params: {
   tokenExpiresAt?: Date | null;
   connectedByUserId?: string;
 }) {
+  const db = await getDb();
   const existing = await db.query.integrationConnections.findFirst({
     where: eq(integrationConnections.provider, params.provider),
   });
@@ -52,6 +54,7 @@ export async function upsertConnection(params: {
 }
 
 export async function disconnectProvider(provider: Provider) {
+  const db = await getDb();
   await db
     .update(integrationConnections)
     .set({
@@ -64,6 +67,7 @@ export async function disconnectProvider(provider: Provider) {
 }
 
 export async function markConnectionError(provider: Provider, message: string) {
+  const db = await getDb();
   await db
     .update(integrationConnections)
     .set({ status: "error", lastError: message, updatedAt: new Date() })

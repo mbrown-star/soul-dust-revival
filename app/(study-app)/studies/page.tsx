@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { entitlements, studies, lessons, lessonProgress } from "@/lib/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { getSession } from "@/lib/auth/session";
@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 export default async function StudiesPage() {
   const session = await getSession();
   if (!session) redirect("/login?next=/studies");
+  const db = await getDb();
 
   const entitledRows = await db
     .select({ productId: entitlements.productId })

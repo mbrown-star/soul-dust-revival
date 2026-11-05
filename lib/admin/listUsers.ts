@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { users } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 
@@ -11,6 +11,7 @@ import { desc } from "drizzle-orm";
 const SAFETY_LIMIT = 1000;
 
 export async function listUsersForAdmin() {
+  const db = await getDb();
   return db
     .select({
       id: users.id,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isValidCronRequest } from "@/lib/social/cronAuth";
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { loginEvents } from "@/lib/db/schema";
 import { lt } from "drizzle-orm";
 
@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
 
   const cutoff = new Date();
   cutoff.setMonth(cutoff.getMonth() - RETENTION_MONTHS);
+  const db = await getDb();
 
   const deleted = await db.delete(loginEvents).where(lt(loginEvents.loginAt, cutoff)).returning({ id: loginEvents.id });
 

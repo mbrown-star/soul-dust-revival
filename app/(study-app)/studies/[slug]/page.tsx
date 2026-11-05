@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { studies, lessons, products, lessonProgress } from "@/lib/db/schema";
 import { eq, asc, and, inArray } from "drizzle-orm";
 import { hasEntitlement } from "@/lib/entitlements/check";
@@ -20,6 +20,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  const db = await getDb();
 
   const study = await db.query.studies.findFirst({ where: eq(studies.slug, slug) });
   if (!study || !study.published) return { title: "Studies" };
@@ -37,6 +38,7 @@ export default async function StudyPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const db = await getDb();
 
   const study = await db.query.studies.findFirst({ where: eq(studies.slug, slug) });
   // An unpublished study isn't ready for a customer to see at all -- treat

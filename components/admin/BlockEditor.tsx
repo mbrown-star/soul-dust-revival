@@ -60,7 +60,7 @@ export function BlockEditor({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key, contentType: file.type }),
     });
-    const { uploadUrl, publicUrl } = await res.json();
+    const { uploadUrl, publicUrl } = (await res.json()) as { uploadUrl: string; publicUrl: string };
     await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
     update({ imageUrl: publicUrl });
     setUploading(false);
@@ -69,7 +69,7 @@ export function BlockEditor({
   async function uploadMedia(file: File) {
     setUploading(true);
     const res = await fetch("/api/admin/stream-upload-url", { method: "POST" });
-    const { uploadUrl, uid } = await res.json();
+    const { uploadUrl, uid } = (await res.json()) as { uploadUrl: string; uid: string };
 
     const formData = new FormData();
     formData.append("file", file);
@@ -87,7 +87,7 @@ export function BlockEditor({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key, contentType: "text/vtt" }),
     });
-    const { uploadUrl, publicUrl } = await res.json();
+    const { uploadUrl, publicUrl } = (await res.json()) as { uploadUrl: string; publicUrl: string };
     await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": "text/vtt" } });
     update({ captionsUrl: publicUrl });
     setUploading(false);

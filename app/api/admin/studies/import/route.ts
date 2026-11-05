@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/guard";
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { studies, lessons, contentBlocks } from "@/lib/db/schema";
 import { parseDocxToHtml } from "@/lib/import/parseDocx";
 import { parsePdfToText } from "@/lib/import/parsePdf";
@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
     })
   );
   const sourceFileUrl = r2PublicUrl(key);
+  const db = await getDb();
 
   // Create the study, unpublished by default — imports need human review before going live.
   const [study] = await db

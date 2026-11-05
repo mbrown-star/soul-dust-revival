@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db/client";
+import { getDb, type Db } from "@/lib/db/client";
 import { users } from "@/lib/db/schema";
 
 vi.mock("@/lib/admin/guard", () => ({ requireAdmin: vi.fn() }));
@@ -33,8 +33,10 @@ const adminSession = { userId: randomUUID(), email: "admin@example.com", role: "
 
 describe("/api/admin/users", () => {
   const createdIds: string[] = [];
+  let db: Db;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    db = await getDb();
     vi.mocked(requireAdmin).mockResolvedValue(adminSession);
     inviteUserByEmail.mockReset();
     updateUserById.mockReset();
@@ -78,7 +80,7 @@ describe("/api/admin/users", () => {
 
       const res = await POST(req("POST", { email, role: "leader", fullName: "Jamie Rivera", country: "US" }));
       expect(res.status).toBe(201);
-      const json = await res.json();
+      const json = (await res.json()) as { id: string };
       createdIds.push(json.id);
 
       expect(json).toMatchObject({ id: authId, email, role: "leader", fullName: "Jamie Rivera", country: "US" });
@@ -143,7 +145,7 @@ describe("/api/admin/users", () => {
       expect(res.status).toBe(200);
       expect(updateUserById).toHaveBeenCalledWith(u!.id, { email: newEmail });
 
-      const json = await res.json();
+      const json = (await res.json()) as { email: string };
       expect(json.email).toBe(newEmail);
     });
 

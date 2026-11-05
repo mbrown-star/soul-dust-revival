@@ -1,9 +1,10 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { posts } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 import Link from "next/link";
 
 export default async function AdminBlogPage() {
+  const db = await getDb();
   // Safety cap, not real pagination -- unlike the other admin-curated lists,
   // blog posts can realistically accumulate like a real content archive, so
   // this uses a higher cap than the others; add real pagination before this

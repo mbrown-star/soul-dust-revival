@@ -20,7 +20,7 @@ export function NewLessonButton({ studyId }: { studyId: string }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ studyId, title }),
     });
-    const lesson = await res.json();
+    const lesson = (await res.json()) as { id: string };
 
     router.push(`/admin/studies/${studyId}/lessons/${lesson.id}`);
     router.refresh();

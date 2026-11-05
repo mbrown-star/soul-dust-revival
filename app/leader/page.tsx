@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { leaderResources } from "@/lib/db/schema";
 import { eq, asc } from "drizzle-orm";
 import Link from "next/link";
@@ -6,6 +6,7 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 
 export default async function LeaderResourcesPage() {
+  const db = await getDb();
   const resources = await db
     .select()
     .from(leaderResources)

@@ -1,7 +1,8 @@
-import { db } from "../lib/db/client";
+import { getDb } from "../lib/db/client";
 import { products, studies, lessons, contentBlocks, posts } from "../lib/db/schema";
 
 async function seed() {
+  const db = await getDb();
   const [product] = await db
     .insert(products)
     .values({

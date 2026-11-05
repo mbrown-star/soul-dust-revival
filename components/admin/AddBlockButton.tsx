@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useId } from "react";
-import { ContentBlockData } from "./BlockEditor";
+import type { ContentBlockData } from "./BlockEditor";
 
 const BLOCK_TYPES: { value: ContentBlockData["type"]; label: string }[] = [
   { value: "text", label: "Text" },
@@ -29,7 +29,7 @@ export function AddBlockButton({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ lessonId, type }),
     });
-    const block = await res.json();
+    const block = (await res.json()) as ContentBlockData;
     onAdd(block);
     setOpen(false);
     buttonRef.current?.focus(); // return focus to the trigger, standard menu-button behavior

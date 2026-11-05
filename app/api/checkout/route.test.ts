@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db/client";
+import { getDb, type Db } from "@/lib/db/client";
 import { orderItems, orders, products, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -26,8 +26,10 @@ function checkoutRequest(body: unknown) {
 describe("POST /api/checkout", () => {
   let digitalProductId: string;
   let userId: string;
+  let db: Db;
 
   beforeEach(async () => {
+    db = await getDb();
     vi.mocked(getSession).mockReset();
     vi.mocked(stripe.checkout.sessions.create).mockReset();
     vi.mocked(stripe.checkout.sessions.create).mockResolvedValue({

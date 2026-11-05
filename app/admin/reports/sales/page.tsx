@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { orders, orderItems, products, users } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
@@ -6,6 +6,7 @@ import Link from "next/link";
 export const dynamic = "force-dynamic"; // always reflects the latest orders, never a stale build-time snapshot
 
 export default async function SalesReportPage() {
+  const db = await getDb();
   const paidOrders = await db
     .select({
       id: orders.id,

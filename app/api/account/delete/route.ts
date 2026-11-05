@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { users, responses, loginEvents, entitlements, lessonProgress } from "@/lib/db/schema";
 import { eq, and, ne } from "drizzle-orm";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/admin";
@@ -20,6 +20,7 @@ import { createSupabaseServiceRoleClient } from "@/lib/supabase/admin";
 export async function POST() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const db = await getDb();
 
   const user = await db.query.users.findFirst({ where: eq(users.id, session.userId) });
   if (!user) return NextResponse.json({ error: "not_found" }, { status: 404 });

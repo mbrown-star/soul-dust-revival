@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { posts } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
@@ -18,6 +18,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  const db = await getDb();
   const post = await db.query.posts.findFirst({ where: eq(posts.slug, slug) });
   return { title: post?.title ?? "Not found" };
 }
@@ -28,6 +29,7 @@ export default async function BlogPostPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const db = await getDb();
 
   const post = await db.query.posts.findFirst({ where: eq(posts.slug, slug) });
   if (!post || !post.published) notFound();

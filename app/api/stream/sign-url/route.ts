@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { contentBlocks, lessons, studies } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { hasEntitlement } from "@/lib/entitlements/check";
@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
   const parsed = streamSignUrlSchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ error: "invalid_input" }, { status: 400 });
   const { contentBlockId } = parsed.data;
+  const db = await getDb();
 
   const block = await db.query.contentBlocks.findFirst({
     where: eq(contentBlocks.id, contentBlockId),

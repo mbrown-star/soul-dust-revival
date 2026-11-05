@@ -50,7 +50,7 @@ export function StudyForm({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key, contentType: file.type }),
     });
-    const { uploadUrl, publicUrl } = await res.json();
+    const { uploadUrl, publicUrl } = (await res.json()) as { uploadUrl: string; publicUrl: string };
     await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
     setValues((v) => ({ ...v, coverImageUrl: publicUrl }));
     setUploading(false);
@@ -69,7 +69,7 @@ export function StudyForm({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    const study = await res.json();
+    const study = (await res.json()) as { id: string };
 
     router.push(`/admin/studies/${study.id}`);
     router.refresh();

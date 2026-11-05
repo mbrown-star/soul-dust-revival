@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
-import { db } from "@/lib/db/client";
+import { getDb, type Db } from "@/lib/db/client";
 import { entitlements, orders, orderItems, products, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
@@ -29,8 +29,10 @@ describe("handleCheckoutCompleted", () => {
   let digitalProductId: string;
   let physicalProductId: string;
   let orderId: string;
+  let db: Db;
 
   beforeEach(async () => {
+    db = await getDb();
     vi.clearAllMocks();
 
     const [user] = await db

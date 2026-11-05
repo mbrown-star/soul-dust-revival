@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { socialPostTargets, socialPosts, socialPostMetrics } from "@/lib/db/schema";
 import { eq, desc, inArray } from "drizzle-orm";
 import Link from "next/link";
@@ -7,6 +7,7 @@ import { PLATFORM_LABELS } from "@/lib/data/socialPlatforms";
 export const dynamic = "force-dynamic";
 
 export default async function SocialAnalyticsPage() {
+  const db = await getDb();
   const publishedTargets = await db
     .select({
       id: socialPostTargets.id,

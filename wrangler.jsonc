@@ -16,5 +16,11 @@
   ],
   "images": {
     "binding": "IMAGES"
-  }
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "2a924ce2874d45719269fa7d639b7b85"
+    }
+  ]
 }

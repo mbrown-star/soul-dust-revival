@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { posts } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -11,6 +11,7 @@ export default async function EditBlogPostPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const db = await getDb();
   const post = await db.query.posts.findFirst({ where: eq(posts.id, id) });
   if (!post) redirect("/admin/blog");
 

@@ -26,7 +26,7 @@ export async function finalizeFacebookConnection(page: FacebookPageOption, conne
   const igRes = await fetch(
     `https://graph.facebook.com/v21.0/${page.id}?fields=instagram_business_account&access_token=${encodeURIComponent(page.access_token)}`
   );
-  const igData = igRes.ok ? await igRes.json() : null;
+  const igData = igRes.ok ? ((await igRes.json()) as { instagram_business_account?: { id: string } }) : null;
   const igAccountId = igData?.instagram_business_account?.id;
 
   if (igAccountId) {

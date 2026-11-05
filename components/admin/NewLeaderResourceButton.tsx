@@ -20,7 +20,7 @@ export function NewLeaderResourceButton() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title }),
     });
-    const resource = await res.json();
+    const resource = (await res.json()) as { id: string };
 
     router.push(`/admin/leader-resources/${resource.id}`);
     router.refresh();

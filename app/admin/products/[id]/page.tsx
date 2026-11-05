@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { products } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -6,6 +6,7 @@ import { ProductForm } from "@/components/admin/ProductForm";
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const db = await getDb();
   const product = await db.query.products.findFirst({ where: eq(products.id, id) });
   if (!product) redirect("/admin/products");
 

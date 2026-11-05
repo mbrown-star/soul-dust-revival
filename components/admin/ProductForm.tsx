@@ -83,7 +83,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key, contentType: file.type }),
     });
-    const { uploadUrl, publicUrl } = await res.json();
+    const { uploadUrl, publicUrl } = (await res.json()) as { uploadUrl: string; publicUrl: string };
 
     await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
 
@@ -101,13 +101,17 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
     const res = await fetch("/api/admin/products/cover-pdf", { method: "POST", body: formData });
 
     if (!res.ok) {
-      const { message } = await res.json().catch(() => ({ message: null }));
+      const { message } = (await res.json().catch(() => ({ message: null }))) as { message: string | null };
       setUploadError(message || "Couldn't process that cover PDF. Please try a different file.");
       setUploading(false);
       return;
     }
 
-    const { coverPdfUrl, backImageUrl, frontImageUrl } = await res.json();
+    const { coverPdfUrl, backImageUrl, frontImageUrl } = (await res.json()) as {
+      coverPdfUrl: string;
+      backImageUrl: string;
+      frontImageUrl: string;
+    };
     setValues((v) => ({ ...v, coverPdfUrl, backImageUrl, imageUrl: frontImageUrl }));
     setUploading(false);
   }
@@ -132,7 +136,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
     });
 
     if (!res.ok) {
-      const data = await res.json().catch(() => ({ message: "Save failed" }));
+      const data = (await res.json().catch(() => ({ message: "Save failed" }))) as { message?: unknown };
       setValidationError(
         typeof data.message === "string" ? data.message : "Couldn't save — check the form for errors."
       );

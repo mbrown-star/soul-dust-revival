@@ -1,10 +1,11 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { products } from "@/lib/db/schema";
 import { desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import Image from "next/image";
 
 export default async function AdminProductsPage() {
+  const db = await getDb();
   // Safety cap, not real pagination -- this list is admin-curated and
   // realistically stays in the dozens, but nothing should fetch unbounded.
   const allProducts = await db.select().from(products).orderBy(desc(products.createdAt)).limit(100);

@@ -1,4 +1,4 @@
-import { db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { leaderResources } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -11,6 +11,7 @@ export default async function EditLeaderResourcePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const db = await getDb();
   const resource = await db.query.leaderResources.findFirst({ where: eq(leaderResources.id, id) });
   if (!resource) redirect("/admin/leader-resources");
 
