@@ -63,7 +63,7 @@ export default async function LeaderResourceDetailPage({
 
       {resource.body && (
         <div
-          className="prose font-serif prose-headings:font-display prose-a:text-moss"
+          className="prose max-w-none font-serif prose-headings:font-display prose-a:text-moss"
           dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(resource.body) }}
         />
       )}

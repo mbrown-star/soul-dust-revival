@@ -38,13 +38,17 @@ export function AdminNav() {
     // widths, where these 8 sections plus the divider and Log out genuinely
     // don't fit regardless of spacing, instead of wrapping into a cramped
     // multi-line stack or overflowing the viewport. The gap is deliberately
-    // tighter than the public nav's (gap-4/gap-6) so this doesn't also
-    // trigger at ordinary desktop widths, where it previously overflowed by
-    // a few stray pixels of gap rounding and showed a scrollbar for no real
-    // reason -- confirmed against the container's own max-w-5xl width.
+    // tighter than the public nav's (gap-4/gap-6) to avoid also triggering
+    // at ordinary desktop widths -- but that's a close-margin fix (a few
+    // pixels), not a guarantee: a real browser's exact font rendering/zoom
+    // can still tip it back into a 1-2px "overflow" that's invisible as
+    // content but still shows a scrollbar track. no-scrollbar (same utility
+    // CoverGallery.tsx uses) hides that track either way, so it can't show
+    // up as a stray sliver next to "Log out" regardless of those variations.
     <nav
       aria-label="Admin"
-      className="flex items-center gap-2.5 sm:gap-3 pr-1 font-sans text-sm font-medium overflow-x-auto whitespace-nowrap"
+      className="no-scrollbar flex items-center gap-2.5 sm:gap-3 pr-1 font-sans text-sm font-medium overflow-x-auto whitespace-nowrap"
+      style={{ scrollbarWidth: "none" }}
     >
       {ADMIN_LINKS.map((item) => (
         <Link key={item.href} href={item.href} className={linkClass}>

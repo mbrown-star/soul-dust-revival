@@ -35,9 +35,8 @@ export default async function BlogPostPage({
   return (
     // max-w-5xl matches the standard page width used site-wide (see
     // CLAUDE.md's "Standard page width" rule) -- the prose block below
-    // keeps its own narrower, readable measure (Tailwind Typography's
-    // default ~65ch) rather than stretching the article text the full
-    // container width.
+    // fills that full width too (max-w-none overrides Tailwind Typography's
+    // own narrower readable-measure default), per explicit request.
     <article className="max-w-5xl mx-auto px-4 py-12 sm:py-16">
       <Link href="/blog" className="font-sans text-sm text-moss hover:text-ink focus:outline-none focus:ring-2 focus:ring-ink rounded">
         ← Blog
@@ -57,7 +56,7 @@ export default async function BlogPostPage({
       )}
 
       <div
-        className="prose font-serif prose-headings:font-display prose-a:text-moss"
+        className="prose max-w-none font-serif prose-headings:font-display prose-a:text-moss"
         dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.body) }}
       />
     </article>

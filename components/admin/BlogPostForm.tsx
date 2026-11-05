@@ -96,6 +96,12 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
       return;
     }
 
+    // Editing an existing post pushes to the URL it's already on, which is a
+    // no-op navigation -- this component stays mounted, so saving must be
+    // cleared explicitly here rather than relying on a route change to reset
+    // it (that only happened to work for a brand-new post, which navigates
+    // to a different URL and unmounts this instance).
+    setSaving(false);
     router.push(`/admin/blog/${data.id}`);
     router.refresh();
   }

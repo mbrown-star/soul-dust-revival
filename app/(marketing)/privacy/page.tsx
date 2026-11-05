@@ -11,7 +11,7 @@ export default function PrivacyPage() {
         {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
       </p>
 
-      <div className="prose font-serif prose-headings:font-display prose-a:text-moss space-y-6">
+      <div className="prose max-w-none font-serif prose-headings:font-display prose-a:text-moss space-y-6">
         <p>
           This page explains what information Soul Dust Revival collects when you buy a
           book or study, create an account, or use the study web app — and what choices
