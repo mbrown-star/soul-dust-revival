@@ -34,12 +34,17 @@ export function AdminNav() {
   }
 
   return (
-    // overflow-x-auto lets the nav scroll horizontally on narrow phones
-    // instead of wrapping into a cramped multi-line stack or overflowing
-    // the viewport; whitespace-nowrap keeps each link on one line.
+    // overflow-x-auto lets the nav scroll horizontally on narrow/tablet
+    // widths, where these 8 sections plus the divider and Log out genuinely
+    // don't fit regardless of spacing, instead of wrapping into a cramped
+    // multi-line stack or overflowing the viewport. The gap is deliberately
+    // tighter than the public nav's (gap-4/gap-6) so this doesn't also
+    // trigger at ordinary desktop widths, where it previously overflowed by
+    // a few stray pixels of gap rounding and showed a scrollbar for no real
+    // reason -- confirmed against the container's own max-w-5xl width.
     <nav
       aria-label="Admin"
-      className="flex items-center gap-4 sm:gap-6 font-sans text-sm font-medium overflow-x-auto whitespace-nowrap"
+      className="flex items-center gap-2.5 sm:gap-3 pr-1 font-sans text-sm font-medium overflow-x-auto whitespace-nowrap"
     >
       {ADMIN_LINKS.map((item) => (
         <Link key={item.href} href={item.href} className={linkClass}>
