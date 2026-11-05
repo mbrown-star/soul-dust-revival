@@ -85,14 +85,50 @@ what's left, roughly in the order they need doing.
 > **The safe order of operations:**
 > 1. Build and deploy with `.env`/`.env.local` containing only dummy/placeholder
 >    values (exactly what `.env.example` has) — never your real Supabase/Stripe/
->    encryption-key values at build time.
+>    encryption-key values at build time, **except** `NEXT_PUBLIC_SUPABASE_URL` and
+>    `NEXT_PUBLIC_SUPABASE_ANON_KEY` (see note below — these two must be real).
+>    Also note: `STRIPE_SECRET_KEY` and `RESEND_API_KEY` can't be left truly blank the
+>    way `.env.example` has them — the `Stripe`/`Resend` SDK constructors run at
+>    *module* scope and throw immediately on an empty string, which fails the build
+>    outright (`Failed to collect page data for /api/checkout` etc.) before it ever
+>    gets to baking anything in. Use any syntactically-plausible dummy string for
+>    these two specifically (e.g. `sk_test_placeholder_build_only_...`) — never a real
+>    key — the module-scope constructor only needs a non-empty string to not throw;
+>    it's never actually called with real values until request time, by which point
+>    the real secret (set via `wrangler secret put`) has taken over.
 > 2. *After* the first deploy, set every real value as a Cloudflare dashboard
 >    variable/secret (Workers & Pages → this Worker → Settings → Variables), or via
 >    `wrangler secret put <NAME>`. These are what the Worker actually reads at request
->    time; they override the baked-in build-time defaults.
+>    time; they override the baked-in build-time defaults **for every var except
+>    `NEXT_PUBLIC_*` ones** (see note below).
 > 3. On every later deploy, run `opennextjs-cloudflare deploy -- --keep-vars`
 >    (or update the `cf:deploy` script to include it) so redeploying doesn't wipe the
->    dashboard-configured secrets back to the build-time placeholders.
+>    dashboard-configured secrets back to the build-time placeholders. This itself
+>    needs `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` set to *any*
+>    syntactically-valid Postgres URL in the shell running the deploy command (not
+>    `.env.local` — it's `opennextjs-cloudflare deploy`'s own `getPlatformProxy()` call
+>    that needs it, to resolve local env vars before deploying; it has no bearing on
+>    the deployed Worker's actual, Hyperdrive-backed connection) — set once a
+>    `hyperdrive` binding exists in `wrangler.jsonc`, confirmed 2026-11-05.
+>
+> **`NEXT_PUBLIC_*` vars are the one exception to "placeholder at build time, real
+> secret after" — found the hard way on the first post-Hyperdrive redeploy 2026-11-05.**
+> Next.js statically inlines every `process.env.NEXT_PUBLIC_*` reference at *build*
+> time, wherever it appears — server code and middleware included, not just the
+> client bundle. A blank placeholder value here doesn't just ship a blank default
+> that a runtime secret can later override (like every other var); it replaces the
+> reference itself with a literal `""` everywhere in the compiled output, so no
+> `wrangler secret put` afterward can ever fix it without a full rebuild+redeploy.
+> This broke `proxy.ts` (the middleware that creates the Supabase client on every
+> request) with `Error: Your project's URL and Key are required to create a Supabase
+> client!` on the first post-Hyperdrive redeploy, since `.env.example`'s
+> `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` are blank placeholders.
+> Fixed by rebuilding with the *real* values for just these two vars — which is fine
+> security-wise, since both are meant by Supabase/Next.js's own design to be exposed
+> to the browser; they carry none of the risk the placeholder convention protects
+> against for genuine secrets like `DATABASE_URL`/`STRIPE_SECRET_KEY`. **Any future
+> `NEXT_PUBLIC_*` var added to this project must get its real value at build time,
+> not a placeholder** — add it to this exception list here and in step 1 above.
 
 - [x] Deploy with `npm run cf:deploy` (builds via OpenNext, deploys the Worker —
       see `wrangler.jsonc`/`open-next.config.ts`), using placeholder env values per
@@ -118,9 +154,18 @@ what's left, roughly in the order they need doing.
       the real connection on Cloudflare's side, so this is cheap) — every one of the ~55
       files that previously imported `db` now calls `const db = await getDb()` instead.
       See CLAUDE.md's 2026-11-05 entry and SECURITY.md's "Database access model" section
-      for the full writeup. **Not yet done:** the Worker has not been redeployed with this
-      fix — the live site at `https://soul-dust-revival.matt-brown-8a1.workers.dev` is
-      still running the old, broken code until the next `npm run cf:deploy`.
+      for the full writeup.
+- [x] **Redeployed 2026-11-05 with the Hyperdrive fix above.** Found one more thing
+      only a real redeploy surfaces: building with `.env.example`'s blank
+      `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` placeholders broke the
+      middleware (`Error: Your project's URL and Key are required to create a Supabase
+      client!`) in a way no later `wrangler secret put` could fix, since Next.js
+      statically inlines `NEXT_PUBLIC_*` vars at build time everywhere, not just in the
+      client bundle — see the warning box above for the full explanation and the fix
+      (rebuild with the real values for just those two vars, safe since they're meant
+      to be public). Confirmed live: `/`, `/books`, and `/blog` all return 200 (real
+      DB data, no more 500s), and `/studies`/`/leader` correctly 307-redirect
+      logged-out visitors to `/login` rather than erroring.
 - [ ] Register a custom domain (e.g. `staging.souldustrevival.com`) for the deployed
       Worker and put Cloudflare Access in front of it (email-allowlist gate) so it can
       be shared privately before launch — neither done yet; this session's Cloudflare
