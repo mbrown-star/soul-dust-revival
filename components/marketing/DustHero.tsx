@@ -33,7 +33,7 @@ export function DustHero() {
           Revival
         </h1>
         <p className="font-serif italic text-lg sm:text-xl text-parchment/90 max-w-xl mx-auto mb-10">
-          &ldquo;My soul clings to the dust; give me life according to your word.&rdquo;
+          &ldquo;My soul cleaves to the dust; Revive me according to Your word.&rdquo;
         </p>
         <p className="font-serif text-base sm:text-lg text-parchment max-w-2xl mx-auto mb-10">
           Studies, devotionals, and a discipleship path for men willing to be honest about

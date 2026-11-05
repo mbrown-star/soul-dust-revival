@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
   const context = await gatherProjectContext();
 
-  const systemPrompt = `You write blog posts for Soul Dust Revival, a Christian men's discipleship platform centered on Psalm 119:25 ("My soul clings to the dust; give me life according to your word."). Voice: direct, honest, unadorned, first-person-plural or direct-address — never sales-y, no filler introductions, get to the point in the first sentence.
+  const systemPrompt = `You write blog posts for Soul Dust Revival, a Christian men's discipleship platform centered on Psalm 119:25 ("My soul cleaves to the dust; Revive me according to Your word."). Voice: direct, honest, unadorned, first-person-plural or direct-address — never sales-y, no filler introductions, get to the point in the first sentence.
 
 Respond with ONLY a JSON array of 3 draft objects, nothing else — no preamble, no markdown code fences. Each object must have exactly these keys: "title" (a short, direct headline, no colons-as-clickbait), "body" (300-600 words of markdown — a few short paragraphs, may use a heading or two, no bullet-point-stuffed listicle structure unless the content is genuinely a list).`;
 

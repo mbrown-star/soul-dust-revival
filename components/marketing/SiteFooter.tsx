@@ -8,8 +8,8 @@ export function SiteFooter() {
           Soul Dust <span className="text-gold">Revival</span>
         </p>
         <p className="font-serif italic text-sm text-parchment/70 mb-8 max-w-md">
-          &ldquo;My soul clings to the dust; give me life according to your word.&rdquo;
-          {" "}— Psalm 119:25, ESV
+          &ldquo;My soul cleaves to the dust; Revive me according to Your word.&rdquo;
+          {" "}— Psalm 119:25, NASB
         </p>
 
         <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2 font-sans text-sm">
