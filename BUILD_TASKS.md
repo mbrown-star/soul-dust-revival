@@ -94,11 +94,30 @@ what's left, roughly in the order they need doing.
 >    (or update the `cf:deploy` script to include it) so redeploying doesn't wipe the
 >    dashboard-configured secrets back to the build-time placeholders.
 
-- [ ] Deploy with `npm run cf:deploy` (builds via OpenNext, deploys the Worker —
+- [x] Deploy with `npm run cf:deploy` (builds via OpenNext, deploys the Worker —
       see `wrangler.jsonc`/`open-next.config.ts`), using placeholder env values per
-      the warning above
-- [ ] Set every real `.env` value as a Cloudflare dashboard variable/secret on the
-      deployed Worker (not baked into the build — see warning above)
+      the warning above — done 2026-11-05, live at
+      `https://soul-dust-revival.matt-brown-8a1.workers.dev`. The account's
+      `workers.dev` subdomain (`matt-brown-8a1`) had never been registered before;
+      that's a one-time dashboard step (Workers & Pages → Create → any option) that
+      can't be done via the API token this session has.
+- [x] Set every real `.env` value as a Cloudflare dashboard variable/secret on the
+      deployed Worker (not baked into the build — see warning above) — done
+      2026-11-05 via `wrangler secret put` for all ~21 vars.
+- [ ] **New, found via the first real deploy:** every DB-backed page 500s on the
+      deployed Worker with `Error [ERR_OPTION_NOT_IMPLEMENTED]: The options.rejectUnauthorized
+      option is not implemented`, from `lib/db/client.ts`'s `postgres(..., { ssl: "require" })`
+      — Cloudflare Workers' `nodejs_compat` TLS socket shim doesn't implement the TLS
+      options the `postgres` npm driver (direct TCP/TLS to Postgres) needs. This only
+      surfaces under a real Workers deploy, never in local Node dev/test. Likely fix:
+      Cloudflare Hyperdrive (built for exactly this — Workers reaching a normal Postgres
+      database), not yet set up. **Blocks the deployed site from actually working.**
+- [ ] Register a custom domain (e.g. `staging.souldustrevival.com`) for the deployed
+      Worker and put Cloudflare Access in front of it (email-allowlist gate) so it can
+      be shared privately before launch — neither done yet; this session's Cloudflare
+      API token has neither Zero Trust/Access permissions nor DNS/zone-edit
+      permissions, so both need the Cloudflare dashboard (Access: Zero Trust → Access →
+      Applications; custom domain: this Worker's Settings → Domains & Routes).
 - [ ] Configure the Stripe webhook endpoint (`/api/webhooks/stripe`) in the Stripe
       dashboard, pointed at the deployed domain, and copy the signing secret into
       the Worker's `STRIPE_WEBHOOK_SECRET` (dashboard, not `.env`)

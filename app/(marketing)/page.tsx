@@ -50,9 +50,18 @@ export default async function HomePage() {
           {featuredProducts.length === 0 ? (
             <p className="font-serif text-moss">New studies and books are on the way.</p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            // flex-wrap + justify-center (not a 4-column grid) so a short row
+            // of tiles sits centered in the wide container instead of
+            // hugging the left edge with empty space on the right -- a grid
+            // column's 1fr tracks stay full-width even with fewer items than
+            // columns, which is what looked left-indented and awkward.
+            <div className="flex flex-wrap justify-center gap-6">
               {featuredProducts.map((p) => (
-                <Link key={p.id} href={`/books/${p.slug}`} className="group focus:outline-none">
+                <Link
+                  key={p.id}
+                  href={`/books/${p.slug}`}
+                  className="group focus:outline-none w-full sm:w-[calc(50%-0.75rem)] lg:w-[calc(25%-1.125rem)]"
+                >
                   <div className="aspect-[3/4] bg-dusk rounded-lg overflow-hidden mb-3 relative">
                     {p.imageUrl ? (
                       <Image

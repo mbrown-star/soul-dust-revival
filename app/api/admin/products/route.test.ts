@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db/client";
@@ -10,6 +10,9 @@ vi.mock("@/lib/admin/guard", () => ({ requireAdmin: vi.fn() }));
 const { POST, PATCH } = await import("./route");
 const { requireAdmin } = await import("@/lib/admin/guard");
 
+const MAX_FEATURED_PRODUCTS = 8;
+const TEST_PRODUCT_TITLE = "Test Product (route.test.ts)";
+
 function request(body: unknown, method: "POST" | "PATCH" = "POST") {
   return new NextRequest("https://example.com/api/admin/products", {
     method,
@@ -20,7 +23,7 @@ function request(body: unknown, method: "POST" | "PATCH" = "POST") {
 
 function baseProduct(overrides: Record<string, unknown> = {}) {
   return {
-    title: "Test Product",
+    title: TEST_PRODUCT_TITLE,
     slug: `test-product-${randomUUID()}`,
     priceCents: 1000,
     format: "digital",
@@ -28,6 +31,16 @@ function baseProduct(overrides: Record<string, unknown> = {}) {
     active: true,
     ...overrides,
   };
+}
+
+// This tests a cross-row limit ("no more than 8 featured") against the real
+// shared database (see BUILD_TASKS.md -- there's no disposable local test
+// DB), so a test can't just assume it starts from zero featured products:
+// it fills up to whatever headroom actually exists right now, rather than
+// hardcoding 8 iterations.
+async function currentFeaturedCount(): Promise<number> {
+  const rows = await db.select({ id: products.id }).from(products).where(eq(products.featured, true));
+  return rows.length;
 }
 
 describe("admin products route — featured limit", () => {
@@ -42,6 +55,15 @@ describe("admin products route — featured limit", () => {
     vi.mocked(requireAdmin).mockReset();
   });
 
+  // Safety net, not the primary cleanup: if a bug ever again lets an id go
+  // untracked (the exact failure mode that previously left 11 "Test
+  // Product" rows live on the real site), this catches it instead of
+  // leaking test data into production. Scoped to this file's own
+  // distinctive title so it can never touch a real admin's product.
+  afterAll(async () => {
+    await db.delete(products).where(eq(products.title, TEST_PRODUCT_TITLE));
+  });
+
   async function signInAsAdmin() {
     const [admin] = await db
       .insert(users)
@@ -51,16 +73,24 @@ describe("admin products route — featured limit", () => {
     vi.mocked(requireAdmin).mockResolvedValue({ userId: adminUserId, email: "admin@example.com", role: "admin" });
   }
 
+  // Creates products until `featured` is at the cap, asserting each create
+  // succeeds and only ever recording a real id (never pushes `undefined` on
+  // a failed create, which previously corrupted this test's own cleanup
+  // query and masked the real failure behind an unrelated DB error).
+  async function fillFeaturedToLimit() {
+    const toCreate = Math.max(0, MAX_FEATURED_PRODUCTS - (await currentFeaturedCount()));
+    for (let i = 0; i < toCreate; i++) {
+      const res = await POST(request(baseProduct({ featured: true })));
+      expect(res.status).toBe(200);
+      const json = (await res.json()) as { id?: string };
+      if (json.id) createdProductIds.push(json.id);
+    }
+  }
+
   it("rejects featuring a 9th product once 8 are already featured", async () => {
     createdProductIds = [];
     await signInAsAdmin();
-
-    for (let i = 0; i < 8; i++) {
-      const res = await POST(request(baseProduct({ featured: true })));
-      expect(res.status).toBe(200);
-      const json = (await res.json()) as { id: string };
-      createdProductIds.push(json.id);
-    }
+    await fillFeaturedToLimit();
 
     const res = await POST(request(baseProduct({ featured: true })));
     expect(res.status).toBe(400);
@@ -71,30 +101,21 @@ describe("admin products route — featured limit", () => {
   it("allows a 9th non-featured product even at the featured limit", async () => {
     createdProductIds = [];
     await signInAsAdmin();
-
-    for (let i = 0; i < 8; i++) {
-      const res = await POST(request(baseProduct({ featured: true })));
-      const json = (await res.json()) as { id: string };
-      createdProductIds.push(json.id);
-    }
+    await fillFeaturedToLimit();
 
     const res = await POST(request(baseProduct({ featured: false })));
     expect(res.status).toBe(200);
-    const json = (await res.json()) as { id: string };
-    createdProductIds.push(json.id);
+    const json = (await res.json()) as { id?: string };
+    if (json.id) createdProductIds.push(json.id);
   });
 
   it("allows re-saving an already-featured product at the limit (not a new addition)", async () => {
     createdProductIds = [];
     await signInAsAdmin();
+    await fillFeaturedToLimit();
 
-    let featuredId = "";
-    for (let i = 0; i < 8; i++) {
-      const res = await POST(request(baseProduct({ featured: true })));
-      const json = (await res.json()) as { id: string };
-      createdProductIds.push(json.id);
-      if (i === 0) featuredId = json.id;
-    }
+    const featuredId = createdProductIds[0];
+    expect(featuredId).toBeTruthy();
 
     const res = await PATCH(request({ ...baseProduct({ featured: true }), id: featuredId }, "PATCH"));
     expect(res.status).toBe(200);
