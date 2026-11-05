@@ -31,14 +31,24 @@ const MAX_PAGE_POINTS_PER_SIDE = 60 * 72; // 60 inches, in PDF points (72/inch)
 // fully close the gap on its own).
 const MAX_PIXELS = 50_000_000; // 50 megapixels
 
+// We don't collect page count/paper type from the admin, so the exact spine
+// width (which depends on both) isn't known -- a plain 50/50 split left a
+// visible sliver of the spine in both the back and front crops. Instead of
+// cutting exactly at the midpoint, each crop stops this fraction of the
+// full image width short of it, discarding a band centered on the midpoint
+// that's wide enough to clear the spine for any trim/page-count this project
+// sells (checked against this project's own cover-spine math: the widest
+// spine relative to a full wrap's width is well under 5%). This is still an
+// estimate, not true spine detection -- a very long/thick book could in
+// principle have a wider spine than this margin covers.
+const SPINE_MARGIN_FRACTION = 0.04;
+
 /**
  * Splits a full-wrap book cover PDF (back cover + spine + front cover, all
  * on one page, as KDP's print-cover template produces) into two JPEG
- * images: the left half (back cover) and the right half (front cover).
- *
- * No spine detection -- the PDF is just cut down the middle. Exact spine
- * width depends on page count/paper type, which we don't ask the admin for;
- * a plain 50/50 split is an accepted simplification here.
+ * images: the left side (back cover) and the right side (front cover), each
+ * stopping short of the midpoint by SPINE_MARGIN_FRACTION so the spine
+ * itself doesn't bleed into either crop.
  *
  * Security note: a malicious PDF could in principle declare an embedded
  * image's pixel dimensions far larger than its physical page size (the
@@ -84,8 +94,15 @@ export async function splitBookCoverPdf(
 
   try {
     const midpoint = Math.floor(image.width / 2);
-    const backImage = crop(photonImage, 0, 0, midpoint, image.height);
-    const frontImage = crop(photonImage, midpoint, 0, image.width, image.height);
+    const margin = Math.round(image.width * SPINE_MARGIN_FRACTION);
+    const backImage = crop(photonImage, 0, 0, Math.max(1, midpoint - margin), image.height);
+    const frontImage = crop(
+      photonImage,
+      Math.min(image.width - 1, midpoint + margin),
+      0,
+      image.width,
+      image.height
+    );
 
     try {
       return {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PhotonImage } from "@cf-wasm/photon";
 import { CoverTooLargeError, NoCoverImageFoundError, splitBookCoverPdf } from "./bookCover";
 
 /**
@@ -98,6 +99,54 @@ describe("splitBookCoverPdf", () => {
     // A real image, not an accidental swap or no-op -- the two halves must
     // actually differ once re-encoded.
     expect(back).not.toEqual(front);
+  });
+
+  it("stops each crop short of the midpoint, so the spine band isn't included in either", async () => {
+    // Wide image so the 4%-of-width spine margin is more than a rounding
+    // error: left quarter red (back cover), right quarter blue (front
+    // cover), with a green band across the middle (the spine) that neither
+    // crop should include any of.
+    const width = 200;
+    const height = 10;
+    const rgb = new Uint8Array(width * height * 3);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 3;
+        const midpoint = width / 2;
+        const inSpineBand = Math.abs(x - midpoint) < width * 0.03; // narrower than the 4% margin on each side
+        const [r, g, b] = inSpineBand ? [0, 255, 0] : x < midpoint ? [255, 0, 0] : [0, 0, 255];
+        rgb[i] = r;
+        rgb[i + 1] = g;
+        rgb[i + 2] = b;
+      }
+    }
+    const pdf = buildTestCoverPdf(width, height, rgb);
+
+    const { back, front } = await splitBookCoverPdf(pdf);
+
+    const backImage = PhotonImage.new_from_byteslice(back);
+    const frontImage = PhotonImage.new_from_byteslice(front);
+    try {
+      // Each crop should be narrower than a plain 50/50 split (100px) --
+      // the spine margin was actually excluded, not a no-op.
+      expect(backImage.get_width()).toBeLessThan(width / 2);
+      expect(frontImage.get_width()).toBeLessThan(width / 2);
+
+      const backPixels = backImage.get_raw_pixels();
+      const frontPixels = frontImage.get_raw_pixels();
+      // The rightmost column of the back crop (closest to the spine) and
+      // the leftmost column of the front crop should both be pure red/blue,
+      // not the green spine color re-encoded in from JPEG compression noise
+      // -- checked loosely since JPEG is lossy.
+      const backW = backImage.get_width();
+      const lastBackPixel = [backPixels[(backW - 1) * 4], backPixels[(backW - 1) * 4 + 1], backPixels[(backW - 1) * 4 + 2]];
+      const firstFrontPixel = [frontPixels[0], frontPixels[1], frontPixels[2]];
+      expect(lastBackPixel[1]).toBeLessThan(80); // not green
+      expect(firstFrontPixel[1]).toBeLessThan(80); // not green
+    } finally {
+      backImage.free();
+      frontImage.free();
+    }
   });
 
   it("throws NoCoverImageFoundError when the PDF has no embedded image", async () => {

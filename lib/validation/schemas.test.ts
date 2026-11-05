@@ -197,6 +197,27 @@ describe("productSchema", () => {
     expect(productSchema.safeParse({ ...base, imageUrl: null, imageAlt: null }).success).toBe(true);
   });
 
+  it("rejects a non-book product image with no alt text", () => {
+    expect(
+      productSchema.safeParse({ ...base, type: "study_access", imageUrl: "https://example.com/a.jpg", imageAlt: null })
+        .success
+    ).toBe(false);
+  });
+
+  it("allows a book's front/back cover images with no alt text", () => {
+    expect(
+      productSchema.safeParse({
+        ...base,
+        type: "book",
+        format: "physical",
+        imageUrl: "https://example.com/front.jpg",
+        imageAlt: null,
+        backImageUrl: "https://example.com/back.jpg",
+        backImageAlt: null,
+      }).success
+    ).toBe(true);
+  });
+
   it("defaults sellOnStripe to true when omitted", () => {
     const parsed = productSchema.safeParse(base);
     expect(parsed.success && parsed.data.sellOnStripe).toBe(true);

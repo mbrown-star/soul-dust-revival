@@ -6,7 +6,7 @@ export async function SiteHeader() {
   const session = await getSession();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-ink/20 bg-dusk/95 backdrop-blur-sm no-print">
+    <header className="sticky top-0 z-40 border-b border-ink/20 bg-ink/95 backdrop-blur-sm no-print">
       <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
         <Link
           href="/"

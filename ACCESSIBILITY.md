@@ -35,18 +35,25 @@ are outside what code can determine.
   (WCAG 2.4.3).
 
 **Images**
-- `alt` text is a **required field in the admin UI** wherever an image can be attached
-  (product images, study cover images, in-lesson image blocks, book front/back covers)
-  — the save button is disabled until it's filled in, rather than defaulting to an
-  empty `alt=""` and hoping someone fills it in later (WCAG 1.1.1). Also enforced at
-  the API layer (`productSchema`'s `.refine()` checks) so a direct API call can't skip
-  the UI's guard — this specific gap (alt text shipped unwired) happened twice before
-  per `AUDIT.md`, so it's closed at both layers now.
+- `alt` text is a **required field in the admin UI** wherever a non-book product image
+  can be attached (product images, study cover images, in-lesson image blocks) — the
+  save button is disabled until it's filled in, rather than defaulting to an empty
+  `alt=""` and hoping someone fills it in later (WCAG 1.1.1). Also enforced at the API
+  layer (`productSchema`'s `.refine()` check) so a direct API call can't skip the UI's
+  guard — this specific gap (alt text shipped unwired) happened twice before per
+  `AUDIT.md`, so it's closed at both layers now.
+  - **Exception, by explicit decision (2026-11-05):** book front/back cover images
+    (`imageUrl`/`backImageUrl` on a `type: "book"` product) are exempt from this
+    requirement — the admin can still add alt text for them, but isn't forced to.
+    A missing alt renders as `alt=""` (decorative) on the storefront
+    (`app/(marketing)/books/[slug]/page.tsx`, `CoverGallery.tsx`), which is a real
+    accessibility trade-off for book covers specifically, not a gap fixed elsewhere.
 - `components/commerce/CoverGallery.tsx` (book front/back cover gallery): each cover
-  image gets its own distinct alt text; prev/next controls and the position dots are
-  real `<button>`s with `aria-label`s, fully keyboard-operable; `prefers-reduced-motion`
-  is respected for the scroll animation (both via CSS and a JS `matchMedia` check,
-  since programmatic `scrollTo({behavior: "smooth"})` ignores the CSS declaration).
+  image gets its own distinct alt text when one is set; prev/next controls and the
+  position dots are real `<button>`s with `aria-label`s, fully keyboard-operable;
+  `prefers-reduced-motion` is respected for the scroll animation (both via CSS and a
+  JS `matchMedia` check, since programmatic `scrollTo({behavior: "smooth"})` ignores
+  the CSS declaration).
 
 **Video & audio**
 - Video blocks require a `.vtt` captions file before the admin UI treats the block as

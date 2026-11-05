@@ -53,10 +53,10 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
   const [saving, setSaving] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  const altTextMissing =
-    (!!values.imageUrl && values.imageAlt.trim().length === 0) ||
-    (!!values.backImageUrl && values.backImageAlt.trim().length === 0);
   const isBook = values.type === "book";
+  // Book cover alt text (front and back) is optional -- only a non-book
+  // product image still requires it.
+  const altTextMissing = !isBook && !!values.imageUrl && values.imageAlt.trim().length === 0;
   const isPhysical = values.format === "physical";
   const noPurchaseRoute = !values.sellOnStripe && !values.amazonUrl;
 
@@ -283,7 +283,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={values.backImageUrl}
-                alt={values.backImageAlt || "Untitled back cover — add alt text below"}
+                alt={values.backImageAlt || "Back cover preview"}
                 className="w-24 h-24 object-cover rounded"
               />
             )}
@@ -291,7 +291,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={values.imageUrl}
-                alt={values.imageAlt || "Untitled front cover — add alt text below"}
+                alt={values.imageAlt || "Front cover preview"}
                 className="w-24 h-24 object-cover rounded"
               />
             )}
@@ -321,13 +321,10 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
           {values.backImageUrl && (
             <div className="mt-2">
               <label htmlFor={backAltId} className="block text-sm font-medium mb-1">
-                Back cover alt text <span aria-hidden="true" className="text-red-600">*</span>
-                <span className="sr-only"> (required)</span>
+                Back cover alt text <span className="text-neutral-500 font-normal">(optional)</span>
               </label>
               <input
                 id={backAltId}
-                required
-                aria-invalid={!!values.backImageUrl && values.backImageAlt.trim().length === 0}
                 className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
                 placeholder="Describe the back cover for screen reader users"
                 value={values.backImageAlt}
@@ -339,24 +336,15 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
           {values.imageUrl && (
             <div className="mt-2">
               <label htmlFor={altId} className="block text-sm font-medium mb-1">
-                Front cover alt text <span aria-hidden="true" className="text-red-600">*</span>
-                <span className="sr-only"> (required)</span>
+                Front cover alt text <span className="text-neutral-500 font-normal">(optional)</span>
               </label>
               <input
                 id={altId}
-                required
-                aria-describedby={altTextMissing ? `${altId}-error` : undefined}
-                aria-invalid={!!values.imageUrl && values.imageAlt.trim().length === 0}
                 className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
                 placeholder="Describe the front cover for screen reader users"
                 value={values.imageAlt}
                 onChange={(e) => setValues((v) => ({ ...v, imageAlt: e.target.value }))}
               />
-              {altTextMissing && (
-                <p id={`${altId}-error`} className="text-sm text-red-600 mt-1">
-                  Alt text is required whenever an image is attached (WCAG 1.1.1).
-                </p>
-              )}
             </div>
           )}
         </div>

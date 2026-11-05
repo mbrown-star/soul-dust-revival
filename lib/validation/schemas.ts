@@ -56,9 +56,9 @@ export const productSchema = z
     format: z.enum(["physical", "digital"]),
     type: z.enum(["book", "study_access", "bundle"]),
     imageUrl: z.string().url().optional().nullable(), // front cover, for book products
-    imageAlt: z.string().max(300).optional().nullable(), // required in the UI whenever imageUrl is set
+    imageAlt: z.string().max(300).optional().nullable(), // required in the UI for a non-book product image; optional for book covers
     backImageUrl: z.string().url().optional().nullable(),
-    backImageAlt: z.string().max(300).optional().nullable(), // required in the UI whenever backImageUrl is set
+    backImageAlt: z.string().max(300).optional().nullable(), // optional -- back cover images aren't required to have alt text
     coverPdfUrl: z.string().url().optional().nullable(),
     // This becomes an <a href> rendered to every visitor, so it's checked
     // against the *parsed hostname* (https-only, host ending in a real
@@ -110,13 +110,12 @@ export const productSchema = z
   // text (WCAG 1.1.1). This exact class of gap (alt text shipped unwired)
   // has happened twice before per CLAUDE.md/AUDIT.md; closing it at the
   // schema level means it can't recur a third time regardless of UI changes.
-  .refine((p) => !p.imageUrl || !!p.imageAlt?.trim(), {
-    message: "Alt text is required whenever a front cover image is set",
+  // Book cover images (front/back) are exempt from this, per an explicit
+  // 2026-11-05 decision -- see CLAUDE.md. A generic product image (anything
+  // that isn't type "book") still requires alt text.
+  .refine((p) => p.type === "book" || !p.imageUrl || !!p.imageAlt?.trim(), {
+    message: "Alt text is required whenever a product image is set",
     path: ["imageAlt"],
-  })
-  .refine((p) => !p.backImageUrl || !!p.backImageAlt?.trim(), {
-    message: "Alt text is required whenever a back cover image is set",
-    path: ["backImageAlt"],
   });
 
 // ---------- Admin: studies ----------
