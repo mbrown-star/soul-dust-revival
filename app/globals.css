@@ -52,6 +52,24 @@ body {
   }
 }
 
+/* EXPERIMENTAL — trying the cover system's mottle treatment (cloud blotch +
+   fine grain + vignette, from the Design System's cover-mottles) on page
+   surfaces, just to see it in context. Pure CSS, no bitmaps: two SVG
+   turbulence layers plus two radial-gradient vignette layers, blended onto
+   whatever background-color the element already has via Tailwind's bg-*
+   classes — so it adds texture without touching layout or content, and can
+   be dropped from any element by removing this one class. Not wired to a
+   design token or applied site-wide yet; this is a visual trial only. */
+.mottle {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E"),
+    radial-gradient(115% 85% at 50% 32%, rgba(255, 255, 255, 0.16), transparent 58%),
+    radial-gradient(125% 115% at 50% 50%, transparent 40%, rgba(0, 0, 0, 0.3) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.014' numOctaves='5' seed='7' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23c)'/%3E%3C/svg%3E");
+  background-size: 160px 160px, auto, auto, 160% 160%;
+  background-blend-mode: soft-light, soft-light, soft-light, overlay;
+}
+
 /* Hidden on screen — only rendered when printing a lesson page (see the
    study-content-protected rule below). */
 .print-only-notice {

@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export function SiteFooter() {
   return (
-    <footer className="bg-ink text-parchment mt-20 no-print">
+    <footer className="bg-ink text-parchment mt-20 mottle no-print">
       <div className="max-w-5xl mx-auto px-4 py-12">
         <p className="font-display font-black text-lg mb-1">
           Soul Dust <span className="text-gold">Revival</span>

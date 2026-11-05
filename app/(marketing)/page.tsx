@@ -77,7 +77,7 @@ export default async function HomePage() {
       </section>
 
       {/* How a study works — a genuine sequence, so numbered steps earn their place here */}
-      <section className="bg-dusk text-parchment">
+      <section className="bg-dusk text-parchment mottle">
         <div className="max-w-5xl mx-auto px-4 py-16 sm:py-20">
           <h2 className="font-display font-bold text-2xl sm:text-3xl mb-10">
             How a study works
