@@ -29,6 +29,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           amazonUrl: product.amazonUrl,
           sellOnStripe: product.sellOnStripe,
           active: product.active,
+          featured: product.featured,
         }}
       />
     </div>
