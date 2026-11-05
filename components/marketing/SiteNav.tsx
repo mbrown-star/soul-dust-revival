@@ -1,17 +1,35 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { CartLink } from "./CartLink";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type NavItem = { label: string; href: string };
 
-const linkClass =
-  "text-parchment/80 hover:text-gold focus:outline-none focus:ring-2 focus:ring-gold rounded p-1 -m-1";
+// No ring/box around a focused or just-clicked item -- focus is still
+// visible (WCAG 2.4.7), just via the same text-color change already used
+// for hover, rather than an outline.
+const linkClass = "text-parchment/80 hover:text-gold focus:outline-none focus:text-gold p-1 -m-1";
 
 export function SiteNav({ loggedIn }: { loggedIn: boolean }) {
+  const router = useRouter();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+
+  // Same sign-out sequence as AccountPageClient.tsx: clear the Supabase
+  // session client-side, then refresh so every server-rendered bit of the
+  // page (this nav included) re-fetches with no session.
+  async function handleLogOut() {
+    setLoggingOut(true);
+    setProfileOpen(false);
+    const supabase = createSupabaseBrowserClient();
+    await supabase.auth.signOut();
+    router.push("/");
+    router.refresh();
+  }
 
   // Closes on an outside click or Escape -- a menu that can only be
   // dismissed by clicking exactly the toggle button again is a real
@@ -39,18 +57,33 @@ export function SiteNav({ loggedIn }: { loggedIn: boolean }) {
     };
   }, [profileOpen]);
 
-  // Items that only make sense once signed in sit at the far left, set off
-  // from the public items (visible to every visitor) by a vertical rule.
-  const loggedInItems: NavItem[] = [{ label: "Your Studies", href: "/studies" }];
+  // Public items (visible to every visitor) sit at the left. Items that only
+  // make sense once signed in sit at the far right, set off from the public
+  // items by a vertical rule.
   const publicItems: NavItem[] = [
     { label: "Books & Studies", href: "/books" },
     { label: "Blog", href: "/blog" },
   ];
+  const loggedInItems: NavItem[] = [{ label: "Your Studies", href: "/studies" }];
 
   return (
     <nav aria-label="Primary" className="flex items-center gap-4 sm:gap-6 font-sans text-sm font-medium">
+      {publicItems.map((item) => (
+        <Link key={item.href} href={item.href} className={linkClass}>
+          {item.label}
+        </Link>
+      ))}
+      <CartLink />
+      {!loggedIn && (
+        <Link href="/login" className={linkClass}>
+          Log in
+        </Link>
+      )}
+
       {loggedIn && (
         <>
+          {/* Vertical spacer between the non-logged-in and logged-in items. */}
+          <div aria-hidden="true" className="w-px h-5 bg-parchment/20" />
           {loggedInItems.map((item) => (
             <Link key={item.href} href={item.href} className={linkClass}>
               {item.label}
@@ -82,34 +115,29 @@ export function SiteNav({ loggedIn }: { loggedIn: boolean }) {
               <div
                 role="menu"
                 aria-label="Profile"
-                className="absolute left-0 mt-2 w-44 bg-ink border border-parchment/15 rounded-lg shadow-lg py-1 z-10"
+                className="absolute right-0 mt-2 w-44 bg-ink border border-parchment/15 rounded-lg shadow-lg py-1 z-10"
               >
                 <Link
                   href="/account"
                   role="menuitem"
                   onClick={() => setProfileOpen(false)}
-                  className="flex items-center min-h-[44px] px-4 text-parchment/90 hover:bg-parchment/10 hover:text-gold focus:outline-none focus:ring-2 focus:ring-gold focus:ring-inset"
+                  className="flex items-center min-h-[44px] px-4 text-parchment/90 hover:bg-parchment/10 hover:text-gold focus:outline-none focus:text-gold"
                 >
                   Account
                 </Link>
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={loggingOut}
+                  onClick={handleLogOut}
+                  className="flex items-center w-full min-h-[44px] px-4 text-parchment/90 hover:bg-parchment/10 hover:text-gold focus:outline-none focus:text-gold disabled:opacity-50"
+                >
+                  {loggingOut ? "Logging out..." : "Log out"}
+                </button>
               </div>
             )}
           </div>
-          {/* Vertical spacer between the logged-in and public/non-logged-in items. */}
-          <div aria-hidden="true" className="w-px h-5 bg-parchment/20" />
         </>
-      )}
-
-      {publicItems.map((item) => (
-        <Link key={item.href} href={item.href} className={linkClass}>
-          {item.label}
-        </Link>
-      ))}
-      <CartLink />
-      {!loggedIn && (
-        <Link href="/login" className={linkClass}>
-          Log in
-        </Link>
       )}
     </nav>
   );
