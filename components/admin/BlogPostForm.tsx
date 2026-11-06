@@ -3,6 +3,7 @@
 import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { RichTextEditor } from "./RichTextEditor";
+import { Button } from "@/components/ui/Button";
 
 type BlogFormValues = {
   id?: string;
@@ -223,23 +224,14 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
         {error && <p role="alert" className="text-sm text-error">{error}</p>}
 
         <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={saving || deleting || bodyEmpty}
-            className="bg-ink text-white rounded-lg px-6 py-3 disabled:opacity-50"
-          >
+          <Button type="submit" disabled={saving || deleting || bodyEmpty}>
             {saving ? "Saving..." : values.published ? "Save & publish" : "Save draft"}
-          </button>
+          </Button>
 
           {initial?.id && (
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={saving || deleting}
-              className="text-error rounded-lg px-4 py-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error"
-            >
+            <Button type="button" variant="danger" onClick={handleDelete} disabled={saving || deleting}>
               {deleting ? "Deleting..." : "Delete post"}
-            </button>
+            </Button>
           )}
         </div>
       </form>

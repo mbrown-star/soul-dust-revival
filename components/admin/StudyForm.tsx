@@ -2,6 +2,7 @@
 
 import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
 
 type StudyFormValues = {
   id?: string;
@@ -220,23 +221,14 @@ export function StudyForm({
       )}
 
       <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={saving || deleting || uploading || altTextMissing}
-          className="bg-ink text-white rounded-lg px-6 py-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink"
-        >
+        <Button type="submit" disabled={saving || deleting || uploading || altTextMissing}>
           {saving ? "Saving..." : "Save study"}
-        </button>
+        </Button>
 
         {initial?.id && (
-          <button
-            type="button"
-            onClick={handleDelete}
-            disabled={saving || deleting}
-            className="text-error rounded-lg px-4 py-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error"
-          >
+          <Button type="button" variant="danger" onClick={handleDelete} disabled={saving || deleting}>
             {deleting ? "Deleting..." : "Delete study"}
-          </button>
+          </Button>
         )}
       </div>
     </form>
