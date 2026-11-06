@@ -166,23 +166,31 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
     };
     const body = initial?.id ? { ...payload, id: initial.id } : payload;
 
-    const res = await fetch("/api/admin/products", {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    try {
+      const res = await fetch("/api/admin/products", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
 
-    if (!res.ok) {
-      const data = (await res.json().catch(() => ({ message: "Save failed" }))) as { message?: unknown };
-      setValidationError(
-        typeof data.message === "string" ? data.message : "Couldn't save — check the form for errors."
-      );
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({ message: "Save failed" }))) as { message?: unknown };
+        setValidationError(
+          typeof data.message === "string" ? data.message : "Couldn't save — check the form for errors."
+        );
+        setSaving(false);
+        return;
+      }
+
+      router.push("/admin/products");
+      router.refresh();
+    } catch {
+      // A network failure here (not a server error response, which is
+      // handled above) would otherwise leave the button on "Saving..."
+      // forever with setSaving(false) never reached.
+      setValidationError("Save failed — the server didn't respond as expected. Please try again.");
       setSaving(false);
-      return;
     }
-
-    router.push("/admin/products");
-    router.refresh();
   }
 
   async function handleDelete() {

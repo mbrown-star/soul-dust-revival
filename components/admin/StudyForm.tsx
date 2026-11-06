@@ -63,19 +63,37 @@ export function StudyForm({
     e.preventDefault();
     if (altTextMissing) return;
     setSaving(true);
+    setError(null);
 
     const method = initial?.id ? "PATCH" : "POST";
     const body = initial?.id ? { ...values, id: initial.id } : values;
 
-    const res = await fetch("/api/admin/studies", {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const study = (await res.json()) as { id: string };
+    // Guards against both a validation failure (res.ok false, a real error
+    // body to show) and a genuinely broken response (network failure, or a
+    // server crash returning an empty/non-JSON body, where res.json() itself
+    // throws) -- either way this always surfaces an error and always resets
+    // saving, instead of leaving the button on "Saving..." forever with no
+    // feedback (the exact bug the unguarded version of this had).
+    try {
+      const res = await fetch("/api/admin/studies", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = (await res.json()) as { id?: string; message?: string; error?: string };
 
-    router.push(`/admin/studies/${study.id}`);
-    router.refresh();
+      if (!res.ok || !data.id) {
+        setError(data.message ?? data.error ?? "Couldn't save this study.");
+        setSaving(false);
+        return;
+      }
+
+      router.push(`/admin/studies/${data.id}`);
+      router.refresh();
+    } catch {
+      setError("Save failed — the server didn't respond as expected. Please try again.");
+      setSaving(false);
+    }
   }
 
   async function handleDelete() {

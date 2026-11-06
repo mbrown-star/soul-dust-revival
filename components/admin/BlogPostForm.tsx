@@ -85,27 +85,38 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
       ? { id: initial.id, ...values }
       : { ...values, sourceType: usedAiDraft ? "ai_suggested" : "manual", aiPrompt: customInstruction || undefined };
 
-    const res = await fetch("/api/admin/blog/posts", {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = (await res.json()) as { id: string; message?: string };
+    // Guards against both a validation failure (res.ok false, a real error
+    // body to show) and a genuinely broken response (network failure, or a
+    // server crash returning an empty/non-JSON body, where res.json() itself
+    // throws) -- either way this always surfaces an error and always resets
+    // saving, instead of leaving the button on "Saving..." forever with no
+    // feedback.
+    try {
+      const res = await fetch("/api/admin/blog/posts", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = (await res.json()) as { id?: string; message?: string };
 
-    if (!res.ok) {
-      setError(data.message ?? "Couldn't save that post.");
+      if (!res.ok || !data.id) {
+        setError(data.message ?? "Couldn't save that post.");
+        setSaving(false);
+        return;
+      }
+
+      // Editing an existing post pushes to the URL it's already on, which is a
+      // no-op navigation -- this component stays mounted, so saving must be
+      // cleared explicitly here rather than relying on a route change to reset
+      // it (that only happened to work for a brand-new post, which navigates
+      // to a different URL and unmounts this instance).
       setSaving(false);
-      return;
+      router.push(`/admin/blog/${data.id}`);
+      router.refresh();
+    } catch {
+      setError("Save failed — the server didn't respond as expected. Please try again.");
+      setSaving(false);
     }
-
-    // Editing an existing post pushes to the URL it's already on, which is a
-    // no-op navigation -- this component stays mounted, so saving must be
-    // cleared explicitly here rather than relying on a route change to reset
-    // it (that only happened to work for a brand-new post, which navigates
-    // to a different URL and unmounts this instance).
-    setSaving(false);
-    router.push(`/admin/blog/${data.id}`);
-    router.refresh();
   }
 
   async function handleDelete() {
