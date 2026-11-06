@@ -149,4 +149,85 @@ describe("POST /api/checkout", () => {
       await db.delete(products).where(eq(products.id, amazonOnlyProduct!.id));
     }
   });
+
+  describe("format: \"both\" products", () => {
+    async function makeBothProduct() {
+      const [product] = await db
+        .insert(products)
+        .values({
+          type: "book",
+          format: "both",
+          title: "Both Format Book",
+          slug: `both-format-${randomUUID()}`,
+          priceCents: 1999, // physical
+          digitalPriceCents: 999, // digital
+          active: true,
+        })
+        .returning();
+      return product!;
+    }
+
+    it("rejects a line item with no variant", async () => {
+      vi.mocked(getSession).mockResolvedValue({ userId: randomUUID(), email: "buyer@example.com" });
+      const product = await makeBothProduct();
+      try {
+        const res = await POST(checkoutRequest({ items: [{ productId: product.id, quantity: 1 }], country: "US" }));
+        expect(res.status).toBe(400);
+      } finally {
+        await db.delete(products).where(eq(products.id, product.id));
+      }
+    });
+
+    it("rejects a variant on a product that isn't format \"both\"", async () => {
+      vi.mocked(getSession).mockResolvedValue({ userId, email: "buyer@example.com" });
+      const res = await POST(
+        checkoutRequest({
+          items: [{ productId: digitalProductId, quantity: 1, variant: "digital" }],
+          country: "US",
+        })
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("prices the digital variant from digitalPriceCents, not priceCents", async () => {
+      vi.mocked(getSession).mockResolvedValue({ userId, email: "buyer@example.com" });
+      const product = await makeBothProduct();
+      try {
+        const res = await POST(
+          checkoutRequest({
+            items: [{ productId: product.id, quantity: 1, variant: "digital" }],
+            country: "US",
+          })
+        );
+        expect(res.status).toBe(200);
+        const [order] = await db.select().from(orders).where(eq(orders.userId, userId));
+        expect(order!.totalCents).toBe(999);
+        await db.delete(orderItems).where(eq(orderItems.orderId, order!.id));
+        await db.delete(orders).where(eq(orders.id, order!.id));
+      } finally {
+        await db.delete(products).where(eq(products.id, product.id));
+      }
+    });
+
+    it("prices the physical variant from priceCents and requires shipping", async () => {
+      vi.mocked(getSession).mockResolvedValue({ userId, email: "buyer@example.com" });
+      const product = await makeBothProduct();
+      try {
+        const res = await POST(
+          checkoutRequest({
+            items: [{ productId: product.id, quantity: 1, variant: "physical" }],
+            country: "US",
+          })
+        );
+        expect(res.status).toBe(200);
+        const [order] = await db.select().from(orders).where(eq(orders.userId, userId));
+        expect(order!.totalCents).toBe(1999);
+        expect(order!.requiresShipping).toBe(true);
+        await db.delete(orderItems).where(eq(orderItems.orderId, order!.id));
+        await db.delete(orders).where(eq(orders.id, order!.id));
+      } finally {
+        await db.delete(products).where(eq(products.id, product.id));
+      }
+    });
+  });
 });

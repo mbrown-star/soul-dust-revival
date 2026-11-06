@@ -31,6 +31,7 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
   const [drafts, setDrafts] = useState<{ title: string; body: string }[]>([]);
   const [usedAiDraft, setUsedAiDraft] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
@@ -103,6 +104,29 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
     // to a different URL and unmounts this instance).
     setSaving(false);
     router.push(`/admin/blog/${data.id}`);
+    router.refresh();
+  }
+
+  async function handleDelete() {
+    if (!initial?.id) return;
+    if (!window.confirm(`Delete "${values.title || "this post"}"? This can't be undone.`)) return;
+    setDeleting(true);
+    setError(null);
+
+    const res = await fetch("/api/admin/blog/posts", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: initial.id }),
+    });
+
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({ message: "Delete failed" }))) as { message?: unknown };
+      setError(typeof data.message === "string" ? data.message : "Couldn't delete this post.");
+      setDeleting(false);
+      return;
+    }
+
+    router.push("/admin/blog");
     router.refresh();
   }
 
@@ -198,13 +222,26 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
 
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
-        <button
-          type="submit"
-          disabled={saving || bodyEmpty}
-          className="bg-neutral-900 text-white rounded-lg px-6 py-3 disabled:opacity-50"
-        >
-          {saving ? "Saving..." : values.published ? "Save & publish" : "Save draft"}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="submit"
+            disabled={saving || deleting || bodyEmpty}
+            className="bg-neutral-900 text-white rounded-lg px-6 py-3 disabled:opacity-50"
+          >
+            {saving ? "Saving..." : values.published ? "Save & publish" : "Save draft"}
+          </button>
+
+          {initial?.id && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={saving || deleting}
+              className="text-red-600 rounded-lg px-4 py-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-600"
+            >
+              {deleting ? "Deleting..." : "Delete post"}
+            </button>
+          )}
+        </div>
       </form>
     </div>
   );

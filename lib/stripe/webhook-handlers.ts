@@ -49,16 +49,37 @@ export async function handleCheckoutCompleted(session: Stripe.Checkout.Session, 
   const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
   const productIds = items.map((i) => i.productId);
   const orderedProducts = await db.select().from(products).where(inArray(products.id, productIds));
+  const productById = new Map(orderedProducts.map((p) => [p.id, p]));
 
-  const digitalProducts = orderedProducts.filter((p) => p.format === "digital");
-  const hasPhysical = orderedProducts.some((p) => p.format === "physical");
+  // A format "both" product has its physical/digital sides decided per
+  // order item (its `variant`), not by the product's own static format —
+  // the product itself offers both, but any one purchase of it is only one
+  // or the other. Every other format still decides this from the product
+  // alone, same as before.
+  const isDigitalItem = (item: (typeof items)[number]) => {
+    const product = productById.get(item.productId)!;
+    return product.format === "digital" || (product.format === "both" && item.variant === "digital");
+  };
+  const isPhysicalItem = (item: (typeof items)[number]) => {
+    const product = productById.get(item.productId)!;
+    return product.format === "physical" || (product.format === "both" && item.variant === "physical");
+  };
 
-  // Only digital/webapp content grants an entitlement — physical books just ship.
+  const digitalItems = items.filter(isDigitalItem);
+  const hasPhysical = items.some(isPhysicalItem);
+
+  // Only digital/webapp content grants an entitlement — physical books just
+  // ship. One entitlement per distinct product, even if it somehow appears
+  // in more than one digital line item (quantity already covers "more than
+  // one copy" without needing more than one entitlement row).
   if (order.userId) {
-    for (const product of digitalProducts) {
+    const grantedProductIds = new Set<string>();
+    for (const item of digitalItems) {
+      if (grantedProductIds.has(item.productId)) continue;
+      grantedProductIds.add(item.productId);
       await db.insert(entitlements).values({
         userId: order.userId,
-        productId: product.id,
+        productId: item.productId,
         source: "purchase",
         expiresAt: null,
       });
@@ -66,7 +87,7 @@ export async function handleCheckoutCompleted(session: Stripe.Checkout.Session, 
   }
 
   const composition: "physical_only" | "digital_only" | "mixed" =
-    hasPhysical && digitalProducts.length > 0
+    hasPhysical && digitalItems.length > 0
       ? "mixed"
       : hasPhysical
       ? "physical_only"
@@ -78,9 +99,15 @@ export async function handleCheckoutCompleted(session: Stripe.Checkout.Session, 
     to: recipientEmail,
     orderId: order.id,
     composition,
-    hasWebAppAccess: digitalProducts.length > 0,
+    hasWebAppAccess: digitalItems.length > 0,
     totalCents: session.amount_total ?? order.totalCents,
-    items: orderedProducts.map((p) => ({ title: p.title, priceCents: p.priceCents })),
+    items: items.map((item) => {
+      const product = productById.get(item.productId)!;
+      const digital = isDigitalItem(item);
+      const priceCents = digital && product.format === "both" ? product.digitalPriceCents! : product.priceCents;
+      const title = product.format === "both" ? `${product.title} (${digital ? "Digital" : "Physical"})` : product.title;
+      return { title, priceCents };
+    }),
     appUrl,
   });
 }

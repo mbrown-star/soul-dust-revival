@@ -14,6 +14,10 @@ export const checkoutSchema = z.object({
       z.object({
         productId: z.string().uuid(),
         quantity: z.number().int().min(1).max(50), // cap prevents absurd/abusive orders
+        // Which half of a format: "both" product this line item is — required
+        // only for those; the route validates it against the product's own
+        // format server-side, never trusting it alone to pick a price.
+        variant: z.enum(["physical", "digital"]).optional(),
       })
     )
     .min(1)
@@ -52,13 +56,17 @@ export const productSchema = z
       .max(200)
       .regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers, and hyphens only"),
     description: z.string().max(5_000).optional().nullable(),
+    // Physical price for "both"; the only price for "physical"/"digital".
     priceCents: z.number().int().min(0).max(100_000_00), // sanity ceiling: $100,000
-    format: z.enum(["physical", "digital"]),
+    // Digital price, used only for format "both" — a plain "digital" product
+    // keeps using priceCents above, unchanged.
+    digitalPriceCents: z.number().int().min(0).max(100_000_00).optional().nullable(),
+    format: z.enum(["physical", "digital", "both"]),
     type: z.enum(["book", "study_access", "bundle"]),
     imageUrl: z.string().url().optional().nullable(), // front cover, for book products
-    imageAlt: z.string().max(300).optional().nullable(), // required in the UI for a non-book product image; optional for book covers
+    imageAlt: z.string().max(300).optional().nullable(), // optional — see the note on alt text below
     backImageUrl: z.string().url().optional().nullable(),
-    backImageAlt: z.string().max(300).optional().nullable(), // optional -- back cover images aren't required to have alt text
+    backImageAlt: z.string().max(300).optional().nullable(), // optional — see the note on alt text below
     coverPdfUrl: z.string().url().optional().nullable(),
     // This becomes an <a href> rendered to every visitor, so it's checked
     // against the *parsed hostname* (https-only, host ending in a real
@@ -97,30 +105,41 @@ export const productSchema = z
     // app/api/admin/products/route.ts instead, against the current DB state.
     featured: z.boolean().default(false),
   })
-  .refine((p) => p.format === "physical" || p.amazonUrl == null, {
+  // amazonUrl/sellOnStripe always describe the *physical* purchase route —
+  // for format "both", that's one of its two independent purchases (the
+  // other, digital, is unconditionally Stripe-only, enforced by schema shape
+  // alone: there's no amazonUrl/sellOnStripe field for it).
+  .refine((p) => p.format !== "digital" || p.amazonUrl == null, {
     message: "Amazon purchase links are only supported for physical products",
     path: ["amazonUrl"],
   })
-  .refine((p) => p.format === "physical" || p.sellOnStripe, {
+  .refine((p) => p.format !== "digital" || p.sellOnStripe, {
     message: "Digital products must sell through Stripe (required to grant entitlements)",
     path: ["sellOnStripe"],
   })
-  .refine((p) => p.sellOnStripe || !!p.amazonUrl, {
+  .refine((p) => p.format === "digital" || p.sellOnStripe || !!p.amazonUrl, {
     message: "At least one purchase route (Stripe or Amazon) is required",
     path: ["sellOnStripe"],
   })
-  // Enforced here, not just in the admin UI -- the UI's disabled-submit-button
-  // guard doesn't stop a direct API call from setting an image with no alt
-  // text (WCAG 1.1.1). This exact class of gap (alt text shipped unwired)
-  // has happened twice before per CLAUDE.md/AUDIT.md; closing it at the
-  // schema level means it can't recur a third time regardless of UI changes.
-  // Book cover images (front/back) are exempt from this, per an explicit
-  // 2026-11-05 decision -- see CLAUDE.md. A generic product image (anything
-  // that isn't type "book") still requires alt text.
-  .refine((p) => p.type === "book" || !p.imageUrl || !!p.imageAlt?.trim(), {
-    message: "Alt text is required whenever a product image is set",
-    path: ["imageAlt"],
+  // digitalPriceCents is the whole point of format "both" (its separate,
+  // independently-purchasable digital price) and meaningless otherwise —
+  // "digital"-only products keep using priceCents, so a stray
+  // digitalPriceCents there would just be dead, confusing data.
+  .refine((p) => (p.format === "both" ? p.digitalPriceCents != null : p.digitalPriceCents == null), {
+    message: "Digital price is required for a \"both\" format product, and not used otherwise",
+    path: ["digitalPriceCents"],
   });
+
+// Alt text is no longer required by this schema (previously required for a
+// non-book product image; book covers were already exempted earlier the
+// same day) — per an explicit 2026-11-05 decision. It's still encouraged in
+// the admin UI, just no longer blocks saving. See ACCESSIBILITY.md for the
+// resulting trade-off (a missing alt renders as decorative alt="" on the
+// storefront, same as it already did for book covers).
+
+export const productDeleteSchema = z.object({
+  id: z.string().uuid(),
+});
 
 // ---------- Admin: studies ----------
 export const studySchema = z.object({
@@ -136,6 +155,10 @@ export const studySchema = z.object({
   coverImageUrl: z.string().url().optional().nullable(),
   coverImageAlt: z.string().max(300).optional().nullable(),
   published: z.boolean(),
+});
+
+export const studyDeleteSchema = z.object({
+  id: z.string().uuid(),
 });
 
 // ---------- Admin: lessons ----------
@@ -346,6 +369,10 @@ export const blogPostUpdateSchema = z.object({
     .refine(hasVisibleText, "Body can't be empty")
     .optional(),
   published: z.boolean().optional(),
+});
+
+export const blogPostDeleteSchema = z.object({
+  id: z.string().uuid(),
 });
 
 export const blogSuggestSchema = z.object({

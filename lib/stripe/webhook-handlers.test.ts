@@ -123,4 +123,54 @@ describe("handleCheckoutCompleted", () => {
     await handleCheckoutCompleted(fakeCheckoutSession(randomUUID()), "https://example.com");
     expect(sendOrderConfirmationEmail).not.toHaveBeenCalled();
   });
+
+  describe("format: \"both\" products", () => {
+    it("grants an entitlement for the digital variant of a \"both\" order item, but not the physical one", async () => {
+      const [bothProduct] = await db
+        .insert(products)
+        .values({
+          type: "book",
+          format: "both",
+          title: "Both Format Book",
+          slug: `both-format-${randomUUID()}`,
+          priceCents: 1999,
+          digitalPriceCents: 999,
+        })
+        .returning();
+
+      // Replace the default digital-only order item with the "both"
+      // product's two variants, same order.
+      await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
+      await db.insert(orderItems).values([
+        { orderId, productId: bothProduct!.id, quantity: 1, variant: "physical" },
+        { orderId, productId: bothProduct!.id, quantity: 1, variant: "digital" },
+      ]);
+
+      try {
+        await handleCheckoutCompleted(
+          fakeCheckoutSession(orderId, { amount_total: 2998 }),
+          "https://example.com"
+        );
+
+        const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
+        expect(order!.status).toBe("paid");
+
+        // One entitlement for the product, even though it has two order
+        // items -- the digital one grants it, the physical one doesn't, and
+        // they're never double-counted into two entitlement rows.
+        const grants = await db.select().from(entitlements).where(eq(entitlements.userId, userId));
+        expect(grants).toHaveLength(1);
+        expect(grants[0]!.productId).toBe(bothProduct!.id);
+      } finally {
+        // Delete this product's own entitlement and order-item rows first --
+        // the outer afterEach's cleanup for both (scoped by userId/orderId)
+        // hasn't run yet at this point, and the FKs from those tables to
+        // products would otherwise reject deleting the product while it's
+        // still referenced.
+        await db.delete(entitlements).where(eq(entitlements.productId, bothProduct!.id));
+        await db.delete(orderItems).where(eq(orderItems.productId, bothProduct!.id));
+        await db.delete(products).where(eq(products.id, bothProduct!.id));
+      }
+    });
+  });
 });

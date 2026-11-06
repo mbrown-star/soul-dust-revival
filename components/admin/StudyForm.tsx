@@ -38,6 +38,8 @@ export function StudyForm({
   });
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const altTextMissing = !!values.coverImageUrl && values.coverImageAlt.trim().length === 0;
 
@@ -72,6 +74,34 @@ export function StudyForm({
     const study = (await res.json()) as { id: string };
 
     router.push(`/admin/studies/${study.id}`);
+    router.refresh();
+  }
+
+  async function handleDelete() {
+    if (!initial?.id) return;
+    if (
+      !window.confirm(
+        `Delete "${values.title || "this study"}"? This deletes all of its lessons and content, and can't be undone.`
+      )
+    )
+      return;
+    setDeleting(true);
+    setError(null);
+
+    const res = await fetch("/api/admin/studies", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: initial.id }),
+    });
+
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({ message: "Delete failed" }))) as { message?: unknown };
+      setError(typeof data.message === "string" ? data.message : "Couldn't delete this study.");
+      setDeleting(false);
+      return;
+    }
+
+    router.push("/admin/studies");
     router.refresh();
   }
 
@@ -183,13 +213,32 @@ export function StudyForm({
         <span className="text-sm">Published</span>
       </label>
 
-      <button
-        type="submit"
-        disabled={saving || uploading || altTextMissing}
-        className="bg-neutral-900 text-white rounded-lg px-6 py-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-900"
-      >
-        {saving ? "Saving..." : "Save study"}
-      </button>
+      {error && (
+        <p role="alert" className="text-sm text-red-600">
+          {error}
+        </p>
+      )}
+
+      <div className="flex items-center gap-3">
+        <button
+          type="submit"
+          disabled={saving || deleting || uploading || altTextMissing}
+          className="bg-neutral-900 text-white rounded-lg px-6 py-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-900"
+        >
+          {saving ? "Saving..." : "Save study"}
+        </button>
+
+        {initial?.id && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={saving || deleting}
+            className="text-red-600 rounded-lg px-4 py-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-600"
+          >
+            {deleting ? "Deleting..." : "Delete study"}
+          </button>
+        )}
+      </div>
     </form>
   );
 }

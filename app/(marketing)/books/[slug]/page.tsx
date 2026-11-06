@@ -48,7 +48,11 @@ export default async function BookDetailPage({
 
         <div>
           <p className="font-sans text-xs uppercase tracking-wide text-moss mb-2">
-            {product.format === "digital" ? "Study · Unlocks in the web app" : "Book · Ships to you"}
+            {product.format === "digital"
+              ? "Study · Unlocks in the web app"
+              : product.format === "both"
+              ? "Book & Study · Ships, and unlocks in the web app"
+              : "Book · Ships to you"}
           </p>
           <h1 className="font-display font-bold text-3xl sm:text-4xl text-ink mb-4">
             {product.title}
@@ -56,27 +60,79 @@ export default async function BookDetailPage({
           {product.description && (
             <p className="font-serif text-ink/80 mb-6 leading-relaxed">{product.description}</p>
           )}
-          <p className="font-sans text-2xl font-semibold text-ink mb-6">
-            ${(product.priceCents / 100).toFixed(2)}
-          </p>
 
-          <div className="flex flex-wrap gap-3">
-            {product.sellOnStripe && (
-              <AddToCartButton
-                productId={product.id}
-                title={product.title}
-                priceCents={product.priceCents}
-                format={product.format}
-              />
-            )}
-            {product.amazonUrl && <AmazonBuyButton amazonUrl={product.amazonUrl} />}
-          </div>
+          {product.format === "both" ? (
+            <div className="space-y-6">
+              <div className="border border-moss/20 rounded-lg p-4">
+                <h2 className="font-sans text-sm font-semibold uppercase tracking-wide text-moss mb-2">
+                  Printed book
+                </h2>
+                <p className="font-sans text-xl font-semibold text-ink mb-3">
+                  ${(product.priceCents / 100).toFixed(2)}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {product.sellOnStripe && (
+                    <AddToCartButton
+                      productId={product.id}
+                      title={product.title}
+                      priceCents={product.priceCents}
+                      format="physical"
+                      variant="physical"
+                      label="Buy the book"
+                    />
+                  )}
+                  {product.amazonUrl && <AmazonBuyButton amazonUrl={product.amazonUrl} />}
+                </div>
+                <p className="font-sans text-sm text-moss mt-3">
+                  Ships within a few business days. No account needed to buy the printed book alone.
+                </p>
+              </div>
 
-          <p className="font-sans text-sm text-moss mt-6">
-            {product.format === "digital"
-              ? "Digital studies require an account — you'll be prompted to sign up during checkout."
-              : "Ships within a few business days. No account needed to buy a physical book alone."}
-          </p>
+              <div className="border border-moss/20 rounded-lg p-4">
+                <h2 className="font-sans text-sm font-semibold uppercase tracking-wide text-moss mb-2">
+                  Digital access
+                </h2>
+                <p className="font-sans text-xl font-semibold text-ink mb-3">
+                  ${((product.digitalPriceCents ?? 0) / 100).toFixed(2)}
+                </p>
+                <AddToCartButton
+                  productId={product.id}
+                  title={product.title}
+                  priceCents={product.digitalPriceCents ?? 0}
+                  format="digital"
+                  variant="digital"
+                  label="Buy digital access"
+                />
+                <p className="font-sans text-sm text-moss mt-3">
+                  Digital access requires an account — you&apos;ll be prompted to sign up during checkout.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="font-sans text-2xl font-semibold text-ink mb-6">
+                ${(product.priceCents / 100).toFixed(2)}
+              </p>
+
+              <div className="flex flex-wrap gap-3">
+                {product.sellOnStripe && (
+                  <AddToCartButton
+                    productId={product.id}
+                    title={product.title}
+                    priceCents={product.priceCents}
+                    format={product.format}
+                  />
+                )}
+                {product.amazonUrl && <AmazonBuyButton amazonUrl={product.amazonUrl} />}
+              </div>
+
+              <p className="font-sans text-sm text-moss mt-6">
+                {product.format === "digital"
+                  ? "Digital studies require an account — you'll be prompted to sign up during checkout."
+                  : "Ships within a few business days. No account needed to buy a physical book alone."}
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>

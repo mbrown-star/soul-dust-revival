@@ -197,11 +197,11 @@ describe("productSchema", () => {
     expect(productSchema.safeParse({ ...base, imageUrl: null, imageAlt: null }).success).toBe(true);
   });
 
-  it("rejects a non-book product image with no alt text", () => {
+  it("allows a non-book product image with no alt text (no longer required, per 2026-11-05 decision)", () => {
     expect(
       productSchema.safeParse({ ...base, type: "study_access", imageUrl: "https://example.com/a.jpg", imageAlt: null })
         .success
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("allows a book's front/back cover images with no alt text", () => {
@@ -302,6 +302,46 @@ describe("productSchema", () => {
         amazonUrl: "https://www.amazon.co.uk/dp/B000000000",
       }).success
     ).toBe(true);
+  });
+
+  describe("format: \"both\"", () => {
+    it("requires digitalPriceCents", () => {
+      expect(productSchema.safeParse({ ...base, format: "both" }).success).toBe(false);
+      expect(productSchema.safeParse({ ...base, format: "both", digitalPriceCents: 999 }).success).toBe(true);
+    });
+
+    it("rejects digitalPriceCents on a plain physical or digital product", () => {
+      expect(productSchema.safeParse({ ...base, format: "physical", digitalPriceCents: 999 }).success).toBe(
+        false
+      );
+      expect(productSchema.safeParse({ ...base, format: "digital", digitalPriceCents: 999 }).success).toBe(
+        false
+      );
+    });
+
+    it("allows an Amazon-exclusive physical side (sellOnStripe: false) -- amazonUrl/sellOnStripe describe only the physical route", () => {
+      expect(
+        productSchema.safeParse({
+          ...base,
+          format: "both",
+          digitalPriceCents: 999,
+          sellOnStripe: false,
+          amazonUrl: "https://www.amazon.com/dp/B000000000",
+        }).success
+      ).toBe(true);
+    });
+
+    it("requires at least one physical purchase route (Stripe or Amazon), same as a plain physical product", () => {
+      expect(
+        productSchema.safeParse({
+          ...base,
+          format: "both",
+          digitalPriceCents: 999,
+          sellOnStripe: false,
+          amazonUrl: null,
+        }).success
+      ).toBe(false);
+    });
   });
 });
 

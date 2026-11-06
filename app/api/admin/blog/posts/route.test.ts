@@ -7,10 +7,10 @@ import { eq } from "drizzle-orm";
 
 vi.mock("@/lib/admin/guard", () => ({ requireAdmin: vi.fn() }));
 
-const { POST, PATCH } = await import("./route");
+const { POST, PATCH, DELETE } = await import("./route");
 const { requireAdmin } = await import("@/lib/admin/guard");
 
-function postRequest(body: unknown, method: "POST" | "PATCH" = "POST") {
+function postRequest(body: unknown, method: "POST" | "PATCH" | "DELETE" = "POST") {
   return new NextRequest("https://example.com/api/admin/blog/posts", {
     method,
     body: JSON.stringify(body),
@@ -87,5 +87,33 @@ describe("admin blog posts route", () => {
     expect(res.status).toBe(200);
     const json = (await res.json()) as { body: string };
     expect(json.body).not.toContain("onerror");
+  });
+
+  it("deletes a post", async () => {
+    createdPostIds = [];
+    db = await getDb();
+    const [admin] = await db
+      .insert(users)
+      .values({ email: `admin-${randomUUID()}@example.com`, role: "admin" })
+      .returning();
+    adminUserId = admin!.id;
+    vi.mocked(requireAdmin).mockResolvedValue({ userId: adminUserId, email: "admin@example.com", role: "admin" });
+
+    const [post] = await db
+      .insert(posts)
+      .values({ title: "Gone soon", slug: `gone-soon-${randomUUID()}`, body: "<p>bye</p>", createdByUserId: adminUserId })
+      .returning();
+
+    const res = await DELETE(postRequest({ id: post!.id }, "DELETE"));
+    expect(res.status).toBe(200);
+
+    const [stillThere] = await db.select().from(posts).where(eq(posts.id, post!.id));
+    expect(stillThere).toBeUndefined();
+  });
+
+  it("rejects deleting when not an admin", async () => {
+    vi.mocked(requireAdmin).mockResolvedValue(null);
+    const res = await DELETE(postRequest({ id: randomUUID() }, "DELETE"));
+    expect(res.status).toBe(403);
   });
 });

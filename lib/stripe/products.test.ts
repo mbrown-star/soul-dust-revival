@@ -89,4 +89,61 @@ describe("getOrCreateStripePrice", () => {
     const [row] = await db.select().from(products).where(eq(products.id, productId));
     expect(row!.stripePriceId).toBe(a); // the DB reflects that same winner, not a different loser
   });
+
+  describe("format: \"both\" products", () => {
+    let bothProductId: string;
+
+    beforeEach(async () => {
+      const [product] = await db
+        .insert(products)
+        .values({
+          type: "book",
+          format: "both",
+          title: "Both Format Book",
+          slug: `both-format-${randomUUID()}`,
+          priceCents: 1999,
+          digitalPriceCents: 999,
+        })
+        .returning();
+      bothProductId = product!.id;
+    });
+
+    afterEach(async () => {
+      await db.delete(products).where(eq(products.id, bothProductId));
+    });
+
+    it("creates separate Stripe products/prices for the physical and digital variants", async () => {
+      let n = 0;
+      vi.mocked(stripe.products.create).mockImplementation(async () => {
+        n++;
+        return { id: `prod_${n}` } as never;
+      });
+      vi.mocked(stripe.prices.create).mockImplementation(async (args) => {
+        return { id: `price_${args.unit_amount}` } as never;
+      });
+
+      const physicalPrice = await getOrCreateStripePrice(bothProductId, "physical");
+      const digitalPrice = await getOrCreateStripePrice(bothProductId, "digital");
+
+      expect(physicalPrice).toBe("price_1999");
+      expect(digitalPrice).toBe("price_999");
+      expect(physicalPrice).not.toBe(digitalPrice);
+
+      const [row] = await db.select().from(products).where(eq(products.id, bothProductId));
+      expect(row!.stripePriceId).toBe(physicalPrice);
+      expect(row!.digitalStripePriceId).toBe(digitalPrice);
+    });
+
+    it("returns the existing digitalStripePriceId without calling Stripe when already set", async () => {
+      await db
+        .update(products)
+        .set({ digitalStripePriceId: "price_existing_digital" })
+        .where(eq(products.id, bothProductId));
+
+      const result = await getOrCreateStripePrice(bothProductId, "digital");
+
+      expect(result).toBe("price_existing_digital");
+      expect(stripe.products.create).not.toHaveBeenCalled();
+    });
+  });
 });

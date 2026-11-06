@@ -79,7 +79,11 @@ export default async function HomePage() {
                     )}
                   </div>
                   <p className="font-sans text-xs uppercase tracking-wide text-moss mb-1">
-                    {p.format === "digital" ? "Study · Web app" : "Book · Ships to you"}
+                    {p.format === "digital"
+                      ? "Study · Web app"
+                      : p.format === "both"
+                      ? "Book & Study"
+                      : "Book · Ships to you"}
                   </p>
                   <h3 className="font-display font-semibold text-ink group-hover:text-moss group-focus:text-moss">
                     {p.title}

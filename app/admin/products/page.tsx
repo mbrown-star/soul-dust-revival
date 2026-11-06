@@ -57,6 +57,7 @@ export default async function AdminProductsPage() {
               </p>
               <p className="text-sm text-neutral-600">
                 {p.format} · ${(p.priceCents / 100).toFixed(2)}
+                {p.format === "both" && p.digitalPriceCents != null && ` / $${(p.digitalPriceCents / 100).toFixed(2)} digital`}
                 {" · "}
                 {[p.sellOnStripe && "Stripe", p.amazonUrl && "Amazon"].filter(Boolean).join(" + ")}
                 {!p.active && " · inactive"}

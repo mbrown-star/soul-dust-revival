@@ -4,7 +4,7 @@ import { getDb } from "@/lib/db/client";
 import { posts } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { sanitizeHtml } from "@/lib/sanitize/html";
-import { blogPostCreateSchema, blogPostUpdateSchema } from "@/lib/validation/schemas";
+import { blogPostCreateSchema, blogPostUpdateSchema, blogPostDeleteSchema } from "@/lib/validation/schemas";
 
 export async function POST(req: NextRequest) {
   const session = await requireAdmin();
@@ -75,4 +75,20 @@ export async function PATCH(req: NextRequest) {
     .returning();
 
   return NextResponse.json(updated);
+}
+
+export async function DELETE(req: NextRequest) {
+  const session = await requireAdmin();
+  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const json = (await req.json()) as Record<string, unknown>;
+  const parsed = blogPostDeleteSchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
+  }
+
+  const db = await getDb();
+  await db.delete(posts).where(eq(posts.id, parsed.data.id));
+
+  return NextResponse.json({ ok: true });
 }

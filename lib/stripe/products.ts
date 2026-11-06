@@ -4,42 +4,61 @@ import { products } from "@/lib/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
 
 /**
- * Returns a Stripe Price ID for a given product, creating the underlying
+ * Returns a Stripe Price ID for a given product (or, for a format "both"
+ * product, one of its two independent variants), creating the underlying
  * Stripe Product + Price on first use and caching both IDs on the row.
  * This means you manage products only in your own DB — Stripe stays in sync.
+ *
+ * `variant` selects which of a "both" product's two prices to use —
+ * required for "both", ignored otherwise (a plain "physical"/"digital"
+ * product only ever has the one price/Stripe-ID pair).
  */
-export async function getOrCreateStripePrice(productId: string): Promise<string> {
+export async function getOrCreateStripePrice(
+  productId: string,
+  variant?: "physical" | "digital"
+): Promise<string> {
   const db = await getDb();
   const product = await db.query.products.findFirst({ where: eq(products.id, productId) });
   if (!product) throw new Error(`Product ${productId} not found`);
 
-  if (product.stripePriceId) return product.stripePriceId;
+  const useDigital = product.format === "both" && variant === "digital";
+  const existingPriceId = useDigital ? product.digitalStripePriceId : product.stripePriceId;
+  if (existingPriceId) return existingPriceId;
+
+  const priceCents = useDigital ? product.digitalPriceCents : product.priceCents;
+  if (priceCents == null) throw new Error(`Product ${productId} has no ${useDigital ? "digital" : ""} price set`);
 
   const stripeProduct = await stripe.products.create({
-    name: product.title,
-    metadata: { productId: product.id, format: product.format, type: product.type },
+    name: useDigital ? `${product.title} (Digital)` : product.title,
+    metadata: { productId: product.id, format: product.format, type: product.type, variant: variant ?? product.format },
   });
 
   const stripePrice = await stripe.prices.create({
     product: stripeProduct.id,
-    unit_amount: product.priceCents,
+    unit_amount: priceCents,
     currency: "usd",
   });
 
   // Same atomic-conditional-update pattern as the Stripe webhook handler's
-  // idempotency guard: two concurrent first-time checkouts of a product with
-  // no stripePriceId yet could otherwise both create their own Stripe
-  // Product + Price. The WHERE here makes only one write win; the losing
-  // caller falls back to the ID the winner actually persisted, rather than
-  // handing back a Stripe price the DB will never again reference.
-  const [updated] = await db
-    .update(products)
-    .set({ stripeProductId: stripeProduct.id, stripePriceId: stripePrice.id })
-    .where(and(eq(products.id, product.id), isNull(products.stripePriceId)))
-    .returning();
+  // idempotency guard: two concurrent first-time checkouts of this
+  // product/variant with no price ID yet could otherwise both create their
+  // own Stripe Product + Price. The WHERE here makes only one write win; the
+  // losing caller falls back to the ID the winner actually persisted, rather
+  // than handing back a Stripe price the DB will never again reference.
+  const [updated] = useDigital
+    ? await db
+        .update(products)
+        .set({ digitalStripeProductId: stripeProduct.id, digitalStripePriceId: stripePrice.id })
+        .where(and(eq(products.id, product.id), isNull(products.digitalStripePriceId)))
+        .returning()
+    : await db
+        .update(products)
+        .set({ stripeProductId: stripeProduct.id, stripePriceId: stripePrice.id })
+        .where(and(eq(products.id, product.id), isNull(products.stripePriceId)))
+        .returning();
 
-  if (updated) return updated.stripePriceId!;
+  if (updated) return (useDigital ? updated.digitalStripePriceId : updated.stripePriceId)!;
 
   const winner = await db.query.products.findFirst({ where: eq(products.id, product.id) });
-  return winner!.stripePriceId!;
+  return (useDigital ? winner!.digitalStripePriceId : winner!.stripePriceId)!;
 }

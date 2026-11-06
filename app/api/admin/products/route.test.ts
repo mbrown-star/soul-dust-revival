@@ -2,12 +2,12 @@ import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import { NextRequest } from "next/server";
 import { getDb, type Db } from "@/lib/db/client";
-import { products, users } from "@/lib/db/schema";
+import { products, users, studies, orders, orderItems, entitlements } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 
 vi.mock("@/lib/admin/guard", () => ({ requireAdmin: vi.fn() }));
 
-const { POST, PATCH } = await import("./route");
+const { POST, PATCH, DELETE } = await import("./route");
 const { requireAdmin } = await import("@/lib/admin/guard");
 
 const MAX_FEATURED_PRODUCTS = 8;
@@ -33,11 +33,10 @@ function baseProduct(overrides: Record<string, unknown> = {}) {
   };
 }
 
-// This tests a cross-row limit ("no more than 8 featured") against the real
-// shared database (see BUILD_TASKS.md -- there's no disposable local test
-// DB), so a test can't just assume it starts from zero featured products:
-// it fills up to whatever headroom actually exists right now, rather than
-// hardcoding 8 iterations.
+// This tests a cross-row limit ("no more than 8 featured") against a real
+// database (TEST_DATABASE_URL -- see BUILD_TASKS.md), so a test can't just
+// assume it starts from zero featured products: it fills up to whatever
+// headroom actually exists right now, rather than hardcoding 8 iterations.
 async function currentFeaturedCount(db: Db): Promise<number> {
   const rows = await db.select({ id: products.id }).from(products).where(eq(products.featured, true));
   return rows.length;
@@ -122,5 +121,103 @@ describe("admin products route — featured limit", () => {
 
     const res = await PATCH(request({ ...baseProduct({ featured: true }), id: featuredId }, "PATCH"));
     expect(res.status).toBe(200);
+  });
+});
+
+describe("admin products route — delete", () => {
+  let adminUserId: string;
+  let db: Db;
+
+  async function signInAsAdmin() {
+    db = await getDb();
+    const [admin] = await db
+      .insert(users)
+      .values({ email: `admin-${randomUUID()}@example.com`, role: "admin" })
+      .returning();
+    adminUserId = admin!.id;
+    vi.mocked(requireAdmin).mockResolvedValue({ userId: adminUserId, email: "admin@example.com", role: "admin" });
+  }
+
+  function deleteRequest(id: string) {
+    return new NextRequest("https://example.com/api/admin/products", {
+      method: "DELETE",
+      body: JSON.stringify({ id }),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  afterEach(async () => {
+    if (adminUserId) await db.delete(users).where(eq(users.id, adminUserId));
+    vi.mocked(requireAdmin).mockReset();
+  });
+
+  it("deletes a product with no study, order, or entitlement history", async () => {
+    await signInAsAdmin();
+    const [product] = await db.insert(products).values(baseProduct() as typeof products.$inferInsert).returning();
+
+    const res = await DELETE(deleteRequest(product!.id));
+    expect(res.status).toBe(200);
+
+    const [stillThere] = await db.select().from(products).where(eq(products.id, product!.id));
+    expect(stillThere).toBeUndefined();
+  });
+
+  it("refuses to delete a product linked to a study", async () => {
+    await signInAsAdmin();
+    const [product] = await db.insert(products).values(baseProduct() as typeof products.$inferInsert).returning();
+    const [study] = await db
+      .insert(studies)
+      .values({ productId: product!.id, title: "A Study", slug: `a-study-${randomUUID()}`, published: false })
+      .returning();
+
+    try {
+      const res = await DELETE(deleteRequest(product!.id));
+      expect(res.status).toBe(409);
+
+      const [stillThere] = await db.select().from(products).where(eq(products.id, product!.id));
+      expect(stillThere).toBeDefined();
+    } finally {
+      await db.delete(studies).where(eq(studies.id, study!.id));
+      await db.delete(products).where(eq(products.id, product!.id));
+    }
+  });
+
+  it("refuses to delete a product with order history", async () => {
+    await signInAsAdmin();
+    const [product] = await db.insert(products).values(baseProduct() as typeof products.$inferInsert).returning();
+    const [order] = await db
+      .insert(orders)
+      .values({ country: "US", status: "paid", totalCents: 1000 })
+      .returning();
+    await db.insert(orderItems).values({ orderId: order!.id, productId: product!.id, quantity: 1 });
+
+    try {
+      const res = await DELETE(deleteRequest(product!.id));
+      expect(res.status).toBe(409);
+    } finally {
+      await db.delete(orderItems).where(eq(orderItems.orderId, order!.id));
+      await db.delete(orders).where(eq(orders.id, order!.id));
+      await db.delete(products).where(eq(products.id, product!.id));
+    }
+  });
+
+  it("refuses to delete a product with a granted entitlement", async () => {
+    await signInAsAdmin();
+    const [product] = await db.insert(products).values(baseProduct() as typeof products.$inferInsert).returning();
+    await db.insert(entitlements).values({ userId: adminUserId, productId: product!.id, source: "admin_grant" });
+
+    try {
+      const res = await DELETE(deleteRequest(product!.id));
+      expect(res.status).toBe(409);
+    } finally {
+      await db.delete(entitlements).where(eq(entitlements.productId, product!.id));
+      await db.delete(products).where(eq(products.id, product!.id));
+    }
+  });
+
+  it("rejects when not an admin", async () => {
+    vi.mocked(requireAdmin).mockResolvedValue(null);
+    const res = await DELETE(deleteRequest(randomUUID()));
+    expect(res.status).toBe(403);
   });
 });

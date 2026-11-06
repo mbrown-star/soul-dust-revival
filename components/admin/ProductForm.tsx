@@ -9,7 +9,8 @@ type ProductFormValues = {
   slug: string;
   description: string;
   priceCents: number;
-  format: "physical" | "digital";
+  digitalPriceCents: number | null;
+  format: "physical" | "digital" | "both";
   type: string;
   imageUrl: string | null;
   imageAlt: string;
@@ -28,6 +29,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
   const slugId = useId();
   const descId = useId();
   const priceId = useId();
+  const digitalPriceId = useId();
   const formatId = useId();
   const altId = useId();
   const backAltId = useId();
@@ -37,6 +39,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
     slug: initial?.slug ?? "",
     description: initial?.description ?? "",
     priceCents: initial?.priceCents ?? 0,
+    digitalPriceCents: initial?.digitalPriceCents ?? null,
     format: initial?.format ?? "digital",
     type: initial?.type ?? "book",
     imageUrl: initial?.imageUrl ?? null,
@@ -53,14 +56,17 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const isBook = values.type === "book";
-  // Book cover alt text (front and back) is optional -- only a non-book
-  // product image still requires it.
-  const altTextMissing = !isBook && !!values.imageUrl && values.imageAlt.trim().length === 0;
-  const isPhysical = values.format === "physical";
-  const noPurchaseRoute = !values.sellOnStripe && !values.amazonUrl;
+  // "Both" sells the physical and digital versions of the same title as two
+  // independent purchases — Book Purchase Options cover the physical side
+  // (same fields as a plain "physical" product), Digital Purchase Options
+  // cover the digital side (always Stripe-only, its own price).
+  const showBookOptions = values.format === "physical" || values.format === "both";
+  const showDigitalOptions = values.format === "digital" || values.format === "both";
+  const noPurchaseRoute = showBookOptions && !values.sellOnStripe && !values.amazonUrl;
 
   function handleTitleChange(title: string) {
     setValues((v) => ({
@@ -119,14 +125,17 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setValidationError(null);
-    if (altTextMissing) return; // guard: never save an image with no alt text
     if (noPurchaseRoute) return;
     setSaving(true);
 
     const method = initial?.id ? "PATCH" : "POST";
     // An enabled-but-empty Amazon URL field submits as "" — normalize to
     // null so it doesn't fail the server's url() validation.
-    const payload = { ...values, amazonUrl: values.amazonUrl ? values.amazonUrl : null };
+    const payload = {
+      ...values,
+      amazonUrl: showBookOptions && values.amazonUrl ? values.amazonUrl : null,
+      digitalPriceCents: values.format === "both" ? values.digitalPriceCents : null,
+    };
     const body = initial?.id ? { ...payload, id: initial.id } : payload;
 
     const res = await fetch("/api/admin/products", {
@@ -148,8 +157,31 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
     router.refresh();
   }
 
+  async function handleDelete() {
+    if (!initial?.id) return;
+    if (!window.confirm(`Delete "${values.title}"? This can't be undone.`)) return;
+    setDeleting(true);
+    setValidationError(null);
+
+    const res = await fetch("/api/admin/products", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: initial.id }),
+    });
+
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({ message: "Delete failed" }))) as { message?: unknown };
+      setValidationError(typeof data.message === "string" ? data.message : "Couldn't delete this product.");
+      setDeleting(false);
+      return;
+    }
+
+    router.push("/admin/products");
+    router.refresh();
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-5 max-w-lg" aria-label="Product details">
+    <form onSubmit={handleSubmit} className="space-y-5" aria-label="Product details">
       <div>
         <label htmlFor={titleId} className="block text-sm font-medium mb-1">Title</label>
         <input
@@ -189,62 +221,60 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
         />
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex-1">
-          <label htmlFor={priceId} className="block text-sm font-medium mb-1">Price (USD)</label>
-          <input
-            id={priceId}
-            required
-            type="number"
-            step="0.01"
-            className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
-            value={(values.priceCents / 100).toFixed(2)}
-            onChange={(e) =>
-              setValues((v) => ({ ...v, priceCents: Math.round(parseFloat(e.target.value) * 100) }))
-            }
-          />
-        </div>
-
-        <div className="flex-1">
-          <label htmlFor={formatId} className="block text-sm font-medium mb-1">Format</label>
-          <select
-            id={formatId}
-            className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
-            value={values.format}
-            onChange={(e) => {
-              const format = e.target.value as "physical" | "digital";
-              setValues((v) => ({
-                ...v,
-                format,
-                // Amazon isn't a valid route for digital products (no way to
-                // grant entitlements off an Amazon sale), and digital must
-                // always go through Stripe.
-                ...(format === "digital" ? { amazonUrl: null, sellOnStripe: true } : {}),
-              }));
-            }}
-          >
-            <option value="physical">Physical (ships)</option>
-            <option value="digital">Digital / web app access</option>
-          </select>
-        </div>
+      <div>
+        <label htmlFor={formatId} className="block text-sm font-medium mb-1">Format</label>
+        <select
+          id={formatId}
+          className="w-full sm:w-64 border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+          value={values.format}
+          onChange={(e) => {
+            const format = e.target.value as "physical" | "digital" | "both";
+            setValues((v) => ({
+              ...v,
+              format,
+              // Amazon isn't a valid route for a purely digital product (no
+              // way to grant entitlements off an Amazon sale), and digital
+              // must always go through Stripe.
+              ...(format === "digital" ? { amazonUrl: null, sellOnStripe: true } : {}),
+            }));
+          }}
+        >
+          <option value="physical">Physical (ships)</option>
+          <option value="digital">Digital / web app access</option>
+          <option value="both">Both — sold as two separate purchases</option>
+        </select>
       </div>
 
-      <fieldset className="border rounded-lg p-4">
-        <legend className="text-sm font-medium px-1">Purchase options</legend>
+      {showBookOptions && (
+        <fieldset className="border rounded-lg p-4">
+          <legend className="text-sm font-medium px-1">Book Purchase Options</legend>
 
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={values.sellOnStripe}
-            disabled={!isPhysical}
-            onChange={(e) => setValues((v) => ({ ...v, sellOnStripe: e.target.checked }))}
-          />
-          <span className="text-sm">
-            Sell via Stripe (shows a &quot;Buy Now&quot; button){!isPhysical && " — required for digital products"}
-          </span>
-        </label>
+          <div className="mb-3">
+            <label htmlFor={priceId} className="block text-sm font-medium mb-1">
+              {values.format === "both" ? "Physical price (USD)" : "Price (USD)"}
+            </label>
+            <input
+              id={priceId}
+              required
+              type="number"
+              step="0.01"
+              className="w-full sm:w-48 border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+              value={(values.priceCents / 100).toFixed(2)}
+              onChange={(e) =>
+                setValues((v) => ({ ...v, priceCents: Math.round(parseFloat(e.target.value) * 100) }))
+              }
+            />
+          </div>
 
-        {isPhysical && (
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={values.sellOnStripe}
+              onChange={(e) => setValues((v) => ({ ...v, sellOnStripe: e.target.checked }))}
+            />
+            <span className="text-sm">Sell via Stripe (shows a &quot;Buy Now&quot; button)</span>
+          </label>
+
           <div className="mt-3">
             <label className="flex items-center gap-2 mb-2">
               <input
@@ -272,14 +302,43 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
               </div>
             )}
           </div>
-        )}
 
-        {noPurchaseRoute && (
-          <p className="text-sm text-red-600 mt-2" role="alert">
-            Enable at least one purchase route.
+          {noPurchaseRoute && (
+            <p className="text-sm text-red-600 mt-2" role="alert">
+              Enable at least one purchase route.
+            </p>
+          )}
+        </fieldset>
+      )}
+
+      {showDigitalOptions && (
+        <fieldset className="border rounded-lg p-4">
+          <legend className="text-sm font-medium px-1">Digital Purchase Options</legend>
+
+          <div>
+            <label htmlFor={digitalPriceId} className="block text-sm font-medium mb-1">
+              {values.format === "both" ? "Digital price (USD)" : "Price (USD)"}
+            </label>
+            <input
+              id={digitalPriceId}
+              required
+              type="number"
+              step="0.01"
+              className="w-full sm:w-48 border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+              value={((values.format === "both" ? values.digitalPriceCents ?? 0 : values.priceCents) / 100).toFixed(2)}
+              onChange={(e) => {
+                const cents = Math.round(parseFloat(e.target.value) * 100);
+                setValues((v) =>
+                  v.format === "both" ? { ...v, digitalPriceCents: cents } : { ...v, priceCents: cents }
+                );
+              }}
+            />
+          </div>
+          <p className="text-sm text-neutral-500 mt-2">
+            Always sold via Stripe — required to grant web app access automatically.
           </p>
-        )}
-      </fieldset>
+        </fieldset>
+      )}
 
       {isBook ? (
         <div>
@@ -363,7 +422,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={values.imageUrl}
-              alt={values.imageAlt || "Untitled product image — add alt text below"}
+              alt={values.imageAlt || "Untitled product image"}
               className="w-24 h-24 object-cover rounded mb-2"
             />
           )}
@@ -380,24 +439,15 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
           {values.imageUrl && (
             <div className="mt-2">
               <label htmlFor={altId} className="block text-sm font-medium mb-1">
-                Alt text <span aria-hidden="true" className="text-red-600">*</span>
-                <span className="sr-only"> (required)</span>
+                Alt text <span className="text-neutral-500 font-normal">(optional)</span>
               </label>
               <input
                 id={altId}
-                required
-                aria-describedby={altTextMissing ? `${altId}-error` : undefined}
-                aria-invalid={altTextMissing}
                 className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
                 placeholder="Describe the image for screen reader users"
                 value={values.imageAlt}
                 onChange={(e) => setValues((v) => ({ ...v, imageAlt: e.target.value }))}
               />
-              {altTextMissing && (
-                <p id={`${altId}-error`} className="text-sm text-red-600 mt-1">
-                  Alt text is required whenever an image is attached (WCAG 1.1.1).
-                </p>
-              )}
             </div>
           )}
         </div>
@@ -429,13 +479,26 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={saving || uploading || altTextMissing || noPurchaseRoute}
-        className="bg-neutral-900 text-white rounded-lg px-6 py-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-900"
-      >
-        {saving ? "Saving..." : "Save product"}
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          type="submit"
+          disabled={saving || deleting || uploading || noPurchaseRoute}
+          className="bg-neutral-900 text-white rounded-lg px-6 py-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-900"
+        >
+          {saving ? "Saving..." : "Save product"}
+        </button>
+
+        {initial?.id && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={saving || deleting}
+            className="text-red-600 rounded-lg px-4 py-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-600"
+          >
+            {deleting ? "Deleting..." : "Delete product"}
+          </button>
+        )}
+      </div>
     </form>
   );
 }

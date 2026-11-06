@@ -19,19 +19,52 @@ export async function POST(req: NextRequest) {
   const productIds = items.map((i) => i.productId);
   const dbProducts = await db.select().from(products).where(inArray(products.id, productIds));
 
-  // Every requested product must exist, be active, and be sold through
-  // Stripe — prevents checking out with a stale/removed product ID, or with
-  // one an admin has marked Amazon-exclusive (sellOnStripe: false), crafted
-  // directly in the request body.
-  if (
-    dbProducts.length !== new Set(productIds).size ||
-    dbProducts.some((p) => !p.active || !p.sellOnStripe)
-  ) {
+  if (dbProducts.length !== new Set(productIds).size) {
     return NextResponse.json({ error: "invalid_product" }, { status: 400 });
   }
 
-  const hasDigital = dbProducts.some((p) => p.format === "digital");
-  const hasPhysical = dbProducts.some((p) => p.format === "physical");
+  // Every requested product must exist and be active, its variant must
+  // match its actual format, and its *effective* Stripe route must be
+  // sellable — prevents checking out with a stale/removed product ID, a
+  // variant that doesn't apply to it, or one an admin has marked
+  // Amazon-exclusive (sellOnStripe: false), crafted directly in the request
+  // body. A format "both" product's digital variant always sells through
+  // Stripe regardless of sellOnStripe, which only ever describes the
+  // physical route; its physical variant (and a plain "physical" product)
+  // still respects sellOnStripe.
+  for (const item of items) {
+    const product = dbProducts.find((p) => p.id === item.productId)!;
+    if (!product.active) {
+      return NextResponse.json({ error: "invalid_product" }, { status: 400 });
+    }
+    if (product.format === "both") {
+      if (!item.variant) {
+        return NextResponse.json({ error: "variant_required" }, { status: 400 });
+      }
+      if (item.variant === "physical" && !product.sellOnStripe) {
+        return NextResponse.json({ error: "invalid_product" }, { status: 400 });
+      }
+    } else {
+      if (item.variant) {
+        return NextResponse.json({ error: "invalid_product" }, { status: 400 });
+      }
+      if (!product.sellOnStripe) {
+        return NextResponse.json({ error: "invalid_product" }, { status: 400 });
+      }
+    }
+  }
+
+  const isDigitalItem = (item: (typeof items)[number]) => {
+    const product = dbProducts.find((p) => p.id === item.productId)!;
+    return product.format === "digital" || (product.format === "both" && item.variant === "digital");
+  };
+  const isPhysicalItem = (item: (typeof items)[number]) => {
+    const product = dbProducts.find((p) => p.id === item.productId)!;
+    return product.format === "physical" || (product.format === "both" && item.variant === "physical");
+  };
+
+  const hasDigital = items.some(isDigitalItem);
+  const hasPhysical = items.some(isPhysicalItem);
 
   const session = await getSession();
 
@@ -52,10 +85,12 @@ export async function POST(req: NextRequest) {
   }
 
   // Prices always come from our own DB record, never from client input —
-  // the client only ever supplies productId + quantity.
+  // the client only ever supplies productId + quantity (+ variant, for a
+  // format "both" product, validated against its format above).
   const totalCents = items.reduce((sum, item) => {
     const product = dbProducts.find((p) => p.id === item.productId)!;
-    return sum + product.priceCents * item.quantity;
+    const priceCents = isDigitalItem(item) && product.format === "both" ? product.digitalPriceCents! : product.priceCents;
+    return sum + priceCents * item.quantity;
   }, 0);
 
   // Create the order in a pending state before redirecting to Stripe.
@@ -95,13 +130,14 @@ export async function POST(req: NextRequest) {
       orderId: order.id,
       productId: item.productId,
       quantity: item.quantity,
+      variant: item.variant ?? null,
     }))
   );
 
   // Build Stripe line items, creating Stripe Products/Prices on first use.
   const lineItems = await Promise.all(
     items.map(async (item) => ({
-      price: await getOrCreateStripePrice(item.productId),
+      price: await getOrCreateStripePrice(item.productId, item.variant),
       quantity: item.quantity,
     }))
   );

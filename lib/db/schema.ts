@@ -56,7 +56,13 @@ export const leaderResources = pgTable("leader_resources", {
 export const products = pgTable("products", {
   id: uuid("id").primaryKey().defaultRandom(),
   type: text("type").notNull().$type<"book" | "study_access" | "bundle">(),
-  format: text("format").notNull().$type<"physical" | "digital">(),
+  // "both" sells the physical and digital versions of the same title as two
+  // independent purchases, each with its own price (digitalPriceCents) and
+  // its own lazily-created Stripe Price (digitalStripeProductId/
+  // digitalStripePriceId) -- priceCents/stripeProductId/stripePriceId always
+  // describe the physical side for "both" (same as they already do for a
+  // plain "physical" product). See productSchema and ProductForm.tsx.
+  format: text("format").notNull().$type<"physical" | "digital" | "both">(),
   title: text("title").notNull(),
   slug: text("slug").notNull().unique(), // used for public /books/[slug] pages
   description: text("description"),
@@ -69,7 +75,13 @@ export const products = pgTable("products", {
   backImageUrl: text("back_image_url"),
   backImageAlt: text("back_image_alt"), // required alt text whenever backImageUrl is set (WCAG 1.1.1)
   coverPdfUrl: text("cover_pdf_url"), // retained for reference/reprints
-  priceCents: integer("price_cents").notNull(),
+  priceCents: integer("price_cents").notNull(), // physical price for "both"; the only price for "physical"/"digital"
+  // Digital price + Stripe IDs, used only for format "both" -- a plain
+  // "digital" product keeps using priceCents/stripeProductId/stripePriceId
+  // above, unchanged, since it only ever has one price.
+  digitalPriceCents: integer("digital_price_cents"),
+  digitalStripeProductId: text("digital_stripe_product_id"),
+  digitalStripePriceId: text("digital_stripe_price_id"),
   active: boolean("active").notNull().default(true),
   stripeProductId: text("stripe_product_id"), // created lazily on first checkout
   stripePriceId: text("stripe_price_id"),      // created lazily on first checkout
@@ -119,6 +131,12 @@ export const orderItems = pgTable("order_items", {
   orderId: uuid("order_id").references(() => orders.id).notNull(),
   productId: uuid("product_id").references(() => products.id).notNull(),
   quantity: integer("quantity").notNull().default(1),
+  // Which half of a format: "both" product this line item is -- null for
+  // every other format, where the product's own format already says
+  // everything (physical ships, digital grants an entitlement). Set at
+  // checkout time and read back by the webhook handler to decide shipping
+  // vs. entitlement-granting per line item, not per product.
+  variant: text("variant").$type<"physical" | "digital" | null>(),
 });
 
 // ---------- ENTITLEMENTS ----------

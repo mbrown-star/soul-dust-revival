@@ -29,7 +29,7 @@ export default function CheckoutPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+        items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, variant: i.variant })),
         guestEmail: hasDigital ? undefined : guestEmail,
         country,
       }),
@@ -93,7 +93,7 @@ export default function CheckoutPage() {
 
       <ul className="space-y-3" aria-label="Cart items">
         {items.map((item) => (
-          <li key={item.productId} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 border-b border-moss/20 pb-3">
+          <li key={`${item.productId}:${item.variant ?? ""}`} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 border-b border-moss/20 pb-3">
             <div>
               <p className="font-sans font-medium text-ink">{item.title}</p>
               <p className="font-sans text-sm text-moss">
@@ -103,7 +103,7 @@ export default function CheckoutPage() {
             <div className="flex items-center gap-3">
               <span className="font-sans text-ink">${((item.priceCents * item.quantity) / 100).toFixed(2)}</span>
               <button
-                onClick={() => removeItem(item.productId)}
+                onClick={() => removeItem(item.productId, item.variant)}
                 aria-label={`Remove ${item.title} from cart`}
                 className="font-sans text-sm text-moss focus:outline-none focus:ring-2 focus:ring-ink rounded p-2 -m-2"
               >
