@@ -75,7 +75,7 @@ export function AddUserForm({ onCreated }: { onCreated: (user: NewUserRow) => vo
     <form
       onSubmit={handleSubmit}
       aria-label="Add a new user"
-      className="border border-moss/20 rounded-lg p-4 space-y-4 max-w-xl"
+      className="border border-moss/20 rounded-lg p-4 space-y-4 max-w-lg"
     >
       <h2 className="font-sans text-sm font-semibold text-ink">Add user</h2>
 

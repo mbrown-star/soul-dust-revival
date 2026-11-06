@@ -17,7 +17,7 @@ export default async function ConnectionsPage() {
   );
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-lg">
       <div>
         <h1 className="text-xl font-semibold">Connections</h1>
         <p className="text-sm text-moss mt-1">

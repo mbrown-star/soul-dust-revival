@@ -181,7 +181,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5" aria-label="Product details">
+    <form onSubmit={handleSubmit} className="space-y-5 max-w-lg" aria-label="Product details">
       <div>
         <label htmlFor={titleId} className="block text-sm font-medium mb-1">Title</label>
         <input
