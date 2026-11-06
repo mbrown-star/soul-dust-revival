@@ -1,14 +1,18 @@
 import { getDb } from "@/lib/db/client";
 import { products } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { or, eq } from "drizzle-orm";
 import { NewStudyTabs } from "@/components/admin/NewStudyTabs";
 
 export default async function NewStudyPage() {
   const db = await getDb();
+  // A format "both" product's digital side grants an entitlement exactly
+  // like a plain "digital" product (see lib/stripe/webhook-handlers.ts's
+  // isDigitalVariant) -- excluding it here left every "both" product
+  // unable to gate a study at all.
   const digitalProducts = await db
     .select({ id: products.id, title: products.title })
     .from(products)
-    .where(eq(products.format, "digital"));
+    .where(or(eq(products.format, "digital"), eq(products.format, "both")));
 
   return (
     <div className="space-y-6">

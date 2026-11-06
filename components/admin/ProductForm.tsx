@@ -4,6 +4,16 @@ import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 
+// Keeps only digits and at most one decimal point -- lets an admin type a
+// price freely (including an in-progress "12." or a backspaced "") without
+// a native number input's locale/stepper quirks getting in the way.
+function sanitizeDecimal(raw: string): string {
+  const cleaned = raw.replace(/[^\d.]/g, "");
+  const firstDot = cleaned.indexOf(".");
+  if (firstDot === -1) return cleaned;
+  return cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, "");
+}
+
 type ProductFormValues = {
   id?: string;
   title: string;
@@ -53,6 +63,23 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
     active: initial?.active ?? true,
     featured: initial?.featured ?? false,
   });
+  const [priceText, setPriceText] = useState(((initial?.priceCents ?? 0) / 100).toFixed(2));
+  const [digitalPriceText, setDigitalPriceText] = useState(
+    (((initial?.format === "both" ? initial?.digitalPriceCents : initial?.priceCents) ?? 0) / 100).toFixed(2)
+  );
+  // The digital-price field represents priceCents when format is "digital"
+  // but digitalPriceCents when format is "both" -- re-sync its own display
+  // text only when that target switches (not on every keystroke, which
+  // would fight the user's typing by reformatting mid-edit). Adjusted
+  // during render rather than in an effect, per React's own guidance for
+  // resetting state when a value changes -- no extra render pass, and no
+  // risk of fighting an in-progress keystroke the way an effect could.
+  const [formatForDigitalText, setFormatForDigitalText] = useState(values.format);
+  if (formatForDigitalText !== values.format) {
+    setFormatForDigitalText(values.format);
+    const cents = values.format === "both" ? values.digitalPriceCents ?? 0 : values.priceCents;
+    setDigitalPriceText((cents / 100).toFixed(2));
+  }
   const [slugTouched, setSlugTouched] = useState(!!initial?.slug);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -264,13 +291,19 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
             <input
               id={priceId}
               required
-              type="number"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
               className="w-full sm:w-48 border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
-              value={(values.priceCents / 100).toFixed(2)}
-              onChange={(e) =>
-                setValues((v) => ({ ...v, priceCents: Math.round(parseFloat(e.target.value) * 100) }))
-              }
+              value={priceText}
+              onChange={(e) => {
+                const sanitized = sanitizeDecimal(e.target.value);
+                setPriceText(sanitized);
+                const parsed = parseFloat(sanitized);
+                if (!Number.isNaN(parsed)) {
+                  setValues((v) => ({ ...v, priceCents: Math.round(parsed * 100) }));
+                }
+              }}
+              onBlur={() => setPriceText((values.priceCents / 100).toFixed(2))}
             />
           </div>
 
@@ -330,15 +363,24 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
             <input
               id={digitalPriceId}
               required
-              type="number"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
               className="w-full sm:w-48 border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
-              value={((values.format === "both" ? values.digitalPriceCents ?? 0 : values.priceCents) / 100).toFixed(2)}
+              value={digitalPriceText}
               onChange={(e) => {
-                const cents = Math.round(parseFloat(e.target.value) * 100);
-                setValues((v) =>
-                  v.format === "both" ? { ...v, digitalPriceCents: cents } : { ...v, priceCents: cents }
-                );
+                const sanitized = sanitizeDecimal(e.target.value);
+                setDigitalPriceText(sanitized);
+                const parsed = parseFloat(sanitized);
+                if (!Number.isNaN(parsed)) {
+                  const cents = Math.round(parsed * 100);
+                  setValues((v) =>
+                    v.format === "both" ? { ...v, digitalPriceCents: cents } : { ...v, priceCents: cents }
+                  );
+                }
+              }}
+              onBlur={() => {
+                const cents = values.format === "both" ? values.digitalPriceCents ?? 0 : values.priceCents;
+                setDigitalPriceText((cents / 100).toFixed(2));
               }}
             />
           </div>

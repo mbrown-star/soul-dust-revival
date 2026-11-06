@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db/client";
 import { studies, products, lessons } from "@/lib/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, or } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { StudyForm } from "@/components/admin/StudyForm";
 import Link from "next/link";
@@ -12,10 +12,14 @@ export default async function StudyDetailPage({ params }: { params: Promise<{ id
   const study = await db.query.studies.findFirst({ where: eq(studies.id, id) });
   if (!study) redirect("/admin/studies");
 
+  // A format "both" product's digital side grants an entitlement exactly
+  // like a plain "digital" product (see lib/stripe/webhook-handlers.ts's
+  // isDigitalVariant) -- excluding it here left every "both" product
+  // unable to gate a study at all.
   const digitalProducts = await db
     .select({ id: products.id, title: products.title })
     .from(products)
-    .where(eq(products.format, "digital"));
+    .where(or(eq(products.format, "digital"), eq(products.format, "both")));
 
   const studyLessons = await db
     .select()
