@@ -1,5 +1,5 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Client } from "pg";
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import { Client, Pool } from "pg";
 import * as schema from "./schema";
 
 // Augments @opennextjs/cloudflare's own global CloudflareEnv interface (used
@@ -12,14 +12,30 @@ declare global {
   }
 }
 
-// Derived from getDb()'s own return value rather than a bare
-// ReturnType<typeof drizzle<...>> -- drizzle-orm/node-postgres's drizzle()
-// infers a different $client type depending on whether you pass it a Pool
-// or a (single-connection) Client, and this app always passes a Client.
-export type Db = Awaited<ReturnType<typeof getDb>>;
+// Named directly rather than derived from getDb()'s return type -- the two
+// branches below pass drizzle() a Pool or a (single-connection) Client,
+// which infer different `$client` types; nothing in this app touches
+// `.$client` directly, so the plain NodePgDatabase type (without that
+// branch-specific intersection) is all callers actually need.
+export type Db = NodePgDatabase<typeof schema>;
+
+// Local dev (`next dev`) and vitest both run as a long-lived plain Node
+// process with no Workers cross-request restriction, so unlike the
+// Hyperdrive path below, a single pooled connection can safely be reused
+// across every getDb() call in that process. This matters because a local
+// Postgres (unlike Supabase's own pooler, which DATABASE_URL may also point
+// at for dev) has no connection pooler in front of it: a fresh unclosed
+// Client per call -- fine against a pooler, since it recycles the real
+// connection underneath -- exhausts a plain Postgres server's
+// max_connections almost immediately under a test run that calls getDb()
+// hundreds of times in a couple of seconds (hit in practice: "sorry, too
+// many clients already"). A low `max` (and a capped vitest worker count, see vitest.config.mts) keep this well under a default
+// local Postgres's connection limit even across vitest's several
+// parallel worker processes, each with its own pool.
+let localPool: Pool | null = null;
 
 /**
- * Returns a fresh Drizzle client for the current request.
+ * Returns a Drizzle client for the current request.
  *
  * This app runs on Cloudflare Workers in production (via the OpenNext
  * adapter -- see CLAUDE.md), where a database client must be created fresh
@@ -32,15 +48,15 @@ export type Db = Awaited<ReturnType<typeof getDb>>;
  * developers.cloudflare.com/hyperdrive/concepts/connection-lifecycle.
  *
  * Locally (plain Node -- `next dev`, vitest), there's no such restriction,
- * but creating a fresh client here costs nothing extra either way, so the
- * same code path is used in both places rather than branching into two
- * different client lifecycles to maintain.
+ * and -- unlike on Workers -- there's also no pooler automatically sitting
+ * in front of whatever DATABASE_URL points at, so this branch reuses one
+ * pooled connection across the whole process instead (see localPool above).
  *
  * Driver note: this uses node-postgres ("pg"), not postgres.js -- pairing
  * Drizzle with postgres.js over Hyperdrive is a documented unsupported
  * combination (developers.cloudflare.com/hyperdrive/examples/connect-to-postgres/postgres-drivers-and-libraries/drizzle-orm/).
  */
-export async function getDb() {
+export async function getDb(): Promise<Db> {
   const { connectionString, viaHyperdrive } = await resolveConnection();
 
   // Supabase requires TLS; a local Postgres (dev/test -- see BUILD_TASKS.md)
@@ -50,14 +66,21 @@ export async function getDb() {
   // path's target actually needs it. (rejectUnauthorized: false, not a CA
   // bundle, matching this project's existing dev setup.)
   const needsTls = !viaHyperdrive && !isLocalHost(connectionString);
+  const ssl = needsTls ? { rejectUnauthorized: false } : undefined;
 
-  const client = new Client({
-    connectionString,
-    ...(needsTls ? { ssl: { rejectUnauthorized: false } } : {}),
-  });
-  await client.connect();
+  if (viaHyperdrive) {
+    // Workers forbids reusing a connection created during one request in a
+    // later request, so this genuinely must be a fresh, single-use Client
+    // every call -- see the module doc comment above.
+    const client = new Client({ connectionString, ssl });
+    await client.connect();
+    return drizzle(client, { schema });
+  }
 
-  return drizzle(client, { schema });
+  if (!localPool) {
+    localPool = new Pool({ connectionString, ssl, max: 3 });
+  }
+  return drizzle(localPool, { schema });
 }
 
 function isLocalHost(connectionString: string): boolean {

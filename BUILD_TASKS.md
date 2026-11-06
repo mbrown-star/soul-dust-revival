@@ -53,21 +53,26 @@ what's left, roughly in the order they need doing.
       box below); see "Recently completed" below for a `drizzle-kit` env bug
       worked around and an untracked-migration fix along the way
 - [x] `npm run db:seed` (loads one sample study + lesson + blog post) — done,
-      against the local Postgres described below
+      against the real Supabase project
 - [ ] Promote your own account to admin after signing up once:
   ```sql
   update users set role = 'admin' where email = 'you@example.com';
   ```
 
-> ⚠️ **`DATABASE_URL` (local dev + `npm test`) now points at a local Postgres,
-> not the real Supabase project — set up 2026-11-05, after `npm test` leaked
-> real test data into the connected production database twice (see CLAUDE.md's
-> 2026-11-05 entries for both incidents).** This project has no mocked DB
-> layer by design (real DB behavior > asserting against mocks — see
-> CODE_QUALITY_REVIEW.md), so every test run does real inserts/deletes against
-> whatever `DATABASE_URL` points at; pointing it at the real project makes any
-> future test cleanup bug (the exact shape that caused both leaks) a live
-> production-data incident instead of a contained local one.
+> ⚠️ **`DATABASE_URL` stays pointed at the real Supabase project — by
+> explicit decision, so local `next dev` and the deployed site always show
+> the same data, with no separate "sync" step needed.** `npm test` instead
+> *always* runs against a separate local/disposable Postgres in
+> `TEST_DATABASE_URL`, enforced in `vitest.setup.ts`, which forcibly
+> overrides `DATABASE_URL` with it for the vitest process and **refuses to
+> run at all** if `TEST_DATABASE_URL` isn't set — there is no manual
+> env-swapping step to forget. This exists because this project has no
+> mocked DB layer by design (real DB behavior > asserting against mocks —
+> see CODE_QUALITY_REVIEW.md), so every test run does real inserts/deletes;
+> pointing `DATABASE_URL` itself at the real project briefly (2026-11-05,
+> same day) made a test-cleanup bug a live production-data incident twice in
+> one session before this fix. See CLAUDE.md's 2026-11-05 entries for the
+> full history, including the first (reverted) attempt at this fix.
 >
 > **One-time setup, if you're on a fresh machine without this already:**
 > 1. `brew install postgresql@16` (Homebrew; not a project dependency, just
@@ -75,17 +80,34 @@ what's left, roughly in the order they need doing.
 > 2. `brew services start postgresql@16` (run `initdb` first if it's a fresh
 >    install)
 > 3. `createdb soul_dust_revival_dev`
-> 4. Point `DATABASE_URL` in `.env.local` at it, e.g.
+> 4. Set `TEST_DATABASE_URL` in `.env.local` to it, e.g.
 >    `postgresql://you@localhost:5432/soul_dust_revival_dev` — no `sslmode`
 >    needed; `lib/db/client.ts` only adds TLS for a non-localhost host.
-> 5. Run `npm run db:generate && npm run db:migrate && npm run db:seed`
+>    **Leave `DATABASE_URL` itself pointed at the real Supabase project.**
+> 5. Apply the schema to it once: easiest is
+>    `MIGRATION_DATABASE_URL=<that local url> npx drizzle-kit migrate`
+>    (run from a shell, not via `.env.local` — `drizzle.config.ts` always
+>    appends `sslmode=require`, which a local Postgres doesn't speak, so this
+>    one-off invocation needs `migrate`'s SSL append avoided; if that still
+>    fails, apply each `drizzle/*.sql` file directly via `psql` instead and
+>    hand-insert the matching `drizzle.__drizzle_migrations` rows, same
+>    method as the 2026-11-04 entry below).
+> 6. `npm test` — should now run clean against the local database.
+>
+> **`lib/db/client.ts` pools connections for this non-Hyperdrive path**
+> (`localPool`, capped `max: 3`) rather than opening a fresh one per call —
+> a local Postgres has no connection pooler in front of it the way Supabase
+> does, so a fresh-unclosed-connection-per-call pattern (fine against a
+> pooler) exhausts a plain Postgres server's `max_connections` almost
+> immediately under a full test run. `vitest.config.mts` also caps
+> `maxWorkers: 4` for the same reason — if you ever see "sorry, too many
+> clients already" again, those two knobs are where to look first, and
+> `brew services restart postgresql@16` clears already-stuck connections.
 >
 > **`MIGRATION_DATABASE_URL` is a separate env var and is unaffected** — it
 > always points at the real Supabase project, since schema migrations are
-> meant to land there regardless of what `DATABASE_URL` is set to locally.
-> Keeping the real Supabase `DATABASE_URL` around for the rare case you need
-> to query production directly (never to run tests against) is fine — just
-> don't put it back in the `DATABASE_URL` key itself.
+> meant to land there. `TEST_DATABASE_URL` only ever overrides `DATABASE_URL`,
+> never `MIGRATION_DATABASE_URL`.
 
 ## 4. Deployment
 
@@ -378,6 +400,7 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- **2026-11-05 — corrected the local-Postgres fix below: `DATABASE_URL` stays on the real Supabase project (local dev and staging share data, as explicitly wanted) and test isolation now happens automatically via a separate `TEST_DATABASE_URL`, enforced in `vitest.setup.ts`.** The previous fix pointed `DATABASE_URL` itself at a local Postgres for both dev and test, which broke the actual requirement and briefly looked like a second data-loss incident (it wasn't — the real Supabase project was confirmed untouched). Also fixed a connection-exhaustion bug this surfaced (`lib/db/client.ts` now pools connections for local/test instead of opening one per call, and `vitest.config.mts` caps worker concurrency). Verified: 3 consecutive clean `npm test` runs, and local dev confirmed showing real production data again. See CLAUDE.md's same-dated entry for the full story, and `.env.example`/this file's "3. Database" section for the corrected setup steps.
 - **2026-11-05 — set up a real local Postgres for dev/test (structural fix, not another per-incident patch), so `npm test` can no longer leak into the real connected Supabase project.** Prompted by two separate real-data leaks in one session (see the entry just below, and the earlier "Test Product" incident). `.env.local`'s `DATABASE_URL` had pointed at the real Supabase project since it was first connected, contrary to this file's own documented intended setup. Brought an existing-but-stale local `soul_dust_revival_dev` database current (migrations `0001`-`0003` applied directly via `psql`, since `drizzle-kit migrate` forces TLS a local Postgres doesn't support), fixed `lib/db/client.ts` to only add TLS for a non-localhost connection, and switched `DATABASE_URL` locally. `MIGRATION_DATABASE_URL` is untouched and still targets the real project. Verified the full test suite passes against the local DB and that the real Supabase project is untouched by that run (still exactly 2 real users, 3 real products). See CLAUDE.md's same-dated entry, `.env.example`, and this file's "3. Database" section for the full writeup and setup steps.
 - **2026-11-05 — found and cleaned up a second live-data leak (8 fake admin users in the real connected Supabase database), caused by the same `pg`-concurrency bug fixed earlier this session.** The user noticed the admin Users table looked off; a direct query against the real database (not through the site) found 8 fake `admin-{uuid}@example.com` rows alongside the 2 real accounts, all created today. Root cause: `lib/admin/guard.test.ts` ran concurrent inserts/deletes on one shared `pg` client before this session's own sequential-await fix was applied — every test run in this environment hits the real connected Supabase project, not an isolated database, so the leaked rows landed in production the same way the earlier "Test Product" incident did. Deleted the 8 fake rows (confirmed via before/after count) with the user's go-ahead, and added an `afterAll` safety net to `guard.test.ts` so a repeat of this failure shape can't silently accumulate again. See CLAUDE.md's same-dated entry for the full writeup.
 - **2026-11-05 — redeployed with the Hyperdrive fix, then found and fixed two more deploy-only bugs the redeploy surfaced: missing product/book images, and every blog/leader-resource page 500ing (jsdom isn't Workers-compatible, and the first two sanitizer replacements tried were silently broken).** Full story in CLAUDE.md's same-dated entries and SECURITY.md's "Database access model" and "XSS / rich text" sections; also set up the `staging.souldustrevival.com` custom domain and Cloudflare Access gate (dashboard work, done by the user). Headline lesson from this pass: **a build-time env-var bug doesn't error — it silently bakes in whatever placeholder was present**, and this bit twice in a row (`NEXT_PUBLIC_SUPABASE_*`, then `R2_PUBLIC_BASE_URL`) before the pattern was recognized; and **a passing test suite doesn't mean a security-critical function still works** — two DOMPurify-based sanitizer swaps passed typecheck/build/tests clean while silently leaving `<script>`/`onerror` payloads unsanitized, caught only by testing actual dangerous input by hand. `lib/sanitize/html.test.ts` now exists specifically to close that second gap.
