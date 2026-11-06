@@ -20,12 +20,31 @@
  * Guarded to only install where these are genuinely missing. Local dev and
  * `vitest` (both plain Node, where `@napi-rs/canvas` loads normally) are
  * untouched -- this only ever engages in the Workers runtime.
+ *
+ * Separately, pdfjs-dist also needs an actual text-extraction engine to run
+ * -- normally a real Worker thread, falling back to a same-thread "fake
+ * worker" that dynamically `import()`s its own `pdf.worker.mjs` file when a
+ * real Worker isn't available or usable. That dynamic import of a
+ * standalone worker script (not part of this app's own module graph) fails
+ * in the Workers runtime ("Setting up fake worker failed: 'No such module
+ * \"pdf.worker.mjs\"'", confirmed live via `wrangler tail`) -- Workers'
+ * module resolution has no notion of a loose file sitting next to a
+ * dynamically-loaded external package the way Node's filesystem-based
+ * `import()` does. pdfjs-dist checks `globalThis.pdfjsWorker
+ * .WorkerMessageHandler` *before* attempting that dynamic import, so
+ * statically importing the worker module ourselves and registering it
+ * there short-circuits the whole broken code path.
  */
-export function ensurePdfTextExtractionGlobals(): void {
+export async function ensurePdfTextExtractionGlobals(): Promise<void> {
   const g = globalThis as unknown as Record<string, unknown>;
 
   if (typeof g.DOMMatrix === "undefined") {
     g.DOMMatrix = MinimalDOMMatrix;
+  }
+
+  if (!g.pdfjsWorker) {
+    const { WorkerMessageHandler } = await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
+    g.pdfjsWorker = { WorkerMessageHandler };
   }
 
   if (typeof g.ImageData === "undefined") {

@@ -19,7 +19,7 @@ export async function parsePdfToText(buffer: Buffer): Promise<string> {
   // got a chance to run (confirmed live via `wrangler tail`: the fix had no
   // effect at all on the first deploy). A dynamic import runs exactly where
   // it's awaited, so this ordering is now actually enforced.
-  ensurePdfTextExtractionGlobals();
+  await ensurePdfTextExtractionGlobals();
   const { PDFParse } = await import("pdf-parse");
 
   const parser = new PDFParse({ data: buffer });

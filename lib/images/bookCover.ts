@@ -29,7 +29,21 @@ const MAX_PAGE_POINTS_PER_SIDE = 60 * 72; // 60 inches, in PDF points (72/inch)
 // bounds the RGBA buffers this function allocates on top of whatever pdf.js
 // already decoded (see the module-level comment below for why this doesn't
 // fully close the gap on its own).
-const MAX_PIXELS = 50_000_000; // 50 megapixels
+//
+// This was originally 50 megapixels, sized for a local/Node memory budget --
+// found live, via wrangler tail, that Cloudflare Workers has a hard 128MB
+// memory ceiling per isolate, fixed on every plan (unlike the CPU time
+// limit, there is no config to raise it). At peak, this pipeline holds
+// several full-size buffers alive at once: the decoded source image, its
+// RGBA conversion, a copy inside Photon's WASM memory, both crop outputs
+// (back + front), and JPEG-encoding scratch space -- roughly 4-5x a single
+// RGBA buffer's size. 50 megapixels is 200MB of RGBA alone, which exceeds
+// the ceiling before any of those other buffers even exist. A real KDP
+// cover PDF (300 DPI print resolution) routinely decodes well above this
+// new, much lower cap -- that's expected and intentional: this feature was
+// never meant to process print-resolution files, and the error message
+// below says so.
+const MAX_PIXELS = 4_000_000; // 4 megapixels -- a ~16MB RGBA buffer, safely under the 128MB ceiling even with every other buffer this pipeline holds alive at once
 
 // We don't collect page count/paper type from the admin, so the exact spine
 // width (which depends on both) isn't known -- a plain 50/50 split left a

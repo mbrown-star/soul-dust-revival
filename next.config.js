@@ -41,7 +41,14 @@ const nextConfig = {
   // `wrangler tail` against the real cover-PDF upload failure. Marking it
   // external, same as pdf-parse below, defers its resolution to the later
   // bundling stage that actually requests "workerd" and picks the right entry.
-  serverExternalPackages: ["pdf-parse", "@cf-wasm/photon"],
+  // pdfjs-dist (the library pdf-parse wraps) is also imported directly, in
+  // lib/import/pdfTextExtractionGlobals.ts, to register its worker module on
+  // globalThis.pdfjsWorker before any text extraction runs (see that file's
+  // comment for why). Its worker build is a standalone, self-contained
+  // module meant to run in its own isolated context -- bundling it into the
+  // main app chunk risks module-scope/global conflicts and unnecessary
+  // bloat, so it's kept external the same way.
+  serverExternalPackages: ["pdf-parse", "pdfjs-dist", "@cf-wasm/photon"],
   images: {
     remotePatterns: [
       {

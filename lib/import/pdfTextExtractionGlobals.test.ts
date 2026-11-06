@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ensurePdfTextExtractionGlobals, MinimalDOMMatrix } from "./pdfTextExtractionGlobals";
 
 describe("ensurePdfTextExtractionGlobals", () => {
-  it("installs DOMMatrix, ImageData, and Path2D when missing", () => {
+  it("installs DOMMatrix, ImageData, and Path2D when missing", async () => {
     const g = globalThis as unknown as Record<string, unknown>;
     const originals = { DOMMatrix: g.DOMMatrix, ImageData: g.ImageData, Path2D: g.Path2D };
     delete g.DOMMatrix;
@@ -10,7 +10,7 @@ describe("ensurePdfTextExtractionGlobals", () => {
     delete g.Path2D;
 
     try {
-      ensurePdfTextExtractionGlobals();
+      await ensurePdfTextExtractionGlobals();
       expect(typeof g.DOMMatrix).toBe("function");
       expect(typeof g.ImageData).toBe("function");
       expect(typeof g.Path2D).toBe("function");
@@ -21,17 +21,32 @@ describe("ensurePdfTextExtractionGlobals", () => {
     }
   });
 
-  it("does not overwrite an existing global", () => {
+  it("does not overwrite an existing global", async () => {
     const g = globalThis as unknown as Record<string, unknown>;
     const sentinel = function FakeDOMMatrix() {};
     const original = g.DOMMatrix;
     g.DOMMatrix = sentinel;
 
     try {
-      ensurePdfTextExtractionGlobals();
+      await ensurePdfTextExtractionGlobals();
       expect(g.DOMMatrix).toBe(sentinel);
     } finally {
       g.DOMMatrix = original;
+    }
+  });
+
+  it("registers pdfjs-dist's worker message handler on globalThis.pdfjsWorker", async () => {
+    const g = globalThis as unknown as Record<string, unknown>;
+    const original = g.pdfjsWorker;
+    delete g.pdfjsWorker;
+
+    try {
+      await ensurePdfTextExtractionGlobals();
+      expect(g.pdfjsWorker).toBeDefined();
+      const { WorkerMessageHandler } = g.pdfjsWorker as { WorkerMessageHandler?: unknown };
+      expect(WorkerMessageHandler).toBeDefined();
+    } finally {
+      g.pdfjsWorker = original;
     }
   });
 });
