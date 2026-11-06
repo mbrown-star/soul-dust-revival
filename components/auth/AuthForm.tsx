@@ -74,7 +74,7 @@ export function AuthForm({ mode, next }: { mode: Mode; next: string }) {
       className="max-w-sm mx-auto px-4 py-16 sm:py-20 space-y-4"
       aria-label={isSignup ? "Sign up" : "Log in"}
     >
-      <h1 className="text-xl font-semibold">{isSignup ? "Create your account" : "Log in"}</h1>
+      <h1 className="font-display font-bold text-2xl text-ink">{isSignup ? "Create your account" : "Log in"}</h1>
       {isSignup && (
         <p className="text-sm text-moss">
           First time buying a study or book? Start here — we&apos;ll send a link to confirm your email.
