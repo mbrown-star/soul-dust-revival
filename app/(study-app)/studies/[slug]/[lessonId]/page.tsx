@@ -68,7 +68,7 @@ export default async function LessonPage({
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 sm:py-10 space-y-8 study-content-protected">
-      <h1 className="text-2xl font-semibold">{lesson.title}</h1>
+      <h1 className="font-display font-bold text-2xl sm:text-3xl text-ink">{lesson.title}</h1>
       {blocks.map((block) => (
         <LessonBlock key={block.id} block={block} />
       ))}

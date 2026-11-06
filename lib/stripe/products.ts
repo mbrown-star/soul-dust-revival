@@ -3,6 +3,21 @@ import { getDb } from "@/lib/db/client";
 import { products } from "@/lib/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
 
+type ProductFormat = "physical" | "digital" | "both";
+
+// A format "both" product has its physical/digital side decided per line
+// item (its `variant`), not by the product's own static format -- the
+// product itself offers both, but any one purchase of it is only one or
+// the other. Every other format decides this from the format alone. Shared
+// by app/api/checkout/route.ts and lib/stripe/webhook-handlers.ts, which
+// previously each defined their own identical copy of this logic.
+export function isDigitalVariant(format: ProductFormat, variant?: "physical" | "digital"): boolean {
+  return format === "digital" || (format === "both" && variant === "digital");
+}
+export function isPhysicalVariant(format: ProductFormat, variant?: "physical" | "digital"): boolean {
+  return format === "physical" || (format === "both" && variant === "physical");
+}
+
 /**
  * Returns a Stripe Price ID for a given product (or, for a format "both"
  * product, one of its two independent variants), creating the underlying

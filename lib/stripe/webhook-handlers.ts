@@ -3,6 +3,7 @@ import { orders, orderItems, entitlements, products } from "@/lib/db/schema";
 import { eq, inArray, and, ne } from "drizzle-orm";
 import type Stripe from "stripe";
 import { sendOrderConfirmationEmail } from "@/lib/email/send";
+import { isDigitalVariant, isPhysicalVariant } from "./products";
 
 /**
  * Called from the /api/webhooks/stripe route on checkout.session.completed.
@@ -58,11 +59,11 @@ export async function handleCheckoutCompleted(session: Stripe.Checkout.Session, 
   // alone, same as before.
   const isDigitalItem = (item: (typeof items)[number]) => {
     const product = productById.get(item.productId)!;
-    return product.format === "digital" || (product.format === "both" && item.variant === "digital");
+    return isDigitalVariant(product.format, item.variant ?? undefined);
   };
   const isPhysicalItem = (item: (typeof items)[number]) => {
     const product = productById.get(item.productId)!;
-    return product.format === "physical" || (product.format === "both" && item.variant === "physical");
+    return isPhysicalVariant(product.format, item.variant ?? undefined);
   };
 
   const digitalItems = items.filter(isDigitalItem);
@@ -104,7 +105,12 @@ export async function handleCheckoutCompleted(session: Stripe.Checkout.Session, 
     items: items.map((item) => {
       const product = productById.get(item.productId)!;
       const digital = isDigitalItem(item);
-      const priceCents = digital && product.format === "both" ? product.digitalPriceCents! : product.priceCents;
+      // Falls back to the physical price rather than asserting non-null --
+      // productSchema requires digitalPriceCents whenever format is "both",
+      // but that's enforced at the admin-write boundary, not the (nullable)
+      // database column, and this runs after the order is already paid, so
+      // it must never throw here.
+      const priceCents = digital && product.format === "both" ? product.digitalPriceCents ?? product.priceCents : product.priceCents;
       const title = product.format === "both" ? `${product.title} (${digital ? "Digital" : "Physical"})` : product.title;
       return { title, priceCents };
     }),

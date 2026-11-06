@@ -4,7 +4,7 @@ import { getDb } from "@/lib/db/client";
 import { orders, orderItems, products, users } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { stripe } from "@/lib/stripe/client";
-import { getOrCreateStripePrice } from "@/lib/stripe/products";
+import { getOrCreateStripePrice, isDigitalVariant, isPhysicalVariant } from "@/lib/stripe/products";
 import { checkoutSchema } from "@/lib/validation/schemas";
 
 export async function POST(req: NextRequest) {
@@ -54,17 +54,37 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const isDigitalItem = (item: (typeof items)[number]) => {
+  // Merge any lines sharing the same {productId, variant} (the cart UI
+  // already does this client-side via CartContext.tsx's own lineKey(), but
+  // this route is a public API a request can hit directly, bypassing that)
+  // — without this, a crafted request with the same digital item split
+  // across two lines would be charged for both (Stripe has no notion of
+  // "the same line" to merge) while the webhook's entitlement grant
+  // correctly dedupes to one per product, leaving the customer overcharged
+  // for what they actually received.
+  const mergedItems = Array.from(
+    items
+      .reduce((map, item) => {
+        const key = `${item.productId}:${item.variant ?? ""}`;
+        const existing = map.get(key);
+        if (existing) existing.quantity += item.quantity;
+        else map.set(key, { ...item });
+        return map;
+      }, new Map<string, (typeof items)[number]>())
+      .values()
+  );
+
+  const isDigitalItem = (item: (typeof mergedItems)[number]) => {
     const product = dbProducts.find((p) => p.id === item.productId)!;
-    return product.format === "digital" || (product.format === "both" && item.variant === "digital");
+    return isDigitalVariant(product.format, item.variant);
   };
-  const isPhysicalItem = (item: (typeof items)[number]) => {
+  const isPhysicalItem = (item: (typeof mergedItems)[number]) => {
     const product = dbProducts.find((p) => p.id === item.productId)!;
-    return product.format === "physical" || (product.format === "both" && item.variant === "physical");
+    return isPhysicalVariant(product.format, item.variant);
   };
 
-  const hasDigital = items.some(isDigitalItem);
-  const hasPhysical = items.some(isPhysicalItem);
+  const hasDigital = mergedItems.some(isDigitalItem);
+  const hasPhysical = mergedItems.some(isPhysicalItem);
 
   const session = await getSession();
 
@@ -87,11 +107,22 @@ export async function POST(req: NextRequest) {
   // Prices always come from our own DB record, never from client input —
   // the client only ever supplies productId + quantity (+ variant, for a
   // format "both" product, validated against its format above).
-  const totalCents = items.reduce((sum, item) => {
+  let totalCents = 0;
+  for (const item of mergedItems) {
     const product = dbProducts.find((p) => p.id === item.productId)!;
-    const priceCents = isDigitalItem(item) && product.format === "both" ? product.digitalPriceCents! : product.priceCents;
-    return sum + priceCents * item.quantity;
-  }, 0);
+    if (isDigitalItem(item) && product.format === "both") {
+      // productSchema requires digitalPriceCents whenever format is "both",
+      // but that's enforced at the admin-write boundary, not the database
+      // column itself (nullable) -- fail with a clear error instead of a
+      // non-null assertion if an old or directly-written row ever lacks it.
+      if (product.digitalPriceCents == null) {
+        return NextResponse.json({ error: "invalid_product" }, { status: 400 });
+      }
+      totalCents += product.digitalPriceCents * item.quantity;
+    } else {
+      totalCents += product.priceCents * item.quantity;
+    }
+  }
 
   // Create the order in a pending state before redirecting to Stripe.
   const [order] = await db
@@ -126,7 +157,7 @@ export async function POST(req: NextRequest) {
   }
 
   await db.insert(orderItems).values(
-    items.map((item) => ({
+    mergedItems.map((item) => ({
       orderId: order.id,
       productId: item.productId,
       quantity: item.quantity,
@@ -136,7 +167,7 @@ export async function POST(req: NextRequest) {
 
   // Build Stripe line items, creating Stripe Products/Prices on first use.
   const lineItems = await Promise.all(
-    items.map(async (item) => ({
+    mergedItems.map(async (item) => ({
       price: await getOrCreateStripePrice(item.productId, item.variant),
       quantity: item.quantity,
     }))

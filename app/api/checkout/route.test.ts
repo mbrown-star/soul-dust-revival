@@ -9,7 +9,10 @@ vi.mock("@/lib/auth/session", () => ({ getSession: vi.fn() }));
 vi.mock("@/lib/stripe/client", () => ({
   stripe: { checkout: { sessions: { create: vi.fn() } } },
 }));
-vi.mock("@/lib/stripe/products", () => ({ getOrCreateStripePrice: vi.fn().mockResolvedValue("price_fake") }));
+vi.mock("@/lib/stripe/products", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/stripe/products")>("@/lib/stripe/products");
+  return { ...actual, getOrCreateStripePrice: vi.fn().mockResolvedValue("price_fake") };
+});
 
 const { POST } = await import("./route");
 const { getSession } = await import("@/lib/auth/session");
@@ -229,5 +232,64 @@ describe("POST /api/checkout", () => {
         await db.delete(products).where(eq(products.id, product.id));
       }
     });
+
+    it("returns a clean 400 instead of crashing if a \"both\" product's digitalPriceCents is somehow null", async () => {
+      vi.mocked(getSession).mockResolvedValue({ userId, email: "buyer@example.com" });
+      // productSchema's .refine() requires digitalPriceCents for format
+      // "both" at the admin-write boundary, but the column itself is
+      // nullable -- simulate an old/directly-written row that predates it.
+      const [product] = await db
+        .insert(products)
+        .values({
+          type: "book",
+          format: "both",
+          title: "Both Format, No Digital Price",
+          slug: `both-format-no-price-${randomUUID()}`,
+          priceCents: 1999,
+          digitalPriceCents: null,
+          active: true,
+        })
+        .returning();
+      try {
+        const res = await POST(
+          checkoutRequest({
+            items: [{ productId: product!.id, quantity: 1, variant: "digital" }],
+            country: "US",
+          })
+        );
+        expect(res.status).toBe(400);
+        expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
+      } finally {
+        await db.delete(products).where(eq(products.id, product!.id));
+      }
+    });
+  });
+
+  it("merges duplicate line items sharing the same {productId, variant} instead of double-charging", async () => {
+    vi.mocked(getSession).mockResolvedValue({ userId, email: "buyer@example.com" });
+    // A direct API call (bypassing the cart UI's own client-side merge) can
+    // split the same item across two lines -- the webhook's entitlement
+    // grant dedupes by product either way, so if checkout didn't also merge,
+    // the customer would be charged twice for a single entitlement.
+    const res = await POST(
+      checkoutRequest({
+        items: [
+          { productId: digitalProductId, quantity: 1 },
+          { productId: digitalProductId, quantity: 2 },
+        ],
+        country: "US",
+      })
+    );
+    expect(res.status).toBe(200);
+    const [order] = await db.select().from(orders).where(eq(orders.userId, userId));
+    expect(order!.totalCents).toBe(2900 * 3); // merged quantity (1 + 2), not double-charged as two separate lines
+    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order!.id));
+    expect(items).toHaveLength(1);
+    expect(items[0]!.quantity).toBe(3);
+    const lastCall = vi.mocked(stripe.checkout.sessions.create).mock.calls.at(-1);
+    const params = lastCall?.[0] as { line_items: unknown[] } | undefined;
+    expect(params?.line_items).toHaveLength(1);
+    await db.delete(orderItems).where(eq(orderItems.orderId, order!.id));
+    await db.delete(orders).where(eq(orders.id, order!.id));
   });
 });

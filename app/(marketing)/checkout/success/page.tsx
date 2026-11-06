@@ -42,7 +42,7 @@ export default async function CheckoutSuccessPage({
 
   return (
     <div className="max-w-xl mx-auto px-4 py-10 sm:py-16 space-y-6">
-      <h1 className="text-2xl font-semibold">Thank you for your order</h1>
+      <h1 className="font-display font-bold text-2xl text-ink">Thank you for your order</h1>
       <p className="text-moss">Order #{order.id.slice(0, 8)}</p>
 
       <div className="space-y-2 border-t border-b py-4">

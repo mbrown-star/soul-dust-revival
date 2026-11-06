@@ -27,7 +27,7 @@ export default async function SalesReportPage() {
   // simpler than a nested query per order, and fine at this scale; move to
   // a proper SQL aggregate if order volume grows large.
   const orderIds = new Set(paidOrders.map((o) => o.id));
-  const itemsByOrder = new Map<string, { title: string | null; quantity: number }[]>();
+  const itemsByOrder = new Map<string, { title: string | null; quantity: number; variant: "physical" | "digital" | null }[]>();
 
   if (orderIds.size > 0) {
     const allItems = await db
@@ -35,6 +35,7 @@ export default async function SalesReportPage() {
         orderId: orderItems.orderId,
         quantity: orderItems.quantity,
         title: products.title,
+        variant: orderItems.variant,
       })
       .from(orderItems)
       .leftJoin(products, eq(orderItems.productId, products.id));
@@ -42,7 +43,7 @@ export default async function SalesReportPage() {
     for (const item of allItems) {
       if (!orderIds.has(item.orderId)) continue;
       const list = itemsByOrder.get(item.orderId) ?? [];
-      list.push({ title: item.title, quantity: item.quantity });
+      list.push({ title: item.title, quantity: item.quantity, variant: item.variant });
       itemsByOrder.set(item.orderId, list);
     }
   }
@@ -90,7 +91,14 @@ export default async function SalesReportPage() {
                 <td className="py-3 pr-4">{order.country}</td>
                 <td className="py-3 pr-4">
                   {(itemsByOrder.get(order.id) ?? [])
-                    .map((i) => `${i.title ?? "Unknown product"} ×${i.quantity}`)
+                    .map((i) => {
+                      // A format "both" product's two order items share the
+                      // same title, so the variant label is what actually
+                      // distinguishes a "365 Days..." physical sale from its
+                      // digital one in this list.
+                      const label = i.variant ? `${i.title ?? "Unknown product"} (${i.variant === "digital" ? "Digital" : "Physical"})` : i.title ?? "Unknown product";
+                      return `${label} ×${i.quantity}`;
+                    })
                     .join(", ")}
                 </td>
                 <td className="py-3">${(order.totalCents / 100).toFixed(2)}</td>
