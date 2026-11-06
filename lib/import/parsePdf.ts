@@ -1,4 +1,3 @@
-import { PDFParse } from "pdf-parse";
 import { ensurePdfTextExtractionGlobals } from "./pdfTextExtractionGlobals";
 
 /**
@@ -10,9 +9,18 @@ import { ensurePdfTextExtractionGlobals } from "./pdfTextExtractionGlobals";
  * serverExternalPackages -- see the comment there for why.
  */
 export async function parsePdfToText(buffer: Buffer): Promise<string> {
-  // Must run before PDFParse touches pdfjs-dist's text-layer code -- see
-  // pdfTextExtractionGlobals.ts for why this is needed in the Workers runtime.
+  // Must run before pdf-parse's own module evaluation touches pdfjs-dist's
+  // text-layer code -- see pdfTextExtractionGlobals.ts for why this is
+  // needed in the Workers runtime. A plain top-of-file `import { PDFParse }
+  // from "pdf-parse"` doesn't give this ordering: static imports are
+  // hoisted and evaluated before any of this module's own code runs
+  // (including this function), so pdf-parse's own internal canvas-polyfill
+  // attempt was still firing -- and still failing -- before this call ever
+  // got a chance to run (confirmed live via `wrangler tail`: the fix had no
+  // effect at all on the first deploy). A dynamic import runs exactly where
+  // it's awaited, so this ordering is now actually enforced.
   ensurePdfTextExtractionGlobals();
+  const { PDFParse } = await import("pdf-parse");
 
   const parser = new PDFParse({ data: buffer });
   try {
