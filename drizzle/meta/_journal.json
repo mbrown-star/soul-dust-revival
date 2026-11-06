@@ -43,6 +43,13 @@
       "when": 1793984990978,
       "tag": "0005_many_jack_power",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793988308501,
+      "tag": "0006_cool_moonstone",
+      "breakpoints": true
     }
   ]
 }

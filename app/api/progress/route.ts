@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/client";
 import { lessonProgress, lessons, studies } from "@/lib/db/schema";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { progressSchema } from "@/lib/validation/schemas";
 import { hasEntitlement } from "@/lib/entitlements/check";
 
@@ -30,28 +30,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const existing = await db.query.lessonProgress.findFirst({
-    where: and(
-      eq(lessonProgress.userId, session.userId),
-      eq(lessonProgress.lessonId, lessonId)
-    ),
-  });
-
   const completedAt = status === "completed" ? new Date() : null;
 
-  if (existing) {
-    await db
-      .update(lessonProgress)
-      .set({ status, completedAt })
-      .where(eq(lessonProgress.id, existing.id));
-  } else {
-    await db.insert(lessonProgress).values({
-      userId: session.userId,
-      lessonId,
-      status,
-      completedAt,
+  // A single atomic upsert, not a separate select-then-insert-or-update --
+  // two near-simultaneous writes for the same user+lesson (the "mark in
+  // progress" ping on page load racing the "mark complete" button) could
+  // both see no existing row under the old check-then-act version and both
+  // insert, leaving two rows whose read order is arbitrary. The database's
+  // own unique constraint (user_id, lesson_id) makes this one statement
+  // race-proof regardless of request timing.
+  await db
+    .insert(lessonProgress)
+    .values({ userId: session.userId, lessonId, status, completedAt })
+    .onConflictDoUpdate({
+      target: [lessonProgress.userId, lessonProgress.lessonId],
+      set: { status, completedAt },
     });
-  }
 
   return NextResponse.json({ ok: true });
 }

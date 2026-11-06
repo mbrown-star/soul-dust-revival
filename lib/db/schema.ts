@@ -5,6 +5,7 @@ import {
   integer,
   boolean,
   timestamp,
+  unique,
 } from "drizzle-orm/pg-core";
 
 // ---------- USERS ----------
@@ -195,13 +196,26 @@ export const contentBlocks = pgTable("content_blocks", {
 });
 
 // ---------- USER INTERACTION / PROGRESS ----------
-export const lessonProgress = pgTable("lesson_progress", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").references(() => users.id).notNull(),
-  lessonId: uuid("lesson_id").references(() => lessons.id).notNull(),
-  status: text("status").notNull().default("not_started").$type<"not_started" | "in_progress" | "completed">(),
-  completedAt: timestamp("completed_at", { withTimezone: true }),
-});
+export const lessonProgress = pgTable(
+  "lesson_progress",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id).notNull(),
+    lessonId: uuid("lesson_id").references(() => lessons.id).notNull(),
+    status: text("status").notNull().default("not_started").$type<"not_started" | "in_progress" | "completed">(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => [
+    // Without this, two near-simultaneous writes for the same user+lesson
+    // (e.g. the "mark in progress" ping on page load racing the "mark
+    // complete" button) could both see no existing row and both insert,
+    // leaving two rows whose read order is arbitrary -- confirmed in
+    // production (CLAUDE.md, 2026-11-09). The route's upsert now relies on
+    // this to resolve the race atomically instead of a separate
+    // select-then-insert-or-update.
+    unique("lesson_progress_user_lesson_unique").on(table.userId, table.lessonId),
+  ]
+);
 
 export const responses = pgTable("responses", {
   id: uuid("id").primaryKey().defaultRandom(),
