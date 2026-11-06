@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/client";
 import { lessonProgress, lessons, studies } from "@/lib/db/schema";
@@ -46,6 +47,16 @@ export async function POST(req: NextRequest) {
       target: [lessonProgress.userId, lessonProgress.lessonId],
       set: { status, completedAt },
     });
+
+  // The write itself was correct even before this -- what was stale was the
+  // study's lesson list and My Library, both server-rendered and cached by
+  // Next's router cache. Navigating back to either after marking a lesson
+  // complete could show the pre-mutation snapshot even though the database
+  // already had the right value. Explicitly invalidating both here is the
+  // documented fix for "a mutation in a Route Handler needs to bust a cached
+  // page elsewhere" rather than relying on client-side refresh timing.
+  revalidatePath(`/studies/${study.slug}`);
+  revalidatePath("/library");
 
   return NextResponse.json({ ok: true });
 }

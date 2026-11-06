@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/client";
 import { lessons, lessonProgress, studies } from "@/lib/db/schema";
@@ -39,6 +40,12 @@ export async function POST(req: NextRequest) {
       .delete(lessonProgress)
       .where(and(eq(lessonProgress.userId, session.userId), inArray(lessonProgress.lessonId, lessonIds)));
   }
+
+  // See the matching comment in /api/progress's POST -- busts the cached
+  // study list and My Library so "Start over" shows up immediately rather
+  // than requiring a hard refresh.
+  revalidatePath(`/studies/${study.slug}`);
+  revalidatePath("/library");
 
   return NextResponse.json({ ok: true });
 }

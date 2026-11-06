@@ -6,6 +6,10 @@ import { studies, products, users, lessons, lessonProgress, responses, contentBl
 import { eq } from "drizzle-orm";
 
 vi.mock("@/lib/auth/session", () => ({ getSession: vi.fn() }));
+// revalidatePath needs a real Next.js request context (a "static generation
+// store") that vitest doesn't set up -- mocked the same way any other
+// genuine external dependency is in this project's tests.
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const { POST } = await import("./route");
 const { getSession } = await import("@/lib/auth/session");

@@ -6,9 +6,14 @@ import { studies, products, users, lessons, lessonProgress, entitlements } from 
 import { eq, and } from "drizzle-orm";
 
 vi.mock("@/lib/auth/session", () => ({ getSession: vi.fn() }));
+// revalidatePath needs a real Next.js request context (a "static generation
+// store") that vitest doesn't set up -- mocked the same way any other
+// genuine external dependency is in this project's tests.
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const { POST } = await import("./route");
 const { getSession } = await import("@/lib/auth/session");
+const { revalidatePath } = await import("next/cache");
 
 function progressRequest(body: unknown) {
   return new NextRequest("https://example.com/api/progress", {
@@ -87,6 +92,18 @@ describe("POST /api/progress", () => {
       .where(and(eq(lessonProgress.userId, userId), eq(lessonProgress.lessonId, lessonId)));
     expect(rows).toHaveLength(1);
     expect(rows[0]!.status).toBe("in_progress");
+  });
+
+  it("invalidates the study's lesson list and My Library, so a status change shows up without a hard refresh", async () => {
+    await setUp();
+    vi.mocked(revalidatePath).mockClear();
+
+    const res = await POST(progressRequest({ lessonId, status: "completed" }));
+    expect(res.status).toBe(200);
+
+    const [study] = await db.select().from(studies).where(eq(studies.id, studyId));
+    expect(revalidatePath).toHaveBeenCalledWith(`/studies/${study!.slug}`);
+    expect(revalidatePath).toHaveBeenCalledWith("/library");
   });
 
   it("updates the existing row in place rather than creating a second one", async () => {
