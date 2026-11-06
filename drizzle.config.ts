@@ -21,7 +21,18 @@ export default {
   dbCredentials: {
     // drizzle-kit does not honor a separate `ssl` field once `url` is set —
     // it silently skips SSL and the connection then hangs rather than
-    // erroring. Append sslmode=require directly to the URL instead.
-    url: `${process.env.MIGRATION_DATABASE_URL!}${process.env.MIGRATION_DATABASE_URL!.includes("?") ? "&" : "?"}sslmode=require`,
+    // erroring. Append sslmode directly to the URL instead.
+    //
+    // Use `no-verify`, not `require`: as of pg-connection-string's current
+    // major version, `require` (and `prefer`/`verify-ca`) is treated as an
+    // alias for `verify-full`, which validates the server's certificate
+    // chain against Node's trusted CA store. Supabase's pooler certificate
+    // isn't in that store, so `require` fails with "self-signed certificate
+    // in certificate chain" -- and drizzle-kit's migrate command doesn't
+    // surface that error, it just hangs forever at "applying migrations...".
+    // `no-verify` still encrypts the connection, it just skips the chain
+    // check (same effective behavior `require` used to have before that
+    // library's semantics changed).
+    url: `${process.env.MIGRATION_DATABASE_URL!}${process.env.MIGRATION_DATABASE_URL!.includes("?") ? "&" : "?"}sslmode=no-verify`,
   },
 } satisfies Config;

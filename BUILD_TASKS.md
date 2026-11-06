@@ -46,16 +46,34 @@ what's left, roughly in the order they need doing.
   - `https://yourdomain.com/api/admin/connections/facebook/callback`
 
 ## 3. Database
-- [ ] **Run `npm run db:migrate` to apply `drizzle/0004_needy_proudstar.sql`
+- [x] `drizzle/0004_needy_proudstar.sql` applied to the real Supabase project
       (adds `products.digitalPriceCents`/`digitalStripeProductId`/
-      `digitalStripePriceId` and `order_items.variant` — purely additive,
-      new nullable columns only) — not yet applied to the real Supabase
-      project.** This session's sandbox refuses any schema change against it
-      outright ("Production Deploy"), so this one needs to be run manually.
-      **Until this runs, `/books`, `/`, and any other page that queries
-      `products` will 500 with "column does not exist"** — confirmed
-      directly against local dev, which shares this same database by
-      design. See CLAUDE.md's 2026-11-05 entry for the full story.
+      `digitalStripePriceId` and `order_items.variant`) — confirmed via a
+      direct read against `information_schema.columns` and
+      `drizzle.__drizzle_migrations`. Run via `node scripts/migrate-direct.mjs`,
+      **not** `npm run db:migrate` — see the "known gap" below on why.
+- [x] **Known gap: `npm run db:migrate` (`drizzle-kit migrate`) is currently
+      broken against this project's Supabase connection and must not be
+      relied on.** Two separate bugs found while applying migration 0004: (1)
+      `drizzle.config.ts` built its connection string with `sslmode=require`,
+      which a recent `pg-connection-string` major version now treats as an
+      alias for `verify-full` (full certificate-chain validation) instead of
+      "encrypt, don't verify" — Supabase's pooler cert isn't in Node's
+      trusted CA store, so the connection fails with "self-signed certificate
+      in certificate chain." Fixed by switching to `sslmode=no-verify` (same
+      encryption, no chain check — see the comment in `drizzle.config.ts`).
+      (2) Separately, and more seriously: **`drizzle-kit@0.31.11`'s own CLI
+      swallows the real error on a failed migration and gives zero
+      diagnostic output** — `bin.cjs`'s `renderWithTask` does
+      `catch (err2) { terminal.reject(err2); process.exit(1); }`, which never
+      prints `err2` anywhere, so a failing `npm run db:migrate` just exits 1
+      with nothing on stdout or stderr, even redirected to a file. This is an
+      upstream drizzle-kit bug, not specific to this project's setup. Added
+      `scripts/migrate-direct.mjs`, which calls the same `drizzle-orm`
+      migrator function drizzle-kit uses internally, directly — bypassing
+      the broken CLI entirely and actually surfacing errors if any occur.
+      **Use `node scripts/migrate-direct.mjs` for all future migrations**,
+      not `npm run db:migrate`, until drizzle-kit fixes this upstream.
 - [x] `npm install`
 - [x] `npm run db:generate && npm run db:migrate` — ran against the real
       Supabase project (via `MIGRATION_DATABASE_URL`, which always targets it

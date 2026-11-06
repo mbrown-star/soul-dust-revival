@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "verify": "npm run typecheck && npm run lint && npm run build",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "node scripts/migrate-direct.mjs",
     "db:seed": "tsx --env-file=.env.local scripts/seed.ts",
     "test": "vitest run",
     "test:watch": "vitest",
