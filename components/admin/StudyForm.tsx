@@ -107,6 +107,12 @@ export function StudyForm({
         return;
       }
 
+      // Editing an existing study pushes to the URL it's already on -- a
+      // no-op navigation that leaves this component mounted, so `saving`
+      // must be cleared explicitly here rather than relying on the push to
+      // unmount the form (that assumption only held for a brand-new study,
+      // which does push to a different URL). Same bug/fix as BlogPostForm.
+      setSaving(false);
       router.push(`/admin/studies/${data.id}`);
       router.refresh();
     } catch {
