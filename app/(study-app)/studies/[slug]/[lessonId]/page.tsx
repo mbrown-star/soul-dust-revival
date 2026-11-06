@@ -5,6 +5,7 @@ import { hasEntitlement } from "@/lib/entitlements/check";
 import { getSession } from "@/lib/auth/session";
 import { LessonBlock } from "@/components/study/LessonBlock";
 import { LessonNavigation } from "@/components/study/LessonNavigation";
+import { StudyLessonView } from "@/components/study/StudyLessonView";
 import { DevotionalDayView } from "@/components/devotional/DevotionalDayView";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
@@ -101,6 +102,10 @@ export default async function LessonPage({
   const previousHref = previousLesson ? `${studyHref}/${previousLesson.id}` : null;
   const nextHref = nextLesson ? `${studyHref}/${nextLesson.id}` : null;
   const isDevotional = study.kind === "devotional";
+  // A Study-kind lesson without studyContent (the "Introduction" lesson, or
+  // any lesson imported before the interactive Study reader existed) falls
+  // back to the plain content-block reading view below.
+  const hasCustomHeader = isDevotional || !!lesson.studyContent;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 sm:py-10 space-y-8 study-content-protected">
@@ -112,12 +117,22 @@ export default async function LessonPage({
         previousHref={previousHref}
         nextHref={nextHref}
         position="top"
-        visible={!isDevotional}
+        visible={!hasCustomHeader}
       />
       {isDevotional ? (
         <DevotionalDayView
           dayLabel={lesson.title}
           bodyHtml={blocks.find((b) => b.type === "text")?.body ?? ""}
+          previousHref={previousHref}
+          nextHref={nextHref}
+        />
+      ) : lesson.studyContent ? (
+        <StudyLessonView
+          key={lesson.id}
+          lessonId={lesson.id}
+          lessonTitle={lesson.title}
+          content={lesson.studyContent}
+          initialAnswers={Object.fromEntries(answerByBlockId)}
           previousHref={previousHref}
           nextHref={nextHref}
         />

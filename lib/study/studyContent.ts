@@ -1,0 +1,61 @@
+// Structured content for one week of a 12-week interactive Study lesson
+// (study.kind === "study"), modeled on soul-dust-interactive's weeks.json
+// schema (see soul-dust-interactive/HANDOFF.md section 2). Populated at
+// import/backfill time, not derived at render time -- unlike the devotional
+// reader (lib/devotional/parseDevotionalHtml.ts), which splits already-
+// stored HTML on every render, this is real structured data because a
+// week's parts/stations/practices/prayer don't reduce to a flat paragraph
+// list the way a devotional day's reading does.
+//
+// A lesson without this (the "Introduction" lesson, or any study lesson
+// imported before this existed) falls back to the plain content-block
+// reading view -- see the branch in app/(study-app)/studies/[slug]/[lessonId]/page.tsx.
+export type StudyWeekContent = {
+  subtitle: string;
+  keyVerse: string;
+  keyRef: string;
+  study: {
+    sections: { heading: string; paras: string[]; pulls?: string[] }[];
+    parts: { label: string; heading: string; paras: string[]; pulls?: string[] }[];
+  };
+  passageRef: string;
+  // Verse-by-verse WEB text for the week's whole passage range, embedded at
+  // backfill time rather than fetched live -- see scripts/backfill-colossians-study-content.ts.
+  passage: { c: number; n: number; text: string }[];
+  stationsLabel: string;
+  stationsIntro: string;
+  stations: StudyStation[];
+  lifeTitle: string;
+  lifeIntro: string;
+  practices: { n: number; title: string; body: string }[];
+  // The prayer's lead-in sentence, its three Father/Son/Spirit beats, and
+  // its closing sentence -- pre-split at backfill time (see PRAYER regex in
+  // soul-dust-interactive/tools/study/build_study.py) rather than
+  // re-parsed in the browser.
+  prayerLead: string;
+  prayerBeats: { person: "Father" | "Son" | "Spirit"; verb: string; words: string }[];
+  prayerClose: string;
+  bottomLine: string[];
+  benediction: string[];
+  closingVerse: string;
+  closingRef: string;
+  carry: string;
+};
+
+export type StudyStation = {
+  ref: string;
+  verse: string;
+  question: string;
+  // Real content_blocks row (type "question") created at backfill time, so
+  // the station's answer reuses the existing QuestionBlock/responses
+  // save-per-user plumbing unchanged rather than a parallel mechanism.
+  questionBlockId: string;
+  greek: string;
+  translit: string;
+  gloss: string;
+  xref: string;
+  body: string[];
+  live: string;
+  verseNums: string[];
+  anchor: { v: string; word: string } | null;
+};

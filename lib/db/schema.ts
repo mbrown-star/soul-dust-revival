@@ -6,7 +6,9 @@ import {
   boolean,
   timestamp,
   unique,
+  jsonb,
 } from "drizzle-orm/pg-core";
+import type { StudyWeekContent } from "@/lib/study/studyContent";
 
 // ---------- USERS ----------
 export const users = pgTable("users", {
@@ -177,6 +179,11 @@ export const lessons = pgTable("lessons", {
   orderIndex: integer("order_index").notNull(),
   title: text("title").notNull(),
   published: boolean("published").notNull().default(false),
+  // Structured week content for the 5-tab interactive Study reader (see
+  // lib/study/studyContent.ts) -- null for every lesson except the 12 real
+  // Colossians weeks backfilled so far. A study lesson with no studyContent
+  // falls back to the plain content-block reading view.
+  studyContent: jsonb("study_content").$type<StudyWeekContent>(),
 });
 
 export const contentBlocks = pgTable("content_blocks", {

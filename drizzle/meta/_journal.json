@@ -50,6 +50,13 @@
       "when": 1793988308501,
       "tag": "0006_cool_moonstone",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793999027965,
+      "tag": "0007_new_colleen_wing",
+      "breakpoints": true
     }
   ]
 }
