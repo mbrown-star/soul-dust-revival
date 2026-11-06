@@ -28,7 +28,7 @@ export default async function StudyDetailPage({ params }: { params: Promise<{ id
       <div>
         <h1 className="text-xl font-semibold mb-4">Edit study</h1>
         {study.sourceFileName && (
-          <p className="text-sm text-neutral-600 mb-4">
+          <p className="text-sm text-moss mb-4">
             Imported from{" "}
             <a href={study.sourceFileUrl ?? "#"} className="underline" target="_blank">
               {study.sourceFileName}
@@ -62,13 +62,13 @@ export default async function StudyDetailPage({ params }: { params: Promise<{ id
             <Link
               key={lesson.id}
               href={`/admin/studies/${study.id}/lessons/${lesson.id}`}
-              className="flex flex-wrap justify-between items-center gap-2 p-4 hover:bg-neutral-50"
+              className="flex flex-wrap justify-between items-center gap-2 p-4 hover:bg-moss/5"
             >
               <span>{lesson.title}</span>
-              <span className="text-sm text-neutral-400">{!lesson.published && "draft"}</span>
+              <span className="text-sm text-moss">{!lesson.published && "draft"}</span>
             </Link>
           ))}
-          {studyLessons.length === 0 && <p className="p-4 text-neutral-600">No lessons yet.</p>}
+          {studyLessons.length === 0 && <p className="p-4 text-moss">No lessons yet.</p>}
         </div>
       </div>
     </div>

@@ -51,7 +51,7 @@ function SortableItem({
         {...listeners}
         role="button"
         aria-label={`Drag to reorder ${block.type} block, position ${index + 1} of ${total}`}
-        className="cursor-grab flex items-center justify-center w-11 h-11 mt-2 text-neutral-400 text-lg select-none touch-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-neutral-900 rounded"
+        className="cursor-grab flex items-center justify-center w-11 h-11 mt-2 text-moss text-lg select-none touch-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink rounded"
       >
         ⠿
       </div>
@@ -66,7 +66,7 @@ function SortableItem({
           onClick={() => onMove("up")}
           disabled={index === 0}
           aria-label={`Move ${block.type} block up`}
-          className="flex items-center justify-center w-11 h-8 text-sm border rounded disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-neutral-900"
+          className="flex items-center justify-center w-11 h-8 text-sm border rounded disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink"
         >
           ↑
         </button>
@@ -75,7 +75,7 @@ function SortableItem({
           onClick={() => onMove("down")}
           disabled={index === total - 1}
           aria-label={`Move ${block.type} block down`}
-          className="flex items-center justify-center w-11 h-8 text-sm border rounded disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-neutral-900"
+          className="flex items-center justify-center w-11 h-8 text-sm border rounded disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink"
         >
           ↓
         </button>

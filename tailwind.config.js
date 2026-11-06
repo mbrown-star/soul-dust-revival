@@ -32,6 +32,10 @@ module.exports = {
         moss: "#6b5344",
         // 5.78:1 on parchment — error/alert text and states at any size.
         error: "#a8301c",
+        // 7.70:1 on parchment — success/alert text and states at any size.
+        // Already a documented design-system token (tokens.json's
+        // state-success); only now exposed as a usable Tailwind class.
+        success: "#3b5a2b",
       },
       fontFamily: {
         display: ["var(--font-display)"],

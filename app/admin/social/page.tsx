@@ -7,12 +7,12 @@ import { PLATFORM_LABELS } from "@/lib/data/socialPlatforms";
 export const dynamic = "force-dynamic";
 
 const STATUS_STYLES: Record<string, string> = {
-  draft: "bg-neutral-100 text-neutral-600",
-  scheduled: "bg-blue-100 text-blue-800",
-  sending: "bg-amber-100 text-amber-800",
-  published: "bg-green-100 text-green-800",
-  failed: "bg-red-100 text-red-700",
-  paused: "bg-neutral-100 text-neutral-600",
+  draft: "bg-moss/10 text-moss",
+  scheduled: "bg-ember/10 text-ember-700",
+  sending: "bg-gold/20 text-gold-700",
+  published: "bg-success/10 text-success",
+  failed: "bg-error/10 text-error",
+  paused: "bg-moss/10 text-moss",
 };
 
 export default async function SocialPostsPage() {
@@ -30,7 +30,7 @@ export default async function SocialPostsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <h1 className="text-xl font-semibold">Social posts</h1>
-        <Link href="/admin/social/new" className="inline-block bg-neutral-900 text-white rounded-lg px-4 py-2 text-center">
+        <Link href="/admin/social/new" className="inline-block bg-ink text-white rounded-lg px-4 py-2 text-center">
           + New post
         </Link>
       </div>
@@ -52,7 +52,7 @@ export default async function SocialPostsPage() {
             </div>
           );
         })}
-        {allPosts.length === 0 && <p className="p-4 text-neutral-600">No social posts yet.</p>}
+        {allPosts.length === 0 && <p className="p-4 text-moss">No social posts yet.</p>}
       </div>
     </div>
   );

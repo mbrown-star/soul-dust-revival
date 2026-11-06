@@ -14,7 +14,7 @@ export default async function AdminStudiesPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <h1 className="text-xl font-semibold">Studies</h1>
-        <Link href="/admin/studies/new" className="inline-block bg-neutral-900 text-white rounded-lg px-4 py-2 text-center">
+        <Link href="/admin/studies/new" className="inline-block bg-ink text-white rounded-lg px-4 py-2 text-center">
           Add study
         </Link>
       </div>
@@ -24,7 +24,7 @@ export default async function AdminStudiesPage() {
           <Link
             key={s.id}
             href={`/admin/studies/${s.id}`}
-            className="flex items-center gap-4 p-4 hover:bg-neutral-50"
+            className="flex items-center gap-4 p-4 hover:bg-moss/5"
           >
             {s.coverImageUrl ? (
               <Image
@@ -35,17 +35,17 @@ export default async function AdminStudiesPage() {
                 className="w-12 h-12 object-cover rounded"
               />
             ) : (
-              <div className="w-12 h-12 bg-neutral-100 rounded" />
+              <div className="w-12 h-12 bg-moss/10 rounded" />
             )}
             <div className="flex-1">
               <p className="font-medium">{s.title}</p>
-              <p className="text-sm text-neutral-600">
+              <p className="text-sm text-moss">
                 /{s.slug} {!s.published && "· draft"}
               </p>
             </div>
           </Link>
         ))}
-        {allStudies.length === 0 && <p className="p-4 text-neutral-600">No studies yet.</p>}
+        {allStudies.length === 0 && <p className="p-4 text-moss">No studies yet.</p>}
       </div>
     </div>
   );

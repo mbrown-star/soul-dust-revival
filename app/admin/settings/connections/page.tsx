@@ -20,7 +20,7 @@ export default async function ConnectionsPage() {
     <div className="space-y-6 max-w-2xl">
       <div>
         <h1 className="text-xl font-semibold">Connections</h1>
-        <p className="text-sm text-neutral-600 mt-1">
+        <p className="text-sm text-moss mt-1">
           Connect the accounts used for AI post suggestions and scheduled social publishing.
         </p>
       </div>

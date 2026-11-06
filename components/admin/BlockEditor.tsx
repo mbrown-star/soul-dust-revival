@@ -96,11 +96,11 @@ export function BlockEditor({
   return (
     <div className="border rounded-lg p-4 space-y-3 bg-white">
       <div className="flex justify-between items-center">
-        <span className="text-xs uppercase tracking-wide text-neutral-400">{block.type}</span>
+        <span className="text-xs uppercase tracking-wide text-moss">{block.type}</span>
         <button
           onClick={onDelete}
           aria-label={`Delete this ${block.type} block`}
-          className="text-sm text-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-500 rounded"
+          className="text-sm text-error focus-visible:outline focus-visible:outline-2 focus-visible:outline-error rounded"
         >
           Delete
         </button>
@@ -126,14 +126,14 @@ export function BlockEditor({
             aria-label="Upload image"
             onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])}
           />
-          <p role="status" aria-live="polite" className="text-sm text-neutral-600 h-5">
+          <p role="status" aria-live="polite" className="text-sm text-moss h-5">
             {uploading ? "Uploading..." : ""}
           </p>
 
           {block.imageUrl && (
             <div>
               <label htmlFor={altId} className="block text-sm font-medium mb-1">
-                Alt text <span aria-hidden="true" className="text-red-600">*</span>
+                Alt text <span aria-hidden="true" className="text-error">*</span>
                 <span className="sr-only"> (required)</span>
               </label>
               <input
@@ -147,7 +147,7 @@ export function BlockEditor({
                 onChange={(e) => update({ imageAlt: e.target.value })}
               />
               {altTextMissing && (
-                <p id={`${altId}-error`} className="text-sm text-red-600 mt-1">
+                <p id={`${altId}-error`} className="text-sm text-error mt-1">
                   Alt text is required whenever an image is attached (WCAG 1.1.1).
                 </p>
               )}
@@ -159,7 +159,7 @@ export function BlockEditor({
       {(block.type === "video" || block.type === "audio") && (
         <div className="space-y-3">
           {block.mediaId && (
-            <p className="text-sm text-neutral-600">Uploaded (media ID: {block.mediaId})</p>
+            <p className="text-sm text-moss">Uploaded (media ID: {block.mediaId})</p>
           )}
           <input
             type="file"
@@ -167,14 +167,14 @@ export function BlockEditor({
             aria-label={`Upload ${block.type}`}
             onChange={(e) => e.target.files?.[0] && uploadMedia(e.target.files[0])}
           />
-          <p role="status" aria-live="polite" className="text-sm text-neutral-600 h-5">
+          <p role="status" aria-live="polite" className="text-sm text-moss h-5">
             {uploading ? "Uploading..." : ""}
           </p>
 
           {block.type === "video" && block.mediaId && (
             <div>
               <label htmlFor={captionsId} className="block text-sm font-medium mb-1">
-                Captions file (.vtt) <span aria-hidden="true" className="text-red-600">*</span>
+                Captions file (.vtt) <span aria-hidden="true" className="text-error">*</span>
                 <span className="sr-only"> (required)</span>
               </label>
               <input
@@ -185,9 +185,9 @@ export function BlockEditor({
                 aria-describedby={captionsMissing ? `${captionsId}-error` : undefined}
                 onChange={(e) => e.target.files?.[0] && uploadCaptions(e.target.files[0])}
               />
-              {block.captionsUrl && <p className="text-sm text-green-700 mt-1">Captions uploaded ✓</p>}
+              {block.captionsUrl && <p className="text-sm text-success mt-1">Captions uploaded ✓</p>}
               {captionsMissing && (
-                <p id={`${captionsId}-error`} className="text-sm text-red-600 mt-1">
+                <p id={`${captionsId}-error`} className="text-sm text-error mt-1">
                   Captions are required for video content (WCAG 1.2.2).
                 </p>
               )}
@@ -199,7 +199,7 @@ export function BlockEditor({
               <label htmlFor={transcriptId} className="block text-sm font-medium mb-1">
                 Transcript {block.type === "audio" && (
                   <>
-                    <span aria-hidden="true" className="text-red-600">*</span>
+                    <span aria-hidden="true" className="text-error">*</span>
                     <span className="sr-only"> (required)</span>
                   </>
                 )}
@@ -246,7 +246,7 @@ export function BlockEditor({
               value={block.calloutColor ?? "#fef3c7"}
               onChange={(color) => update({ calloutColor: color })}
             />
-            <p className="text-xs text-neutral-400 mt-1">
+            <p className="text-xs text-moss mt-1">
               Check contrast against the text color before publishing — WCAG requires at
               least 4.5:1 for body text (3:1 for large text) against its background.
             </p>

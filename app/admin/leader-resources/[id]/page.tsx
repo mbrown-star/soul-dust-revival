@@ -18,7 +18,7 @@ export default async function EditLeaderResourcePage({
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/admin/leader-resources" className="text-sm text-neutral-400">
+        <Link href="/admin/leader-resources" className="text-sm text-moss">
           ← Leader resources
         </Link>
         <h1 className="text-xl font-semibold">{resource.title}</h1>

@@ -53,7 +53,7 @@ export function ConnectionsPanel({
   return (
     <div className="space-y-4">
       {error && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-error">
           {error}
         </p>
       )}
@@ -63,12 +63,12 @@ export function ConnectionsPanel({
         <div className="flex justify-between items-start mb-2">
           <div>
             <h2 className="font-medium">Claude</h2>
-            <p className="text-sm text-neutral-600">Powers AI-suggested draft posts.</p>
+            <p className="text-sm text-moss">Powers AI-suggested draft posts.</p>
           </div>
           <StatusBadge status={state.anthropic?.status ?? "disconnected"} />
         </div>
         {state.anthropic?.status === "connected" ? (
-          <button onClick={() => disconnect("anthropic")} className="text-sm text-red-600 underline">
+          <button onClick={() => disconnect("anthropic")} className="text-sm text-error underline">
             Disconnect
           </button>
         ) : (
@@ -81,12 +81,12 @@ export function ConnectionsPanel({
               placeholder="sk-ant-..."
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              className="flex-1 border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+              className="flex-1 border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-ink"
             />
             <button
               type="submit"
               disabled={connectingClaude}
-              className="bg-neutral-900 text-white rounded-lg px-4 py-2 text-sm disabled:opacity-50"
+              className="bg-ink text-white rounded-lg px-4 py-2 text-sm disabled:opacity-50"
             >
               {connectingClaude ? "Connecting..." : "Connect"}
             </button>
@@ -99,16 +99,16 @@ export function ConnectionsPanel({
         <div className="flex justify-between items-start mb-2">
           <div>
             <h2 className="font-medium">X</h2>
-            <p className="text-sm text-neutral-600">{state.x?.displayName ?? "Not connected"}</p>
+            <p className="text-sm text-moss">{state.x?.displayName ?? "Not connected"}</p>
           </div>
           <StatusBadge status={state.x?.status ?? "disconnected"} />
         </div>
         {state.x?.status === "connected" ? (
-          <button onClick={() => disconnect("x")} className="text-sm text-red-600 underline">
+          <button onClick={() => disconnect("x")} className="text-sm text-error underline">
             Disconnect
           </button>
         ) : (
-          <a href="/api/admin/connections/x/authorize" className="inline-block bg-neutral-900 text-white rounded-lg px-4 py-2 text-sm">
+          <a href="/api/admin/connections/x/authorize" className="inline-block bg-ink text-white rounded-lg px-4 py-2 text-sm">
             Connect X
           </a>
         )}
@@ -119,16 +119,16 @@ export function ConnectionsPanel({
         <div className="flex justify-between items-start mb-2">
           <div>
             <h2 className="font-medium">Facebook</h2>
-            <p className="text-sm text-neutral-600">{state.facebook?.displayName ?? "Not connected"}</p>
+            <p className="text-sm text-moss">{state.facebook?.displayName ?? "Not connected"}</p>
           </div>
           <StatusBadge status={state.facebook?.status ?? "disconnected"} />
         </div>
         {state.facebook?.status === "connected" ? (
-          <button onClick={() => disconnect("facebook")} className="text-sm text-red-600 underline">
+          <button onClick={() => disconnect("facebook")} className="text-sm text-error underline">
             Disconnect
           </button>
         ) : (
-          <a href="/api/admin/connections/facebook/authorize" className="inline-block bg-neutral-900 text-white rounded-lg px-4 py-2 text-sm">
+          <a href="/api/admin/connections/facebook/authorize" className="inline-block bg-ink text-white rounded-lg px-4 py-2 text-sm">
             Connect Facebook
           </a>
         )}
@@ -139,14 +139,14 @@ export function ConnectionsPanel({
         <div className="flex justify-between items-start mb-2">
           <div>
             <h2 className="font-medium">Instagram</h2>
-            <p className="text-sm text-neutral-600">
+            <p className="text-sm text-moss">
               {state.instagram?.displayName ?? "Connects automatically with Facebook, if the Page has a linked Instagram professional account"}
             </p>
           </div>
           <StatusBadge status={state.instagram?.status ?? "disconnected"} />
         </div>
         {state.instagram?.status === "connected" && (
-          <button onClick={() => disconnect("instagram")} className="text-sm text-red-600 underline">
+          <button onClick={() => disconnect("instagram")} className="text-sm text-error underline">
             Disconnect
           </button>
         )}
@@ -157,9 +157,9 @@ export function ConnectionsPanel({
 
 function StatusBadge({ status }: { status: "connected" | "disconnected" | "error" }) {
   const styles = {
-    connected: "bg-green-100 text-green-800",
-    disconnected: "bg-neutral-100 text-neutral-600",
-    error: "bg-red-100 text-red-700",
+    connected: "bg-success/10 text-success",
+    disconnected: "bg-moss/10 text-moss",
+    error: "bg-error/10 text-error",
   };
   return (
     <span className={`text-xs px-2 py-1 rounded-full ${styles[status]}`}>

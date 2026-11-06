@@ -27,7 +27,7 @@ export function QuestionBlock({
       <label htmlFor={questionId} className="font-medium block">{prompt}</label>
       <textarea
         id={questionId}
-        className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+        className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
         value={answer}
         onChange={(e) => {
           setAnswer(e.target.value);
@@ -39,7 +39,7 @@ export function QuestionBlock({
       {/* Announced to screen readers as it appears, not just visually shown
           (WCAG 4.1.3 Status Messages) — a sighted mouse user sees "Saved"
           appear, but that's silent to a screen reader without this. */}
-      <p role="status" aria-live="polite" className="text-sm text-neutral-600 h-5">
+      <p role="status" aria-live="polite" className="text-sm text-moss h-5">
         {saved ? "Saved" : ""}
       </p>
     </div>

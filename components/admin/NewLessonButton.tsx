@@ -30,7 +30,7 @@ export function NewLessonButton({ studyId }: { studyId: string }) {
     <button
       onClick={createLesson}
       disabled={creating}
-      className="bg-neutral-900 text-white rounded-lg px-4 py-2 disabled:opacity-50"
+      className="bg-ink text-white rounded-lg px-4 py-2 disabled:opacity-50"
     >
       + Add lesson
     </button>

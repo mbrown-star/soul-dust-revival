@@ -22,13 +22,13 @@ export default async function AdminLeaderResourcesPage() {
           <Link
             key={r.id}
             href={`/admin/leader-resources/${r.id}`}
-            className="flex justify-between items-center p-4 hover:bg-neutral-50"
+            className="flex justify-between items-center p-4 hover:bg-moss/5"
           >
             <span>{r.title}</span>
-            <span className="text-sm text-neutral-400">{!r.published && "draft"}</span>
+            <span className="text-sm text-moss">{!r.published && "draft"}</span>
           </Link>
         ))}
-        {resources.length === 0 && <p className="p-4 text-neutral-600">No leader resources yet.</p>}
+        {resources.length === 0 && <p className="p-4 text-moss">No leader resources yet.</p>}
       </div>
     </div>
   );

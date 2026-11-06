@@ -26,7 +26,7 @@ export default async function LessonEditorPage({
   return (
     <div className="space-y-6">
       <div>
-        <Link href={`/admin/studies/${id}`} className="text-sm text-neutral-400">
+        <Link href={`/admin/studies/${id}`} className="text-sm text-moss">
           ← {study?.title}
         </Link>
         <h1 className="text-xl font-semibold">{lesson.title}</h1>

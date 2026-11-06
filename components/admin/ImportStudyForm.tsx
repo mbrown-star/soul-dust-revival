@@ -60,7 +60,7 @@ export function ImportStudyForm({
           required
           onChange={(e) => e.target.files?.[0] && handleFileChange(e.target.files[0])}
         />
-        <p className="text-xs text-neutral-400 mt-1">
+        <p className="text-xs text-moss mt-1">
           .docx files split into lessons using the document&apos;s own heading styles (most reliable).
           .pdf files split using a &quot;Week 1 / Lesson 2 / Session 3&quot; heuristic — review the result
           afterward, since PDF text has no formatting to rely on.
@@ -102,17 +102,17 @@ export function ImportStudyForm({
         </select>
       </div>
 
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+      {error && <p className="text-error text-sm">{error}</p>}
 
       <button
         type="submit"
         disabled={importing || !file}
-        className="bg-neutral-900 text-white rounded-lg px-6 py-3 disabled:opacity-50"
+        className="bg-ink text-white rounded-lg px-6 py-3 disabled:opacity-50"
       >
         {importing ? "Importing..." : "Import document"}
       </button>
 
-      <p className="text-xs text-neutral-400">
+      <p className="text-xs text-moss">
         The study is created as a draft (unpublished) so you can review and edit the
         auto-generated lessons before making it available.
       </p>

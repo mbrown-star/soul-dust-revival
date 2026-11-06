@@ -21,7 +21,7 @@ export function AudioBlock({
       .then((data) => setUrl((data as { url: string }).url));
   }, [contentBlockId]);
 
-  if (!url) return <div className="h-12 bg-neutral-100 animate-pulse rounded-lg" aria-hidden="true" />;
+  if (!url) return <div className="h-12 bg-moss/10 animate-pulse rounded-lg" aria-hidden="true" />;
 
   return (
     <div>
@@ -31,10 +31,10 @@ export function AudioBlock({
       {transcript ? (
         <details className="mt-3">
           <summary className="cursor-pointer text-sm font-medium">View transcript</summary>
-          <p className="mt-2 text-sm whitespace-pre-wrap text-neutral-700">{transcript}</p>
+          <p className="mt-2 text-sm whitespace-pre-wrap text-moss">{transcript}</p>
         </details>
       ) : (
-        <p className="mt-2 text-sm text-amber-700">Transcript not yet available for this audio.</p>
+        <p className="mt-2 text-sm text-gold-700">Transcript not yet available for this audio.</p>
       )}
     </div>
   );

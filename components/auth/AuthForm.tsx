@@ -76,7 +76,7 @@ export function AuthForm({ mode, next }: { mode: Mode; next: string }) {
     >
       <h1 className="text-xl font-semibold">{isSignup ? "Create your account" : "Log in"}</h1>
       {isSignup && (
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-moss">
           First time buying a study or book? Start here — we&apos;ll send a link to confirm your email.
         </p>
       )}
@@ -89,7 +89,7 @@ export function AuthForm({ mode, next }: { mode: Mode; next: string }) {
         placeholder="you@example.com"
         aria-invalid={!!error}
         aria-describedby={error ? `${emailId}-error` : undefined}
-        className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+        className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
         value={email}
         onChange={(e) => {
           setEmail(e.target.value);
@@ -98,7 +98,7 @@ export function AuthForm({ mode, next }: { mode: Mode; next: string }) {
       />
 
       {error === "no_account" && (
-        <p id={`${emailId}-error`} role="alert" className="text-sm text-red-600">
+        <p id={`${emailId}-error`} role="alert" className="text-sm text-error">
           We couldn&apos;t find an account for that email.{" "}
           <Link href={`/signup?next=${encodeURIComponent(next)}`} className="underline font-medium">
             Sign up instead
@@ -107,7 +107,7 @@ export function AuthForm({ mode, next }: { mode: Mode; next: string }) {
         </p>
       )}
       {error && error !== "no_account" && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-error">
           {error}
         </p>
       )}
@@ -115,12 +115,12 @@ export function AuthForm({ mode, next }: { mode: Mode; next: string }) {
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-neutral-900 text-white rounded-lg p-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-900"
+        className="w-full bg-ink text-white rounded-lg p-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink"
       >
         {loading ? "Sending..." : isSignup ? "Sign up" : "Send login link"}
       </button>
 
-      <p className="text-sm text-neutral-600 text-center">
+      <p className="text-sm text-moss text-center">
         {isSignup ? (
           <>
             Already have an account?{" "}

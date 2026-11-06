@@ -55,7 +55,7 @@ export function AddBlockButton({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
-        className="border border-dashed rounded-lg px-4 py-3 w-full text-neutral-600 hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+        className="border border-dashed rounded-lg px-4 py-3 w-full text-moss hover:border-moss focus:outline-none focus:ring-2 focus:ring-ink"
       >
         + Add block
       </button>
@@ -71,7 +71,7 @@ export function AddBlockButton({
               key={t.value}
               role="menuitem"
               onClick={() => addBlock(t.value)}
-              className="block w-full text-left px-4 py-2 hover:bg-neutral-50 focus:outline-none focus:bg-neutral-50 focus:ring-2 focus:ring-inset focus:ring-neutral-900"
+              className="block w-full text-left px-4 py-2 hover:bg-moss/5 focus:outline-none focus:bg-moss/5 focus:ring-2 focus:ring-inset focus:ring-ink"
             >
               {t.label}
             </button>

@@ -17,7 +17,7 @@ export function NewStudyTabs({
         <button
           onClick={() => setTab("manual")}
           className={`px-4 py-2 border-b-2 ${
-            tab === "manual" ? "border-neutral-900 font-medium" : "border-transparent text-neutral-400"
+            tab === "manual" ? "border-ink font-medium" : "border-transparent text-moss"
           }`}
         >
           Create manually
@@ -25,7 +25,7 @@ export function NewStudyTabs({
         <button
           onClick={() => setTab("import")}
           className={`px-4 py-2 border-b-2 ${
-            tab === "import" ? "border-neutral-900 font-medium" : "border-transparent text-neutral-400"
+            tab === "import" ? "border-ink font-medium" : "border-transparent text-moss"
           }`}
         >
           Import from document

@@ -52,7 +52,7 @@ export default function AccountPageClient() {
     return (
       <div className="max-w-5xl mx-auto px-4 py-16 text-center">
         <h1 className="text-2xl font-semibold">Your account</h1>
-        <p className="text-neutral-600 mt-4">Loading...</p>
+        <p className="text-moss mt-4">Loading...</p>
       </div>
     );
   }
@@ -61,23 +61,23 @@ export default function AccountPageClient() {
     <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16 space-y-8">
       <div>
         <h1 className="text-2xl font-semibold">Your account</h1>
-        <p className="text-neutral-600 mt-1">{email}</p>
+        <p className="text-moss mt-1">{email}</p>
       </div>
 
       <div className="border rounded-lg p-4">
         <h2 className="font-medium mb-1">Export your data</h2>
-        <p className="text-sm text-neutral-600 mb-3">
+        <p className="text-sm text-moss mb-3">
           Download everything we&apos;ve stored about your account — profile, orders,
           study responses, and login history — as a JSON file.
         </p>
-        <button onClick={handleExport} className="bg-neutral-900 text-white rounded-lg px-4 py-2 text-sm">
+        <button onClick={handleExport} className="bg-ink text-white rounded-lg px-4 py-2 text-sm">
           Download my data
         </button>
       </div>
 
-      <div className="border border-red-200 rounded-lg p-4">
-        <h2 className="font-medium mb-1 text-red-700">Delete your account</h2>
-        <p className="text-sm text-neutral-600 mb-3">
+      <div className="border border-error/20 rounded-lg p-4">
+        <h2 className="font-medium mb-1 text-error">Delete your account</h2>
+        <p className="text-sm text-moss mb-3">
           This permanently removes your ability to log in and deletes your study
           responses and login history. Order records are kept for financial
           record-keeping, with your personal details removed from them. This
@@ -87,7 +87,7 @@ export default function AccountPageClient() {
         {!showConfirm ? (
           <button
             onClick={() => setShowConfirm(true)}
-            className="text-sm text-red-700 underline"
+            className="text-sm text-error underline"
           >
             Delete my account
           </button>
@@ -103,7 +103,7 @@ export default function AccountPageClient() {
               onChange={(e) => setConfirmText(e.target.value)}
             />
             {error && (
-              <p role="alert" className="text-sm text-red-600">
+              <p role="alert" className="text-sm text-error">
                 {error}
               </p>
             )}
@@ -111,7 +111,7 @@ export default function AccountPageClient() {
               <button
                 onClick={handleDelete}
                 disabled={confirmText !== "DELETE" || deleting}
-                className="bg-red-700 text-white rounded-lg px-4 py-2 text-sm disabled:opacity-50"
+                className="bg-error text-white rounded-lg px-4 py-2 text-sm disabled:opacity-50"
               >
                 {deleting ? "Deleting..." : "Permanently delete my account"}
               </button>
@@ -121,7 +121,7 @@ export default function AccountPageClient() {
                   setConfirmText("");
                   setError(null);
                 }}
-                className="text-sm text-neutral-600"
+                className="text-sm text-moss"
               >
                 Cancel
               </button>

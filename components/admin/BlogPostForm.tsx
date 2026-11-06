@@ -133,7 +133,7 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
   return (
     <div className="space-y-6 max-w-2xl">
       {/* AI suggestions */}
-      <div className="border rounded-lg p-4 bg-neutral-50">
+      <div className="border rounded-lg p-4 bg-moss/5">
         <label htmlFor={instructionId} className="block text-sm font-medium mb-1">
           Ask Claude for a draft (optional)
         </label>
@@ -153,7 +153,7 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
             {suggesting ? "Thinking..." : drafts.length > 0 ? "Refresh suggestions" : "Get suggestions"}
           </button>
         </div>
-        <p className="text-xs text-neutral-400 mt-1">
+        <p className="text-xs text-moss mt-1">
           Drafts are grounded in your recent published studies, lessons, and blog posts.
         </p>
         {drafts.length > 0 && (
@@ -162,11 +162,11 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
               <button
                 key={i}
                 onClick={() => acceptDraft(draft)}
-                className="block w-full text-left border rounded-lg p-3 text-sm bg-white hover:border-neutral-400"
+                className="block w-full text-left border rounded-lg p-3 text-sm bg-white hover:border-moss"
               >
                 <p className="font-medium mb-1">{draft.title}</p>
                 {/* The draft body is HTML -- strip tags for this plain-text preview snippet. */}
-                <p className="text-neutral-600 line-clamp-2">
+                <p className="text-moss line-clamp-2">
                   {draft.body.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160)}...
                 </p>
               </button>

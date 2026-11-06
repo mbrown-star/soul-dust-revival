@@ -20,7 +20,7 @@ export function ColorPicker({
         type="color"
         value={value || "#fef3c7"}
         onChange={(e) => onChange(e.target.value)}
-        className="w-10 h-10 border rounded cursor-pointer focus:outline-none focus:ring-2 focus:ring-neutral-900"
+        className="w-10 h-10 border rounded cursor-pointer focus:outline-none focus:ring-2 focus:ring-ink"
       />
       <label htmlFor={hexId} className="sr-only">Background color hex value</label>
       <input
@@ -29,7 +29,7 @@ export function ColorPicker({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="#fef3c7"
-        className="border rounded-lg p-2 text-sm w-28 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+        className="border rounded-lg p-2 text-sm w-28 focus:outline-none focus:ring-2 focus:ring-ink"
       />
     </div>
   );

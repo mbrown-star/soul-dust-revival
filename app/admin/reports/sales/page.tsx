@@ -52,7 +52,7 @@ export default async function SalesReportPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/admin/reports" className="text-sm text-neutral-400">
+        <Link href="/admin/reports" className="text-sm text-moss">
           ← Reports
         </Link>
         <h1 className="text-xl font-semibold">Sales</h1>
@@ -61,18 +61,18 @@ export default async function SalesReportPage() {
       <div className="flex gap-8">
         <div>
           <p className="text-2xl font-semibold">${(totalRevenueCents / 100).toFixed(2)}</p>
-          <p className="text-sm text-neutral-600">Total revenue (last 200 orders)</p>
+          <p className="text-sm text-moss">Total revenue (last 200 orders)</p>
         </div>
         <div>
           <p className="text-2xl font-semibold">{paidOrders.length}</p>
-          <p className="text-sm text-neutral-600">Orders</p>
+          <p className="text-sm text-moss">Orders</p>
         </div>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse text-sm">
           <thead>
-            <tr className="border-b text-neutral-600">
+            <tr className="border-b text-moss">
               <th scope="col" className="py-2 pr-4 font-medium">Date</th>
               <th scope="col" className="py-2 pr-4 font-medium">Buyer</th>
               <th scope="col" className="py-2 pr-4 font-medium">Country</th>
@@ -82,8 +82,8 @@ export default async function SalesReportPage() {
           </thead>
           <tbody>
             {paidOrders.map((order) => (
-              <tr key={order.id} className="border-b border-neutral-100">
-                <td className="py-3 pr-4 text-neutral-600">
+              <tr key={order.id} className="border-b border-moss/20">
+                <td className="py-3 pr-4 text-moss">
                   {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "—"}
                 </td>
                 <td className="py-3 pr-4">{order.userEmail ?? order.guestEmail ?? "—"}</td>
@@ -98,7 +98,7 @@ export default async function SalesReportPage() {
             ))}
             {paidOrders.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-6 text-center text-neutral-400">
+                <td colSpan={5} className="py-6 text-center text-moss">
                   No paid orders yet.
                 </td>
               </tr>

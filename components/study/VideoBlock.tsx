@@ -23,7 +23,7 @@ export function VideoBlock({
       .then((data) => setUrl((data as { url: string }).url));
   }, [contentBlockId]);
 
-  if (!url) return <div className="aspect-video bg-neutral-100 animate-pulse rounded-lg" aria-hidden="true" />;
+  if (!url) return <div className="aspect-video bg-moss/10 animate-pulse rounded-lg" aria-hidden="true" />;
 
   return (
     <div>
@@ -43,7 +43,7 @@ export function VideoBlock({
       {transcript && (
         <details className="mt-3">
           <summary className="cursor-pointer text-sm font-medium">View transcript</summary>
-          <p className="mt-2 text-sm whitespace-pre-wrap text-neutral-700">{transcript}</p>
+          <p className="mt-2 text-sm whitespace-pre-wrap text-moss">{transcript}</p>
         </details>
       )}
     </div>

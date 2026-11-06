@@ -21,9 +21,9 @@ export default async function AdminProductsPage() {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
           <h1 className="text-xl font-semibold">Products</h1>
-          <p className="text-sm text-neutral-600">{featuredProducts.length}/8 featured on the homepage</p>
+          <p className="text-sm text-moss">{featuredProducts.length}/8 featured on the homepage</p>
         </div>
-        <Link href="/admin/products/new" className="inline-block bg-neutral-900 text-white rounded-lg px-4 py-2 text-center">
+        <Link href="/admin/products/new" className="inline-block bg-ink text-white rounded-lg px-4 py-2 text-center">
           Add product
         </Link>
       </div>
@@ -33,7 +33,7 @@ export default async function AdminProductsPage() {
           <Link
             key={p.id}
             href={`/admin/products/${p.id}`}
-            className="flex items-center gap-4 p-4 hover:bg-neutral-50"
+            className="flex items-center gap-4 p-4 hover:bg-moss/5"
           >
             {p.imageUrl ? (
               <Image
@@ -44,18 +44,18 @@ export default async function AdminProductsPage() {
                 className="w-12 h-12 object-cover rounded"
               />
             ) : (
-              <div className="w-12 h-12 bg-neutral-100 rounded" />
+              <div className="w-12 h-12 bg-moss/10 rounded" />
             )}
             <div className="flex-1">
               <p className="font-medium flex items-center gap-2">
                 {p.title}
                 {p.featured && (
-                  <span className="text-xs font-medium bg-amber-100 text-amber-800 rounded-full px-2 py-0.5">
+                  <span className="text-xs font-medium bg-gold/20 text-gold-700 rounded-full px-2 py-0.5">
                     Featured
                   </span>
                 )}
               </p>
-              <p className="text-sm text-neutral-600">
+              <p className="text-sm text-moss">
                 {p.format} · ${(p.priceCents / 100).toFixed(2)}
                 {p.format === "both" && p.digitalPriceCents != null && ` / $${(p.digitalPriceCents / 100).toFixed(2)} digital`}
                 {" · "}
@@ -66,7 +66,7 @@ export default async function AdminProductsPage() {
           </Link>
         ))}
         {allProducts.length === 0 && (
-          <p className="p-4 text-neutral-600">No products yet.</p>
+          <p className="p-4 text-moss">No products yet.</p>
         )}
       </div>
     </div>

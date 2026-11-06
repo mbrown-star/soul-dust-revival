@@ -341,7 +341,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
               }}
             />
           </div>
-          <p className="text-sm text-neutral-500 mt-2">
+          <p className="text-sm text-moss mt-2">
             Always sold via Stripe — required to grant web app access automatically.
           </p>
         </fieldset>
@@ -376,7 +376,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
             aria-labelledby="cover-pdf-label"
             onChange={(e) => e.target.files?.[0] && handleCoverPdfUpload(e.target.files[0])}
           />
-          <p role="status" aria-live="polite" className="text-sm text-neutral-600 h-5">
+          <p role="status" aria-live="polite" className="text-sm text-moss h-5">
             {uploading ? "Processing cover PDF..." : ""}
           </p>
           {values.coverPdfUrl && (
@@ -395,7 +395,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
           {values.backImageUrl && (
             <div className="mt-2">
               <label htmlFor={backAltId} className="block text-sm font-medium mb-1">
-                Back cover alt text <span className="text-neutral-500 font-normal">(optional)</span>
+                Back cover alt text <span className="text-moss font-normal">(optional)</span>
               </label>
               <input
                 id={backAltId}
@@ -410,7 +410,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
           {values.imageUrl && (
             <div className="mt-2">
               <label htmlFor={altId} className="block text-sm font-medium mb-1">
-                Front cover alt text <span className="text-neutral-500 font-normal">(optional)</span>
+                Front cover alt text <span className="text-moss font-normal">(optional)</span>
               </label>
               <input
                 id={altId}
@@ -439,14 +439,14 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
             aria-labelledby="product-image-label"
             onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
           />
-          <p role="status" aria-live="polite" className="text-sm text-neutral-600 h-5">
+          <p role="status" aria-live="polite" className="text-sm text-moss h-5">
             {uploading ? "Uploading..." : ""}
           </p>
 
           {values.imageUrl && (
             <div className="mt-2">
               <label htmlFor={altId} className="block text-sm font-medium mb-1">
-                Alt text <span className="text-neutral-500 font-normal">(optional)</span>
+                Alt text <span className="text-moss font-normal">(optional)</span>
               </label>
               <input
                 id={altId}

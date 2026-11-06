@@ -136,7 +136,7 @@ export default function NewSocialPostPage() {
       <h1 className="text-xl font-semibold">New social post</h1>
 
       {/* AI suggestions */}
-      <div className="border rounded-lg p-4 bg-neutral-50">
+      <div className="border rounded-lg p-4 bg-moss/5">
         <label htmlFor={instructionId} className="block text-sm font-medium mb-1">
           Ask Claude for draft ideas (optional)
         </label>
@@ -151,12 +151,12 @@ export default function NewSocialPostPage() {
           <button
             onClick={getSuggestions}
             disabled={suggesting}
-            className="bg-neutral-900 text-white rounded-lg px-4 py-2 text-sm disabled:opacity-50"
+            className="bg-ink text-white rounded-lg px-4 py-2 text-sm disabled:opacity-50"
           >
             {suggesting ? "Thinking..." : "Get suggestions"}
           </button>
         </div>
-        <p className="text-xs text-neutral-400 mt-1">
+        <p className="text-xs text-moss mt-1">
           Drafts are grounded in your recent published studies and blog posts, and fit
           the character limit of whichever platforms are selected below.
         </p>
@@ -166,7 +166,7 @@ export default function NewSocialPostPage() {
               <button
                 key={i}
                 onClick={() => setBody(draft)}
-                className="block w-full text-left border rounded-lg p-3 text-sm bg-white hover:border-neutral-400"
+                className="block w-full text-left border rounded-lg p-3 text-sm bg-white hover:border-moss"
               >
                 {draft}
               </button>
@@ -187,7 +187,7 @@ export default function NewSocialPostPage() {
         />
         <div className="flex gap-4 mt-1 text-xs">
           {ALL_PLATFORMS.map((p) => (
-            <span key={p} className={body.length > PLATFORM_LIMITS[p] ? "text-red-600 font-medium" : "text-neutral-400"}>
+            <span key={p} className={body.length > PLATFORM_LIMITS[p] ? "text-error font-medium" : "text-moss"}>
               {PLATFORM_LABELS[p]}: {body.length}/{PLATFORM_LIMITS[p]}
             </span>
           ))}
@@ -202,7 +202,7 @@ export default function NewSocialPostPage() {
           <img src={imageUrl} alt="" className="max-h-40 rounded mb-2" />
         )}
         <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])} />
-        <p role="status" aria-live="polite" className="text-sm text-neutral-600 h-5">{uploading ? "Uploading..." : ""}</p>
+        <p role="status" aria-live="polite" className="text-sm text-moss h-5">{uploading ? "Uploading..." : ""}</p>
         {imageUrl && (
           <div className="mt-2">
             <label htmlFor={altId} className="block text-sm font-medium mb-1">Alt text</label>
@@ -228,7 +228,7 @@ export default function NewSocialPostPage() {
             {selected[platform] && (
               <div className="grid grid-cols-2 gap-3 pl-6">
                 <div>
-                  <label className="block text-xs text-neutral-600 mb-1">Frequency</label>
+                  <label className="block text-xs text-moss mb-1">Frequency</label>
                   <select
                     className="w-full border rounded-lg p-2 text-sm"
                     value={configs[platform].frequency}
@@ -243,7 +243,7 @@ export default function NewSocialPostPage() {
                 </div>
                 {configs[platform].frequency === "weekly" && (
                   <div>
-                    <label className="block text-xs text-neutral-600 mb-1">Day of week</label>
+                    <label className="block text-xs text-moss mb-1">Day of week</label>
                     <select
                       className="w-full border rounded-lg p-2 text-sm"
                       value={configs[platform].dayOfWeek}
@@ -258,7 +258,7 @@ export default function NewSocialPostPage() {
                   </div>
                 )}
                 <div>
-                  <label className="block text-xs text-neutral-600 mb-1">Start date</label>
+                  <label className="block text-xs text-moss mb-1">Start date</label>
                   <input
                     type="date"
                     className="w-full border rounded-lg p-2 text-sm"
@@ -267,7 +267,7 @@ export default function NewSocialPostPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-neutral-600 mb-1">Time (UTC)</label>
+                  <label className="block text-xs text-moss mb-1">Time (UTC)</label>
                   <input
                     type="time"
                     className="w-full border rounded-lg p-2 text-sm"
@@ -277,7 +277,7 @@ export default function NewSocialPostPage() {
                 </div>
                 {configs[platform].frequency !== "once" && (
                   <div>
-                    <label className="block text-xs text-neutral-600 mb-1">End date (optional)</label>
+                    <label className="block text-xs text-moss mb-1">End date (optional)</label>
                     <input
                       type="date"
                       className="w-full border rounded-lg p-2 text-sm"
@@ -289,18 +289,18 @@ export default function NewSocialPostPage() {
               </div>
             )}
             {selected[platform] && platform === "instagram" && !imageUrl && (
-              <p className="text-xs text-red-600 pl-6 mt-2">Instagram requires an image.</p>
+              <p className="text-xs text-error pl-6 mt-2">Instagram requires an image.</p>
             )}
           </div>
         ))}
       </div>
 
-      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-error">{error}</p>}
 
       <button
         onClick={handleSubmit}
         disabled={!canSubmit || saving}
-        className="bg-neutral-900 text-white rounded-lg px-6 py-3 disabled:opacity-50"
+        className="bg-ink text-white rounded-lg px-6 py-3 disabled:opacity-50"
       >
         {saving ? "Scheduling..." : "Schedule post"}
       </button>

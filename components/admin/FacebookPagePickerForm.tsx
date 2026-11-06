@@ -49,12 +49,12 @@ export function FacebookPagePickerForm({ pages }: { pages: { id: string; name: s
         ))}
       </fieldset>
 
-      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-error">{error}</p>}
 
       <button
         type="submit"
         disabled={saving || !selected}
-        className="bg-neutral-900 text-white rounded-lg px-6 py-3 disabled:opacity-50"
+        className="bg-ink text-white rounded-lg px-6 py-3 disabled:opacity-50"
       >
         {saving ? "Connecting..." : "Connect this Page"}
       </button>

@@ -66,13 +66,13 @@ export function LeaderResourceForm({ initial }: { initial: ResourceFormValues })
 
       <div>
         <label className="block text-sm font-medium mb-1">Attached PDF (optional)</label>
-        {values.fileName && <p className="text-sm text-neutral-600 mb-2">📄 {values.fileName}</p>}
+        {values.fileName && <p className="text-sm text-moss mb-2">📄 {values.fileName}</p>}
         <input
           type="file"
           accept="application/pdf"
           onChange={(e) => e.target.files?.[0] && uploadFile(e.target.files[0])}
         />
-        <p role="status" aria-live="polite" className="text-sm text-neutral-600 h-5">
+        <p role="status" aria-live="polite" className="text-sm text-moss h-5">
           {uploading ? "Uploading..." : ""}
         </p>
       </div>
@@ -86,7 +86,7 @@ export function LeaderResourceForm({ initial }: { initial: ResourceFormValues })
         <span className="text-sm">Published (visible to leaders)</span>
       </label>
 
-      <p role="status" aria-live="polite" className="text-sm text-neutral-600 h-5">
+      <p role="status" aria-live="polite" className="text-sm text-moss h-5">
         {saved ? "Saved" : ""}
       </p>
     </div>

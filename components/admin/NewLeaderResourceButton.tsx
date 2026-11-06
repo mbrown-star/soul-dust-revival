@@ -30,7 +30,7 @@ export function NewLeaderResourceButton() {
     <button
       onClick={create}
       disabled={creating}
-      className="inline-block bg-neutral-900 text-white rounded-lg px-4 py-2 disabled:opacity-50"
+      className="inline-block bg-ink text-white rounded-lg px-4 py-2 disabled:opacity-50"
     >
       + Add resource
     </button>

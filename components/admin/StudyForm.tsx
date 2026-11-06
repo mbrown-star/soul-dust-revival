@@ -154,7 +154,7 @@ export function StudyForm({
             </option>
           ))}
         </select>
-        <p className="text-xs text-neutral-400 mt-1">
+        <p className="text-xs text-moss mt-1">
           Only digital products appear here — purchasing this product grants entitlement to this study.
         </p>
       </div>
@@ -175,7 +175,7 @@ export function StudyForm({
           aria-labelledby="cover-image-label"
           onChange={(e) => e.target.files?.[0] && uploadCover(e.target.files[0])}
         />
-        <p role="status" aria-live="polite" className="text-sm text-neutral-600 h-5">
+        <p role="status" aria-live="polite" className="text-sm text-moss h-5">
           {uploading ? "Uploading..." : ""}
         </p>
 

@@ -17,7 +17,7 @@ export default async function EditBlogPostPage({
 
   return (
     <div className="space-y-6">
-      <Link href="/admin/blog" className="text-sm text-neutral-400">← Blog</Link>
+      <Link href="/admin/blog" className="text-sm text-moss">← Blog</Link>
       <h1 className="text-xl font-semibold">{post.title}</h1>
       <BlogPostForm
         initial={{
