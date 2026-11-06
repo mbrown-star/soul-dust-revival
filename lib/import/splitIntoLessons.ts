@@ -202,23 +202,63 @@ function splitByHeadingKeywords(lines: string[]): ImportedLesson[] {
   }));
 }
 
+// A line ending in sentence-terminal punctuation (optionally followed by a
+// closing quote/bracket) usually ends a real paragraph.
+const SENTENCE_END = /[.!?][”"')\]]*$/;
+
+/**
+ * A short line with no sentence-ending punctuation, where every word starts
+ * with a capital letter, reads as a sub-heading (e.g. "A QUESTION TO SIT
+ * WITH", "Two Trees, Two Soils") rather than body prose -- kept as its own
+ * bolded paragraph instead of being folded into the surrounding text.
+ */
+function looksLikeHeadingLine(line: string): boolean {
+  if (!line || line.length > 70 || SENTENCE_END.test(line)) return false;
+  const words = line.split(/\s+/).filter(Boolean);
+  return words.length > 0 && words.every((w) => /^[^a-zA-Z]*[A-Z]/.test(w));
+}
+
+/**
+ * pdf-parse's line-based text extraction has no blank line between real
+ * paragraphs (only between visually separated blocks, which most PDFs
+ * don't encode as blank text at all) -- joining every non-blank line
+ * together the way a true paragraph-aware source would need to be split
+ * instead collapses an entire section into one giant paragraph. This
+ * starts a new paragraph after any line ending in sentence-terminal
+ * punctuation, and breaks out a short, heading-shaped line (see
+ * looksLikeHeadingLine) as its own paragraph rather than merging it into
+ * the prose around it. Still a heuristic over unstructured text, not a
+ * reconstruction of the original layout.
+ */
 function paragraphsToHtml(lines: string[]): string {
-  const paragraphs: string[] = [];
+  const blocks: { text: string; heading: boolean }[] = [];
   let buffer: string[] = [];
+
+  const flush = () => {
+    if (buffer.length) {
+      blocks.push({ text: buffer.join(" "), heading: false });
+      buffer = [];
+    }
+  };
 
   for (const line of lines) {
     if (line === "") {
-      if (buffer.length) {
-        paragraphs.push(buffer.join(" "));
-        buffer = [];
-      }
-    } else {
-      buffer.push(line);
+      flush();
+      continue;
     }
+    if (looksLikeHeadingLine(line)) {
+      flush();
+      blocks.push({ text: line, heading: true });
+      continue;
+    }
+    buffer.push(line);
+    if (SENTENCE_END.test(line)) flush();
   }
-  if (buffer.length) paragraphs.push(buffer.join(" "));
+  flush();
 
-  return paragraphs.map((p) => `<p>${escapeHtml(p)}</p>`).join("\n");
+  return blocks
+    .map((b) => (b.heading ? `<p><strong>${escapeHtml(b.text)}</strong></p>` : `<p>${escapeHtml(b.text)}</p>`))
+    .join("\n");
 }
 
 function stripTags(html: string): string {

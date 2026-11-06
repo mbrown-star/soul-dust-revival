@@ -145,4 +145,35 @@ describe("splitPlainTextByHeadings", () => {
     expect(lessons[1]!.title).toBe("Week 1");
     expect(lessons[1]!.bodyHtml).toContain("Real content under a totally different heading style.");
   });
+
+  it("splits consecutive sentence-ending lines into separate paragraphs instead of merging the whole section into one", () => {
+    const text = [
+      "Day 1",
+      "My soul cleaves to the dust.",
+      "Reflect on what it means to feel worn down.",
+      "Revive me according to Your word.",
+    ].join("\n");
+
+    const lessons = splitPlainTextByHeadings(text);
+
+    expect(lessons).toHaveLength(1);
+    expect(lessons[0]!.bodyHtml).toBe(
+      [
+        "<p>My soul cleaves to the dust.</p>",
+        "<p>Reflect on what it means to feel worn down.</p>",
+        "<p>Revive me according to Your word.</p>",
+      ].join("\n")
+    );
+  });
+
+  it("keeps a short, heading-shaped line as its own bolded paragraph instead of folding it into the surrounding prose", () => {
+    const text = ["Day 1", "A Question To Sit With", "Where are you planted this year?"].join("\n");
+
+    const lessons = splitPlainTextByHeadings(text);
+
+    expect(lessons).toHaveLength(1);
+    expect(lessons[0]!.bodyHtml).toBe(
+      ["<p><strong>A Question To Sit With</strong></p>", "<p>Where are you planted this year?</p>"].join("\n")
+    );
+  });
 });
