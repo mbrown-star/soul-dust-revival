@@ -4,7 +4,17 @@ import type { StudyWeekContent } from "@/lib/study/studyContent";
 import { useLocalProgress } from "../useLocalProgress";
 import { PrayerTimer } from "../PrayerTimer";
 
-export function LiveItTab({ lessonId, content }: { lessonId: string; content: StudyWeekContent }) {
+export function LiveItTab({
+  lessonId,
+  content,
+  isDone,
+  onSetDone,
+}: {
+  lessonId: string;
+  content: StudyWeekContent;
+  isDone: boolean;
+  onSetDone: (done: boolean) => void;
+}) {
   const [completed, togglePractice] = useLocalProgress(`sdr-study-practices-${lessonId}`);
 
   return (
@@ -50,6 +60,16 @@ export function LiveItTab({ lessonId, content }: { lessonId: string; content: St
           ))}
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={() => onSetDone(!isDone)}
+        className={`w-full min-h-[44px] rounded-full font-sans font-semibold text-sm ${
+          isDone ? "bg-moss text-white" : "bg-ink text-parchment"
+        }`}
+      >
+        {isDone ? "✓ Living it this week" : "Living it this week"}
+      </button>
     </div>
   );
 }

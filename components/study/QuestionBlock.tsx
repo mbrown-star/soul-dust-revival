@@ -6,10 +6,15 @@ export function QuestionBlock({
   contentBlockId,
   prompt,
   initialAnswer,
+  onSaved,
 }: {
   contentBlockId: string;
   prompt: string;
   initialAnswer?: string;
+  /** Fired with the current answer text after a successful save -- lets a
+   * caller (e.g. the Study reader's Work the Word stepper) track which
+   * stations have been answered without this component needing to know why. */
+  onSaved?: (answerText: string) => void;
 }) {
   const [answer, setAnswer] = useState(initialAnswer ?? "");
   const [saved, setSaved] = useState(false);
@@ -22,6 +27,7 @@ export function QuestionBlock({
       body: JSON.stringify({ contentBlockId, answerText: answer }),
     });
     setSaved(true);
+    onSaved?.(answer);
   }
 
   return (

@@ -14,9 +14,13 @@ import { ReadAloudButton } from "@/components/devotional/ReadAloudButton";
 export function PassageTab({
   content,
   onOpenGreek,
+  isDone,
+  onSetDone,
 }: {
   content: StudyWeekContent;
   onOpenGreek: (stationRef: string) => void;
+  isDone: boolean;
+  onSetDone: (done: boolean) => void;
 }) {
   const anchorByVerse = new Map<string, { stationRef: string; word: string }>();
   for (const st of content.stations) {
@@ -52,6 +56,16 @@ export function PassageTab({
           })}
         </p>
       </div>
+
+      <button
+        type="button"
+        onClick={() => onSetDone(!isDone)}
+        className={`w-full min-h-[44px] rounded-full font-sans font-semibold text-sm ${
+          isDone ? "bg-moss text-white" : "bg-ink text-parchment"
+        }`}
+      >
+        {isDone ? "✓ Read and memorized" : "Read and memorized"}
+      </button>
     </div>
   );
 }

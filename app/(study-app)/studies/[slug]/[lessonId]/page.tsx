@@ -66,7 +66,7 @@ export default async function LessonPage({
   // Needed for previous/next navigation and the "back to contents" link --
   // same published-only ordering the study's own listing page uses.
   const studyLessons = await db
-    .select({ id: lessons.id, orderIndex: lessons.orderIndex })
+    .select({ id: lessons.id, title: lessons.title, orderIndex: lessons.orderIndex })
     .from(lessons)
     .where(and(eq(lessons.studyId, study.id), eq(lessons.published, true)))
     .orderBy(asc(lessons.orderIndex));
@@ -135,6 +135,8 @@ export default async function LessonPage({
           initialAnswers={Object.fromEntries(answerByBlockId)}
           previousHref={previousHref}
           nextHref={nextHref}
+          bookLabel={study.title}
+          weeks={studyLessons.map((l) => ({ id: l.id, title: l.title, href: `${studyHref}/${l.id}`, isCurrent: l.id === lesson.id }))}
         />
       ) : (
         <>
