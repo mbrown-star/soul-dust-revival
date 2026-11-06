@@ -50,7 +50,7 @@ describe("sendOrderConfirmationEmail", () => {
   it("includes a login link for digital/mixed orders with web app access", async () => {
     await sendOrderConfirmationEmail(digitalParams);
     const html = sendMock.mock.calls[0]![0].html as string;
-    expect(html).toContain("/login?next=/studies");
+    expect(html).toContain("/login?next=/library");
   });
 
   it("omits the login link when there is no web app access", async () => {
@@ -60,7 +60,7 @@ describe("sendOrderConfirmationEmail", () => {
       hasWebAppAccess: false,
     });
     const html = sendMock.mock.calls[0]![0].html as string;
-    expect(html).not.toContain("/login?next=/studies");
+    expect(html).not.toContain("/login?next=/library");
   });
 
   it("shows the shipping note for physical and mixed orders, not digital-only", async () => {

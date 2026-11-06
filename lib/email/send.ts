@@ -30,7 +30,7 @@ export async function sendOrderConfirmationEmail(params: OrderConfirmationParams
 
   const loginSection = params.hasWebAppAccess
     ? `<p style="margin-top:24px;">
-         <a href="${params.appUrl}/login?next=/studies" style="background:#171717;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block;">
+         <a href="${params.appUrl}/login?next=/library" style="background:#171717;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block;">
            Log in to access your content
          </a>
        </p>`

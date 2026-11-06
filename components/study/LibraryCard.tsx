@@ -1,0 +1,86 @@
+import Link from "next/link";
+import Image from "next/image";
+import { ProgressBar } from "./ProgressBar";
+import { RestartStudyButton } from "./RestartStudyButton";
+
+type LibraryCardStudy = {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  coverImageAlt: string | null;
+  kind: "devotional" | "study";
+};
+
+export function LibraryCard({
+  study,
+  completed,
+  total,
+  resumeHref,
+  showRestart,
+}: {
+  study: LibraryCardStudy;
+  completed: number;
+  total: number;
+  resumeHref: string;
+  showRestart: boolean;
+}) {
+  return (
+    <div className="bg-white border border-dusk/10 rounded-xl overflow-hidden hover:border-dusk/30 transition-colors flex flex-col sm:flex-row">
+      <Link href={resumeHref} className="sm:w-32 shrink-0 block bg-dusk/5">
+        {study.coverImageUrl ? (
+          <Image
+            src={study.coverImageUrl}
+            alt={study.coverImageAlt || "Untitled cover"}
+            width={0}
+            height={0}
+            sizes="128px"
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            className="aspect-square sm:aspect-auto sm:h-full"
+          />
+        ) : (
+          <div className="aspect-square sm:aspect-auto sm:h-full flex items-center justify-center text-moss/40 font-display text-3xl">
+            {study.title.charAt(0)}
+          </div>
+        )}
+      </Link>
+      <div className="flex-1 p-5 flex flex-col gap-2">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <span className="inline-block text-xs font-sans font-medium uppercase tracking-wide text-ember-700 mb-1">
+              {study.kind === "study" ? "Study" : "Devotional"}
+            </span>
+            <h3 className="font-display font-semibold text-lg text-ink leading-tight">
+              <Link href={resumeHref} className="hover:underline">
+                {study.title}
+              </Link>
+            </h3>
+          </div>
+        </div>
+        {study.description && <p className="font-serif text-sm text-moss line-clamp-2">{study.description}</p>}
+
+        {total > 0 && (
+          <div className="flex items-center gap-3 mt-1">
+            <div className="flex-1">
+              <ProgressBar completed={completed} total={total} />
+            </div>
+            <span className="font-sans text-xs text-moss whitespace-nowrap">
+              {completed}/{total}
+            </span>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between gap-3 mt-auto pt-2">
+          <Link
+            href={resumeHref}
+            className="inline-flex items-center justify-center bg-ink text-parchment rounded-lg px-4 py-2 text-sm font-medium min-h-[40px]"
+          >
+            {completed === 0 ? "Start" : completed >= total && total > 0 ? "Review" : "Continue"}
+          </Link>
+          {showRestart && <RestartStudyButton studyId={study.id} studyTitle={study.title} />}
+        </div>
+      </div>
+    </div>
+  );
+}

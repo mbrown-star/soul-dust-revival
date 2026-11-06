@@ -13,6 +13,7 @@ export function ImportStudyForm({
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [productId, setProductId] = useState(digitalProducts[0]?.id ?? "");
+  const [kind, setKind] = useState<"devotional" | "study">("devotional");
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,7 +21,11 @@ export function ImportStudyForm({
     setFile(f);
     if (!title) {
       const nameWithoutExt = f.name.replace(/\.(docx|pdf)$/i, "");
-      setTitle(nameWithoutExt);
+      // Filenames commonly use underscores (or dashes) in place of spaces
+      // between words -- the suggested title should read as a title, not a
+      // filename.
+      const suggestedTitle = nameWithoutExt.replace(/[_-]+/g, " ").trim();
+      setTitle(suggestedTitle);
       setSlug(nameWithoutExt.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""));
     }
   }
@@ -36,6 +41,7 @@ export function ImportStudyForm({
     formData.append("title", title);
     formData.append("slug", slug);
     formData.append("productId", productId);
+    formData.append("kind", kind);
 
     // A server-side crash (e.g. an unhandled exception during parsing) can
     // return an empty or non-JSON body -- res.json() throws in that case,
@@ -84,6 +90,35 @@ export function ImportStudyForm({
           afterward, since PDF text has no formatting to rely on.
         </p>
       </div>
+
+      <fieldset>
+        <legend className="block text-sm font-medium mb-1">Kind</legend>
+        <div className="flex gap-4">
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="import-kind"
+              checked={kind === "devotional"}
+              onChange={() => setKind("devotional")}
+            />
+            <span className="text-sm">Devotional</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="import-kind"
+              checked={kind === "study"}
+              onChange={() => setKind("study")}
+            />
+            <span className="text-sm">Study</span>
+          </label>
+        </div>
+        <p className="text-xs text-moss mt-1">
+          For a .pdf, this changes how the document is split: a Study&apos;s own &quot;QUESTION&quot;
+          and &quot;Going Deeper&quot; sections become saved-answer and word-study blocks instead of
+          plain reading text.
+        </p>
+      </fieldset>
 
       <div>
         <label className="block text-sm font-medium mb-1">Study title</label>

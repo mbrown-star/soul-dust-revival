@@ -33,6 +33,65 @@ describe("parsePdfToText", () => {
     expect(text).toContain("Real content for page 10.");
   });
 
+  it("does not strip a line that recurs in the middle of every page, even on every single page", async () => {
+    // A real regression: a devotional's "Lift Up Your Eyes" callout label is
+    // genuine body content repeated by design on nearly every page, not page
+    // furniture -- the frequency check alone (ignoring position) mistook it
+    // for a running header/footer and deleted it from every lesson.
+    const pages = Array.from({ length: 10 }, (_, i) => ({
+      num: i + 1,
+      text: [
+        `Day ${i + 1} heading`,
+        `Some intro text for day ${i + 1}.`,
+        `More body text for day ${i + 1}.`,
+        "Lift Up Your Eyes",
+        `A reflection for day ${i + 1}.`,
+        `A closing thought for day ${i + 1}.`,
+        `The very last line of day ${i + 1}.`,
+      ].join("\n"),
+    }));
+    getTextMock.mockResolvedValue({ pages });
+
+    const text = await parsePdfToText(Buffer.from(""));
+
+    expect(text).toContain("Lift Up Your Eyes");
+  });
+
+  it("strips a bare page-number line left over after the real page footer is removed", async () => {
+    const pages = Array.from({ length: 10 }, (_, i) => ({
+      num: i + 1,
+      text: `Real content for page ${i + 1}.\n${i + 1}`,
+    }));
+    getTextMock.mockResolvedValue({ pages });
+
+    const text = await parsePdfToText(Buffer.from(""));
+    const lines = text.split("\n");
+
+    expect(lines).not.toContain("1");
+    expect(lines).not.toContain("10");
+    expect(text).toContain("Real content for page 1.");
+  });
+
+  it("collapses letter-by-letter spaced text back into real words", async () => {
+    getTextMock.mockResolvedValue({
+      pages: [{ num: 1, text: "G e n e s i s 2 : 7 ; P s a l m 1 0 3 : 1 4" }],
+    });
+
+    const text = await parsePdfToText(Buffer.from(""));
+
+    expect(text).toBe("Genesis 2 : 7 ; Psalm 103 : 14");
+  });
+
+  it("leaves ordinary text with occasional short words alone", async () => {
+    getTextMock.mockResolvedValue({
+      pages: [{ num: 1, text: "I am a soul in the dust, and a friend." }],
+    });
+
+    const text = await parsePdfToText(Buffer.from(""));
+
+    expect(text).toBe("I am a soul in the dust, and a friend.");
+  });
+
   it("leaves a line alone when it only appears on a couple of pages", async () => {
     const pages = [
       { num: 1, text: "A one-off heading\nSome content." },

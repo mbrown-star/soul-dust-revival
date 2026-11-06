@@ -64,7 +64,7 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
     { label: "Books & Studies", href: "/books" },
     { label: "Blog", href: "/blog" },
   ];
-  const loggedInItems: NavItem[] = [{ label: "Your Studies", href: "/studies" }];
+  const loggedInItems: NavItem[] = [{ label: "My Library", href: "/library" }];
 
   return (
     <nav aria-label="Primary" className="flex items-center gap-4 sm:gap-6 font-sans text-sm font-medium">

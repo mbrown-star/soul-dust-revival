@@ -5,11 +5,13 @@ import { useState, useId } from "react";
 export function QuestionBlock({
   contentBlockId,
   prompt,
+  initialAnswer,
 }: {
   contentBlockId: string;
   prompt: string;
+  initialAnswer?: string;
 }) {
-  const [answer, setAnswer] = useState("");
+  const [answer, setAnswer] = useState(initialAnswer ?? "");
   const [saved, setSaved] = useState(false);
   const questionId = useId();
 

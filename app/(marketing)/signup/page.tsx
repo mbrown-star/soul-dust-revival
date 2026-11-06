@@ -6,7 +6,7 @@ import { AuthForm } from "@/components/auth/AuthForm";
 
 function SignupInner() {
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/studies";
+  const next = searchParams.get("next") ?? "/library";
 
   return <AuthForm mode="signup" next={next} />;
 }

@@ -45,6 +45,10 @@ export const progressSchema = z.object({
   status: z.enum(["not_started", "in_progress", "completed"]),
 });
 
+export const progressResetSchema = z.object({
+  studyId: z.string().uuid(),
+});
+
 // ---------- Admin: products ----------
 export const productSchema = z
   .object({
@@ -154,6 +158,7 @@ export const studySchema = z.object({
   description: z.string().max(5_000).optional().nullable(),
   coverImageUrl: z.string().url().optional().nullable(),
   coverImageAlt: z.string().max(300).optional().nullable(),
+  kind: z.enum(["devotional", "study"]).default("devotional"),
   published: z.boolean(),
 });
 
@@ -300,6 +305,7 @@ export const studyImportFieldsSchema = z.object({
     .max(200)
     .regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers, and hyphens only"),
   productId: z.string().uuid(),
+  kind: z.enum(["devotional", "study"]).default("devotional"),
 });
 
 // ---------- Admin: social media ----------

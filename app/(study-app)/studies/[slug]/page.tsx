@@ -81,6 +81,9 @@ export default async function StudyPage({
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16">
+      <span className="inline-block text-xs font-sans font-medium uppercase tracking-wide text-ember-700 mb-2">
+        {study.kind === "study" ? "Study" : "Devotional"}
+      </span>
       <h1 className="font-display font-bold text-3xl text-ink mb-2">{study.title}</h1>
       {study.description && <p className="font-serif text-moss mb-6">{study.description}</p>}
 

@@ -51,6 +51,7 @@ export default async function StudyDetailPage({ params }: { params: Promise<{ id
             coverImageUrl: study.coverImageUrl,
             coverImageAlt: study.coverImageAlt ?? "",
             productId: study.productId,
+            kind: study.kind,
             published: study.published,
           }}
         />

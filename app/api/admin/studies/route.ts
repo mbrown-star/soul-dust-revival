@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
       description: body.description,
       coverImageUrl: body.coverImageUrl,
       coverImageAlt: body.coverImageAlt,
+      kind: body.kind,
       published: body.published ?? false,
     })
     .returning();
@@ -54,6 +55,7 @@ export async function PATCH(req: NextRequest) {
       description: body.description,
       coverImageUrl: body.coverImageUrl,
       coverImageAlt: body.coverImageAlt,
+      kind: body.kind,
       published: body.published,
     })
     .where(eq(studies.id, body.id!))

@@ -1,0 +1,1 @@
+ALTER TABLE "studies" ADD COLUMN "kind" text DEFAULT 'devotional' NOT NULL;

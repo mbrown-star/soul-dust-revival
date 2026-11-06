@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { splitHtmlByHeadings, splitPlainTextByHeadings } from "./splitIntoLessons";
+import { splitHtmlByHeadings, splitPlainTextByHeadings, splitStudyPlainTextByHeadings } from "./splitIntoLessons";
 
 describe("splitHtmlByHeadings", () => {
   it("splits on h1/h2 boundaries using their own text as the title", () => {
@@ -175,5 +175,128 @@ describe("splitPlainTextByHeadings", () => {
     expect(lessons[0]!.bodyHtml).toBe(
       ["<p><strong>A Question To Sit With</strong></p>", "<p>Where are you planted this year?</p>"].join("\n")
     );
+  });
+});
+
+describe("splitStudyPlainTextByHeadings", () => {
+  function buildWeek(n: number, title: string, verseRef: string, question: string, greekWord: string): string[] {
+    return [
+      `${"I".repeat(n)}WEEK ${n}`,
+      title,
+      "from dust to somewhere",
+      "◆",
+      `“A quoted verse for week ${n}.”`,
+      verseRef,
+      "READ · REFLECT · RETURN",
+      "SCRIPTURE STUDY · DIVE",
+      title,
+      "Some essay content for this week.",
+      verseRef,
+      `“A quoted verse for week ${n}.”`,
+      "QUESTION",
+      question,
+      "GOING DEEPER · THE GREEK",
+      greekWord,
+      "a transliteration and gloss",
+      `${verseRef}; OTHER 1:1`,
+      "An explanatory paragraph about the word.",
+      "LIVE IT: Do something about it this week.",
+    ];
+  }
+
+  it("splits a Study document into one lesson per week using its own WEEK heading", () => {
+    const text = [
+      "Contents",
+      "First Week Title",
+      "WEEK 1 · Book 1:1-8 · from dust to somewhere 11",
+      "Second Week Title",
+      "WEEK 2 · Book 1:9-14 · from dust to somewhere else 26",
+      "",
+      ...buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις"),
+      ...buildWeek(2, "Second Week Title", "BOOK 1:9-14", "Am I resting or earning?", "πίστις"),
+    ].join("\n");
+
+    const lessons = splitStudyPlainTextByHeadings(text);
+
+    expect(lessons).toHaveLength(2);
+    expect(lessons[0]!.title).toBe("Week 1: First Week Title");
+    expect(lessons[1]!.title).toBe("Week 2: Second Week Title");
+  });
+
+  it("extracts a QUESTION section as its own input block, not folded into reading text", () => {
+    const text = buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις").join("\n");
+
+    const lessons = splitStudyPlainTextByHeadings(text);
+
+    const questionBlocks = lessons[0]!.blocks.filter((b) => b.type === "question");
+    expect(questionBlocks).toHaveLength(1);
+    expect(questionBlocks[0]).toMatchObject({ type: "question", questionPrompt: "Am I trusting or striving?" });
+  });
+
+  it("extracts a Going Deeper section as a callout block with the studied word as its title", () => {
+    const text = buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις").join("\n");
+
+    const lessons = splitStudyPlainTextByHeadings(text);
+
+    const calloutBlocks = lessons[0]!.blocks.filter((b) => b.type === "callout");
+    expect(calloutBlocks).toHaveLength(1);
+    expect(calloutBlocks[0]).toMatchObject({ type: "callout", calloutTitle: "χάρις" });
+    if (calloutBlocks[0]!.type === "callout") {
+      expect(calloutBlocks[0]!.bodyHtml).toContain("An explanatory paragraph about the word.");
+      expect(calloutBlocks[0]!.bodyHtml).toContain("LIVE IT");
+    }
+  });
+
+  it("does not treat a multi-reference citation list (with a semicolon) as a section boundary that cuts off a callout early", () => {
+    const text = buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις").join("\n");
+
+    const lessons = splitStudyPlainTextByHeadings(text);
+
+    const callout = lessons[0]!.blocks.find((b) => b.type === "callout");
+    expect(callout?.type).toBe("callout");
+    if (callout?.type === "callout") {
+      // "BOOK 1:1-8; OTHER 1:1" is a reference list, not a new heading -- it
+      // must stay inside the callout body, not truncate it right after the
+      // Greek word and gloss.
+      expect(callout.bodyHtml).toContain("explanatory paragraph");
+    }
+  });
+
+  it("does not treat a reflection-only question (no literal 'QUESTION' label) as an input block", () => {
+    const text = [
+      ...buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις"),
+      "BOOK 1:5-6",
+      "QUIET QUESTION TO CARRY",
+      "What have you been staking your hope on?",
+    ].join("\n");
+
+    const lessons = splitStudyPlainTextByHeadings(text);
+
+    const questionBlocks = lessons[0]!.blocks.filter((b) => b.type === "question");
+    // Only the one real "QUESTION" block from buildWeek -- "QUIET QUESTION TO
+    // CARRY" reads like the Devotional's own reflection prompts (meant to be
+    // pondered, not typed into a saved field) and must not become a second one.
+    expect(questionBlocks).toHaveLength(1);
+  });
+
+  it("puts content before the first WEEK heading into a leading Introduction lesson", () => {
+    const text = [
+      "A Word Before the First Page",
+      "Some foreword content.",
+      ...buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις"),
+    ].join("\n");
+
+    const lessons = splitStudyPlainTextByHeadings(text);
+
+    expect(lessons[0]!.title).toBe("Introduction");
+    expect(lessons[1]!.title).toBe("Week 1: First Week Title");
+  });
+
+  it("treats the whole document as a single lesson when no WEEK heading is found at all", () => {
+    const text = "Just some plain prose with no week structure whatsoever.";
+    const lessons = splitStudyPlainTextByHeadings(text);
+
+    expect(lessons).toHaveLength(1);
+    expect(lessons[0]!.title).toBe("Imported Content");
   });
 });

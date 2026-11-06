@@ -4,7 +4,11 @@ import { getDb } from "@/lib/db/client";
 import { studies, lessons, contentBlocks } from "@/lib/db/schema";
 import { parseDocxToHtml } from "@/lib/import/parseDocx";
 import { parsePdfToText } from "@/lib/import/parsePdf";
-import { splitHtmlByHeadings, splitPlainTextByHeadings } from "@/lib/import/splitIntoLessons";
+import {
+  splitHtmlByHeadings,
+  splitPlainTextByHeadings,
+  splitStudyPlainTextByHeadings,
+} from "@/lib/import/splitIntoLessons";
 import { r2, R2_BUCKET, r2PublicUrl } from "@/lib/r2/client";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { studyImportFieldsSchema } from "@/lib/validation/schemas";
@@ -25,12 +29,13 @@ export async function POST(req: NextRequest) {
     title: formData.get("title"),
     slug: formData.get("slug"),
     productId: formData.get("productId"),
+    kind: formData.get("kind") ?? undefined,
   });
 
   if (!file || !parsed.success) {
     return NextResponse.json({ error: "invalid_input", details: parsed.success ? "Missing file" : parsed.error.flatten() }, { status: 400 });
   }
-  const { title, slug, productId } = parsed.data;
+  const { title, slug, productId, kind } = parsed.data;
 
   if (file.size > MAX_FILE_SIZE_BYTES) {
     return NextResponse.json({ error: "file_too_large", message: "File must be under 25MB." }, { status: 400 });
@@ -44,10 +49,41 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Only .docx and .pdf files are supported" }, { status: 400 });
   }
 
-  // Parse into lessons using each format's own splitting strategy.
-  const importedLessons = isDocx
-    ? splitHtmlByHeadings(await parseDocxToHtml(buffer))
-    : splitPlainTextByHeadings(await parsePdfToText(buffer));
+  // A lesson is an ordered list of content blocks, not just one HTML body —
+  // a Study's "QUESTION" and "Going Deeper" sections become their own
+  // question/callout blocks (see splitStudyPlainTextByHeadings), while a
+  // Devotional's or a .docx's content is always a single text block. Both
+  // shapes are normalized to this one structure so the insert logic below
+  // doesn't need to branch.
+  type ParsedBlock =
+    | { type: "text"; body: string }
+    | { type: "question"; questionPrompt: string }
+    | { type: "callout"; calloutTitle: string; body: string };
+  type ParsedLesson = { title: string; blocks: ParsedBlock[] };
+
+  let importedLessons: ParsedLesson[];
+  if (isDocx) {
+    importedLessons = splitHtmlByHeadings(await parseDocxToHtml(buffer)).map((l) => ({
+      title: l.title,
+      blocks: [{ type: "text", body: l.bodyHtml }],
+    }));
+  } else if (kind === "study") {
+    importedLessons = splitStudyPlainTextByHeadings(await parsePdfToText(buffer)).map((l) => ({
+      title: l.title,
+      blocks: l.blocks.map((b) =>
+        b.type === "question"
+          ? { type: "question", questionPrompt: b.questionPrompt }
+          : b.type === "callout"
+            ? { type: "callout", calloutTitle: b.calloutTitle, body: b.bodyHtml }
+            : { type: "text", body: b.bodyHtml }
+      ),
+    }));
+  } else {
+    importedLessons = splitPlainTextByHeadings(await parsePdfToText(buffer)).map((l) => ({
+      title: l.title,
+      blocks: [{ type: "text", body: l.bodyHtml }],
+    }));
+  }
 
   // Store the original file in R2 for reference/audit. Key is fully
   // server-generated (random UUID + validated extension only) rather than
@@ -73,6 +109,7 @@ export async function POST(req: NextRequest) {
       productId,
       title,
       slug,
+      kind,
       published: false,
       sourceFileUrl,
       sourceFileName: file.name.slice(0, 200), // stored for display only, never used in a path
@@ -108,16 +145,33 @@ export async function POST(req: NextRequest) {
       const lesson = lessonsByOrderIndex.get(i);
       if (!lesson) return []; // skip if this row somehow failed to insert
 
-      return [
-        {
+      // Sanitize extracted document HTML before storing — imported documents
+      // are a form of untrusted input even when uploaded by an admin.
+      return importedLesson.blocks.map((block, blockIndex) => {
+        if (block.type === "question") {
+          return {
+            lessonId: lesson.id,
+            orderIndex: blockIndex,
+            type: "question" as const,
+            questionPrompt: block.questionPrompt.slice(0, 2_000),
+          };
+        }
+        if (block.type === "callout") {
+          return {
+            lessonId: lesson.id,
+            orderIndex: blockIndex,
+            type: "callout" as const,
+            calloutTitle: block.calloutTitle.slice(0, 200),
+            body: sanitizeHtml(block.body),
+          };
+        }
+        return {
           lessonId: lesson.id,
-          orderIndex: 0,
+          orderIndex: blockIndex,
           type: "text" as const,
-          // Sanitize extracted document HTML before storing — imported
-          // documents are a form of untrusted input even when uploaded by an admin.
-          body: sanitizeHtml(importedLesson.bodyHtml),
-        },
-      ];
+          body: sanitizeHtml(block.body),
+        };
+      });
     });
 
     if (contentBlockValues.length > 0) {

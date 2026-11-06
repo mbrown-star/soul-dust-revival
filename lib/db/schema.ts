@@ -158,6 +158,12 @@ export const studies = pgTable("studies", {
   description: text("description"),
   coverImageUrl: text("cover_image_url"),
   coverImageAlt: text("cover_image_alt"), // required alt text (WCAG 1.1.1)
+  // "devotional": read-only reflection content (no saved user input).
+  // "study": interactive -- the parser emits 'question' content blocks for
+  // written-response sections, and the reader expects answers to be saved.
+  // Admin-set at creation (see ImportStudyForm/StudyForm), since it can't be
+  // reliably inferred from document content alone.
+  kind: text("kind").notNull().default("devotional").$type<"devotional" | "study">(),
   published: boolean("published").notNull().default(false),
   sourceFileUrl: text("source_file_url"), // original .pdf/.docx if this study was imported
   sourceFileName: text("source_file_name"),

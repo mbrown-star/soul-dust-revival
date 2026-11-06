@@ -23,7 +23,7 @@ type ContentBlock = {
  * This is the core of the flexible lesson model — a lesson is just an
  * ordered list of these, mixing text/image/video/audio/questions/callouts freely.
  */
-export function LessonBlock({ block }: { block: ContentBlock }) {
+export function LessonBlock({ block, initialAnswer }: { block: ContentBlock; initialAnswer?: string }) {
   switch (block.type) {
     case "text":
       return (
@@ -64,7 +64,9 @@ export function LessonBlock({ block }: { block: ContentBlock }) {
     case "audio":
       return <AudioBlock contentBlockId={block.id} transcript={block.transcript} />;
     case "question":
-      return <QuestionBlock contentBlockId={block.id} prompt={block.questionPrompt ?? ""} />;
+      return (
+        <QuestionBlock contentBlockId={block.id} prompt={block.questionPrompt ?? ""} initialAnswer={initialAnswer} />
+      );
     case "callout":
       return (
         <div

@@ -13,7 +13,7 @@ import { eq } from "drizzle-orm";
 export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/studies";
+  const next = searchParams.get("next") ?? "/library";
 
   if (code) {
     const supabase = await createSupabaseServerClient();

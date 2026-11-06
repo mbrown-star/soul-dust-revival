@@ -12,6 +12,7 @@ type StudyFormValues = {
   coverImageUrl: string | null;
   coverImageAlt: string;
   productId: string;
+  kind: "devotional" | "study";
   published: boolean;
 };
 
@@ -35,6 +36,7 @@ export function StudyForm({
     coverImageUrl: initial?.coverImageUrl ?? null,
     coverImageAlt: initial?.coverImageAlt ?? "",
     productId: initial?.productId ?? digitalProducts[0]?.id ?? "",
+    kind: initial?.kind ?? "devotional",
     published: initial?.published ?? false,
   });
   const [uploading, setUploading] = useState(false);
@@ -153,6 +155,34 @@ export function StudyForm({
           onChange={(e) => setValues((v) => ({ ...v, title: e.target.value }))}
         />
       </div>
+
+      <fieldset>
+        <legend className="block text-sm font-medium mb-1">Kind</legend>
+        <div className="flex gap-4">
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="kind"
+              checked={values.kind === "devotional"}
+              onChange={() => setValues((v) => ({ ...v, kind: "devotional" }))}
+            />
+            <span className="text-sm">Devotional (reader-only)</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="kind"
+              checked={values.kind === "study"}
+              onChange={() => setValues((v) => ({ ...v, kind: "study" }))}
+            />
+            <span className="text-sm">Study (interactive, saves answers)</span>
+          </label>
+        </div>
+        <p className="text-xs text-moss mt-1">
+          A Devotional is pure reading, no saved input. A Study has written-response questions
+          whose answers are saved per user.
+        </p>
+      </fieldset>
 
       <div>
         <label htmlFor={slugId} className="block text-sm font-medium mb-1">Slug (URL path)</label>

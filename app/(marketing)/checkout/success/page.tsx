@@ -84,7 +84,7 @@ export default async function CheckoutSuccessPage({
       {/* Digital-only or mixed: prompt to log in and access the web app content. */}
       {hasDigital && (
         <Link
-          href="/login?next=/studies"
+          href="/login?next=/library"
           className="inline-block bg-ink text-white rounded-lg px-6 py-3"
         >
           Log in to access your content
