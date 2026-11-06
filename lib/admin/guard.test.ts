@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { eq, like, or } from "drizzle-orm";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getDb, type Db } from "@/lib/db/client";
 import { users } from "@/lib/db/schema";
 
@@ -42,6 +42,26 @@ describe("guard", () => {
     await db.delete(users).where(eq(users.id, leaderId));
     await db.delete(users).where(eq(users.id, userId));
     vi.clearAllMocks();
+  });
+
+  // Safety net: if afterEach above ever fails partway through for any
+  // future reason (this exact failure mode already leaked 8 real rows into
+  // the connected Supabase project once, from the Promise.all-on-one-Client
+  // bug this file's beforeEach/afterEach comments document), this deletes
+  // anything still matching this file's own distinctive insert pattern
+  // rather than leaving it to accumulate silently. Scoped tightly to the
+  // `{role}-{uuid}@example.com` shape used only here, never a broad delete.
+  afterAll(async () => {
+    const cleanupDb = await getDb();
+    await cleanupDb
+      .delete(users)
+      .where(
+        or(
+          like(users.email, "admin-%@example.com"),
+          like(users.email, "leader-%@example.com"),
+          like(users.email, "user-%@example.com")
+        )
+      );
   });
 
   it("returns null with no session", async () => {

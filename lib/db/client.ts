@@ -43,18 +43,30 @@ export type Db = Awaited<ReturnType<typeof getDb>>;
 export async function getDb() {
   const { connectionString, viaHyperdrive } = await resolveConnection();
 
+  // Supabase requires TLS; a local Postgres (dev/test -- see BUILD_TASKS.md)
+  // doesn't speak it at all and errors if asked for it. Hyperdrive always
+  // encrypts its own connection to the origin on our behalf, so this only
+  // ever applies to the direct, non-Hyperdrive path, and only when that
+  // path's target actually needs it. (rejectUnauthorized: false, not a CA
+  // bundle, matching this project's existing dev setup.)
+  const needsTls = !viaHyperdrive && !isLocalHost(connectionString);
+
   const client = new Client({
     connectionString,
-    // Supabase requires TLS. Hyperdrive already encrypts its own connection
-    // to the origin database on our behalf, so this only applies to the
-    // local-dev path, which connects to Supabase directly. (rejectUnauthorized:
-    // false, not a CA bundle, matching this project's existing dev setup --
-    // see the removed postgres.js client this replaces.)
-    ...(viaHyperdrive ? {} : { ssl: { rejectUnauthorized: false } }),
+    ...(needsTls ? { ssl: { rejectUnauthorized: false } } : {}),
   });
   await client.connect();
 
   return drizzle(client, { schema });
+}
+
+function isLocalHost(connectionString: string): boolean {
+  try {
+    const { hostname } = new URL(connectionString);
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  } catch {
+    return false;
+  }
 }
 
 async function resolveConnection(): Promise<{ connectionString: string; viaHyperdrive: boolean }> {
