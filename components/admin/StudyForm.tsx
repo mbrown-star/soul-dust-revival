@@ -38,25 +38,42 @@ export function StudyForm({
     published: initial?.published ?? false,
   });
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const altTextMissing = !!values.coverImageUrl && values.coverImageAlt.trim().length === 0;
 
-  async function uploadCover(file: File) {
+  // Same facility as the Products cover-PDF uploader (a full-wrap back +
+  // spine + front cover PDF, auto-cropped) -- a study has no back-cover
+  // concept, so only the front crop is kept. This replaces a plain
+  // image-file upload: admins already have this exact PDF for the study's
+  // linked physical product, if it has one, rather than needing a separate
+  // cover graphic prepared by hand.
+  async function uploadCoverPdf(file: File) {
     setUploading(true);
-    const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
-    const key = `studies/${crypto.randomUUID()}.${ext}`;
-    const res = await fetch("/api/admin/upload-url", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key, contentType: file.type }),
-    });
-    const { uploadUrl, publicUrl } = (await res.json()) as { uploadUrl: string; publicUrl: string };
-    await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
-    setValues((v) => ({ ...v, coverImageUrl: publicUrl }));
-    setUploading(false);
+    setUploadError(null);
+
+    const formData = new FormData();
+    formData.set("file", file);
+
+    try {
+      const res = await fetch("/api/admin/studies/cover-pdf", { method: "POST", body: formData });
+      const data = (await res.json()) as { coverImageUrl?: string; message?: string };
+
+      if (!res.ok || !data.coverImageUrl) {
+        setUploadError(data.message ?? "Couldn't process that cover PDF. Please try a different file.");
+        setUploading(false);
+        return;
+      }
+
+      setValues((v) => ({ ...v, coverImageUrl: data.coverImageUrl! }));
+      setUploading(false);
+    } catch {
+      setUploadError("Upload failed — the server didn't respond as expected. Please try again.");
+      setUploading(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -179,7 +196,10 @@ export function StudyForm({
       </div>
 
       <div>
-        <span className="block text-sm font-medium mb-1" id="cover-image-label">Cover image</span>
+        <span className="block text-sm font-medium mb-1" id="cover-image-label">
+          Cover PDF (full wrap: back cover + spine + front cover, as exported for KDP print —
+          only the front cover is kept)
+        </span>
         {values.coverImageUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -190,13 +210,18 @@ export function StudyForm({
         )}
         <input
           type="file"
-          accept="image/*"
+          accept="application/pdf"
           aria-labelledby="cover-image-label"
-          onChange={(e) => e.target.files?.[0] && uploadCover(e.target.files[0])}
+          onChange={(e) => e.target.files?.[0] && uploadCoverPdf(e.target.files[0])}
         />
         <p role="status" aria-live="polite" className="text-sm text-moss h-5">
-          {uploading ? "Uploading..." : ""}
+          {uploading ? "Processing cover PDF..." : ""}
         </p>
+        {uploadError && (
+          <p role="alert" className="text-sm text-error mt-1">
+            {uploadError}
+          </p>
+        )}
 
         {values.coverImageUrl && (
           <div className="mt-2">
