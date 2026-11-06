@@ -22,5 +22,14 @@
       "binding": "HYPERDRIVE",
       "id": "2a924ce2874d45719269fa7d639b7b85"
     }
-  ]
+  ],
+  // Workers Paid defaults to 30s of CPU time per request. The cover-PDF
+  // crop (@cf-wasm/photon decoding + cropping a full KDP wrap image) ran
+  // into that default in production -- WASM image processing is measurably
+  // slower under Workers' CPU than the equivalent on a local machine.
+  // 60s gives real headroom without going anywhere near the 300s (5 min)
+  // platform maximum. See developers.cloudflare.com/workers/platform/limits/#cpu-time.
+  "limits": {
+    "cpu_ms": 60000
+  }
 }
