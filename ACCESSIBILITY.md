@@ -43,19 +43,21 @@ are outside what code can determine.
   (WCAG 2.4.3).
 
 **Images**
-- `alt` text is a **required field in the admin UI** wherever a non-book product image
-  can be attached (product images, study cover images, in-lesson image blocks) — the
-  save button is disabled until it's filled in, rather than defaulting to an empty
-  `alt=""` and hoping someone fills it in later (WCAG 1.1.1). Also enforced at the API
-  layer (`productSchema`'s `.refine()` check) so a direct API call can't skip the UI's
-  guard — this specific gap (alt text shipped unwired) happened twice before per
-  `AUDIT.md`, so it's closed at both layers now.
-  - **Exception, by explicit decision (2026-11-05):** book front/back cover images
-    (`imageUrl`/`backImageUrl` on a `type: "book"` product) are exempt from this
-    requirement — the admin can still add alt text for them, but isn't forced to.
-    A missing alt renders as `alt=""` (decorative) on the storefront
-    (`app/(marketing)/books/[slug]/page.tsx`, `CoverGallery.tsx`), which is a real
-    accessibility trade-off for book covers specifically, not a gap fixed elsewhere.
+- `alt` text is a **required field in the admin UI** for study cover images and
+  in-lesson image blocks — the save button is disabled until it's filled in, rather
+  than defaulting to an empty `alt=""` and hoping someone fills it in later
+  (WCAG 1.1.1). Also enforced at the API layer so a direct API call can't skip the
+  UI's guard — this specific gap (alt text shipped unwired) happened twice before per
+  `AUDIT.md`.
+  - **Product images (`imageUrl`/`backImageAlt` on `products`) are not enforced,
+    for any product type — by explicit decision, widened 2026-11-05.** Book
+    covers were exempted first (2026-11-05 earlier that day); the requirement
+    was then dropped entirely rather than narrowed, so a non-book product's
+    image can also be saved with no alt text. It's still encouraged in the admin
+    UI, just not blocking. A missing alt renders as `alt=""` (decorative) on the
+    storefront (`app/(marketing)/books/[slug]/page.tsx`, `CoverGallery.tsx`,
+    product listing/detail pages) — a real, accepted accessibility trade-off for
+    product images specifically, not a gap present anywhere else on the site.
 - `components/commerce/CoverGallery.tsx` (book front/back cover gallery): each cover
   image gets its own distinct alt text when one is set; prev/next controls and the
   position dots are real `<button>`s with `aria-label`s, fully keyboard-operable;

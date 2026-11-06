@@ -36,7 +36,7 @@ const STORAGE_KEY = "cart";
 
 // A product's two "both"-format lines share one productId, so identity for
 // matching/deduping a line must include its variant too.
-function lineKey(productId: string, variant?: "physical" | "digital") {
+export function lineKey(productId: string, variant?: "physical" | "digital") {
   return `${productId}:${variant ?? ""}`;
 }
 

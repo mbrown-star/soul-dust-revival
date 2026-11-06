@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/guard";
 import { getDb } from "@/lib/db/client";
-import { studies, lessons, contentBlocks, lessonProgress, responses } from "@/lib/db/schema";
+import { studies, lessons, contentBlocks, lessonProgress, responses, orderItems, entitlements } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { studySchema, studyDeleteSchema } from "@/lib/validation/schemas";
 
@@ -73,6 +73,37 @@ export async function DELETE(req: NextRequest) {
   }
   const { id } = parsed.data;
   const db = await getDb();
+
+  // Same safety check as the product DELETE route: a study whose product has
+  // real purchase history is never silently cascaded away, since that would
+  // destroy a paying customer's lesson progress/responses out from under a
+  // still-valid order or entitlement. Deactivating the study (or the linked
+  // product) is the right tool once it's actually been sold.
+  const [study] = await db.select({ productId: studies.productId }).from(studies).where(eq(studies.id, id)).limit(1);
+  if (study?.productId) {
+    const [linkedOrderItem] = await db
+      .select({ id: orderItems.id })
+      .from(orderItems)
+      .where(eq(orderItems.productId, study.productId))
+      .limit(1);
+    if (linkedOrderItem) {
+      return NextResponse.json(
+        { error: "has_orders", message: "This study's product has order history and can't be deleted." },
+        { status: 409 }
+      );
+    }
+    const [linkedEntitlement] = await db
+      .select({ id: entitlements.id })
+      .from(entitlements)
+      .where(eq(entitlements.productId, study.productId))
+      .limit(1);
+    if (linkedEntitlement) {
+      return NextResponse.json(
+        { error: "has_entitlements", message: "This study's product has been granted to a user and can't be deleted." },
+        { status: 409 }
+      );
+    }
+  }
 
   // No cascade is declared on these foreign keys, and a study's lessons /
   // content blocks / user progress / responses aren't meaningful without

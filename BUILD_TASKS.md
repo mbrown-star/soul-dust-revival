@@ -228,6 +228,20 @@ what's left, roughly in the order they need doing.
 - [x] Set every real `.env` value as a Cloudflare dashboard variable/secret on the
       deployed Worker (not baked into the build — see warning above) — done
       2026-11-05 via `wrangler secret put` for all ~21 vars.
+- [ ] **`CLOUDFLARE_ACCOUNT_ID` is missing from the deployed Worker's secrets —
+      found overnight 2026-11-05 when a safe-procedure redeploy 500'd every page
+      with "Invalid/missing environment variables: CLOUDFLARE_ACCOUNT_ID".**
+      `wrangler secret list --name soul-dust-revival` confirms it isn't one of
+      the 21 secrets currently set. This session's sandbox refuses to set it
+      ("Secret-Store Writes"), so a human needs to run:
+      `wrangler secret put CLOUDFLARE_ACCOUNT_ID --name soul-dust-revival`
+      (value from `.env.local`) before the next deploy, or that deploy will
+      500 the same way. Production was rolled back to the last working
+      version (code from before tonight's "both" format build) in the
+      meantime — see CLAUDE.md's same-dated entry for the full story.
+      **The site is currently NOT running tonight's build** (committed/pushed
+      to GitHub, but not deployed) until this is set and `npm run cf:deploy`
+      is re-run.
 - [x] **Fixed 2026-11-05 — the DB-500 found via the first real deploy.** Every
       DB-backed page 500'd on the deployed Worker with `Error [ERR_OPTION_NOT_IMPLEMENTED]:
       The options.rejectUnauthorized option is not implemented`, from `lib/db/client.ts`'s

@@ -236,6 +236,13 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
               // way to grant entitlements off an Amazon sale), and digital
               // must always go through Stripe.
               ...(format === "digital" ? { amazonUrl: null, sellOnStripe: true } : {}),
+              // The digital price field displays a $0.00 fallback for a null
+              // value (see its own input below), so default the real state
+              // to 0 here too the moment "both" is selected -- otherwise an
+              // admin who never touches an already-"$0.00"-looking field
+              // submits digitalPriceCents: null and hits a confusing
+              // "check the form for errors" with no visible cause.
+              ...(format === "both" && v.digitalPriceCents == null ? { digitalPriceCents: 0 } : {}),
             }));
           }}
         >

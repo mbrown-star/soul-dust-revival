@@ -67,13 +67,13 @@ export const products = pgTable("products", {
   slug: text("slug").notNull().unique(), // used for public /books/[slug] pages
   description: text("description"),
   imageUrl: text("image_url"), // Cloudflare R2 public URL -- front cover, for book products
-  imageAlt: text("image_alt"), // required alt text for the product image (WCAG 1.1.1)
+  imageAlt: text("image_alt"), // encouraged but not enforced (WCAG 1.1.1) -- see ACCESSIBILITY.md
   // Book products: the back-cover image and the original full-wrap cover PDF
   // it (and imageUrl) were split from -- see lib/images/bookCover.ts. Null
   // for non-book products and for any book product using the older
   // plain-image upload path instead of the PDF-split flow.
   backImageUrl: text("back_image_url"),
-  backImageAlt: text("back_image_alt"), // required alt text whenever backImageUrl is set (WCAG 1.1.1)
+  backImageAlt: text("back_image_alt"), // encouraged but not enforced (WCAG 1.1.1) -- see ACCESSIBILITY.md
   coverPdfUrl: text("cover_pdf_url"), // retained for reference/reprints
   priceCents: integer("price_cents").notNull(), // physical price for "both"; the only price for "physical"/"digital"
   // Digital price + Stripe IDs, used only for format "both" -- a plain

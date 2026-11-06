@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useId } from "react";
-import { useCart } from "@/lib/cart/CartContext";
+import { useCart, lineKey } from "@/lib/cart/CartContext";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { COUNTRIES } from "@/lib/data/countries";
 import Link from "next/link";
@@ -93,7 +93,7 @@ export default function CheckoutPage() {
 
       <ul className="space-y-3" aria-label="Cart items">
         {items.map((item) => (
-          <li key={`${item.productId}:${item.variant ?? ""}`} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 border-b border-moss/20 pb-3">
+          <li key={lineKey(item.productId, item.variant)} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 border-b border-moss/20 pb-3">
             <div>
               <p className="font-sans font-medium text-ink">{item.title}</p>
               <p className="font-sans text-sm text-moss">

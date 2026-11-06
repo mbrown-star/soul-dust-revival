@@ -10,6 +10,9 @@ import {
   contentBlocks,
   lessonProgress,
   responses,
+  orders,
+  orderItems,
+  entitlements,
 } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -110,5 +113,44 @@ describe("admin studies route — delete", () => {
     vi.mocked(requireAdmin).mockResolvedValue(null);
     const res = await DELETE(deleteRequest(randomUUID()));
     expect(res.status).toBe(403);
+  });
+
+  it("refuses to delete a study whose product has order history", async () => {
+    await signInAsAdmin();
+    const [study] = await db
+      .insert(studies)
+      .values({ productId, title: "Sold Study", slug: `sold-study-${randomUUID()}`, published: false })
+      .returning();
+    const [order] = await db.insert(orders).values({ country: "US", status: "paid", totalCents: 2900 }).returning();
+    await db.insert(orderItems).values({ orderId: order!.id, productId, quantity: 1 });
+
+    try {
+      const res = await DELETE(deleteRequest(study!.id));
+      expect(res.status).toBe(409);
+
+      const [stillThere] = await db.select().from(studies).where(eq(studies.id, study!.id));
+      expect(stillThere).toBeDefined();
+    } finally {
+      await db.delete(orderItems).where(eq(orderItems.orderId, order!.id));
+      await db.delete(orders).where(eq(orders.id, order!.id));
+      await db.delete(studies).where(eq(studies.id, study!.id));
+    }
+  });
+
+  it("refuses to delete a study whose product has a granted entitlement", async () => {
+    await signInAsAdmin();
+    const [study] = await db
+      .insert(studies)
+      .values({ productId, title: "Granted Study", slug: `granted-study-${randomUUID()}`, published: false })
+      .returning();
+    await db.insert(entitlements).values({ userId: adminUserId, productId, source: "admin_grant" });
+
+    try {
+      const res = await DELETE(deleteRequest(study!.id));
+      expect(res.status).toBe(409);
+    } finally {
+      await db.delete(entitlements).where(eq(entitlements.productId, productId));
+      await db.delete(studies).where(eq(studies.id, study!.id));
+    }
   });
 });
