@@ -132,7 +132,7 @@ export default function NewSocialPostPage() {
     !uploading;
 
   return (
-    <div className="space-y-6 max-w-lg">
+    <div className="space-y-6">
       <h1 className="text-xl font-semibold">New social post</h1>
 
       {/* AI suggestions */}

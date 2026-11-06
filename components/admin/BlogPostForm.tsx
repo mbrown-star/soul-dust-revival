@@ -131,7 +131,7 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
   }
 
   return (
-    <div className="space-y-6 max-w-lg">
+    <div className="space-y-6">
       {/* AI suggestions */}
       <div className="border rounded-lg p-4 bg-moss/5">
         <label htmlFor={instructionId} className="block text-sm font-medium mb-1">

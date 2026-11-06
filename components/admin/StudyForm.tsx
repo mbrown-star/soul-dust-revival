@@ -106,7 +106,7 @@ export function StudyForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5 max-w-lg" aria-label="Study details">
+    <form onSubmit={handleSubmit} className="space-y-5" aria-label="Study details">
       <div>
         <label htmlFor={titleId} className="block text-sm font-medium mb-1">Title</label>
         <input

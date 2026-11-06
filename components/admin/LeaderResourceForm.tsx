@@ -48,7 +48,7 @@ export function LeaderResourceForm({ initial }: { initial: ResourceFormValues })
   }
 
   return (
-    <div className="space-y-5 max-w-lg">
+    <div className="space-y-5">
       <div>
         <label className="block text-sm font-medium mb-1">Title</label>
         <input

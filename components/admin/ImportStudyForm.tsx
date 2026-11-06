@@ -51,7 +51,7 @@ export function ImportStudyForm({
   }
 
   return (
-    <form onSubmit={handleImport} className="space-y-5 max-w-lg">
+    <form onSubmit={handleImport} className="space-y-5">
       <div>
         <label className="block text-sm font-medium mb-1">Document (.docx or .pdf)</label>
         <input
