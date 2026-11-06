@@ -1,4 +1,5 @@
 import { PDFParse } from "pdf-parse";
+import { ensurePdfTextExtractionGlobals } from "./pdfTextExtractionGlobals";
 
 /**
  * Extracts plain text from a PDF. Unlike DOCX, PDFs don't preserve heading
@@ -9,6 +10,10 @@ import { PDFParse } from "pdf-parse";
  * serverExternalPackages -- see the comment there for why.
  */
 export async function parsePdfToText(buffer: Buffer): Promise<string> {
+  // Must run before PDFParse touches pdfjs-dist's text-layer code -- see
+  // pdfTextExtractionGlobals.ts for why this is needed in the Workers runtime.
+  ensurePdfTextExtractionGlobals();
+
   const parser = new PDFParse({ data: buffer });
   try {
     // pdf-parse's default pageJoiner appends a "-- N of total --" marker

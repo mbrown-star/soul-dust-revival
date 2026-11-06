@@ -24,7 +24,24 @@ const nextConfig = {
   // require/import at runtime instead, which the package's internal paths
   // (and its optional @napi-rs/canvas dependency, a native addon Turpopack
   // can't place in an ESM chunk at all) are actually built for.
-  serverExternalPackages: ["pdf-parse"],
+  // @cf-wasm/photon (image cropping for book/study cover PDFs) ships separate
+  // entry points per runtime -- a "workerd" one that imports its .wasm file
+  // directly (the form Wrangler's own bundler knows how to turn into a real,
+  // build-time WASM module binding) and a "node" one that inlines the wasm
+  // bytes as a JS literal and calls `new WebAssembly.Module(bytes)` at
+  // *runtime* instead. Without this, `next build`'s own webpack bundling
+  // resolves and fully inlines the package using Node's default conditions
+  // (it doesn't know "workerd" exists) before OpenNext's later, Workers-aware
+  // bundling pass -- which does request the "workerd" condition -- ever gets
+  // a chance to see the unresolved import. By then it's just bundling
+  // already-flattened JS, so its condition preference has nothing left to
+  // act on. The deployed Worker was left with the "node" path's runtime
+  // WebAssembly.Module() call, which Cloudflare Workers blocks outright
+  // ("Wasm code generation disallowed by embedder") -- confirmed live via
+  // `wrangler tail` against the real cover-PDF upload failure. Marking it
+  // external, same as pdf-parse below, defers its resolution to the later
+  // bundling stage that actually requests "workerd" and picks the right entry.
+  serverExternalPackages: ["pdf-parse", "@cf-wasm/photon"],
   images: {
     remotePatterns: [
       {
