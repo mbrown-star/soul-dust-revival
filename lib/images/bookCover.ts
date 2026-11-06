@@ -39,11 +39,14 @@ const MAX_PAGE_POINTS_PER_SIDE = 60 * 72; // 60 inches, in PDF points (72/inch)
 // (back + front), and JPEG-encoding scratch space -- roughly 4-5x a single
 // RGBA buffer's size. 50 megapixels is 200MB of RGBA alone, which exceeds
 // the ceiling before any of those other buffers even exist. A real KDP
-// cover PDF (300 DPI print resolution) routinely decodes well above this
-// new, much lower cap -- that's expected and intentional: this feature was
-// never meant to process print-resolution files, and the error message
-// below says so.
-const MAX_PIXELS = 4_000_000; // 4 megapixels -- a ~16MB RGBA buffer, safely under the 128MB ceiling even with every other buffer this pipeline holds alive at once
+// cover PDF (300 DPI print resolution) routinely decodes well above even
+// this new, much lower cap -- that's expected and intentional: this feature
+// was never meant to process print-resolution files, and the error message
+// below says so. toRgba() below no longer copies the already-4-channel
+// case (the common one), which removed one of those full-size buffers --
+// raised slightly from this fix's first, more conservative value (4
+// megapixels) to account for that, while staying well short of the ceiling.
+const MAX_PIXELS = 6_000_000; // 6 megapixels -- a ~24MB RGBA buffer
 
 // We don't collect page count/paper type from the admin, so the exact spine
 // width (which depends on both) isn't known -- a plain 50/50 split left a
@@ -136,9 +139,17 @@ export async function splitBookCoverPdf(
  * Photon's PhotonImage constructor expects 4-channel (RGBA) raw pixels;
  * unpdf can hand back 1 (grayscale), 3 (RGB), or 4 channels depending on
  * the embedded image's color space, so grayscale/RGB need expanding first.
+ *
+ * The already-4-channel case returns a *view* over the same underlying
+ * buffer, not a copy -- `new Uint8Array(data)` (a Uint8ClampedArray) looked
+ * harmless but actually clones the whole buffer, needlessly doubling this
+ * function's peak memory for what's typically the common case (most KDP
+ * covers are already flattened to RGB/RGBA). Every byte in a
+ * Uint8ClampedArray and a Uint8Array is identical; only out-of-range
+ * *writes* clamp differently, and this function never writes back into it.
  */
 function toRgba(data: Uint8ClampedArray, channels: 1 | 3 | 4, width: number, height: number): Uint8Array {
-  if (channels === 4) return new Uint8Array(data);
+  if (channels === 4) return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
 
   const out = new Uint8Array(width * height * 4);
   for (let i = 0, j = 0; i < data.length; i += channels, j += 4) {
