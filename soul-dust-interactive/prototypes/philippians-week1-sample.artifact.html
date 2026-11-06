@@ -1,0 +1,290 @@
+<title>Philippians Week 1</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+/* Layout: one reading column, a sticky week header with a progress ring, five step tabs; word studies open in a bottom sheet. */
+:root{
+  --bg:#F6F1E1; --surface:#FFFDF6; --box:#EFE6C2; --fg:#2B2B2B; --muted:#6A6452;
+  --gold:#AD9A5F; --gold-deep:#8C6F1F; --olive:#6B7338; --line:#DCD2B0; --sheet-shadow:rgba(40,34,10,.18);
+  --display:"Archivo Black","Arial Black",Impact,sans-serif;
+  --ui:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --greek:"Gentium Book Plus","Gentium Plus","Palatino Linotype",serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#17160F; --surface:#211F16; --box:#2C2918; --fg:#ECE6D2; --muted:#A79F84;
+  --gold:#CDB677; --gold-deep:#D9BE6A; --olive:#A6AF6A; --line:#3A3624; --sheet-shadow:rgba(0,0,0,.5); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#17160F; --surface:#211F16; --box:#2C2918; --fg:#ECE6D2; --muted:#A79F84;
+  --gold:#CDB677; --gold-deep:#D9BE6A; --olive:#A6AF6A; --line:#3A3624; --sheet-shadow:rgba(0,0,0,.5); color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:18px;line-height:1.6}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:680px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 96px}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.top-inner{max-width:680px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 0}
+.headrow{display:flex;align-items:center;gap:14px}
+.headrow .titles{flex:1;min-width:0}
+.eyebrow{font-family:var(--ui);font-weight:600;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-deep)}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(22px,5.4vw,30px);line-height:1.08;margin:2px 0 0;text-wrap:balance;letter-spacing:-.01em}
+.ring{flex:none;width:58px;height:58px;position:relative}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .track{stroke:var(--line)} .ring .fill{stroke:var(--gold);transition:stroke-dashoffset .5s ease}
+.ring span{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--ui);font-weight:700;font-size:13px;font-variant-numeric:tabular-nums}
+nav.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;margin-top:12px}
+nav.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;font-family:var(--ui);font-weight:600;font-size:13px;letter-spacing:.04em;border:0;background:none;color:var(--muted);padding:10px 12px 12px;border-bottom:3px solid transparent;cursor:pointer;display:flex;align-items:center;gap:6px}
+.tab[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--gold)}
+.tab .dot{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--muted)}
+.tab.done .dot{background:var(--olive);border-color:var(--olive)}
+.tab:focus-visible,button:focus-visible,textarea:focus-visible,input:focus-visible,.gw:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+section.panel{padding-top:26px}
+h2{font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--olive);margin:0 0 6px}
+.lede{color:var(--muted);font-size:16px;margin:0 0 20px}
+.ref{font-family:var(--ui);font-weight:700;font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ref small{font-weight:500;color:var(--muted);font-size:12px;letter-spacing:.08em}
+.passage p{margin:0 0 4px}
+.v{transition:background .2s;border-radius:3px;padding:0 2px}
+.v.speaking{background:var(--box)}
+sup{font-family:var(--ui);font-size:10px;font-weight:700;color:var(--gold-deep);margin-right:2px}
+.gw{all:unset;cursor:pointer;border-bottom:2px dotted var(--gold);color:inherit;padding-bottom:1px}
+.gw:hover{background:var(--box)}
+.gw.seen{border-bottom-style:solid;border-color:var(--olive)}
+.hint{font-family:var(--ui);font-size:13px;color:var(--muted);margin:14px 0 0}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.btn{font-family:var(--ui);font-weight:600;font-size:14px;border-radius:999px;padding:10px 18px;cursor:pointer;border:1.5px solid var(--fg);background:transparent;color:var(--fg)}
+.btn.primary{background:var(--fg);color:var(--bg)}
+.btn.complete{border-color:var(--olive);background:var(--olive);color:var(--bg)}
+.pullq{border-left:3px solid var(--gold);padding:4px 0 4px 16px;margin:26px 0;font-style:italic;font-size:20px;line-height:1.45}
+/* word cards */
+.deck{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:10px;margin-right:calc(-1*max(16px,env(safe-area-inset-right,0px)))}
+.card{flex:0 0 min(86%,520px);scroll-snap-align:start;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 20px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card .count{font-family:var(--ui);font-size:11px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+.greek{font-family:var(--greek);font-size:34px;line-height:1.1;color:var(--gold-deep)}
+.translit{font-family:var(--ui);font-size:14px;color:var(--muted)}
+.def{font-weight:600}
+.xref{font-family:var(--ui);font-size:13px;color:var(--olive)}
+.liveit{background:var(--box);border-radius:10px;padding:12px 14px;font-size:16px}
+.liveit b{font-family:var(--ui);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--olive);display:block;margin-bottom:2px}
+.pager{display:flex;gap:6px;justify-content:center;margin-top:12px}
+.pager i{width:7px;height:7px;border-radius:50%;background:var(--line)}
+.pager i.on{background:var(--gold)}
+/* reflect */
+.q{margin:0 0 26px}
+.q .num{font-family:var(--ui);font-weight:700;font-size:12px;letter-spacing:.14em;color:var(--gold-deep)}
+.q p{margin:4px 0 10px}
+textarea{width:100%;min-height:110px;font:inherit;font-size:17px;line-height:30px;color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:2px 14px;resize:vertical;
+  background:var(--surface) repeating-linear-gradient(to bottom,transparent 0 29px,var(--line) 29px 30px);background-attachment:local;background-position:0 2px}
+.saved{font-family:var(--ui);font-size:12px;color:var(--olive);height:16px}
+/* memorize */
+.memo{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px 20px;font-size:22px;line-height:1.7}
+.w{display:inline-block;transition:color .25s}
+.w.hid{color:transparent;background:var(--box);border-radius:4px;cursor:pointer}
+.w.hid.peek{color:var(--muted)}
+.slider{display:flex;align-items:center;gap:12px;margin-top:18px;font-family:var(--ui);font-size:13px;color:var(--muted)}
+.slider input{flex:1;accent-color:var(--gold-deep)}
+/* carry */
+.box{background:var(--box);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.box h3{font-family:var(--ui);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--olive);margin:0 0 8px}
+.bene p{margin:0 0 6px}
+.diamond{display:flex;align-items:center;gap:10px;color:var(--olive);margin:18px 0}
+.diamond::before,.diamond::after{content:"";flex:1;height:1px;background:var(--line)}
+.carryq{font-family:var(--display);font-size:clamp(20px,5vw,26px);line-height:1.2;text-wrap:balance;margin:0}
+.note{font-family:var(--ui);font-size:12px;color:var(--muted);border-top:1px solid var(--line);margin-top:40px;padding-top:12px}
+/* sheet */
+.scrim{position:fixed;inset:0;background:var(--sheet-shadow);z-index:20}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -8px 30px var(--sheet-shadow);
+  max-height:78vh;overflow:auto;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));padding-block:10px calc(24px + env(safe-area-inset-bottom,0px));transform:translateY(0);transition:transform .28s ease}
+.sheet .grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 14px}
+.sheet-inner{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.close{align-self:flex-end;font-family:var(--ui);font-size:13px;font-weight:600;border:0;background:none;color:var(--muted);cursor:pointer;padding:4px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="headrow">
+      <div class="titles">
+        <div class="eyebrow">Soul Dust Revival · Philippians · Week 1</div>
+        <h1>The Good Work He Began</h1>
+      </div>
+      <div class="ring" aria-label="Week progress">
+        <svg viewBox="0 0 40 40"><circle class="track" cx="20" cy="20" r="16" fill="none" stroke-width="4"/><circle class="fill" id="ringFill" cx="20" cy="20" r="16" fill="none" stroke-width="4" stroke-linecap="round" stroke-dasharray="100.53" stroke-dashoffset="100.53"/></svg>
+        <span id="ringPct">0%</span>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" id="tabs"></nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section class="panel" data-step="read" id="p-read">
+  <h2>Read</h2>
+  <p class="lede">Read it slowly, or let it be read to you. Tap any underlined word to open the Greek behind it.</p>
+  <div class="ref">Philippians 1:1–11 <small>WEB</small></div>
+  <div class="passage" id="passage"></div>
+  <p class="hint" id="seenHint">0 of 5 Greek words opened</p>
+  <div class="btnrow">
+    <button class="btn" id="listenBtn" type="button">▶ Read it to me</button>
+    <button class="btn primary markdone" type="button" data-for="read">Mark as read</button>
+  </div>
+  <blockquote class="pullq">He did not start you to abandon you halfway. The God who scooped you out of the dust has never left a job unfinished.</blockquote>
+</section>
+
+<section class="panel" data-step="words" id="p-words" hidden>
+  <h2>Five Words</h2>
+  <p class="lede">Swipe through this week's word studies. Each one ends with something to do today.</p>
+  <div class="deck" id="deck"></div>
+  <div class="pager" id="pager"></div>
+  <div class="btnrow"><button class="btn primary markdone" type="button" data-for="words">I've studied all five</button></div>
+</section>
+
+<section class="panel" data-step="reflect" id="p-reflect" hidden>
+  <h2>Reflect</h2>
+  <p class="lede">Answer honestly. Your answers save in this browser as you type.</p>
+  <div id="questions"></div>
+  <div class="btnrow"><button class="btn primary markdone" type="button" data-for="reflect">Done reflecting</button></div>
+</section>
+
+<section class="panel" data-step="memorize" id="p-memorize" hidden>
+  <h2>Hide It in Your Heart</h2>
+  <p class="lede">Read the verse aloud, then slide to hide more words. Tap a blank to peek.</p>
+  <div class="ref">Philippians 1:6</div>
+  <div class="memo" id="memo"></div>
+  <div class="slider"><span>Show all</span><input type="range" id="hide" min="0" max="100" value="0" aria-label="How many words to hide"><span>Hide all</span></div>
+  <div class="btnrow"><button class="btn primary markdone" type="button" data-for="memorize">I can say it from memory</button></div>
+</section>
+
+<section class="panel" data-step="carry" id="p-carry" hidden>
+  <h2>Pray &amp; Carry</h2>
+  <div class="box">
+    <h3>Simple Daily Prayer</h3>
+    <p style="margin:0">Father, I am dust, and You know it. Thank You for starting a work in me that I could never have started myself. Finish it. Grow my love in knowledge and discernment, make me sincere in the light, and fill me with the fruit that comes through Jesus Christ, so that my life brings You glory and praise. Amen.</p>
+  </div>
+  <div class="bene">
+    <h2>Lift Up Your Eyes</h2>
+    <p>Lift up your eyes, man of dust, the work is not yours to finish.</p>
+    <p>Lift up your eyes, the One who began it holds the end.</p>
+    <p>Lift up your eyes, the day of Christ is coming, and He will not be late.</p>
+  </div>
+  <div class="diamond">◆</div>
+  <h2>Quiet Question to Carry</h2>
+  <p class="carryq">Where am I acting as if my growth depends on me, and not on the One who began it?</p>
+  <div class="btnrow"><button class="btn primary markdone" type="button" data-for="carry">Carry it into the day</button></div>
+  <p class="note">Prototype. The Scripture is the World English Bible. The prayer, benediction, questions and word studies are sample copy written for this demo, not text from the Philippians manuscript.</p>
+</section>
+
+</main>
+
+<div class="scrim" id="scrim" hidden></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetGreek" hidden>
+  <div class="grab"></div>
+  <div class="sheet-inner" id="sheetBody"></div>
+</div>
+
+<script>
+const STEPS=[{id:"read",label:"Read"},{id:"words",label:"Words"},{id:"reflect",label:"Reflect"},{id:"memorize",label:"Memorize"},{id:"carry",label:"Pray & Carry"}];
+const WORDS={
+ koinonia:{greek:"κοινωνία",translit:"koinōnía",en:"partnership",verse:"1:5",def:"Fellowship, partnership; a shared stake in a common thing.",xref:"Acts 2:42 · 1 Cor 1:9 · 1 John 1:3",body:"Paul isn't thanking the Philippians for liking him. He's thanking them for having skin in the game. Koinōnía is a business word as much as a church word: partners who share the risk and the return. The gospel never made a man a spectator.",live:"Name one man whose gospel work you share in. Text him today and ask how you can carry part of the load."},
+ epiteleo:{greek:"ἐπιτελέω",translit:"epiteléō",en:"complete",verse:"1:6",def:"To bring to its intended end; to finish fully.",xref:"Gal 3:3 · 2 Cor 8:6, 11 · Heb 12:2",body:"The same word was used for finishing a sacrifice or completing a building. God does not start projects He abandons. The pressure to finish you is on Him, and He has never missed a deadline.",live:"Write down one area where you feel unfinished. Under it, write Philippians 1:6 and put the card where you'll see it."},
+ splanchna:{greek:"σπλάγχνα",translit:"splánchna",en:"tender mercies",verse:"1:8",def:"The inward parts; the gut as the seat of deep feeling.",xref:"Col 3:12 · Phm 7, 12, 20 · 1 John 3:17",body:"Paul's love for these believers isn't polite. It's gut-level, and it's Christ's own compassion moving through him. A man can love other men with this kind of affection and lose nothing of his strength.",live:"Tell one brother, plainly and without a joke, that you're grateful for him."},
+ perisseuo:{greek:"περισσεύω",translit:"perisseúō",en:"abound",verse:"1:9",def:"To overflow, to exceed the measure, to be more than enough.",xref:"Rom 5:15 · 2 Cor 9:8 · 1 Thess 3:12",body:"Paul doesn't pray for adequate love. He prays for overflow, love that spills past what's required. But notice the banks of the river: knowledge and discernment. This love has a direction.",live:"Do one thing today for your wife, child or coworker that goes past what's expected of you."},
+ eilikrines:{greek:"εἰλικρινής",translit:"eilikrinḗs",en:"sincere",verse:"1:10",def:"Pure, unmixed; often explained as 'tested by the light of the sun.'",xref:"2 Pet 3:1 · 2 Cor 1:12 · 2 Cor 2:17",body:"Hold a piece of pottery up to the sun and any cracks filled with wax show through. A sincere man has nothing hidden in the cracks. Christ is the light, and the day of Christ is when everything is held up to it.",live:"Name one hidden crack you've been filling with wax. Bring it into the light with God, and with one trusted man this week."}
+};
+const VERSES=[
+ [1,"Paul and Timothy, servants of Jesus Christ; To all the saints in Christ Jesus who are at Philippi, with the overseers and servants:"],
+ [2,"Grace to you, and peace from God our Father and the Lord Jesus Christ."],
+ [3,"I thank my God whenever I remember you,"],
+ [4,"always in every request of mine on behalf of you all, making my requests with joy,"],
+ [5,"for your {koinonia} in furtherance of the Good News from the first day until now;"],
+ [6,"being confident of this very thing, that he who began a good work in you will {epiteleo} it until the day of Jesus Christ."],
+ [7,"It is even right for me to think this way on behalf of all of you, because I have you in my heart, because both in my bonds and in the defense and confirmation of the Good News, you all are partakers with me of grace."],
+ [8,"For God is my witness, how I long after all of you in the {splanchna} of Christ Jesus."],
+ [9,"This I pray, that your love may {perisseuo} yet more and more in knowledge and all discernment,"],
+ [10,"so that you may approve the things that are excellent, that you may be {eilikrines} and without offense to the day of Christ,"],
+ [11,"being filled with the fruits of righteousness, which are through Jesus Christ, to the glory and praise of God."]
+];
+const QUESTIONS=[
+ "Paul thanks God for the Philippians' partnership. Who are you in real gospel partnership with right now, and who is missing from that list?",
+ "Verse 6 says God will complete what He began. Where have you been living as if your spiritual growth were your own project to finish?",
+ "Paul prays for love that overflows 'in knowledge and all discernment.' Where is your love strong on feeling but weak on wisdom, or the reverse?"
+];
+const MEMO="being confident of this very thing, that he who began a good work in you will complete it until the day of Jesus Christ.";
+
+const store={get(k,d){try{const v=localStorage.getItem("sdr-phil-w1-"+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+ set(k,v){try{localStorage.setItem("sdr-phil-w1-"+k,JSON.stringify(v))}catch(e){}}};
+let done=store.get("done",{}), seen=store.get("seen",{});
+const $=s=>document.querySelector(s);
+
+// tabs
+const tabs=$("#tabs");
+STEPS.forEach(s=>{const b=document.createElement("button");b.className="tab";b.type="button";b.role="tab";b.id="t-"+s.id;b.dataset.step=s.id;
+ b.innerHTML='<span class="dot"></span>'+s.label;b.onclick=()=>show(s.id);tabs.appendChild(b)});
+function show(id){STEPS.forEach(s=>{$("#p-"+s.id).hidden=s.id!==id;$("#t-"+s.id).setAttribute("aria-selected",s.id===id)});
+ window.scrollTo({top:0});store.set("tab",id);if(location.hash!=="#"+id)history.replaceState(null,"","#"+id)}
+function paint(){const n=STEPS.filter(s=>done[s.id]).length;const pct=Math.round(n/STEPS.length*100);
+ $("#ringFill").style.strokeDashoffset=100.53*(1-n/STEPS.length);$("#ringPct").textContent=pct+"%";
+ STEPS.forEach(s=>{$("#t-"+s.id).classList.toggle("done",!!done[s.id])});
+ document.querySelectorAll(".markdone").forEach(b=>{const d=!!done[b.dataset.for];b.classList.toggle("complete",d);b.classList.toggle("primary",!d);
+  if(!b.dataset.orig)b.dataset.orig=b.textContent;b.textContent=d?"✓ Done":b.dataset.orig})}
+document.querySelectorAll(".markdone").forEach(b=>b.onclick=()=>{const id=b.dataset.for;done[id]=!done[id];store.set("done",done);paint();
+ if(done[id]){const i=STEPS.findIndex(s=>s.id===id);const next=STEPS.slice(i+1).find(s=>!done[s.id]);if(next)setTimeout(()=>show(next.id),450)}});
+
+// passage
+const P=$("#passage");
+VERSES.forEach(([n,t])=>{const p=document.createElement("p");const s=document.createElement("span");s.className="v";s.id="v"+n;
+ s.innerHTML="<sup>"+n+"</sup>"+t.replace(/\{(\w+)\}/g,(m,k)=>'<button type="button" class="gw" data-w="'+k+'">'+WORDS[k].en+'</button>');p.appendChild(s);P.appendChild(p)});
+function paintSeen(){document.querySelectorAll(".gw").forEach(g=>g.classList.toggle("seen",!!seen[g.dataset.w]));
+ $("#seenHint").textContent=Object.keys(seen).length+" of 5 Greek words opened"}
+P.addEventListener("click",e=>{const g=e.target.closest(".gw");if(g)openSheet(g.dataset.w)});
+
+function cardHTML(k,i,inSheet){const w=WORDS[k];return (inSheet?"":'<div class="count">Word '+(i+1)+' of 5 · v. '+w.verse+'</div>')+
+ '<div class="greek" '+(inSheet?'id="sheetGreek"':'')+'>'+w.greek+'</div><div class="translit">'+w.translit+' · “'+w.en+'”'+(inSheet?' · Phil '+w.verse:'')+'</div>'+
+ '<div class="def">'+w.def+'</div><div>'+w.body+'</div><div class="xref">See also: '+w.xref+'</div><div class="liveit"><b>Live It</b>'+w.live+'</div>'}
+let lastFocus=null;
+function openSheet(k){lastFocus=document.activeElement;seen[k]=1;store.set("seen",seen);paintSeen();
+ $("#sheetBody").innerHTML='<button class="close" type="button" id="closeSheet">Close ✕</button>'+cardHTML(k,0,true);
+ $("#scrim").hidden=false;$("#sheet").hidden=false;$("#closeSheet").onclick=closeSheet;$("#closeSheet").focus()}
+function closeSheet(){$("#scrim").hidden=true;$("#sheet").hidden=true;if(lastFocus)lastFocus.focus()}
+$("#scrim").onclick=closeSheet;document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheet").hidden)closeSheet()});
+
+// deck
+const deck=$("#deck"),pager=$("#pager");
+Object.keys(WORDS).forEach((k,i)=>{const c=document.createElement("article");c.className="card";c.innerHTML=cardHTML(k,i,false);deck.appendChild(c);pager.appendChild(document.createElement("i"))});
+function paintPager(){const w=deck.firstElementChild.getBoundingClientRect().width+14;const i=Math.round(deck.scrollLeft/w);
+ [...pager.children].forEach((d,j)=>d.classList.toggle("on",j===i))}
+deck.addEventListener("scroll",paintPager,{passive:true});
+
+// reflect
+const Q=$("#questions");const answers=store.get("answers",{});
+QUESTIONS.forEach((q,i)=>{const d=document.createElement("div");d.className="q";
+ d.innerHTML='<div class="num">QUESTION '+(i+1)+'</div><p>'+q+'</p><label class="sr" for="a'+i+'" hidden>Your answer</label><textarea id="a'+i+'" placeholder="My answer…"></textarea><div class="saved" id="s'+i+'"></div>';
+ Q.appendChild(d);const ta=d.querySelector("textarea");ta.value=answers[i]||"";let t;
+ ta.addEventListener("input",()=>{answers[i]=ta.value;store.set("answers",answers);const s=$("#s"+i);s.textContent="Saved";clearTimeout(t);t=setTimeout(()=>s.textContent="",1400)})});
+
+// memorize
+const memo=$("#memo");const words=MEMO.split(" ");
+const order=words.map((w,i)=>i).sort((a,b)=>((a*7919)%13)-((b*7919)%13)||a-b);
+words.forEach((w,i)=>{const s=document.createElement("span");s.className="w";s.textContent=w;s.onclick=()=>{if(s.classList.contains("hid"))s.classList.toggle("peek")};
+ memo.appendChild(s);memo.appendChild(document.createTextNode(" "))});
+$("#hide").addEventListener("input",e=>{const n=Math.round(words.length*e.target.value/100);const hide=new Set(order.slice(0,n));
+ memo.querySelectorAll(".w").forEach((s,i)=>{s.classList.toggle("hid",hide.has(i));s.classList.remove("peek")})});
+
+// listen
+const synth=window.speechSynthesis;let speaking=false;
+$("#listenBtn").onclick=()=>{const b=$("#listenBtn");
+ if(!synth){b.textContent="Audio isn't available in this browser";return}
+ if(speaking){synth.cancel();speaking=false;b.textContent="▶ Read it to me";document.querySelectorAll(".v").forEach(v=>v.classList.remove("speaking"));return}
+ speaking=true;b.textContent="■ Stop";
+ VERSES.forEach(([n,t],i)=>{const u=new SpeechSynthesisUtterance(t.replace(/\{(\w+)\}/g,(m,k)=>WORDS[k].en));u.rate=.92;
+  u.onstart=()=>{document.querySelectorAll(".v").forEach(v=>v.classList.remove("speaking"));$("#v"+n).classList.add("speaking")};
+  if(i===VERSES.length-1)u.onend=()=>{speaking=false;b.textContent="▶ Read it to me";$("#v"+n).classList.remove("speaking")};
+  try{synth.speak(u)}catch(e){}})};
+
+paintSeen();paint();
+const start=(location.hash||"").slice(1);show(STEPS.some(s=>s.id===start)?start:store.get("tab","read"));
+window.addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(STEPS.some(s=>s.id===h))show(h)});
+</script>

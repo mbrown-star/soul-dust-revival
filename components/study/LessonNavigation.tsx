@@ -52,6 +52,7 @@ export function LessonNavigation({
   previousHref,
   nextHref,
   position,
+  visible = true,
 }: {
   studyHref: string;
   studyTitle: string;
@@ -60,6 +61,12 @@ export function LessonNavigation({
   previousHref: string | null;
   nextHref: string | null;
   position: "top" | "bottom";
+  // The devotional reader (DevotionalDayView) has its own prev/next header
+  // and doesn't want this one's markup duplicated -- but the "mark in
+  // progress on view" ping (position="top") still needs to fire, so this
+  // mounts normally and just renders nothing rather than being left out of
+  // the tree entirely.
+  visible?: boolean;
 }) {
   const router = useRouter();
   const [status, setStatus] = useState(initialStatus);
@@ -90,6 +97,8 @@ export function LessonNavigation({
     setStatus("completed");
     router.push(nextHref ?? studyHref);
   }
+
+  if (!visible) return null;
 
   if (position === "top") {
     return (

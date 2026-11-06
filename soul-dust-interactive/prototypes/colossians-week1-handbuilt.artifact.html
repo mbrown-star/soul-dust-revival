@@ -1,0 +1,405 @@
+<title>Colossians Week 1</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+/* Layout: one reading column; sticky week header with progress ring; five tabs that follow the manuscript order (Study, Passage, Work the Word, Live It, Lift Up). Accent follows the Colossians matte-orange cover. */
+:root{
+  --bg:#F6F1E3; --surface:#FFFDF7; --box:#EFE6C2; --fg:#2B2B2B; --muted:#6A6452;
+  --accent:#B4531F; --gold:#AD9A5F; --olive:#6B7338; --line:#DCD2B0; --shade:rgba(40,30,10,.2);
+  --display:"Archivo Black","Arial Black",Impact,sans-serif;
+  --ui:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --greek:"Gentium Book Plus","Gentium Plus","Palatino Linotype",serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#18150F; --surface:#221E16; --box:#2D2818; --fg:#EDE6D3; --muted:#A99F86;
+  --accent:#E07F48; --gold:#CDB677; --olive:#A8B06B; --line:#3B3525; --shade:rgba(0,0,0,.55); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#18150F; --surface:#221E16; --box:#2D2818; --fg:#EDE6D3; --muted:#A99F86;
+  --accent:#E07F48; --gold:#CDB677; --olive:#A8B06B; --line:#3B3525; --shade:rgba(0,0,0,.55); color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:18px;line-height:1.62}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:680px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 96px}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.top-inner{max-width:680px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 0}
+.headrow{display:flex;align-items:center;gap:14px}
+.titles{flex:1;min-width:0}
+.eyebrow{font-family:var(--ui);font-weight:600;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(22px,5.4vw,30px);line-height:1.08;margin:2px 0 0;text-wrap:balance}
+.sub{font-style:italic;color:var(--muted);font-size:15px}
+.ring{flex:none;width:58px;height:58px;position:relative}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .track{stroke:var(--line)} .ring .fill{stroke:var(--accent);transition:stroke-dashoffset .5s ease}
+.ring span{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--ui);font-weight:700;font-size:13px;font-variant-numeric:tabular-nums}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin-top:10px}
+nav.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;font-family:var(--ui);font-weight:600;font-size:13px;border:0;background:none;color:var(--muted);padding:10px 11px 12px;border-bottom:3px solid transparent;cursor:pointer;display:flex;align-items:center;gap:6px}
+.tab[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.tab .dot{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--muted)}
+.tab.done .dot{background:var(--olive);border-color:var(--olive)}
+button:focus-visible,textarea:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+section.panel{padding-top:24px}
+h2{font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--olive);margin:0 0 6px}
+h3{font-family:var(--display);font-weight:400;font-size:22px;line-height:1.15;margin:28px 0 8px;text-wrap:balance}
+.lede{color:var(--muted);font-size:16px;margin:0 0 18px}
+p{margin:0 0 14px}
+.keyv{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;margin:0 0 20px}
+.keyv q{font-style:italic;font-size:20px;line-height:1.45;quotes:"“" "”"}
+.cite{display:block;font-family:var(--ui);font-weight:700;font-size:12px;letter-spacing:.12em;color:var(--accent);margin-top:8px}
+.psalm{font-size:15px;color:var(--muted);font-style:italic;margin-top:12px}
+.rrr{font-family:var(--ui);font-weight:700;font-size:12px;letter-spacing:.24em;color:var(--olive);text-align:center;margin:16px 0 4px}
+.pullq{border-left:3px solid var(--accent);padding:4px 0 4px 16px;margin:24px 0;font-style:italic;font-size:20px;line-height:1.45}
+/* triad */
+.triad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 10px}
+.tri{font-family:var(--ui);font-weight:700;font-size:14px;border:1.5px solid var(--line);background:var(--surface);color:var(--fg);border-radius:12px;padding:12px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px}
+.tri .arr{font-size:20px;color:var(--accent)}
+.tri[aria-pressed="true"]{border-color:var(--accent);background:var(--box)}
+.triout{min-height:54px;font-size:16px;color:var(--fg);background:var(--box);border-radius:10px;padding:12px 14px;margin-bottom:18px}
+/* parts */
+details.part{border-top:1px solid var(--line)}
+details.part:last-of-type{border-bottom:1px solid var(--line)}
+details.part summary{list-style:none;cursor:pointer;padding:16px 0;display:flex;align-items:center;gap:12px}
+details.part summary::-webkit-details-marker{display:none}
+.pnum{flex:none;font-family:var(--ui);font-weight:700;font-size:11px;letter-spacing:.14em;color:var(--accent);width:74px}
+.ptitle{flex:1;font-family:var(--ui);font-weight:600;font-size:17px;min-width:0}
+.pchk{flex:none;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-size:12px;color:var(--bg)}
+details.part.read .pchk{background:var(--olive);border-color:var(--olive)}
+details.part[open] summary .ptitle{color:var(--accent)}
+.pbody{padding-bottom:10px}
+/* passage */
+.passage{font-size:19px}
+sup{font-family:var(--ui);font-size:10px;font-weight:700;color:var(--accent);margin-right:2px}
+.v{border-radius:3px;transition:background .2s}
+.v.speaking{background:var(--box)}
+.gw{all:unset;cursor:pointer;border-bottom:2px dotted var(--accent);padding-bottom:1px}
+.gw:hover{background:var(--box)}
+.gw.seen{border-bottom-style:solid;border-color:var(--olive)}
+.gw:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hint{font-family:var(--ui);font-size:13px;color:var(--muted);margin:12px 0 0}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.btn{font-family:var(--ui);font-weight:600;font-size:14px;border-radius:999px;padding:10px 18px;cursor:pointer;border:1.5px solid var(--fg);background:transparent;color:var(--fg)}
+.btn.primary{background:var(--fg);color:var(--bg)}
+.btn.complete{border-color:var(--olive);background:var(--olive);color:var(--bg)}
+.memo{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 20px;font-size:20px;line-height:1.75}
+.w{display:inline-block}
+.w.hid{color:transparent;background:var(--box);border-radius:4px;cursor:pointer}
+.w.hid.peek{color:var(--muted)}
+.slider{display:flex;align-items:center;gap:12px;margin-top:16px;font-family:var(--ui);font-size:13px;color:var(--muted)}
+.slider input{flex:1;accent-color:var(--accent)}
+/* stations */
+.stepper{display:flex;gap:6px;margin:0 0 16px}
+.stepper button{flex:1;height:34px;border-radius:8px;border:1.5px solid var(--line);background:var(--surface);color:var(--muted);font-family:var(--ui);font-weight:700;font-size:13px;cursor:pointer;font-variant-numeric:tabular-nums}
+.stepper button[aria-current="true"]{border-color:var(--accent);color:var(--fg)}
+.stepper button.ok{background:var(--olive);border-color:var(--olive);color:var(--bg)}
+.station .vref{font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:.12em;color:var(--accent)}
+.station .vtext{font-style:italic;font-size:19px;margin:6px 0 18px}
+.qlabel{font-family:var(--ui);font-weight:700;font-size:12px;letter-spacing:.2em;color:var(--olive)}
+.station .qtext{font-weight:600;margin:4px 0 10px}
+textarea{width:100%;min-height:120px;font:inherit;font-size:17px;line-height:30px;color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:2px 14px;resize:vertical;
+  background:var(--surface) repeating-linear-gradient(to bottom,transparent 0 29px,var(--line) 29px 30px);background-attachment:local;background-position:0 2px}
+.saved{font-family:var(--ui);font-size:12px;color:var(--olive);height:16px}
+.reveal{margin-top:14px;width:100%;font-family:var(--ui);font-weight:600;font-size:14px;padding:14px;border-radius:12px;border:1.5px dashed var(--accent);background:transparent;color:var(--accent);cursor:pointer}
+.greekbox{background:var(--box);border-radius:12px;padding:20px;margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.gd{font-family:var(--ui);font-weight:700;font-size:11px;letter-spacing:.16em;color:var(--olive)}
+.greek{font-family:var(--greek);font-size:36px;line-height:1.1;color:var(--accent)}
+.translit{font-family:var(--ui);font-size:14px;color:var(--muted)}
+.xref{font-family:var(--ui);font-size:12px;letter-spacing:.06em;color:var(--olive)}
+.liveit{border-top:1px solid var(--line);padding-top:10px;font-size:16px}
+.liveit b{font-family:var(--ui);font-size:11px;letter-spacing:.16em;color:var(--accent);display:block}
+.navrow{display:flex;justify-content:space-between;gap:10px;margin-top:22px}
+/* live it */
+.practice{display:flex;gap:14px;padding:16px 0;border-top:1px solid var(--line)}
+.practice:last-of-type{border-bottom:1px solid var(--line)}
+.practice input{flex:none;width:22px;height:22px;margin-top:3px;accent-color:var(--olive)}
+.practice label{flex:1;min-width:0;cursor:pointer}
+.practice .pt{font-family:var(--ui);font-weight:700;font-size:14px;letter-spacing:.06em;display:block;margin-bottom:4px}
+.practice .pt i{font-style:normal;color:var(--accent);margin-right:6px}
+.practice p{margin:0;font-size:16px}
+.practice input:checked + label .pt{color:var(--olive)}
+.prayer{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;margin-top:26px}
+.beats{display:flex;flex-direction:column;gap:10px;margin:12px 0}
+.beat{border-radius:10px;padding:12px 14px;background:var(--box);opacity:.55;transition:opacity .3s}
+.beat.on{opacity:1;outline:1.5px solid var(--accent)}
+.beat b{font-family:var(--ui);font-size:12px;letter-spacing:.14em;color:var(--accent);display:block}
+.timer{font-family:var(--ui);font-weight:700;font-size:28px;font-variant-numeric:tabular-nums}
+.bottom{margin-top:26px;border-left:3px solid var(--olive);padding-left:16px}
+/* lift up */
+.bene p{font-size:19px}
+.diamonds{text-align:center;color:var(--accent);letter-spacing:.4em;margin:20px 0}
+.carry{background:var(--fg);color:var(--bg);border-radius:14px;padding:24px 20px;text-align:center}
+.carry .qlabel{color:var(--gold)}
+.carry p{font-family:var(--display);font-size:clamp(20px,5vw,25px);line-height:1.22;margin:10px 0 0;text-wrap:balance}
+.note{font-family:var(--ui);font-size:12px;color:var(--muted);border-top:1px solid var(--line);margin-top:40px;padding-top:12px}
+/* sheet */
+.scrim{position:fixed;inset:0;background:var(--shade);z-index:20}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -8px 30px var(--shade);max-height:80vh;overflow:auto;
+  padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));padding-block:10px calc(24px + env(safe-area-inset-bottom,0px))}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 10px}
+.sheet-inner{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:8px}
+.close{align-self:flex-end;font-family:var(--ui);font-size:13px;font-weight:600;border:0;background:none;color:var(--muted);cursor:pointer;padding:4px}
+.sheet .greekbox{margin-top:0}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<header class="top"><div class="top-inner">
+  <div class="headrow">
+    <div class="titles">
+      <div class="eyebrow">Soul Dust Revival · Colossians · Week 1</div>
+      <h1>The Faith That Bears Fruit</h1>
+      <div class="sub">from dust to living hope</div>
+    </div>
+    <div class="ring" aria-label="Week progress">
+      <svg viewBox="0 0 40 40"><circle class="track" cx="20" cy="20" r="16" fill="none" stroke-width="4"/><circle class="fill" id="ringFill" cx="20" cy="20" r="16" fill="none" stroke-width="4" stroke-linecap="round" stroke-dasharray="100.53" stroke-dashoffset="100.53"/></svg>
+      <span id="ringPct">0%</span>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist" id="tabs"></nav>
+</div></header>
+
+<main class="wrap">
+
+<!-- STUDY -->
+<section class="panel" id="p-study">
+  <div class="keyv">
+    <q>We give thanks to God the Father of our Lord Jesus Christ, praying always for you, having heard of your faith in Christ Jesus and of the love which you have toward all the saints,</q>
+    <span class="cite">COLOSSIANS 1:3–4</span>
+    <div class="psalm">“My soul clings to the dust; Revive me according to Your word.” Psalm 119:25 (NKJV)</div>
+    <div class="rrr">READ · REFLECT · RETURN</div>
+  </div>
+
+  <h2>Scripture Study · Dive</h2>
+  <h3>Where the Dust Lies to You</h3>
+  <p>Before we say a word about you, consider where this letter is going. Colossae was a small, unremarkable town in the Lycus Valley, a place history would have forgotten entirely if Paul had not written to it. The church there was young, planted by a man named Epaphras while Paul sat in a Roman prison, and it was already under pressure from a strange new teaching that whispered the same lie the dust always whispers: that Christ is not enough, that you need Christ plus something more. And to that small, anxious, threatened church, Paul does not begin with the crisis. He begins with thanksgiving.</p>
+  <p>That order is not an accident; it is the gospel's own order. Paul does not open by scolding the Colossians for their fragility or by rushing to fix the error at their door. He opens by telling them what is already true of them — that their faith is real, their love is real, their hope is secured in heaven. Before he asks a single thing of them, he thanks God for what God has already done in them. Grace comes first; everything else is response.</p>
+  <p>This is where the dust lies to you. The dust says that God's attention is earned, that His thanksgiving over you waits at the far end of your improvement, that He is mostly disappointed and occasionally, grudgingly, pleased. Psalm 119:25 is the prayer of a soul that has believed the lie and gone face-down under it: my soul clings to the dust; revive me according to your word. And the reviving word of Colossians 1 is that God was giving thanks for this church while they were still small, still threatened, still clinging. The living hope was already laid up for them in heaven before they had done anything to deserve it.</p>
+
+  <h3>A Faith With Fruit On It</h3>
+  <p>Watch the three words Paul lifts up in his thanksgiving, because they are the shape of a living faith. Tap each one.</p>
+  <div class="triad" role="group" aria-label="Faith, love and hope">
+    <button class="tri" type="button" data-t="faith" aria-pressed="false"><span class="arr">←</span>Faith</button>
+    <button class="tri" type="button" data-t="love" aria-pressed="false"><span class="arr">↔</span>Love</button>
+    <button class="tri" type="button" data-t="hope" aria-pressed="false"><span class="arr">→</span>Hope</button>
+  </div>
+  <div class="triout" id="triout" aria-live="polite">These are not three separate virtues to be manufactured one at a time. They are one life seen from three angles.</div>
+  <p>And notice what Paul says this faith is doing: it is bearing fruit and increasing, in the Colossians and in the whole world. The gospel is not a static deposit; it is a living seed. It does in a soul what a seed does in soil — it germinates, it grows, it produces. A dusty soul often assumes that if it were truly alive it would feel more, achieve more, arrive faster. But the mark of living faith is not spectacular feeling; it is quiet fruit — a love for God's people that was not there before, a hope that does not evaporate when circumstances darken. Fruit is slow, and fruit is proof of life.</p>
+  <blockquote class="pullq">Paul does not begin with the crisis at Colossae. He begins with thanksgiving — because grace comes first, and everything else is only response.</blockquote>
+
+  <details class="part" data-part="1"><summary><span class="pnum">PART ONE</span><span class="ptitle">The Hope Is Already Laid Up</span><span class="pchk">✓</span></summary><div class="pbody">
+    <p>Look closely at the grammar of verse 5, because it is doing something the dust cannot survive. The faith and love of the Colossians spring from the hope laid up for them in heaven. The hope is not something they generate; it is something already stored, already secured, already deposited in a place no thief and no false teacher can reach. The word Paul uses is the language of treasure put away in a vault. Your hope, if you are in Christ, is not a mood you must maintain. It is an inheritance already banked in heaven under Christ's own keeping.</p>
+    <p>This is the deep answer to the dust's despair. The dust tells you your hope depends on your grip — that if your feelings fail, your hope fails; that if your week collapses, your standing collapses. But Paul locates the hope somewhere your failures cannot touch it: laid up for you in heaven. The reason the Colossians can have faith now and love now is that their future is already settled there. A soul that knows its hope is banked above is freed to live generously below. You do not cling to the dust when your treasure is kept in heaven.</p>
+  </div></details>
+  <details class="part" data-part="2"><summary><span class="pnum">PART TWO</span><span class="ptitle">The Word That Came and Kept Coming</span><span class="pchk">✓</span></summary><div class="pbody">
+    <p>Paul reminds them how the hope reached them: you heard of this hope before in the word of the truth, the gospel, which has come to you. The hope did not arise from within them; it came to them, from outside, carried on a word. This is how revival always works. The dusty soul does not revive itself by looking inward and trying harder. It is revived by a word that comes to it from outside — the word of the truth, the gospel — the same word Psalm 119 begs for: revive me according to your word.</p>
+    <p>And mark what that word is doing across the world: bearing fruit and increasing. Paul pictures the gospel as something alive and moving, spreading through the whole world the same way it spread in Colossae — not by human cleverness but by its own inherent life. The false teachers offered something exclusive, secret, available only to the spiritual elite. Paul says the gospel is the opposite: a public word, bearing fruit everywhere, in every kind of soul, holding nothing back. The word that saved you is the word that is saving the world, and it has lost none of its power on the way to you.</p>
+    <blockquote class="pullq">Your hope is not a mood you must maintain. It is an inheritance already banked in heaven under Christ's own keeping.</blockquote>
+  </div></details>
+  <details class="part" data-part="3"><summary><span class="pnum">PART THREE</span><span class="ptitle">Where the Hope Finally Rests</span><span class="pchk">✓</span></summary><div class="pbody">
+    <p>But how can a hope laid up in heaven belong to people still living in the dust of Colossae — or the dust of your own life? On what grounds does the treasure above have your name on it? Paul does not leave the question hanging. Every strand of this thanksgiving is tied to a Person: faith in Christ Jesus, the gospel that is Christ, the hope that is Christ's own inheritance shared with you. The hope is laid up in heaven because the One who is your hope is already there.</p>
+    <p>This is the gospel surprise the dust never sees coming. Your hope is secure not because you are strong but because Christ has gone ahead of you into heaven and taken your future with Him. He is the firstfruits; you are the harvest that must follow. When the dust says your hope is fragile, look where the hope is kept — not in your trembling hands but in the pierced hands of the One seated above. The living hope has a name, and the name is Jesus, and He is not in the dust. He is on the throne, and your treasure is with Him.</p>
+  </div></details>
+  <details class="part" data-part="4"><summary><span class="pnum">PART FOUR</span><span class="ptitle">From Dust to Living Hope</span><span class="pchk">✓</span></summary><div class="pbody">
+    <p>Psalm 119:25 is a soul pressed flat: my soul clings to the dust; revive me according to your word. And the reviving word this week is a hope — a living hope, already laid up in heaven, that produces faith and love in the soul that receives it. Revival does not begin when you finally feel hopeful. It begins when you realize the hope was banked above before you felt anything, that it came to you on a word from outside your dust, and that it rests on a Christ who cannot be moved.</p>
+    <p>So this week, when the dust tells you your faith is too small and your love too thin and your hope too flickering to count — remember the church at Colossae, young and threatened, over whom God was already giving thanks. The faith that bears fruit does not begin with your striving. It begins with a hope laid up for you in heaven, in Christ, secured before you woke this morning. Lift your eyes off your fragile grip and onto the treasure already kept above.</p>
+  </div></details>
+  <p class="hint" id="partsHint">0 of 4 parts read</p>
+  <div class="btnrow"><button class="btn primary markdone" type="button" data-for="study">Finished the study</button></div>
+</section>
+
+<!-- PASSAGE -->
+<section class="panel" id="p-passage" hidden>
+  <h2>The Passage</h2>
+  <p class="lede">Colossians 1:1–8, World English Bible. Tap an underlined word to open the Greek.</p>
+  <div class="passage" id="passage">
+    <p><span class="v" id="v1"><sup>1</sup>Paul, an apostle of Christ Jesus through the will of God, and Timothy our brother, </span><span class="v" id="v2"><sup>2</sup>to the saints and faithful brothers in Christ at Colossae: <button type="button" class="gw" data-s="0">Grace</button> to you and peace from God our Father and the Lord Jesus Christ. </span><span class="v" id="v3"><sup>3</sup>We give thanks to God the Father of our Lord Jesus Christ, praying always for you, </span><span class="v" id="v4"><sup>4</sup>having heard of your <button type="button" class="gw" data-s="1">faith</button> in Christ Jesus and of the love which you have toward all the saints, </span><span class="v" id="v5"><sup>5</sup>because of the <button type="button" class="gw" data-s="2">hope</button> which is laid up for you in the heavens, of which you heard before in the word of the truth of the Good News </span><span class="v" id="v6"><sup>6</sup>which has come to you, even as it is in all the world and is <button type="button" class="gw" data-s="3">bearing fruit</button> and growing, as it does in you also, since the day you heard and knew the grace of God in truth, </span><span class="v" id="v7"><sup>7</sup>even as you learned of Epaphras our beloved fellow servant, who is a <button type="button" class="gw" data-s="4">faithful</button> servant of Christ on your behalf, </span><span class="v" id="v8"><sup>8</sup>who also declared to us your love in the Spirit.</span></p>
+  </div>
+  <p class="hint" id="seenHint">0 of 5 Greek words opened</p>
+  <div class="btnrow"><button class="btn" id="listenBtn" type="button">▶ Read it to me</button></div>
+
+  <h2 style="margin-top:34px">Hide It in Your Heart</h2>
+  <p class="lede">Colossians 1:5, the verse the week turns on. Slide to hide words; tap a blank to peek.</p>
+  <div class="memo" id="memo"></div>
+  <div class="slider"><span>Show all</span><input type="range" id="hide" min="0" max="100" value="0" aria-label="How many words to hide"><span>Hide all</span></div>
+  <div class="btnrow"><button class="btn primary markdone" type="button" data-for="passage">Read and memorized</button></div>
+</section>
+
+<!-- WORK THE WORD -->
+<section class="panel" id="p-work" hidden>
+  <h2>The Word on the Living Hope</h2>
+  <p class="lede">Read each passage slowly. Let the verse land first, then answer honestly. The Greek opens after you've answered.</p>
+  <div class="stepper" id="stepper"></div>
+  <div id="stations"></div>
+  <div class="navrow"><button class="btn" type="button" id="prevSt">← Previous</button><button class="btn primary" type="button" id="nextSt">Next →</button></div>
+</section>
+
+<!-- LIVE IT -->
+<section class="panel" id="p-live" hidden>
+  <h2>Life Application · Week 1</h2>
+  <h3 style="margin-top:4px">Where This Meets Real Life</h3>
+  <p class="lede">This week is not about manufacturing more faith by Friday. It is about receiving the living hope already laid up for you in heaven, and letting it bear its slow fruit of faith and love. Check each one off as you live it.</p>
+  <div id="practices">
+    <div class="practice"><input type="checkbox" id="pr1"><label for="pr1"><span class="pt"><i>1</i>RECEIVE GRACE BEFORE YOU EARN IT</span><p>Paul opens with grace and peace as gift, not wage. This week, begin each morning by receiving God's favor before you have produced anything: 'Grace to me, and peace, from God my Father.' Bring your emptiness to the Father and let the day flow out of grace already given, rather than toward a grace you are trying to secure by nightfall.</p></label></div>
+    <div class="practice"><input type="checkbox" id="pr2"><label for="pr2"><span class="pt"><i>2</i>LOOK AT YOUR ROPE, NOT YOUR GRIP</span><p>Faith's worth is in its object, not its intensity. This week, when your faith feels thin, stop examining the strength of your believing and look at the strength of the One believed: 'My faith is small, but my Christ is not.' Let the Son bear the weight your grip cannot.</p></label></div>
+    <div class="practice"><input type="checkbox" id="pr3"><label for="pr3"><span class="pt"><i>3</i>BANK YOUR HOPE ABOVE</span><p>Your hope is laid up in heaven, beyond the reach of any failure. This week, name one earthly outcome you have quietly made your real hope, and consciously move it back where it belongs: 'My hope is kept in heaven, in Christ.' Feel how it loosens your grip on the dust of circumstance.</p></label></div>
+    <div class="practice"><input type="checkbox" id="pr4"><label for="pr4"><span class="pt"><i>4</i>WATCH FOR SLOW FRUIT</span><p>The gospel bears fruit and increases — quietly, organically, over time. This week, resist the lie that slowness means deadness. Ask the Spirit to show you one piece of quiet fruit He has grown in you over the past year, and thank Him for it as evidence of life. Fruit is proof, and fruit is patient.</p></label></div>
+    <div class="practice"><input type="checkbox" id="pr5"><label for="pr5"><span class="pt"><i>5</i>HONOR THE FAITHFUL AND BECOME ONE</span><p>The gospel reached Colossae through faithful, ordinary Epaphras. This week, thank God by name for the faithful person He used to bring the gospel to you — and ask Him to make you a faithful channel in someone else's story. Not famous. Faithful. That is the kingdom's currency, and it is within your reach today.</p></label></div>
+  </div>
+
+  <div class="prayer">
+    <h2>Daily Prayer</h2>
+    <p style="margin:0;font-size:16px;color:var(--muted)">Keep it to five minutes. Start the timer and let it walk you through.</p>
+    <div class="beats">
+      <div class="beat" data-b="0"><b>FATHER, RECEIVE</b>'Grace to me and peace — I begin the day in favor already given.'</div>
+      <div class="beat" data-b="1"><b>SON, REST</b>'My hope is laid up with You in heaven; my faith leans its whole weight on You.'</div>
+      <div class="beat" data-b="2"><b>SPIRIT, GROW</b>'Bear Your slow fruit of love in me today; make me faithful in someone's story.'</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <span class="timer" id="timer">5:00</span>
+      <button class="btn primary" type="button" id="prayBtn">Begin prayer</button>
+    </div>
+    <p style="margin:12px 0 0;font-size:16px">Then go live like a soul whose treasure is already banked above.</p>
+  </div>
+
+  <div class="bottom">
+    <h2>Bottom Line</h2>
+    <p>Paul writes to a small, threatened church and begins not with the crisis but with thanksgiving — because grace comes first and everything else is response. Their faith and love spring from a hope already laid up for them in heaven, carried to them on the word of the gospel, secured in a Christ who has gone ahead of them to the throne. The dust says your standing hangs on your grip; Colossians 1 says the hope is banked above, in Christ, beyond the reach of your worst week.</p>
+    <p><strong>Receive the grace. Look at the Rope. Bank your hope above. And watch the slow, certain fruit appear.</strong></p>
+  </div>
+  <div class="btnrow"><button class="btn primary markdone" type="button" data-for="live">Living it this week</button></div>
+</section>
+
+<!-- LIFT UP -->
+<section class="panel" id="p-lift" hidden>
+  <h2>Benediction</h2>
+  <h3 style="margin-top:4px">Lift Up Your Eyes</h3>
+  <div class="bene">
+    <p>Lift up your eyes, dusty soul, off the strength of your own believing and onto the hope that is already laid up for you in heaven. You did not deposit it there; Christ did. You did not earn the grace that opened this letter over you; it came as gift, from the Father, before you had done a thing. And the faith you keep anxiously inspecting was never meant to save you by its strength — it saves by its object, and its object is seated on the throne.</p>
+    <p>The dust told you that God's thanksgiving over you waits at the far end of your improvement. But God was giving thanks for a small, fragile church in Colossae while they were still clinging — and He gives thanks over you now, not for what you have made of yourself, but for the Christ who has laid hold of you. Your treasure is banked above. Your hope has a name. Your faith rests on a Rope that will not fray.</p>
+    <p>So let the slow fruit come. Do not despise the day of small things. The same gospel that is bearing fruit in the whole world is bearing it quietly in you, and the love it produces is the proof of the life within. Lift your eyes off the dust of your grip and onto the living hope kept for you in heaven — and rise.</p>
+  </div>
+  <div class="diamonds">◆◆◆</div>
+  <div class="keyv"><q>Because of the hope which is laid up for you in the heavens, of which you heard before in the word of the truth of the Good News which has come to you, even as it is in all the world and is bearing fruit and growing, as it does in you also, since the day you heard and knew the grace of God in truth,</q><span class="cite">COLOSSIANS 1:5–6</span></div>
+  <div class="carry">
+    <div class="qlabel">QUIET QUESTION TO CARRY</div>
+    <p>What hope have you been staking on an outcome down here, that Christ has already laid up for you, secure, in heaven?</p>
+  </div>
+  <div class="btnrow"><button class="btn primary markdone" type="button" data-for="lift">Carry it into the day</button></div>
+  <p class="note">Prototype built from Week 1 of Soul Dust Revival: Colossians (WEB version). Answers and progress save only in this browser. END OF WEEK 1 · SOUL DUST REVIVAL · COLOSSIANS</p>
+</section>
+</main>
+
+<div class="scrim" id="scrim" hidden></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Greek word study" hidden><div class="grab"></div><div class="sheet-inner" id="sheetBody"></div></div>
+
+<script>
+const STEPS=[{id:"study",label:"Study"},{id:"passage",label:"Passage"},{id:"work",label:"Work the Word"},{id:"live",label:"Live It"},{id:"lift",label:"Lift Up"}];
+const ST=[
+ {ref:"COLOSSIANS 1:2",v:"To the saints and faithful brothers in Christ at Colossae: Grace to you and peace from God our Father and the Lord Jesus Christ.",
+  q:"Do I receive 'grace and peace' as the ground I stand on each morning — or as something I am still trying to earn by nightfall?",
+  g:"χάρις",t:"charis",en:"grace — unearned favor, freely given",x:"COLOSSIANS 1:2; EPHESIANS 2:8; 2 CORINTHIANS 12:9",
+  b:"Charis is grace — favor that is unmerited by definition, for the moment it is earned it ceases to be charis at all. Paul opens every letter with it, and here he lays it on a church he has never met, in a town he has never visited, as sheer gift. The dust insists that peace with God is the wage of a good week; charis says peace is the gift of a good God. Every blessing named in this letter flows from this first word, and the soul that receives grace as gift — not wage — is the soul that finally stops clinging to the dust of its own performance.",
+  l:"This week, begin each morning by receiving grace before you have done anything to earn it: 'Grace to me, and peace, from God my Father.' Let the day flow out of that word rather than toward it."},
+ {ref:"COLOSSIANS 1:3–4",v:"We give thanks to God the Father of our Lord Jesus Christ, praying always for you, having heard of your faith in Christ Jesus and of the love which you have toward all the saints,",
+  q:"When I think of my own faith, do I measure it by how strong it feels — or by whether it is quietly bearing the fruit of love?",
+  g:"πίστις",t:"pistis",en:"faith — trust that rests its whole weight on another",x:"COLOSSIANS 1:4; ROMANS 4:5; HEBREWS 11:1",
+  b:"Pistis is faith — but not a vague optimism or a strength summoned from within. It is trust that leans its full weight on an object outside itself. Paul thanks God for the Colossians' pistis in Christ Jesus — faith's value is never in the strength of the believing but in the worth of the One believed. A weak hand that grips a strong rope is saved; a strong hand gripping a rotten rope is lost. The dust tells you to examine the strength of your grip; the gospel tells you to look at the strength of your Rope. Your faith bears fruit not because it is impressive but because it rests on Christ.",
+  l:"When your faith feels weak this week, stop measuring the grip and look at the One you are gripping. Say: 'My faith is small, but my Christ is not.' Then watch for the quiet fruit of love it produces."},
+ {ref:"COLOSSIANS 1:5",v:"Because of the hope which is laid up for you in the heavens, of which you heard before in the word of the truth of the Good News",
+  q:"Is my hope banked in heaven where nothing can reach it — or staked on outcomes down here that could collapse by Friday?",
+  g:"ἐλπίς",t:"elpis",en:"hope — a settled, guaranteed expectation, not a wish",x:"COLOSSIANS 1:5; ROMANS 8:24; 1 PETER 1:3",
+  b:"Elpis in ordinary Greek could mean little more than wishful optimism — maybe it will happen, maybe it won't. But Paul empties the word of all uncertainty. This hope is laid up in heaven, deposited and guarded like treasure in a vault. Christian elpis is not the hope of a gambler but of an heir reading a will already signed. Notice Paul makes this hope the root of both faith and love: because the future is secured above, the soul is freed to trust and to love below. The dust says your hope hangs on your grip; elpis says it is banked where your failures cannot reach it.",
+  l:"Name one earthly outcome you have been treating as your real hope this week. Consciously move your hope back to where it belongs — 'laid up for me in heaven' — and feel how it loosens your grip on the dust."},
+ {ref:"COLOSSIANS 1:6",v:"Which has come to you, even as it is in all the world and is bearing fruit and growing, as it does in you also, since the day you heard and knew the grace of God in truth,",
+  q:"Do I expect the gospel to bear slow, real fruit in me — or have I been waiting for spectacular feeling and calling its absence deadness?",
+  g:"καρποφορέω",t:"karpophoreō",en:"to bear fruit, to be fruitful",x:"COLOSSIANS 1:6; COLOSSIANS 1:10; JOHN 15:5",
+  b:"Karpophoreō is to bear fruit — and Paul says it is what the gospel does, on its own, wherever it lands. The word pictures a living thing producing after its kind: a seed becoming a harvest, quietly, over time, by an inner life not supplied by the soil. The false teachers offered technique and secret knowledge; Paul points instead to organic, unforced growth — the gospel bearing fruit because it is alive. This is the answer to the dusty soul that mistakes slowness for death. Fruit does not appear the day the seed is planted. But where the true gospel has landed, it will, in time, produce love, and the fruit is the proof of the life.",
+  l:"Look for one piece of quiet fruit the gospel has borne in you over the past year — a softened affection, a new patience, a love that was not there before. Thank God for it as evidence of life, not achievement."},
+ {ref:"COLOSSIANS 1:7–8",v:"Even as you learned of Epaphras our beloved fellow servant, who is a faithful servant of Christ on your behalf, who also declared to us your love in the Spirit.",
+  q:"Do I despise the ordinary, faithful people God used to bring the gospel to me — or do I see them as God's chosen channels of grace?",
+  g:"πιστός",t:"pistos",en:"faithful, trustworthy, reliable",x:"COLOSSIANS 1:7; 1 CORINTHIANS 4:2; REVELATION 2:10",
+  b:"Pistos is faithful — the quality Paul names in Epaphras, the otherwise obscure man who carried the gospel to Colossae while Paul sat in chains. He is not called brilliant or powerful or famous; he is called pistos, faithful. This is the currency of the kingdom. The gospel travels the world not chiefly through spectacular figures but through a great company of faithful, mostly unseen servants — an Epaphras who simply told the truth to a small town. Your own faith is likely downstream of some pistos servant God placed in your path. And the call on your dusty, ordinary life is not to be famous but to be faithful.",
+  l:"Name the faithful, ordinary person God used to bring the gospel into your life. This week, thank God for them by name — and ask Him to make you a pistos servant in someone else's story."}
+];
+const TRIAD={faith:"<b>Faith in Christ Jesus</b> reaches back to what Christ has done.",love:"<b>Love for all the saints</b> reaches out to the people around you.",hope:"<b>Hope laid up in heaven</b> reaches forward to what is kept for you above. Cut off any one of them and the other two wither."};
+const MEMO="Because of the hope which is laid up for you in the heavens, of which you heard before in the word of the truth of the Good News";
+
+const store={get(k,d){try{const v=localStorage.getItem("sdr-col-w1-"+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem("sdr-col-w1-"+k,JSON.stringify(v))}catch(e){}}};
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+let done=store.get("done",{}),seen=store.get("seen",{}),parts=store.get("parts",{}),ans=store.get("ans",{}),revealed=store.get("rev",{}),prac=store.get("prac",{});
+const esc=s=>s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+
+// tabs + progress
+STEPS.forEach(s=>{const b=document.createElement("button");b.type="button";b.className="tab";b.role="tab";b.id="t-"+s.id;b.innerHTML='<span class="dot"></span>'+s.label;b.onclick=()=>show(s.id);$("#tabs").appendChild(b)});
+function show(id){STEPS.forEach(s=>{$("#p-"+s.id).hidden=s.id!==id;$("#t-"+s.id).setAttribute("aria-selected",s.id===id)});window.scrollTo({top:0});store.set("tab",id);if(location.hash!=="#"+id)history.replaceState(null,"","#"+id)}
+function paint(){const n=STEPS.filter(s=>done[s.id]).length;$("#ringFill").style.strokeDashoffset=100.53*(1-n/STEPS.length);$("#ringPct").textContent=Math.round(n/STEPS.length*100)+"%";
+ STEPS.forEach(s=>$("#t-"+s.id).classList.toggle("done",!!done[s.id]));
+ $$(".markdone").forEach(b=>{const d=!!done[b.dataset.for];if(!b.dataset.orig)b.dataset.orig=b.textContent;b.textContent=d?"✓ Done":b.dataset.orig;b.classList.toggle("complete",d);b.classList.toggle("primary",!d)})}
+function setDone(id,v){done[id]=v;store.set("done",done);paint()}
+$$(".markdone").forEach(b=>b.onclick=()=>{const id=b.dataset.for;setDone(id,!done[id]);if(done[id]){const i=STEPS.findIndex(s=>s.id===id);const nx=STEPS.slice(i+1).find(s=>!done[s.id]);if(nx)setTimeout(()=>show(nx.id),450)}});
+
+// study: triad + parts
+$$(".tri").forEach(b=>b.onclick=()=>{$$(".tri").forEach(x=>x.setAttribute("aria-pressed",x===b));$("#triout").innerHTML=TRIAD[b.dataset.t]});
+function paintParts(){$$("details.part").forEach(d=>d.classList.toggle("read",!!parts[d.dataset.part]));$("#partsHint").textContent=Object.keys(parts).length+" of 4 parts read"}
+$$("details.part").forEach(d=>d.addEventListener("toggle",()=>{if(d.open){parts[d.dataset.part]=1;store.set("parts",parts);paintParts()}}));
+
+// greek box
+function greekHTML(i,withLive){const s=ST[i];return '<div class="greekbox"><div class="gd">GOING DEEPER · THE GREEK</div><div class="greek">'+s.g+'</div><div class="translit">'+s.t+' — '+s.en+'</div><div class="xref">'+s.x+'</div><div>'+esc(s.b)+'</div><div class="liveit"><b>LIVE IT</b>'+esc(s.l)+'</div></div>'}
+
+// passage
+function paintSeen(){$$(".gw").forEach(g=>g.classList.toggle("seen",!!seen[g.dataset.s]));$("#seenHint").textContent=Object.keys(seen).length+" of 5 Greek words opened"}
+let lastFocus=null;
+$("#passage").addEventListener("click",e=>{const g=e.target.closest(".gw");if(!g)return;const i=+g.dataset.s;lastFocus=g;seen[i]=1;store.set("seen",seen);paintSeen();
+ $("#sheetBody").innerHTML='<button class="close" type="button" id="closeSheet">Close ✕</button><div class="xref" style="font-weight:700">'+ST[i].ref+'</div>'+greekHTML(i)+'<button class="btn" type="button" id="goWork" style="align-self:flex-start;margin-top:6px">Answer the question on this verse →</button>';
+ $("#scrim").hidden=false;$("#sheet").hidden=false;$("#closeSheet").onclick=closeSheet;$("#goWork").onclick=()=>{closeSheet();show("work");goSt(i)};$("#closeSheet").focus()});
+function closeSheet(){$("#scrim").hidden=true;$("#sheet").hidden=true;if(lastFocus)lastFocus.focus()}
+$("#scrim").onclick=closeSheet;document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheet").hidden)closeSheet()});
+
+// memorize
+const mw=MEMO.split(" "),order=mw.map((w,i)=>i).sort((a,b)=>((a*7919)%17)-((b*7919)%17)||a-b);
+mw.forEach(w=>{const s=document.createElement("span");s.className="w";s.textContent=w;s.onclick=()=>{if(s.classList.contains("hid"))s.classList.toggle("peek")};$("#memo").append(s," ")});
+$("#hide").addEventListener("input",e=>{const h=new Set(order.slice(0,Math.round(mw.length*e.target.value/100)));$$("#memo .w").forEach((s,i)=>{s.classList.toggle("hid",h.has(i));s.classList.remove("peek")})});
+
+// listen
+const synth=window.speechSynthesis;let speaking=false;
+$("#listenBtn").onclick=()=>{const b=$("#listenBtn");if(!synth){b.textContent="Audio isn't available in this browser";return}
+ const clear=()=>$$(".v").forEach(v=>v.classList.remove("speaking"));
+ if(speaking){synth.cancel();speaking=false;clear();b.textContent="▶ Read it to me";return}
+ speaking=true;b.textContent="■ Stop";const vs=$$(".v");
+ vs.forEach((v,i)=>{const u=new SpeechSynthesisUtterance(v.textContent.replace(/^\d+/,""));u.rate=.92;u.onstart=()=>{clear();v.classList.add("speaking")};
+  if(i===vs.length-1)u.onend=()=>{speaking=false;clear();b.textContent="▶ Read it to me"};try{synth.speak(u)}catch(e){}})};
+
+// work the word
+let cur=0;
+ST.forEach((s,i)=>{const b=document.createElement("button");b.type="button";b.textContent=i+1;b.setAttribute("aria-label","Passage "+(i+1));b.onclick=()=>goSt(i);$("#stepper").appendChild(b);
+ const d=document.createElement("div");d.className="station";d.id="st"+i;d.hidden=true;
+ d.innerHTML='<div class="vref">'+s.ref+'</div><div class="vtext">“'+esc(s.v)+'”</div><div class="qlabel">QUESTION</div><div class="qtext">'+esc(s.q)+'</div><textarea id="ans'+i+'" aria-label="My answer" placeholder="My answer…"></textarea><div class="saved" id="sv'+i+'"></div><div id="g'+i+'"></div>';
+ $("#stations").appendChild(d);const ta=d.querySelector("textarea");ta.value=ans[i]||"";let t;
+ ta.addEventListener("input",()=>{ans[i]=ta.value;store.set("ans",ans);$("#sv"+i).textContent="Saved";clearTimeout(t);t=setTimeout(()=>$("#sv"+i).textContent="",1300);paintStepper()});
+ paintGreek(i)});
+function paintGreek(i){const g=$("#g"+i);if(revealed[i]){g.innerHTML=greekHTML(i)}else{g.innerHTML='<button class="reveal" type="button">Open the Greek · '+ST[i].g+'</button>';
+ g.querySelector("button").onclick=()=>{revealed[i]=1;store.set("rev",revealed);seen[i]=1;store.set("seen",seen);paintSeen();paintGreek(i);paintStepper()}}}
+function paintStepper(){[...$("#stepper").children].forEach((b,i)=>{b.setAttribute("aria-current",i===cur);b.classList.toggle("ok",!!(ans[i]&&ans[i].trim())&&!!revealed[i])});
+ const all=ST.every((s,i)=>ans[i]&&ans[i].trim()&&revealed[i]);if(all&&!done.work)setDone("work",true);
+ $("#prevSt").disabled=cur===0;$("#nextSt").textContent=cur===ST.length-1?"Go to Live It →":"Next →"}
+function goSt(i){cur=i;ST.forEach((s,j)=>$("#st"+j).hidden=j!==i);paintStepper();store.set("st",i)}
+$("#prevSt").onclick=()=>{if(cur>0){goSt(cur-1);window.scrollTo({top:0})}};
+$("#nextSt").onclick=()=>{if(cur<ST.length-1){goSt(cur+1);window.scrollTo({top:0})}else show("live")};
+
+// practices
+$$("#practices input").forEach(c=>{c.checked=!!prac[c.id];c.onchange=()=>{prac[c.id]=c.checked;store.set("prac",prac)}});
+
+// prayer timer
+let tInt=null;
+$("#prayBtn").onclick=()=>{const b=$("#prayBtn");
+ if(tInt){clearInterval(tInt);tInt=null;b.textContent="Begin prayer";$("#timer").textContent="5:00";$$(".beat").forEach(x=>x.classList.remove("on"));return}
+ let left=300;b.textContent="Stop";const tick=()=>{const m=Math.floor(left/60),s=left%60;$("#timer").textContent=m+":"+String(s).padStart(2,"0");
+  const beat=left>200?0:left>100?1:2;$$(".beat").forEach(x=>x.classList.toggle("on",+x.dataset.b===beat));
+  if(left<=0){clearInterval(tInt);tInt=null;b.textContent="Pray again";$("#timer").textContent="Amen";$$(".beat").forEach(x=>x.classList.remove("on"))}left--};
+ tick();tInt=setInterval(tick,1000)};
+
+paint();paintParts();paintSeen();goSt(store.get("st",0));
+const h=location.hash.slice(1);show(STEPS.some(s=>s.id===h)?h:store.get("tab","study"));
+window.addEventListener("hashchange",()=>{const k=location.hash.slice(1);if(STEPS.some(s=>s.id===k))show(k)});
+</script>

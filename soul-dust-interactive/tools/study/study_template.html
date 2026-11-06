@@ -1,0 +1,304 @@
+<title>__TITLE__</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Gentium+Book+Plus:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+/* Layout: one reading column; sticky week header with progress ring and week picker; five tabs that follow the manuscript order (Study, Passage, Work the Word, Live It, Lift Up). Accent comes from the book cover. */
+:root{
+  --bg:#F6F1E3; --surface:#FFFDF7; --box:#EFE6C2; --fg:#2B2B2B; --muted:#6A6452;
+  --accent:__ACCENT__; --gold:#AD9A5F; --olive:#6B7338; --line:#DCD2B0; --shade:rgba(40,30,10,.2);
+  --display:"Archivo Black","Arial Black",Impact,sans-serif;
+  --ui:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --greek:"Gentium Book Plus","Gentium Plus","Palatino Linotype",serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#18150F; --surface:#221E16; --box:#2D2818; --fg:#EDE6D3; --muted:#A99F86;
+  --accent:__ACCENT_DARK__; --gold:#CDB677; --olive:#A8B06B; --line:#3B3525; --shade:rgba(0,0,0,.55); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#18150F; --surface:#221E16; --box:#2D2818; --fg:#EDE6D3; --muted:#A99F86;
+  --accent:__ACCENT_DARK__; --gold:#CDB677; --olive:#A8B06B; --line:#3B3525; --shade:rgba(0,0,0,.55); color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:18px;line-height:1.62}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:680px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 96px}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.top-inner{max-width:680px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 0}
+.headrow{display:flex;align-items:center;gap:14px}
+.titles{flex:1;min-width:0}
+.eyebrow{font-family:var(--ui);font-weight:600;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(22px,5.4vw,30px);line-height:1.08;margin:2px 0 0;text-wrap:balance}
+.sub{font-style:italic;color:var(--muted);font-size:15px}
+.ring{flex:none;width:58px;height:58px;position:relative}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .track{stroke:var(--line)} .ring .fill{stroke:var(--accent);transition:stroke-dashoffset .5s ease}
+.ring span{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--ui);font-weight:700;font-size:13px;font-variant-numeric:tabular-nums}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin-top:10px}
+nav.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;font-family:var(--ui);font-weight:600;font-size:13px;border:0;background:none;color:var(--muted);padding:10px 11px 12px;border-bottom:3px solid transparent;cursor:pointer;display:flex;align-items:center;gap:6px}
+.tab[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.tab .dot{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--muted)}
+.tab.done .dot{background:var(--olive);border-color:var(--olive)}
+button:focus-visible,textarea:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+section.panel{padding-top:24px}
+h2{font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--olive);margin:0 0 6px}
+h3{font-family:var(--display);font-weight:400;font-size:22px;line-height:1.15;margin:28px 0 8px;text-wrap:balance}
+.lede{color:var(--muted);font-size:16px;margin:0 0 18px}
+p{margin:0 0 14px}
+.keyv{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;margin:0 0 20px}
+.keyv q{font-style:italic;font-size:20px;line-height:1.45;quotes:"“" "”"}
+.cite{display:block;font-family:var(--ui);font-weight:700;font-size:12px;letter-spacing:.12em;color:var(--accent);margin-top:8px}
+.psalm{font-size:15px;color:var(--muted);font-style:italic;margin-top:12px}
+.rrr{font-family:var(--ui);font-weight:700;font-size:12px;letter-spacing:.24em;color:var(--olive);text-align:center;margin:16px 0 4px}
+.pullq{border-left:3px solid var(--accent);padding:4px 0 4px 16px;margin:24px 0;font-style:italic;font-size:20px;line-height:1.45}
+/* triad */
+.triad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 10px}
+.tri{font-family:var(--ui);font-weight:700;font-size:14px;border:1.5px solid var(--line);background:var(--surface);color:var(--fg);border-radius:12px;padding:12px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px}
+.tri .arr{font-size:20px;color:var(--accent)}
+.tri[aria-pressed="true"]{border-color:var(--accent);background:var(--box)}
+.triout{min-height:54px;font-size:16px;color:var(--fg);background:var(--box);border-radius:10px;padding:12px 14px;margin-bottom:18px}
+/* parts */
+details.part{border-top:1px solid var(--line)}
+details.part:last-of-type{border-bottom:1px solid var(--line)}
+details.part summary{list-style:none;cursor:pointer;padding:16px 0;display:flex;align-items:center;gap:12px}
+details.part summary::-webkit-details-marker{display:none}
+.pnum{flex:none;font-family:var(--ui);font-weight:700;font-size:11px;letter-spacing:.14em;color:var(--accent);width:74px}
+.ptitle{flex:1;font-family:var(--ui);font-weight:600;font-size:17px;min-width:0}
+.pchk{flex:none;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-size:12px;color:var(--bg)}
+details.part.read .pchk{background:var(--olive);border-color:var(--olive)}
+details.part[open] summary .ptitle{color:var(--accent)}
+.pbody{padding-bottom:10px}
+/* passage */
+.passage{font-size:19px}
+sup{font-family:var(--ui);font-size:10px;font-weight:700;color:var(--accent);margin-right:2px}
+.v{border-radius:3px;transition:background .2s}
+.v.speaking{background:var(--box)}
+.gw{all:unset;cursor:pointer;border-bottom:2px dotted var(--accent);padding-bottom:1px}
+.gw:hover{background:var(--box)}
+.gw.seen{border-bottom-style:solid;border-color:var(--olive)}
+.gw:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hint{font-family:var(--ui);font-size:13px;color:var(--muted);margin:12px 0 0}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.btn{font-family:var(--ui);font-weight:600;font-size:14px;border-radius:999px;padding:10px 18px;cursor:pointer;border:1.5px solid var(--fg);background:transparent;color:var(--fg)}
+.btn.primary{background:var(--fg);color:var(--bg)}
+.btn.complete{border-color:var(--olive);background:var(--olive);color:var(--bg)}
+.memo{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 20px;font-size:20px;line-height:1.75}
+.w{display:inline-block}
+.w.hid{color:transparent;background:var(--box);border-radius:4px;cursor:pointer}
+.w.hid.peek{color:var(--muted)}
+.slider{display:flex;align-items:center;gap:12px;margin-top:16px;font-family:var(--ui);font-size:13px;color:var(--muted)}
+.slider input{flex:1;accent-color:var(--accent)}
+/* stations */
+.stepper{display:flex;gap:6px;margin:0 0 16px}
+.stepper button{flex:1;height:34px;border-radius:8px;border:1.5px solid var(--line);background:var(--surface);color:var(--muted);font-family:var(--ui);font-weight:700;font-size:13px;cursor:pointer;font-variant-numeric:tabular-nums}
+.stepper button[aria-current="true"]{border-color:var(--accent);color:var(--fg)}
+.stepper button.ok{background:var(--olive);border-color:var(--olive);color:var(--bg)}
+.station .vref{font-family:var(--ui);font-weight:700;font-size:13px;letter-spacing:.12em;color:var(--accent)}
+.station .vtext{font-style:italic;font-size:19px;margin:6px 0 18px}
+.qlabel{font-family:var(--ui);font-weight:700;font-size:12px;letter-spacing:.2em;color:var(--olive)}
+.station .qtext{font-weight:600;margin:4px 0 10px}
+textarea{width:100%;min-height:120px;font:inherit;font-size:17px;line-height:30px;color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:2px 14px;resize:vertical;
+  background:var(--surface) repeating-linear-gradient(to bottom,transparent 0 29px,var(--line) 29px 30px);background-attachment:local;background-position:0 2px}
+.saved{font-family:var(--ui);font-size:12px;color:var(--olive);height:16px}
+.reveal{margin-top:14px;width:100%;font-family:var(--ui);font-weight:600;font-size:14px;padding:14px;border-radius:12px;border:1.5px dashed var(--accent);background:transparent;color:var(--accent);cursor:pointer}
+.greekbox{background:var(--box);border-radius:12px;padding:20px;margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.gd{font-family:var(--ui);font-weight:700;font-size:11px;letter-spacing:.16em;color:var(--olive)}
+.greek{font-family:var(--greek);font-size:36px;line-height:1.1;color:var(--accent)}
+.translit{font-family:var(--ui);font-size:14px;color:var(--muted)}
+.xref{font-family:var(--ui);font-size:12px;letter-spacing:.06em;color:var(--olive)}
+.liveit{border-top:1px solid var(--line);padding-top:10px;font-size:16px}
+.liveit b{font-family:var(--ui);font-size:11px;letter-spacing:.16em;color:var(--accent);display:block}
+.navrow{display:flex;justify-content:space-between;gap:10px;margin-top:22px}
+/* live it */
+.practice{display:flex;gap:14px;padding:16px 0;border-top:1px solid var(--line)}
+.practice:last-of-type{border-bottom:1px solid var(--line)}
+.practice input{flex:none;width:22px;height:22px;margin-top:3px;accent-color:var(--olive)}
+.practice label{flex:1;min-width:0;cursor:pointer}
+.practice .pt{font-family:var(--ui);font-weight:700;font-size:14px;letter-spacing:.06em;display:block;margin-bottom:4px}
+.practice .pt i{font-style:normal;color:var(--accent);margin-right:6px}
+.practice p{margin:0;font-size:16px}
+.practice input:checked + label .pt{color:var(--olive)}
+.prayer{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;margin-top:26px}
+.beats{display:flex;flex-direction:column;gap:10px;margin:12px 0}
+.beat{border-radius:10px;padding:12px 14px;background:var(--box);opacity:.55;transition:opacity .3s}
+.beat.on{opacity:1;outline:1.5px solid var(--accent)}
+.beat b{font-family:var(--ui);font-size:12px;letter-spacing:.14em;color:var(--accent);display:block}
+.timer{font-family:var(--ui);font-weight:700;font-size:28px;font-variant-numeric:tabular-nums}
+.bottom{margin-top:26px;border-left:3px solid var(--olive);padding-left:16px}
+/* lift up */
+.bene p{font-size:19px}
+.diamonds{text-align:center;color:var(--accent);letter-spacing:.4em;margin:20px 0}
+.carry{background:var(--fg);color:var(--bg);border-radius:14px;padding:24px 20px;text-align:center}
+.carry .qlabel{color:var(--gold)}
+.carry p{font-family:var(--display);font-size:clamp(20px,5vw,25px);line-height:1.22;margin:10px 0 0;text-wrap:balance}
+.note{font-family:var(--ui);font-size:12px;color:var(--muted);border-top:1px solid var(--line);margin-top:40px;padding-top:12px}
+/* sheet */
+.scrim{position:fixed;inset:0;background:var(--shade);z-index:20}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -8px 30px var(--shade);max-height:80vh;overflow:auto;
+  padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));padding-block:10px calc(24px + env(safe-area-inset-bottom,0px))}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 10px}
+.sheet-inner{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:8px}
+.close{align-self:flex-end;font-family:var(--ui);font-size:13px;font-weight:600;border:0;background:none;color:var(--muted);cursor:pointer;padding:4px}
+.sheet .greekbox{margin-top:0}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+<style>
+.weekbtn{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:var(--ui);font-weight:600;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);border-bottom:1.5px dotted var(--accent)}
+.weekbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.weeklist{display:flex;flex-direction:column}
+.wk{all:unset;cursor:pointer;display:flex;align-items:center;gap:14px;padding:12px 4px;border-bottom:1px solid var(--line)}
+.wk:focus-visible{outline:2px solid var(--accent)}
+.wk .n{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-family:var(--ui);font-weight:700;font-size:13px;border:1.5px solid var(--line);font-variant-numeric:tabular-nums}
+.wk.cur .n{border-color:var(--accent);color:var(--accent)}
+.wk .tx{flex:1;min-width:0}
+.wk .tx b{display:block;font-family:var(--ui);font-size:16px}
+.wk .tx small{font-family:var(--ui);font-size:12px;color:var(--muted)}
+.wk .pc{flex:none;font-family:var(--ui);font-size:12px;font-weight:700;color:var(--olive);font-variant-numeric:tabular-nums}
+.study-intro h3:first-child{margin-top:0}
+</style>
+
+<header class="top"><div class="top-inner">
+  <div class="headrow">
+    <div class="titles">
+      <button class="weekbtn" type="button" id="weekBtn" aria-haspopup="dialog"></button>
+      <h1 id="wTitle"></h1>
+      <div class="sub" id="wSub"></div>
+    </div>
+    <div class="ring" aria-label="Week progress">
+      <svg viewBox="0 0 40 40"><circle class="track" cx="20" cy="20" r="16" fill="none" stroke-width="4"/><circle class="fill" id="ringFill" cx="20" cy="20" r="16" fill="none" stroke-width="4" stroke-linecap="round" stroke-dasharray="100.53" stroke-dashoffset="100.53"/></svg>
+      <span id="ringPct">0%</span>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist" id="tabs"></nav>
+</div></header>
+
+<main class="wrap">
+<section class="panel" id="p-study"></section>
+<section class="panel" id="p-passage" hidden></section>
+<section class="panel" id="p-work" hidden></section>
+<section class="panel" id="p-live" hidden></section>
+<section class="panel" id="p-lift" hidden></section>
+</main>
+
+<div class="scrim" id="scrim" hidden></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Details" hidden><div class="grab"></div><div class="sheet-inner" id="sheetBody"></div></div>
+
+<script type="application/json" id="studyData">__DATA__</script>
+<script>
+const DATA=JSON.parse(document.getElementById("studyData").textContent);
+const META=DATA.meta, WEEKS=DATA.weeks;
+const STEPS=[{id:"study",label:"Study"},{id:"passage",label:"Passage"},{id:"work",label:"Work the Word"},{id:"live",label:"Live It"},{id:"lift",label:"Lift Up"}];
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const store={get(k,d){try{const v=localStorage.getItem(META.prefix+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(META.prefix+k,JSON.stringify(v))}catch(e){}}};
+let W=null, S=null; // current week, its saved state
+function loadState(n){return Object.assign({done:{},parts:{},seen:{},ans:{},rev:{},prac:{},tab:"study",st:0},store.get("w"+n,{}))}
+function save(){store.set("w"+W.week,S)}
+const pctOf=n=>{const s=loadState(n);return Math.round(STEPS.filter(x=>s.done[x.id]).length/STEPS.length*100)};
+
+// tabs
+STEPS.forEach(s=>{const b=document.createElement("button");b.type="button";b.className="tab";b.role="tab";b.id="t-"+s.id;b.innerHTML='<span class="dot"></span>'+s.label;b.onclick=()=>show(s.id);$("#tabs").appendChild(b)});
+function show(id){STEPS.forEach(s=>{$("#p-"+s.id).hidden=s.id!==id;$("#t-"+s.id).setAttribute("aria-selected",s.id===id)});window.scrollTo({top:0});S.tab=id;save();
+ const h="week-"+W.week+"-"+id;if(location.hash!=="#"+h)history.replaceState(null,"","#"+h)}
+function paint(){const n=STEPS.filter(s=>S.done[s.id]).length;$("#ringFill").style.strokeDashoffset=100.53*(1-n/STEPS.length);$("#ringPct").textContent=Math.round(n/STEPS.length*100)+"%";
+ STEPS.forEach(s=>$("#t-"+s.id).classList.toggle("done",!!S.done[s.id]));
+ $$(".markdone").forEach(b=>{const d=!!S.done[b.dataset.for];b.textContent=d?"✓ Done":b.dataset.orig;b.classList.toggle("complete",d);b.classList.toggle("primary",!d)})}
+function setDone(id,v){S.done[id]=v;save();paint()}
+function doneBtn(id,label){return '<div class="btnrow"><button class="btn primary markdone" type="button" data-for="'+id+'" data-orig="'+esc(label)+'">'+esc(label)+"</button></div>"}
+function wireDone(){$$(".markdone").forEach(b=>b.onclick=()=>{const id=b.dataset.for;setDone(id,!S.done[id]);if(S.done[id]){const i=STEPS.findIndex(s=>s.id===id);const nx=STEPS.slice(i+1).find(s=>!S.done[s.id]);if(nx)setTimeout(()=>show(nx.id),450)}})}
+
+// sheet
+let lastFocus=null;
+function openSheet(html,label){lastFocus=document.activeElement;$("#sheet").setAttribute("aria-label",label||"Details");$("#sheetBody").innerHTML='<button class="close" type="button" id="closeSheet">Close ✕</button>'+html;
+ $("#scrim").hidden=false;$("#sheet").hidden=false;$("#sheet").scrollTop=0;$("#closeSheet").onclick=closeSheet;$("#closeSheet").focus()}
+function closeSheet(){$("#scrim").hidden=true;$("#sheet").hidden=true;if(lastFocus&&document.contains(lastFocus))lastFocus.focus()}
+$("#scrim").onclick=closeSheet;document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheet").hidden)closeSheet()});
+
+// week picker
+$("#weekBtn").onclick=()=>{openSheet('<h2 style="margin-top:0">'+esc(META.book)+' · Twelve Weeks</h2><div class="weeklist">'+WEEKS.map(w=>'<button type="button" class="wk'+(w.week===W.week?" cur":"")+'" data-w="'+w.week+'"><span class="n">'+w.week+'</span><span class="tx"><b>'+esc(w.title)+'</b><small>'+esc(w.passageRef)+" · "+esc(w.subtitle)+'</small></span><span class="pc">'+(pctOf(w.week)||"")+(pctOf(w.week)?"%":"")+"</span></button>").join("")+"</div>","Choose a week");
+ $$(".wk").forEach(b=>b.onclick=()=>{closeSheet();openWeek(+b.dataset.w)})};
+
+function greekHTML(st){return '<div class="greekbox"><div class="gd">GOING DEEPER · THE GREEK</div><div class="greek">'+esc(st.greek)+'</div><div class="translit">'+esc(st.translit)+(st.gloss?" — "+esc(st.gloss):"")+'</div><div class="xref">'+esc(st.xref)+"</div>"+st.body.map(p=>"<div>"+esc(p)+"</div>").join("")+'<div class="liveit"><b>LIVE IT</b>'+esc(st.live)+"</div></div>"}
+
+function renderStudy(){const w=W,s=w.study;let h='<div class="keyv"><q>'+esc(w.keyVerse)+'</q><span class="cite">'+esc(w.keyRef)+'</span><div class="psalm">“My soul clings to the dust; Revive me according to Your word.” Psalm 119:25 (NKJV)</div><div class="rrr">READ · REFLECT · RETURN</div></div><h2>Scripture Study · Dive</h2><div class="study-intro">';
+ s.sections.forEach(sec=>{h+="<h3>"+esc(sec.heading)+"</h3>"+sec.paras.map(p=>"<p>"+esc(p)+"</p>").join("")+(sec.pulls||[]).map(q=>'<blockquote class="pullq">'+esc(q)+"</blockquote>").join("")});
+ h+="</div>";
+ s.parts.forEach((pt,i)=>{h+='<details class="part" data-part="'+i+'"><summary><span class="pnum">'+esc(pt.label)+'</span><span class="ptitle">'+esc(pt.heading)+'</span><span class="pchk">✓</span></summary><div class="pbody">'+pt.paras.map(p=>"<p>"+esc(p)+"</p>").join("")+(pt.pulls||[]).map(q=>'<blockquote class="pullq">'+esc(q)+"</blockquote>").join("")+"</div></details>"});
+ h+='<p class="hint" id="partsHint"></p>'+doneBtn("study","Finished the study");$("#p-study").innerHTML=h;
+ const pp=()=>{$$("details.part").forEach(d=>d.classList.toggle("read",!!S.parts[d.dataset.part]));$("#partsHint").textContent=Object.keys(S.parts).length+" of "+s.parts.length+" parts read"};
+ $$("details.part").forEach(d=>d.addEventListener("toggle",()=>{if(d.open){S.parts[d.dataset.part]=1;save();pp()}}));pp()}
+
+function renderPassage(){const w=W;
+ // underline the English word behind each station's Greek word (anchor chosen by build_study.py)
+ const marks=w.stations.map((st,i)=>({i,a:st.anchor}));
+ let html=w.passage.map(v=>{let t=esc(v.text);const key=v.c+":"+v.n;
+  marks.forEach(m=>{if(m.done||!m.a||m.a.v!==key)return;const re=new RegExp("(^|[^A-Za-z])("+m.a.word.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")(?![A-Za-z])");
+   if(re.test(t)){t=t.replace(re,'$1<button type="button" class="gw" data-s="'+m.i+'">$2</button>');m.done=true}});
+  return (v.n===1&&v.c!==w.passage[0].c?'<sup>'+v.c+':</sup>':'')+'<span class="v" id="v'+v.c+'-'+v.n+'"><sup>'+v.n+"</sup>"+t+" </span>"}).join("");
+ const unmatched=marks.filter(m=>!m.done);
+ $("#p-passage").innerHTML='<h2>The Passage</h2><p class="lede">'+esc(w.passageRef)+', World English Bible. Tap an underlined word to open the Greek.</p><div class="passage" id="passage"><p>'+html+'</p></div>'+
+  (unmatched.length?'<div class="btnrow" style="margin-top:12px">'+unmatched.map(m=>'<button type="button" class="btn small gwbtn" data-s="'+m.i+'">'+esc(w.stations[m.i].greek)+" · "+esc(w.stations[m.i].ref)+"</button>").join("")+"</div>":"")+
+  '<p class="hint" id="seenHint"></p><div class="btnrow"><button class="btn" id="listenBtn" type="button">▶ Read it to me</button></div>'+
+  '<h2 style="margin-top:34px">Hide It in Your Heart</h2><p class="lede">'+esc(w.keyRef.replace(/^(\d?\s?[A-Z])([A-Z]+)/,(a,b,c)=>b+c.toLowerCase()))+', this week\u2019s key verse. Slide to hide words; tap a blank to peek.</p><div class="memo" id="memo"></div><div class="slider"><span>Show all</span><input type="range" id="hide" min="0" max="100" value="0" aria-label="How many words to hide"><span>Hide all</span></div>'+doneBtn("passage","Read and memorized");
+ const ps=()=>{$$(".gw").forEach(g=>g.classList.toggle("seen",!!S.seen[g.dataset.s]));$("#seenHint").textContent=Object.keys(S.seen).length+" of "+w.stations.length+" Greek words opened"};
+ $$("#p-passage .gw, .gwbtn").forEach(g=>g.onclick=()=>{const i=+g.dataset.s;S.seen[i]=1;save();ps();
+  openSheet('<div class="xref" style="font-weight:700">'+esc(w.stations[i].ref)+"</div>"+greekHTML(w.stations[i])+'<button class="btn" type="button" id="goWork" style="align-self:flex-start;margin-top:6px">Answer the question on this verse →</button>',"Greek word study");
+  $("#goWork").onclick=()=>{closeSheet();show("work");goSt(i)}});ps();
+ const mw=w.keyVerse.split(" "),order=mw.map((x,i)=>i).sort((a,b)=>((a*7919)%17)-((b*7919)%17)||a-b);
+ mw.forEach(x=>{const s=document.createElement("span");s.className="w";s.textContent=x;s.onclick=()=>{if(s.classList.contains("hid"))s.classList.toggle("peek")};$("#memo").append(s," ")});
+ $("#hide").addEventListener("input",e=>{const hd=new Set(order.slice(0,Math.round(mw.length*e.target.value/100)));$$("#memo .w").forEach((s,i)=>{s.classList.toggle("hid",hd.has(i));s.classList.remove("peek")})});
+ $("#listenBtn").onclick=listen}
+
+const synth=window.speechSynthesis;let speaking=false;
+function stopSpeak(){if(synth&&speaking)synth.cancel();speaking=false;const b=$("#listenBtn");if(b)b.textContent="▶ Read it to me";$$(".v").forEach(v=>v.classList.remove("speaking"))}
+function listen(){const b=$("#listenBtn");if(!synth){b.textContent="Audio isn't available in this browser";return}if(speaking){stopSpeak();return}
+ speaking=true;b.textContent="■ Stop";const vs=$$(".v");vs.forEach((v,i)=>{const u=new SpeechSynthesisUtterance(v.textContent.replace(/^\d+/,""));u.rate=.92;
+  u.onstart=()=>{$$(".v").forEach(x=>x.classList.remove("speaking"));v.classList.add("speaking")};if(i===vs.length-1)u.onend=stopSpeak;try{synth.speak(u)}catch(e){}})}
+
+let cur=0;
+function renderWork(){const w=W;
+ $("#p-work").innerHTML='<h2>'+esc(w.stationsLabel)+'</h2><p class="lede">'+esc(w.stationsIntro)+' Answer first; the Greek opens after.</p><div class="stepper" id="stepper"></div><div id="stations"></div><div class="navrow"><button class="btn" type="button" id="prevSt">← Previous</button><button class="btn primary" type="button" id="nextSt">Next →</button></div>';
+ w.stations.forEach((st,i)=>{const b=document.createElement("button");b.type="button";b.textContent=i+1;b.setAttribute("aria-label","Passage "+(i+1));b.onclick=()=>goSt(i);$("#stepper").appendChild(b);
+  const d=document.createElement("div");d.className="station";d.id="st"+i;d.hidden=true;
+  d.innerHTML='<div class="vref">'+esc(st.ref)+'</div><div class="vtext">“'+esc(st.verse)+'”</div><div class="qlabel">QUESTION</div><div class="qtext">'+esc(st.question)+'</div><textarea id="ans'+i+'" aria-label="My answer" placeholder="My answer…"></textarea><div class="saved" id="sv'+i+'"></div><div id="g'+i+'"></div>';
+  $("#stations").appendChild(d);const ta=d.querySelector("textarea");ta.value=S.ans[i]||"";let t;
+  ta.addEventListener("input",()=>{S.ans[i]=ta.value;save();$("#sv"+i).textContent="Saved";clearTimeout(t);t=setTimeout(()=>$("#sv"+i).textContent="",1300);paintStepper()});paintGreek(i)});
+ $("#prevSt").onclick=()=>{if(cur>0){goSt(cur-1);window.scrollTo({top:0})}};
+ $("#nextSt").onclick=()=>{if(cur<w.stations.length-1){goSt(cur+1);window.scrollTo({top:0})}else show("live")};goSt(S.st||0)}
+function paintGreek(i){const g=$("#g"+i),st=W.stations[i];if(S.rev[i]){g.innerHTML=greekHTML(st)}else{g.innerHTML='<button class="reveal" type="button">Open the Greek · '+esc(st.greek)+"</button>";
+ g.querySelector("button").onclick=()=>{S.rev[i]=1;S.seen[i]=1;save();paintGreek(i);paintStepper()}}}
+function paintStepper(){const n=W.stations.length;[...$("#stepper").children].forEach((b,i)=>{b.setAttribute("aria-current",i===cur);b.classList.toggle("ok",!!(S.ans[i]&&S.ans[i].trim())&&!!S.rev[i])});
+ if(W.stations.every((s,i)=>S.ans[i]&&S.ans[i].trim()&&S.rev[i])&&!S.done.work)setDone("work",true);
+ $("#prevSt").disabled=cur===0;$("#nextSt").textContent=cur===n-1?"Go to Live It →":"Next →"}
+function goSt(i){cur=i;W.stations.forEach((s,j)=>$("#st"+j).hidden=j!==i);S.st=i;save();paintStepper()}
+
+let tInt=null;
+function renderLive(){const w=W;
+ let h='<h2>Life Application · Week '+w.week+'</h2><h3 style="margin-top:4px">'+esc(w.lifeTitle)+'</h3><p class="lede">'+esc(w.lifeIntro)+' Check each one off as you live it.</p><div id="practices">'+
+  w.practices.map(p=>'<div class="practice"><input type="checkbox" id="pr'+p.n+'"><label for="pr'+p.n+'"><span class="pt"><i>'+p.n+"</i>"+esc(p.title)+"</span><p>"+esc(p.body)+"</p></label></div>").join("")+"</div>";
+ h+='<div class="prayer"><h2>Daily Prayer</h2>';
+ if(w.prayerBeats&&w.prayerBeats.length===3){h+='<p style="margin:0;font-size:16px;color:var(--muted)">'+esc(w.prayerLead)+' Start the timer and let it walk you through.</p><div class="beats">'+
+   w.prayerBeats.map((b,i)=>'<div class="beat" data-b="'+i+'"><b>'+esc((b.person+", "+b.verb).toUpperCase())+"</b>'"+esc(b.words)+"'</div>").join("")+
+   '</div><div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><span class="timer" id="timer">5:00</span><button class="btn primary" type="button" id="prayBtn">Begin prayer</button></div><p style="margin:12px 0 0;font-size:16px">'+esc(w.prayerClose)+"</p>"}
+ else h+="<p>"+esc(w.prayer)+"</p>";
+ h+='</div><div class="bottom"><h2>Bottom Line</h2>'+w.bottomLine.map(p=>"<p>"+esc(p)+"</p>").join("")+"</div>"+doneBtn("live","Living it this week");
+ $("#p-live").innerHTML=h;
+ $$("#practices input").forEach(c=>{c.checked=!!S.prac[c.id];c.onchange=()=>{S.prac[c.id]=c.checked;save()}});
+ const pb=$("#prayBtn");if(pb)pb.onclick=()=>{if(tInt){clearInterval(tInt);tInt=null;pb.textContent="Begin prayer";$("#timer").textContent="5:00";$$(".beat").forEach(x=>x.classList.remove("on"));return}
+  let left=300;pb.textContent="Stop";const tick=()=>{$("#timer").textContent=Math.floor(left/60)+":"+String(left%60).padStart(2,"0");const bt=left>200?0:left>100?1:2;$$(".beat").forEach(x=>x.classList.toggle("on",+x.dataset.b===bt));
+   if(left<=0){clearInterval(tInt);tInt=null;pb.textContent="Pray again";$("#timer").textContent="Amen";$$(".beat").forEach(x=>x.classList.remove("on"))}left--};tick();tInt=setInterval(tick,1000)}}
+
+function renderLift(){const w=W;
+ $("#p-lift").innerHTML='<h2>Benediction</h2><h3 style="margin-top:4px">Lift Up Your Eyes</h3><div class="bene">'+w.benediction.map(p=>"<p>"+esc(p)+"</p>").join("")+'</div><div class="diamonds">◆◆◆</div><div class="keyv"><q>'+esc(w.closingVerse)+'</q><span class="cite">'+esc(w.closingRef)+'</span></div><div class="carry"><div class="qlabel">QUIET QUESTION TO CARRY</div><p>'+esc(w.carry)+"</p></div>"+doneBtn("lift","Carry it into the day")+
+ '<p class="note">'+esc(META.footer)+" Answers and progress save only in this browser. END OF WEEK "+w.week+" · SOUL DUST REVIVAL · "+esc(META.book.toUpperCase())+"</p>"}
+
+function openWeek(n,tab){stopSpeak();if(tInt){clearInterval(tInt);tInt=null}
+ W=WEEKS.find(w=>w.week===n)||WEEKS[0];S=loadState(W.week);store.set("lastWeek",W.week);
+ $("#weekBtn").innerHTML="Soul Dust Revival · "+esc(META.book)+" · Week "+W.week+" ▾";$("#wTitle").textContent=W.title;$("#wSub").textContent=W.subtitle;document.title=META.book+" Week "+W.week;
+ renderStudy();renderPassage();renderWork();renderLive();renderLift();wireDone();paint();show(tab||S.tab||"study")}
+
+const m=location.hash.match(/^#week-(\d+)(?:-(\w+))?$/);
+openWeek(m?+m[1]:store.get("lastWeek",1),m&&STEPS.some(s=>s.id===m[2])?m[2]:null);
+window.addEventListener("hashchange",()=>{const k=location.hash.match(/^#week-(\d+)(?:-(\w+))?$/);if(!k)return;if(+k[1]!==W.week)openWeek(+k[1],k[2]);else if(STEPS.some(s=>s.id===k[2]))show(k[2])});
+</script>

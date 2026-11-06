@@ -5,6 +5,7 @@ import { hasEntitlement } from "@/lib/entitlements/check";
 import { getSession } from "@/lib/auth/session";
 import { LessonBlock } from "@/components/study/LessonBlock";
 import { LessonNavigation } from "@/components/study/LessonNavigation";
+import { DevotionalDayView } from "@/components/devotional/DevotionalDayView";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 
@@ -99,6 +100,7 @@ export default async function LessonPage({
   const studyHref = `/studies/${slug}`;
   const previousHref = previousLesson ? `${studyHref}/${previousLesson.id}` : null;
   const nextHref = nextLesson ? `${studyHref}/${nextLesson.id}` : null;
+  const isDevotional = study.kind === "devotional";
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 sm:py-10 space-y-8 study-content-protected">
@@ -110,11 +112,23 @@ export default async function LessonPage({
         previousHref={previousHref}
         nextHref={nextHref}
         position="top"
+        visible={!isDevotional}
       />
-      <h1 className="font-display font-bold text-2xl sm:text-3xl text-ink">{lesson.title}</h1>
-      {blocks.map((block) => (
-        <LessonBlock key={block.id} block={block} initialAnswer={answerByBlockId.get(block.id)} />
-      ))}
+      {isDevotional ? (
+        <DevotionalDayView
+          dayLabel={lesson.title}
+          bodyHtml={blocks.find((b) => b.type === "text")?.body ?? ""}
+          previousHref={previousHref}
+          nextHref={nextHref}
+        />
+      ) : (
+        <>
+          <h1 className="font-display font-bold text-2xl sm:text-3xl text-ink">{lesson.title}</h1>
+          {blocks.map((block) => (
+            <LessonBlock key={block.id} block={block} initialAnswer={answerByBlockId.get(block.id)} />
+          ))}
+        </>
+      )}
       {/* Only rendered by print CSS — invisible on screen (see globals.css). */}
       <p className="print-only-notice">
         Study content isn&apos;t available to print from the web app. If you&apos;d like a

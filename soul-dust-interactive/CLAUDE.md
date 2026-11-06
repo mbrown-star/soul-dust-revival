@@ -1,0 +1,38 @@
+# Soul Dust Revival: Interactive Editions
+
+Phone-first interactive web editions of Soul Dust Revival books (MarketLife Ministries / Bible Studies, Inc., written by The Soul Dust Team). Each edition is generated from the book's typeset PDF, so the interactive text always matches the printed book.
+
+Read HANDOFF.md first. It covers what exists, why it's built this way, the known gaps and the suggested next steps.
+
+## Commands
+```
+pip install -r requirements.txt     # pdfplumber
+./build.sh                          # rebuild everything in dist/ from source/
+```
+Open `dist/colossians.html` or `dist/psalms-365.html` directly in a browser. No server and no build tooling are needed.
+
+## Layout
+- `source/` holds the book PDFs. They are the source of truth. Never edit text in `data/` or `dist/` by hand; fix the parser or the PDF instead.
+- `data/` holds the parsed JSON (`colossians-weeks.json`, `psalms-365-days.json`) and the WEB Bible JSON for Colossians and Psalms (`data/web/`), from the `world-english-bible` npm package v1.0.1.
+- `tools/study/` handles 12-week studies (Colossians layout): `parse_study.py` turns the PDF into weeks JSON, `build_study.py` turns that JSON plus the WEB into HTML, and `study_template.html` is the page design.
+- `tools/devotional/` handles the 365-day devotional: `parse_devotional.py`, `build_devotional.py` and `devotional_template.html`.
+- `dist/` holds the generated pages. `dist/*.html` are full HTML documents. `dist/artifact/*.html` have no doctype, html, head or body tags; that's the format for publishing as a Claude artifact.
+- `prototypes/` holds the earlier hand-built pages, kept for reference only. They are artifact format (no doctype), so open them by publishing or wrap them first.
+
+## Content rules (non-negotiable)
+- Use the manuscript text exactly. Do not rewrite, shorten, summarize or "improve" any study text, question, word study, prayer or benediction.
+- Scripture is the World English Bible (WEB). The one exception is Psalm 119:25, which is quoted from the NKJV and always labeled "(NKJV)".
+- Voice: pastoral, Christ-centered, Reformed (never labeled as such), written for men in the studies and for anyone in the Universal Edition devotional. Theme: from dust to revival (Psalm 119:25).
+- Keep the book's section labels exactly as printed: SCRIPTURE STUDY · DIVE, QUESTION, GOING DEEPER · THE GREEK, LIVE IT, LIFE APPLICATION, DAILY PRAYER, BOTTOM LINE, Lift Up Your Eyes, QUIET QUESTION TO CARRY, A Question to Sit With, READ · REFLECT · RETURN.
+- Devotional preface rule, kept on purpose in the UI: "If you miss a day, do not go back and hurry to catch up. Pick up with today." Never show streaks, never count missed days, and never use guilt-based nudges.
+
+## Design rules
+- Series palette: gold #AD9A5F, olive #6B7338, cream box #EFE6C2, body text #2B2B2B. Each book takes its accent color from its cover (Colossians: #B4531F light, #E07F48 dark).
+- Fonts (Google Fonts): Archivo Black for display, Archivo for labels and UI, Source Serif 4 for body text, Gentium Book Plus for polytonic Greek.
+- Must work at about 400px phone width, in both light and dark mode. Every color is a CSS variable on `:root`, redefined for dark mode.
+- Pages are single self-contained HTML files with inline CSS and JS. The only external requests are to Google Fonts.
+- Saved state uses localStorage with a separate prefix per book (`sdr-colossians-`, `sdr-ps365-`), and every read and write is wrapped in try/catch.
+
+## Working conventions
+- After changing a parser, run `./build.sh` and check the summary lines. Every study week should show 2 sections, 4 parts, 5 stations, 5 practices and 3 benediction paragraphs. The devotional should show 365 days, 4 paragraphs per day, and no days missing a part.
+- The parsers rely on the PDF's font sizes and weights (see `kind()` in parse_study.py). If a new volume was typeset differently, adjust those rules and keep the old ones working.
