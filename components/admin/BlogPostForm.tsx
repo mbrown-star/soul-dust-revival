@@ -148,7 +148,7 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
           <button
             onClick={getSuggestions}
             disabled={suggesting}
-            className="bg-neutral-900 text-white rounded-lg px-4 py-2 text-sm disabled:opacity-50"
+            className="bg-ink text-white rounded-lg px-4 py-2 text-sm disabled:opacity-50"
           >
             {suggesting ? "Thinking..." : drafts.length > 0 ? "Refresh suggestions" : "Get suggestions"}
           </button>
@@ -207,7 +207,7 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
             <RichTextEditor content={values.body} onChange={(html) => setValues((v) => ({ ...v, body: html }))} />
           </div>
           {submitAttempted && bodyEmpty && (
-            <p role="alert" className="text-sm text-red-600 mt-1">Body can&apos;t be empty.</p>
+            <p role="alert" className="text-sm text-error mt-1">Body can&apos;t be empty.</p>
           )}
         </div>
 
@@ -220,13 +220,13 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
           <span className="text-sm">Published (live on the public blog)</span>
         </label>
 
-        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+        {error && <p role="alert" className="text-sm text-error">{error}</p>}
 
         <div className="flex items-center gap-3">
           <button
             type="submit"
             disabled={saving || deleting || bodyEmpty}
-            className="bg-neutral-900 text-white rounded-lg px-6 py-3 disabled:opacity-50"
+            className="bg-ink text-white rounded-lg px-6 py-3 disabled:opacity-50"
           >
             {saving ? "Saving..." : values.published ? "Save & publish" : "Save draft"}
           </button>
@@ -236,7 +236,7 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
               type="button"
               onClick={handleDelete}
               disabled={saving || deleting}
-              className="text-red-600 rounded-lg px-4 py-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-600"
+              className="text-error rounded-lg px-4 py-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error"
             >
               {deleting ? "Deleting..." : "Delete post"}
             </button>

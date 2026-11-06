@@ -112,7 +112,7 @@ export function StudyForm({
         <input
           id={titleId}
           required
-          className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+          className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
           value={values.title}
           onChange={(e) => setValues((v) => ({ ...v, title: e.target.value }))}
         />
@@ -123,7 +123,7 @@ export function StudyForm({
         <input
           id={slugId}
           required
-          className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+          className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
           value={values.slug}
           onChange={(e) => setValues((v) => ({ ...v, slug: e.target.value }))}
         />
@@ -134,7 +134,7 @@ export function StudyForm({
         <textarea
           id={descId}
           rows={3}
-          className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+          className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
           value={values.description}
           onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))}
         />
@@ -144,7 +144,7 @@ export function StudyForm({
         <label htmlFor={productId_} className="block text-sm font-medium mb-1">Linked product (gates access)</label>
         <select
           id={productId_}
-          className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+          className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
           value={values.productId}
           onChange={(e) => setValues((v) => ({ ...v, productId: e.target.value }))}
         >
@@ -182,7 +182,7 @@ export function StudyForm({
         {values.coverImageUrl && (
           <div className="mt-2">
             <label htmlFor={altId} className="block text-sm font-medium mb-1">
-              Alt text <span aria-hidden="true" className="text-red-600">*</span>
+              Alt text <span aria-hidden="true" className="text-error">*</span>
               <span className="sr-only"> (required)</span>
             </label>
             <input
@@ -190,13 +190,13 @@ export function StudyForm({
               required
               aria-invalid={altTextMissing}
               aria-describedby={altTextMissing ? `${altId}-error` : undefined}
-              className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+              className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
               placeholder="Describe the cover image for screen reader users"
               value={values.coverImageAlt}
               onChange={(e) => setValues((v) => ({ ...v, coverImageAlt: e.target.value }))}
             />
             {altTextMissing && (
-              <p id={`${altId}-error`} className="text-sm text-red-600 mt-1">
+              <p id={`${altId}-error`} className="text-sm text-error mt-1">
                 Alt text is required whenever an image is attached (WCAG 1.1.1).
               </p>
             )}
@@ -214,7 +214,7 @@ export function StudyForm({
       </label>
 
       {error && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-error">
           {error}
         </p>
       )}
@@ -223,7 +223,7 @@ export function StudyForm({
         <button
           type="submit"
           disabled={saving || deleting || uploading || altTextMissing}
-          className="bg-neutral-900 text-white rounded-lg px-6 py-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-900"
+          className="bg-ink text-white rounded-lg px-6 py-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink"
         >
           {saving ? "Saving..." : "Save study"}
         </button>
@@ -233,7 +233,7 @@ export function StudyForm({
             type="button"
             onClick={handleDelete}
             disabled={saving || deleting}
-            className="text-red-600 rounded-lg px-4 py-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-600"
+            className="text-error rounded-lg px-4 py-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error"
           >
             {deleting ? "Deleting..." : "Delete study"}
           </button>

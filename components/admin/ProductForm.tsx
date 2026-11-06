@@ -187,7 +187,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
         <input
           id={titleId}
           required
-          className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+          className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
           value={values.title}
           onChange={(e) => handleTitleChange(e.target.value)}
         />
@@ -201,7 +201,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
           id={slugId}
           required
           pattern="[a-z0-9-]+"
-          className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+          className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
           value={values.slug}
           onChange={(e) => {
             setSlugTouched(true);
@@ -215,7 +215,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
         <textarea
           id={descId}
           rows={4}
-          className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+          className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
           value={values.description}
           onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))}
         />
@@ -225,7 +225,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
         <label htmlFor={formatId} className="block text-sm font-medium mb-1">Format</label>
         <select
           id={formatId}
-          className="w-full sm:w-64 border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+          className="w-full sm:w-64 border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
           value={values.format}
           onChange={(e) => {
             const format = e.target.value as "physical" | "digital" | "both";
@@ -265,7 +265,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
               required
               type="number"
               step="0.01"
-              className="w-full sm:w-48 border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+              className="w-full sm:w-48 border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
               value={(values.priceCents / 100).toFixed(2)}
               onChange={(e) =>
                 setValues((v) => ({ ...v, priceCents: Math.round(parseFloat(e.target.value) * 100) }))
@@ -302,7 +302,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
                   required
                   type="url"
                   placeholder="https://www.amazon.com/dp/XXXXXXXXXX"
-                  className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                  className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
                   value={values.amazonUrl}
                   onChange={(e) => setValues((v) => ({ ...v, amazonUrl: e.target.value }))}
                 />
@@ -311,7 +311,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
           </div>
 
           {noPurchaseRoute && (
-            <p className="text-sm text-red-600 mt-2" role="alert">
+            <p className="text-sm text-error mt-2" role="alert">
               Enable at least one purchase route.
             </p>
           )}
@@ -331,7 +331,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
               required
               type="number"
               step="0.01"
-              className="w-full sm:w-48 border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+              className="w-full sm:w-48 border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
               value={((values.format === "both" ? values.digitalPriceCents ?? 0 : values.priceCents) / 100).toFixed(2)}
               onChange={(e) => {
                 const cents = Math.round(parseFloat(e.target.value) * 100);
@@ -387,7 +387,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
             </p>
           )}
           {uploadError && (
-            <p role="alert" className="text-sm text-red-600 mt-1">
+            <p role="alert" className="text-sm text-error mt-1">
               {uploadError}
             </p>
           )}
@@ -399,7 +399,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
               </label>
               <input
                 id={backAltId}
-                className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
                 placeholder="Describe the back cover for screen reader users"
                 value={values.backImageAlt}
                 onChange={(e) => setValues((v) => ({ ...v, backImageAlt: e.target.value }))}
@@ -414,7 +414,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
               </label>
               <input
                 id={altId}
-                className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
                 placeholder="Describe the front cover for screen reader users"
                 value={values.imageAlt}
                 onChange={(e) => setValues((v) => ({ ...v, imageAlt: e.target.value }))}
@@ -450,7 +450,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
               </label>
               <input
                 id={altId}
-                className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
                 placeholder="Describe the image for screen reader users"
                 value={values.imageAlt}
                 onChange={(e) => setValues((v) => ({ ...v, imageAlt: e.target.value }))}
@@ -481,7 +481,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
       </label>
 
       {validationError && (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="text-sm text-error" role="alert">
           {validationError}
         </p>
       )}
@@ -490,7 +490,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
         <button
           type="submit"
           disabled={saving || deleting || uploading || noPurchaseRoute}
-          className="bg-neutral-900 text-white rounded-lg px-6 py-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-900"
+          className="bg-ink text-white rounded-lg px-6 py-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink"
         >
           {saving ? "Saving..." : "Save product"}
         </button>
@@ -500,7 +500,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
             type="button"
             onClick={handleDelete}
             disabled={saving || deleting}
-            className="text-red-600 rounded-lg px-4 py-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-600"
+            className="text-error rounded-lg px-4 py-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error"
           >
             {deleting ? "Deleting..." : "Delete product"}
           </button>
