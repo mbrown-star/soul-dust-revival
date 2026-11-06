@@ -52,6 +52,23 @@ body {
   }
 }
 
+/* Indeterminate progress bar for a long-running background action with no
+   real percent-complete to report (e.g. a document import that's mostly
+   server-side parsing time, not upload time) -- a sliding bar, not a
+   literal progress value. Automatically capped to near-zero duration by
+   the prefers-reduced-motion rule above. */
+@keyframes indeterminate-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+.indeterminate-bar {
+  animation: indeterminate-progress 1.2s ease-in-out infinite;
+}
+
 /* EXPERIMENTAL — trying the cover system's mottle treatment (cloud blotch +
    fine grain + vignette, from the Design System's cover-mottles) on page
    surfaces, just to see it in context. Pure CSS, no bitmaps: two SVG

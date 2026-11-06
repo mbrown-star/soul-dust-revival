@@ -112,6 +112,25 @@ export function ImportStudyForm({
         {importing ? "Importing..." : "Import document"}
       </button>
 
+      {/* There's no real percent-complete to report here -- the wait is
+          almost entirely server-side document parsing, not upload time --
+          so this is a sliding indeterminate bar, not a literal progress
+          value. The status text is what actually tells a screen reader
+          user (and anyone watching) that something is happening and
+          roughly how long to expect, since the disabled button's label
+          change alone isn't enough signal that the page hasn't stalled. */}
+      {importing && (
+        <div className="space-y-2">
+          <div className="w-full h-1.5 bg-moss/10 rounded-full overflow-hidden" aria-hidden="true">
+            <div className="h-full w-1/3 bg-ink rounded-full indeterminate-bar" />
+          </div>
+          <p role="status" aria-live="polite" className="text-sm text-moss">
+            Parsing your document and creating lessons — this can take a minute or two for
+            longer files. Don&apos;t close this page.
+          </p>
+        </div>
+      )}
+
       <p className="text-xs text-moss">
         The study is created as a draft (unpublished) so you can review and edit the
         auto-generated lessons before making it available.
