@@ -3,7 +3,12 @@ import { requireAdmin } from "@/lib/admin/guard";
 import { getDb } from "@/lib/db/client";
 import { lessons } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { lessonCreateSchema, lessonUpdateSchema, lessonReorderSchema } from "@/lib/validation/schemas";
+import {
+  lessonCreateSchema,
+  lessonUpdateSchema,
+  lessonReorderSchema,
+  lessonBulkPublishSchema,
+} from "@/lib/validation/schemas";
 
 export async function POST(req: NextRequest) {
   const session = await requireAdmin();
@@ -49,6 +54,21 @@ export async function PATCH(req: NextRequest) {
     for (const { id, orderIndex } of parsed.data.reorder) {
       await db.update(lessons).set({ orderIndex }).where(eq(lessons.id, id));
     }
+    return NextResponse.json({ ok: true });
+  }
+
+  // Bulk publish/unpublish every lesson in a study: { studyId, published }.
+  // An imported study's lessons are created as drafts for review -- once
+  // review is done, toggling potentially hundreds of lessons one at a time
+  // isn't a reasonable workflow.
+  if (typeof json.studyId === "string" && typeof json.published === "boolean") {
+    const parsed = lessonBulkPublishSchema.safeParse(json);
+    if (!parsed.success) return NextResponse.json({ error: "invalid_input" }, { status: 400 });
+
+    await db
+      .update(lessons)
+      .set({ published: parsed.data.published })
+      .where(eq(lessons.studyId, parsed.data.studyId));
     return NextResponse.json({ ok: true });
   }
 

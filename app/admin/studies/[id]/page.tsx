@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { StudyForm } from "@/components/admin/StudyForm";
 import Link from "next/link";
 import { NewLessonButton } from "@/components/admin/NewLessonButton";
+import { PublishAllLessonsButton } from "@/components/admin/PublishAllLessonsButton";
 
 export default async function StudyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -58,7 +59,14 @@ export default async function StudyDetailPage({ params }: { params: Promise<{ id
       <div>
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <h2 className="text-lg font-semibold">Lessons</h2>
-          <NewLessonButton studyId={study.id} />
+          <div className="flex items-center gap-2">
+            <PublishAllLessonsButton
+              studyId={study.id}
+              lessonCount={studyLessons.length}
+              unpublishedCount={studyLessons.filter((l) => !l.published).length}
+            />
+            <NewLessonButton studyId={study.id} />
+          </div>
         </div>
 
         <div className="divide-y border rounded-lg">

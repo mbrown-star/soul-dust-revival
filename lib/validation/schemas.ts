@@ -178,6 +178,15 @@ export const lessonReorderSchema = z.object({
   reorder: z.array(z.object({ id: z.string().uuid(), orderIndex: z.number().int().min(0) })),
 });
 
+// A document import creates a study's lessons as drafts for review (see
+// app/api/admin/studies/import/route.ts) -- for a long document that splits
+// into dozens or hundreds of lessons (e.g. a 365-day devotional), publishing
+// each one individually isn't a reasonable workflow once review is done.
+export const lessonBulkPublishSchema = z.object({
+  studyId: z.string().uuid(),
+  published: z.boolean(),
+});
+
 // ---------- Admin: content blocks ----------
 export const contentBlockTypeSchema = z.enum(["text", "image", "video", "audio", "question", "callout"]);
 
