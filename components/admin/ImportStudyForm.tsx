@@ -37,11 +37,29 @@ export function ImportStudyForm({
     formData.append("slug", slug);
     formData.append("productId", productId);
 
-    const res = await fetch("/api/admin/studies/import", { method: "POST", body: formData });
-    const data = (await res.json()) as { studyId: string; error?: string };
+    // A server-side crash (e.g. an unhandled exception during parsing) can
+    // return an empty or non-JSON body -- res.json() throws in that case,
+    // and an uncaught throw here left the button stuck on "Importing..."
+    // forever with no error shown, since setImporting(false) was never
+    // reached. Wrapping the whole request in try/catch guarantees an error
+    // always surfaces and the button always re-enables.
+    let data: { studyId?: string; error?: string };
+    try {
+      const res = await fetch("/api/admin/studies/import", { method: "POST", body: formData });
+      data = (await res.json()) as { studyId?: string; error?: string };
+      if (!res.ok) {
+        setError(data.error ?? "Import failed.");
+        setImporting(false);
+        return;
+      }
+    } catch {
+      setError("Import failed — the server didn't respond as expected. Please try again.");
+      setImporting(false);
+      return;
+    }
 
-    if (!res.ok) {
-      setError(data.error ?? "Import failed.");
+    if (!data.studyId) {
+      setError("Import failed — no study was created. Please try again.");
       setImporting(false);
       return;
     }

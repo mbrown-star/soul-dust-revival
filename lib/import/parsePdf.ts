@@ -4,6 +4,9 @@ import { PDFParse } from "pdf-parse";
  * Extracts plain text from a PDF. Unlike DOCX, PDFs don't preserve heading
  * styles in an easily accessible way — this returns raw text, and heading
  * detection for lesson-splitting is done heuristically (see splitIntoLessons.ts).
+ *
+ * pdf-parse (via pdfjs-dist) is marked external in next.config.js's
+ * serverExternalPackages -- see the comment there for why.
  */
 export async function parsePdfToText(buffer: Buffer): Promise<string> {
   const parser = new PDFParse({ data: buffer });

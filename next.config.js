@@ -15,6 +15,16 @@ function getR2Hostname() {
 }
 
 const nextConfig = {
+  // pdf-parse (wrapping pdfjs-dist, used by the study-import PDF path) does
+  // its own dynamic-import/relative-path resolution to find its worker
+  // script, which breaks when Turbopack bundles it into the app's module
+  // graph ("Setting up fake worker failed: Cannot find module
+  // '.../pdf.worker.mjs'") -- every PDF import crashed server-side with an
+  // empty response. Marking it external defers resolution to Node's own
+  // require/import at runtime instead, which the package's internal paths
+  // (and its optional @napi-rs/canvas dependency, a native addon Turpopack
+  // can't place in an ESM chunk at all) are actually built for.
+  serverExternalPackages: ["pdf-parse"],
   images: {
     remotePatterns: [
       {
