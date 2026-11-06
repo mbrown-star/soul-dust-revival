@@ -43,7 +43,7 @@ export default async function CheckoutSuccessPage({
   return (
     <div className="max-w-xl mx-auto px-4 py-10 sm:py-16 space-y-6">
       <h1 className="text-2xl font-semibold">Thank you for your order</h1>
-      <p className="text-neutral-600">Order #{order.id.slice(0, 8)}</p>
+      <p className="text-moss">Order #{order.id.slice(0, 8)}</p>
 
       <div className="space-y-2 border-t border-b py-4">
         {orderedProducts.map((p) => (
@@ -61,7 +61,7 @@ export default async function CheckoutSuccessPage({
       {order.requiresShipping && (
         <div>
           <h2 className="font-medium mb-1">Shipping to</h2>
-          <p className="text-neutral-600 text-sm">
+          <p className="text-moss text-sm">
             {order.shippingName}
             <br />
             {order.shippingLine1}
@@ -76,7 +76,7 @@ export default async function CheckoutSuccessPage({
 
       {/* Physical-only: order info was emailed, nothing further needed here. */}
       {!hasDigital && hasPhysical && (
-        <p className="text-neutral-600">
+        <p className="text-moss">
           A confirmation with these details has also been sent to your email.
         </p>
       )}
@@ -85,7 +85,7 @@ export default async function CheckoutSuccessPage({
       {hasDigital && (
         <Link
           href="/login?next=/studies"
-          className="inline-block bg-neutral-900 text-white rounded-lg px-6 py-3"
+          className="inline-block bg-ink text-white rounded-lg px-6 py-3"
         >
           Log in to access your content
         </Link>
