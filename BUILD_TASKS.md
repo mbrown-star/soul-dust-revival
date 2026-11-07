@@ -228,6 +228,70 @@ what's left, roughly in the order they need doing.
 > the ones prefixed `NEXT_PUBLIC_*`** — anything read there shares this same build-time
 > bake-in behavior regardless of its name.
 
+> ### Testing the marketing/app subdomain split on staging first (2026-11-12)
+> This is **one Worker**, not separate staging/production deployments — `staging.
+> souldustrevival.com` and the eventual `souldustrevival.com`/`app.souldustrevival.com`
+> are all just custom domains pointed at the same running Worker/build/database. So
+> testing the split means a *temporary* deploy with staging's own values, not a
+> permanently separate environment running alongside production.
+>
+> **1. Dashboard prerequisites (not doable from this session — no DNS/zone-edit or
+> Access permissions on this session's API token, same limitation as the original
+> `staging.souldustrevival.com` setup below):**
+> - Register **`app.staging.souldustrevival.com`** as a second custom domain on the
+>   `soul-dust-revival` Worker — same flow as `staging.souldustrevival.com` itself.
+>   Don't invent a third name (e.g. a literal `marketing.` subdomain) — production's
+>   marketing side is the bare apex domain, not a `marketing.` label, so the staging
+>   equivalent of that is just the existing `staging.souldustrevival.com`.
+> - Decide what happens to Cloudflare Access, which currently gates the whole of
+>   `staging.souldustrevival.com` (email-allowlist policy, see the entry below).
+>   Recommended: remove Access for the duration of this test — it sits in front of
+>   *every* request, including the login flow this test exists to exercise, which is
+>   exactly the kind of conflict that already broke the Stripe webhook once (see the
+>   "found there was no Stripe webhook endpoint" entry in CLAUDE.md). If Access needs
+>   to stay, add the identical policy to `app.staging.souldustrevival.com` too, so
+>   requests aren't gated on one host and not the other.
+>
+> **2. Build and deploy with staging's own values** (real values at build time, not
+> placeholders — see the `NEXT_PUBLIC_MARKETING_HOSTNAME` box above — and all three
+> together, since `lib/env.ts` fails `validateEnv()` at boot otherwise):
+> ```
+> NEXT_PUBLIC_MARKETING_HOSTNAME=staging.souldustrevival.com
+> NEXT_PUBLIC_APP_HOSTNAME=app.staging.souldustrevival.com
+> NEXT_PUBLIC_COOKIE_DOMAIN=.staging.souldustrevival.com
+> ```
+> This cookie domain is deliberately `.staging.souldustrevival.com`, not
+> `.souldustrevival.com` — a narrower parent shared only by staging's two hosts, so a
+> staging session can't also authenticate production once production exists. Then
+> `npm run cf:deploy` per the safe order above.
+>
+> **3. Verify manually, in a real browser:**
+> - Logged out, visit `staging.souldustrevival.com/library`, `/studies`, `/account`,
+>   `/leader` — each should 307-redirect to the same path on
+>   `app.staging.souldustrevival.com`.
+> - Visit `app.staging.souldustrevival.com/`, `/books`, `/blog`, `/admin/products` —
+>   each should 307-redirect to the same path on `staging.souldustrevival.com`.
+> - Click "Books & Studies"/"Blog" from a page on `app.staging...` and "My
+>   Library"/"Account" from a page on `staging...` — each should land on the other
+>   host directly with no visible redirect hop (confirms the nav links'
+>   `marketingUrl()`/`appUrl()` fix, not just `proxy.ts`'s fallback redirect).
+> - Log in starting from `app.staging.souldustrevival.com/login`; check the session
+>   cookie in dev tools shows `Domain=.staging.souldustrevival.com`; then visit
+>   `staging.souldustrevival.com/account` directly and confirm you're still
+>   recognized as logged in. Repeat starting from `staging.souldustrevival.com/login`
+>   instead, confirming the reverse direction.
+> - Log out from `/account` (an app-domain page) and confirm you land directly on
+>   `staging.souldustrevival.com/`, not bounced through an extra hop.
+> - If Stripe test mode is wired to staging, complete a real test purchase and
+>   confirm the order-confirmation email's "Log in to access your content" link
+>   points at `https://app.staging.souldustrevival.com/login?next=/library`.
+>
+> **4. Cutover:** once satisfied, redeploy with production's three values
+> (`souldustrevival.com` / `app.souldustrevival.com` / `.souldustrevival.com`) for the
+> real launch, same safe-build-then-set-secrets order. Re-apply staging's own values
+> in a later build if this needs testing again afterward — the two can't be baked
+> into the same deployed Worker at once.
+
 - [x] Deploy with `npm run cf:deploy` (builds via OpenNext, deploys the Worker —
       see `wrangler.jsonc`/`open-next.config.ts`), using placeholder env values per
       the warning above — done 2026-11-05, live at
