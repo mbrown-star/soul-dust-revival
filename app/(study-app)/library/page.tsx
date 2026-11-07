@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { LibraryCard } from "@/components/study/LibraryCard";
+import { getDisplayStudyTitles } from "@/lib/study/displayTitle";
 import type { Metadata } from "next";
 
 // Reads per-user entitlements/progress on every request -- never static.
@@ -68,11 +69,19 @@ export default async function LibraryPage() {
           .where(and(eq(lessonProgress.userId, session.userId), inArray(lessonProgress.lessonId, lessonIds)));
   const statusByLessonId = new Map(myProgress.map((p) => [p.lessonId, p.status]));
 
+  // REAL FIX (qa/findings/FINDINGS_2026-11-07.md #2): this card previously
+  // showed `study.title` (the study's own, not always customer-facing,
+  // internal title -- e.g. a raw import filename) instead of the title
+  // shown on the storefront and at checkout for the product the customer
+  // actually bought. Batched to one extra query, not one per study.
+  const displayTitleByStudyId = await getDisplayStudyTitles(db, myStudies);
+
   const continuing: LibraryEntry[] = [];
   const notStarted: LibraryEntry[] = [];
   const completedList: LibraryEntry[] = [];
 
-  for (const study of myStudies) {
+  for (const rawStudy of myStudies) {
+    const study = { ...rawStudy, title: displayTitleByStudyId.get(rawStudy.id) ?? rawStudy.title };
     const studyLessons = allLessons.filter((l) => l.studyId === study.id);
     const total = studyLessons.length;
     const completed = studyLessons.filter((l) => statusByLessonId.get(l.id) === "completed").length;

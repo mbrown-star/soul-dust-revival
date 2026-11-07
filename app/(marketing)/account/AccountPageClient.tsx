@@ -1,22 +1,36 @@
 "use client";
 
-import { useState, useEffect, useId } from "react";
+import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-export default function AccountPageClient() {
+export type OrderSummary = {
+  id: string;
+  status: "pending" | "paid" | "refunded";
+  totalCents: number;
+  createdAt: string | null;
+  itemLabels: string[];
+};
+
+const STATUS_LABEL: Record<OrderSummary["status"], string> = {
+  paid: "Paid",
+  pending: "Pending",
+  refunded: "Refunded",
+};
+
+export default function AccountPageClient({
+  email,
+  orders,
+}: {
+  email: string;
+  orders: OrderSummary[];
+}) {
   const router = useRouter();
-  const [email, setEmail] = useState<string | null>(null);
   const [confirmText, setConfirmText] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const confirmId = useId();
-
-  useEffect(() => {
-    const supabase = createSupabaseBrowserClient();
-    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
-  }, []);
 
   async function handleExport() {
     const res = await fetch("/api/account/export");
@@ -48,20 +62,45 @@ export default function AccountPageClient() {
     router.refresh();
   }
 
-  if (!email) {
-    return (
-      <div className="max-w-5xl mx-auto px-4 py-16 text-center">
-        <h1 className="font-display font-bold text-2xl text-ink">Your account</h1>
-        <p className="text-moss mt-4">Loading...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16 space-y-8">
       <div>
         <h1 className="font-display font-bold text-2xl text-ink">Your account</h1>
         <p className="text-moss mt-1">{email}</p>
+      </div>
+
+      <div className="border rounded-lg p-4">
+        <h2 className="font-medium mb-2">Your orders</h2>
+        {orders.length === 0 ? (
+          <p className="text-sm text-moss">You haven&apos;t placed an order yet.</p>
+        ) : (
+          <ul className="divide-y">
+            {orders.map((order) => (
+              <li key={order.id} className="py-3 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm text-ink">{order.itemLabels.join(", ") || "Order"}</p>
+                  <p className="text-xs text-moss">
+                    {/* createdAt isn't actually nullable in practice (defaultNow()
+                        on insert), but the column itself allows it -- found in
+                        review: the old unconditional "{date} · Order #" left an
+                        orphaned leading "· " with no date before it if it ever
+                        were null. */}
+                    {order.createdAt && `${new Date(order.createdAt).toLocaleDateString()} · `}
+                    Order #{order.id.slice(0, 8)}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-medium text-ink">${(order.totalCents / 100).toFixed(2)}</p>
+                  <p
+                    className={`text-xs ${order.status === "paid" ? "text-moss" : order.status === "pending" ? "text-ember-700" : "text-error"}`}
+                  >
+                    {STATUS_LABEL[order.status]}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="border rounded-lg p-4">

@@ -6,6 +6,7 @@ import { getSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ProgressBar } from "@/components/study/ProgressBar";
+import { getDisplayStudyTitle } from "@/lib/study/displayTitle";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +30,10 @@ export async function generateMetadata({
   if (!session) return { title: "Studies" };
 
   const allowed = await hasEntitlement(session.userId, study.productId);
-  return { title: allowed ? study.title : "Studies" };
+  if (!allowed) return { title: "Studies" };
+  // REAL FIX (qa/findings/FINDINGS_2026-11-07.md #2's broader root cause):
+  // study.title isn't always customer-facing -- see lib/study/displayTitle.ts.
+  return { title: await getDisplayStudyTitle(db, study) };
 }
 
 export default async function StudyPage({
@@ -78,13 +82,14 @@ export default async function StudyPage({
           );
   const progressByLesson = new Map(progressRows.map((p) => [p.lessonId, p.status]));
   const completed = studyLessons.filter((l) => progressByLesson.get(l.id) === "completed").length;
+  const displayTitle = await getDisplayStudyTitle(db, study);
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16">
       <span className="inline-block text-xs font-sans font-medium uppercase tracking-wide text-ember-700 mb-2">
         {study.kind === "study" ? "Study" : "Devotional"}
       </span>
-      <h1 className="font-display font-bold text-3xl text-ink mb-2">{study.title}</h1>
+      <h1 className="font-display font-bold text-3xl text-ink mb-2">{displayTitle}</h1>
       {study.description && <p className="font-serif text-moss mb-6">{study.description}</p>}
 
       {studyLessons.length > 0 && (

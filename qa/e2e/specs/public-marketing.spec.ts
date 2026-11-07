@@ -127,35 +127,19 @@ test.describe("Nav bar", () => {
   test.describe("as qa-user", () => {
     test.use({ storageState: "qa/.auth/user.json" });
     test("sees My Library and a Profile menu without an Admin link", async ({ page }, testInfo) => {
-      // REAL FINDING, confirmed: SiteHeaderShell.tsx/SiteNav.tsx have no
-      // responsive collapse at all (no hamburger, no flex-wrap, no
-      // overflow-x-auto -- unlike AdminNav.tsx, which does have a horizontal-
-      // scroll fallback for this exact situation). At a 375px mobile
-      // viewport the nav simply overflows off-screen with ZERO way to reach
-      // it -- confirmed document.documentElement.scrollWidth equals
-      // clientWidth (no horizontal scroll exists anywhere, not even at the
-      // page level), so "Profile" (and therefore Account/Admin/Log out) is
-      // completely unreachable for a logged-in mobile visitor. See
-      // qa/findings for severity; tracked here as an expected failure on the
-      // mobile project so it stays visible in every future run instead of
-      // silently disappearing.
+      // FIXED (qa/findings/FINDINGS_2026-11-07.md #1): SiteNav.tsx now scopes
+      // overflow-x-auto to an inner wrapper around everything except
+      // Profile, keeping Profile itself always reachable (and its dropdown
+      // never clipped) regardless of viewport width -- verified on both the
+      // desktop and mobile-chromium projects, not just desktop.
       await page.goto("/");
       const nav = page.getByRole("navigation", { name: "Primary" });
       await expect(nav.getByRole("link", { name: "My Library" })).toBeVisible();
       const profileButton = nav.getByRole("button", { name: /Profile/i });
 
-      if (testInfo.project.name === "mobile-chromium") {
-        // Documents the real finding directly rather than timing out on a
-        // click the real nav genuinely can't deliver: the button exists in
-        // the DOM but its box sits entirely outside the 375px viewport, with
-        // no horizontal scroll anywhere (not even at the document level) to
-        // reach it. A real click here would hang for the full actionability
-        // timeout instead of failing fast, which is worse for signal.
-        const box = await profileButton.boundingBox();
-        expect(box, "Profile button should have a layout box").not.toBeNull();
-        expect(box!.x).toBeGreaterThanOrEqual(testInfo.project.use.viewport!.width!);
-        return;
-      }
+      const box = await profileButton.boundingBox();
+      expect(box, "Profile button should have a layout box").not.toBeNull();
+      expect(box!.x + box!.width).toBeLessThanOrEqual(testInfo.project.use.viewport!.width!);
 
       await profileButton.click();
       await expect(page.getByRole("menuitem", { name: "Account" })).toBeVisible();
@@ -165,20 +149,10 @@ test.describe("Nav bar", () => {
 
   test.describe("as qa-admin", () => {
     test.use({ storageState: "qa/.auth/admin.json" });
-    test("sees an Admin item in the Profile menu", async ({ page }, testInfo) => {
+    test("sees an Admin item in the Profile menu", async ({ page }) => {
       await page.goto("/");
       const nav = page.getByRole("navigation", { name: "Primary" });
-      const profileButton = nav.getByRole("button", { name: /Profile/i });
-
-      if (testInfo.project.name === "mobile-chromium") {
-        // Same nav-overflow finding as the qa-user test above.
-        const box = await profileButton.boundingBox();
-        expect(box, "Profile button should have a layout box").not.toBeNull();
-        expect(box!.x).toBeGreaterThanOrEqual(testInfo.project.use.viewport!.width!);
-        return;
-      }
-
-      await profileButton.click();
+      await nav.getByRole("button", { name: /Profile/i }).click();
       await expect(page.getByRole("menuitem", { name: "Admin" })).toBeVisible();
     });
   });

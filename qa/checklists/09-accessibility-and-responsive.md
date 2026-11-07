@@ -1,5 +1,11 @@
 # 09. Accessibility and responsive
 
+**Status note (2026-11-11):** the mobile nav-overflow issue flagged below (and in
+`qa/findings/FINDINGS_2026-11-07.md` #1) is **fixed** as of that build (`SiteNav.tsx`),
+verified on both desktop and mobile-chromium. See that findings report for the
+authoritative fixed/unfixed status of every numbered finding before treating anything
+else below as still open.
+
 **Roles covered:** guest, user, leader, admin
 **Fixtures used:** all (this is a cross-screen pass, not fixture-specific)
 **Related automated spec:** none — this is judgment-only (axe-core/Lighthouse supplement this but

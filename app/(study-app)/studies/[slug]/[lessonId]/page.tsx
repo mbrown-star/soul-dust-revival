@@ -8,6 +8,7 @@ import { LessonNavigation } from "@/components/study/LessonNavigation";
 import { StudyLessonView } from "@/components/study/StudyLessonView";
 import { DevotionalAppView } from "@/components/devotional/DevotionalAppView";
 import { parseDayLabel, todaysDateLabel } from "@/lib/devotional/parseDayLabel";
+import { getDisplayStudyTitle } from "@/lib/study/displayTitle";
 import type { YearDay } from "@/components/devotional/YearView";
 import type { JournalEntry } from "@/components/devotional/JournalView";
 import { redirect } from "next/navigation";
@@ -69,10 +70,11 @@ export default async function LessonPage({
   // A study's own title isn't always a clean display name (some were
   // imported with the raw source filename left in place) -- its linked
   // product's title is the one actually shown on the storefront, so the
-  // devotional app shell's header uses that instead.
-  const displayStudyTitle = study.kind === "devotional"
-    ? (await db.query.products.findFirst({ where: eq(products.id, study.productId) }))?.title ?? study.title
-    : study.title;
+  // devotional app shell's header and the "back to {study}" nav links below
+  // use that instead. Not used for StudyLessonView's `bookLabel` prop (see
+  // lib/study/displayTitle.ts) -- that one intentionally keeps study.title's
+  // own "Soul Dust Revival X" convention, which deriveBookLabel() strips.
+  const displayStudyTitle = await getDisplayStudyTitle(db, study);
 
   // Needed for previous/next navigation and the "back to contents" link --
   // same published-only ordering the study's own listing page uses.
@@ -226,7 +228,7 @@ export default async function LessonPage({
     <div className="max-w-5xl mx-auto px-4 py-8 sm:py-10 space-y-8 study-content-protected">
       <LessonNavigation
         studyHref={studyHref}
-        studyTitle={study.title}
+        studyTitle={displayStudyTitle}
         lessonId={lesson.id}
         initialStatus={progressRow?.status ?? "not_started"}
         previousHref={previousHref}
@@ -281,7 +283,7 @@ export default async function LessonPage({
       </p>
       <LessonNavigation
         studyHref={studyHref}
-        studyTitle={study.title}
+        studyTitle={displayStudyTitle}
         lessonId={lesson.id}
         initialStatus={progressRow?.status ?? "not_started"}
         previousHref={previousHref}

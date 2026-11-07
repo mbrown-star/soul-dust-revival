@@ -26,7 +26,15 @@ export function StudyTab({
   onSetDone: (done: boolean) => void;
 }) {
   const [readParts, togglePart] = useLocalProgress(`sdr-study-parts-${lessonId}`);
-  const [openPart, setOpenPart] = useState<number | null>(0);
+  // REAL FIX (qa/findings/FINDINGS_2026-11-07.md #3): this previously
+  // defaulted to 0 (Part 1 open on mount), but openPartAndMarkRead() only
+  // ever runs inside the click handler below -- never on mount -- so a
+  // reader who just read the already-open Part 1 and moved on was stuck at
+  // "0 of N parts read" forever, and clicking the already-open header (the
+  // single most natural first action) collapsed it instead of opening it.
+  // Starting closed, like every other part, means the first click on any
+  // part both opens it and marks it read, consistently.
+  const [openPart, setOpenPart] = useState<number | null>(null);
 
   const readAloudText = [content.keyVerse, ...content.study.sections.flatMap((s) => [s.heading, ...s.paras])].join(" ");
 

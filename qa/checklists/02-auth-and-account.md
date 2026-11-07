@@ -1,5 +1,11 @@
 # 02. Auth, login, and account
 
+**Status note (2026-11-11):** several items this checklist originally flagged (`/account`
+having no session guard or order-history UI, `/login`/`/signup` not redirecting an
+already-authenticated visitor) were fixed in that build — see
+`qa/findings/FINDINGS_2026-11-07.md` for the authoritative fixed/unfixed status of every
+numbered finding before treating anything below as still open.
+
 **Roles covered:** guest, user, leader, admin
 **Fixtures used:** `qa-user@soul-dust-revival.test`, `qa-leader@...`, `qa-admin@...`, qa-user's
 seeded paid + pending orders

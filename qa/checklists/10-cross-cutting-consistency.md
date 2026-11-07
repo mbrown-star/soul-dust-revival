@@ -1,5 +1,11 @@
 # 10. Cross-cutting consistency — "is the information shown actually true"
 
+**Status note (2026-11-11):** the study-title-vs-product-title mismatch this checklist
+flags below (My Library, `/studies/[slug]`) is **fixed** as of that build
+(`lib/study/displayTitle.ts`) — see `qa/findings/FINDINGS_2026-11-07.md` #2 for the
+authoritative fixed/unfixed status of every numbered finding before treating anything else
+below as still open.
+
 **Roles covered:** guest, user, leader, admin
 **Fixtures used:** all
 **Related automated spec:** none dedicated — several specs in other files assert individual facts

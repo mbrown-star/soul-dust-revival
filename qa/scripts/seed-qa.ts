@@ -563,6 +563,26 @@ async function main() {
     await db.insert(schema.orderItems).values({ orderId: pendingOrder.id, productId: pAmazonAndStripe.id, quantity: 1 });
   }
 
+  // A fixed, well-known id -- qa/e2e/specs/checkout.spec.ts navigates
+  // directly to /checkout/success?orderId=<this> to exercise the "both"-
+  // format line-item/pricing fix (qa/findings/FINDINGS_2026-11-07.md #4)
+  // without needing to look the real id up dynamically.
+  const BOTH_FORMAT_ORDER_ID = "00000000-0000-4000-8000-000000000001";
+  await pg.query(`DELETE FROM order_items WHERE order_id = $1`, [BOTH_FORMAT_ORDER_ID]);
+  await pg.query(`DELETE FROM orders WHERE id = $1`, [BOTH_FORMAT_ORDER_ID]);
+  await db.insert(schema.orders).values({
+    id: BOTH_FORMAT_ORDER_ID,
+    userId: userIds.user,
+    country: "US",
+    status: "paid",
+    totalCents: pBoth.priceCents * 2 + (pBoth.digitalPriceCents ?? 0) * 3,
+    requiresShipping: true,
+  });
+  await db.insert(schema.orderItems).values([
+    { orderId: BOTH_FORMAT_ORDER_ID, productId: pBoth.id, quantity: 2, variant: "physical" },
+    { orderId: BOTH_FORMAT_ORDER_ID, productId: pBoth.id, quantity: 3, variant: "digital" },
+  ]);
+
   await pg.end();
   console.log("\nQA seed complete.");
   console.log(`  qa-user:   ${QA_EMAILS.user} (${userIds.user})`);

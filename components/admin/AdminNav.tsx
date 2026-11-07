@@ -1,13 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 // Same focus/hover treatment as the public SiteNav's linkClass -- no ring,
 // just a color change, so the two nav bars read as one system.
 const linkClass = "text-parchment/80 hover:text-gold focus:outline-none focus:text-gold p-1 -m-1";
+// REAL FIX (qa/findings/FINDINGS_2026-11-07.md #10): the admin nav had no
+// active-section indicator at all -- an admin on, say, /admin/blog had no
+// visual confirmation of which section they were in.
+const activeLinkClass = "text-gold border-b-2 border-gold";
 
 const ADMIN_LINKS = [
   { label: "Products", href: "/admin/products" },
@@ -22,6 +26,7 @@ const ADMIN_LINKS = [
 
 export function AdminNav() {
   const router = useRouter();
+  const pathname = usePathname();
   const [loggingOut, setLoggingOut] = useState(false);
 
   // Same sign-out sequence as SiteNav.tsx / AccountPageClient.tsx.
@@ -50,11 +55,23 @@ export function AdminNav() {
       className="no-scrollbar flex items-center gap-2.5 sm:gap-3 pr-1 font-sans text-sm font-medium overflow-x-auto whitespace-nowrap"
       style={{ scrollbarWidth: "none" }}
     >
-      {ADMIN_LINKS.map((item) => (
-        <Link key={item.href} href={item.href} className={linkClass}>
-          {item.label}
-        </Link>
-      ))}
+      {ADMIN_LINKS.map((item) => {
+        // /admin/products is also the layout's own redirect target for a
+        // bare /admin visit, and every section has sub-routes (e.g.
+        // /admin/studies/[id]) that should still highlight their own top-
+        // level link, hence startsWith rather than an exact match.
+        const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            aria-current={isActive ? "page" : undefined}
+            className={isActive ? `${linkClass} ${activeLinkClass}` : linkClass}
+          >
+            {item.label}
+          </Link>
+        );
+      })}
       <div aria-hidden="true" className="w-px h-5 bg-parchment/20 flex-shrink-0" />
       <button type="button" disabled={loggingOut} onClick={handleLogOut} className={`${linkClass} disabled:opacity-50`}>
         {loggingOut ? "Logging out..." : "Log out"}

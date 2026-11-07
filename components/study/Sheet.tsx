@@ -15,7 +15,14 @@ export function Sheet({ label, onClose, children }: { label: string; onClose: ()
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className="relative bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[80vh] overflow-y-auto p-6 space-y-3"
+        // REAL FIX (qa/findings/FINDINGS_2026-11-07.md, device-format
+        // section): on mobile this sheet is anchored to the bottom edge
+        // (items-end above) with no accommodation for a real phone's home-
+        // indicator/gesture-nav safe area, which sits in that same strip of
+        // screen -- the last action button could end up flush against (or
+        // obscured by) it. pb-6 stays the baseline on larger screens where
+        // the sheet is centered, not edge-anchored.
+        className="relative bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[80vh] overflow-y-auto p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-6 space-y-3"
       >
         <button
           type="button"

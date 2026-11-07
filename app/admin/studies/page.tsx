@@ -38,7 +38,20 @@ export default async function AdminStudiesPage() {
               <div className="w-12 h-12 bg-moss/10 rounded" />
             )}
             <div className="flex-1">
-              <p className="font-medium">{s.title}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium">{s.title}</p>
+                {/* REAL FIX (qa/findings/FINDINGS_2026-11-07.md #9): there
+                    was previously no way to tell a devotional from an
+                    interactive study on this list without opening each one. */}
+                <span
+                  data-testid="study-kind-badge"
+                  className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                    s.kind === "study" ? "bg-ember-700/10 text-ember-700" : "bg-moss/10 text-moss"
+                  }`}
+                >
+                  {s.kind === "study" ? "Study" : "Devotional"}
+                </span>
+              </div>
               <p className="text-sm text-moss">
                 /{s.slug} {!s.published && "· draft"}
               </p>

@@ -21,10 +21,21 @@ export function QuestionBlock({
   const questionId = useId();
 
   async function save() {
+    // REAL BUG (reported live, not in the original audit): tapping a
+    // "Next"/navigation control right after typing blurs the textarea and
+    // navigates almost simultaneously -- a plain fetch() in flight at that
+    // moment can be silently aborted by the browser once the page starts
+    // unloading, so the save never reaches the server even though blur
+    // (and therefore this function) did run. `keepalive` exists
+    // specifically so a small POST like this one survives navigation/unload
+    // instead of racing it. Confirmed worse on mobile, where a tap-to-blur
+    // then tap-to-navigate sequence happens faster and with less natural
+    // pause than a desktop click.
     await fetch("/api/responses", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ contentBlockId, answerText: answer }),
+      keepalive: true,
     });
     setSaved(true);
     onSaved?.(answer);

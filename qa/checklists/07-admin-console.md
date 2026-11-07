@@ -93,10 +93,14 @@ destructive action appropriately guarded, is anything visually inconsistent.
 
 ## New findings surfaced by this checklist (not previously documented anywhere)
 
-1. **No active-section indicator in the admin nav** (`components/admin/AdminNav.tsx`) — see
-   walkthrough step 3.
-2. **No admin UI path to edit a lesson's structured `studyContent`** — a real content-maintenance
-   gap affecting every live interactive Study week, including the real deployed Colossians content
-   — see walkthrough step 5. Recommend prioritizing this if the Study format is used again for a
-   future title, since right now a typo fix requires a one-off script and direct DB access.
-3. **No kind (devotional/study) indicator on the Studies list** — see walkthrough step 6.
+All three below are **[FIXED]** as of the 2026-11-11 (later) build — see
+`qa/findings/FINDINGS_2026-11-07.md` #8/#9/#10 and CLAUDE.md's same-dated entry.
+
+1. ~~No active-section indicator in the admin nav~~ — `AdminNav.tsx` now marks the current
+   section with `aria-current="page"` and a visible underline, including for sub-routes.
+2. ~~No admin UI path to edit a lesson's structured `studyContent`~~ — new
+   `components/admin/StudyContentEditor.tsx`/`StudyContentEditorGate.tsx` give admins a
+   full editor, including creating structured content from scratch for a lesson that
+   doesn't have it yet.
+3. ~~No kind (devotional/study) indicator on the Studies list~~ — `app/admin/studies/page.tsx`
+   now shows a Kind badge on every row.

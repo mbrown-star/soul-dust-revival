@@ -168,4 +168,21 @@ test.describe("Checkout API — line-item merging (regression per CLAUDE.md 2026
       await client.end();
     }
   });
+
+  // FIXED (qa/findings/FINDINGS_2026-11-07.md #4): the success page used to
+  // dedupe by productId (losing one of a "both" order's two real lines) and
+  // always price by the physical priceCents even for the digital line.
+  // Fixture: qa/scripts/seed-qa.ts's BOTH_FORMAT_ORDER_ID, a real paid order
+  // with 2 order_items on the same product -- 2x physical, 3x digital.
+  test("success page shows two distinct, correctly-priced lines for a 'both'-format order", async ({ page }) => {
+    await page.goto("/checkout/success?orderId=00000000-0000-4000-8000-000000000001");
+
+    await expect(page.getByText("QA Bundle — Both Formats (physical)")).toBeVisible();
+    await expect(page.getByText("QA Bundle — Both Formats (digital)")).toBeVisible();
+    // 2 * $24.99 physical, 3 * $15.99 digital -- two different unit prices,
+    // not the same physical price applied to both lines.
+    await expect(page.getByText("$49.98")).toBeVisible();
+    await expect(page.getByText("$47.97")).toBeVisible();
+    await expect(page.getByText("$97.95")).toBeVisible(); // order.totalCents, unaffected either way
+  });
 });

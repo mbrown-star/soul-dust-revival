@@ -192,6 +192,80 @@ export const lessonBulkPublishSchema = z.object({
   published: z.boolean(),
 });
 
+// ---------- Admin: a Study-kind lesson's structured content ----------
+// Mirrors lib/study/studyContent.ts's StudyWeekContent/StudyStation types
+// exactly -- see that file for what renders each field. A station's
+// `questionBlockId` is optional here: the admin form sends an empty string
+// for a brand-new station it doesn't have a real content_blocks id for yet,
+// and the API route creates one and fills it in (see
+// app/api/admin/lessons/route.ts's studyContent branch).
+const studyStationSchema = z.object({
+  ref: z.string().min(1).max(100),
+  verse: z.string().min(1).max(2000),
+  question: z.string().min(1).max(2000),
+  questionBlockId: z.string().uuid().or(z.literal("")),
+  greek: z.string().max(100),
+  translit: z.string().max(100),
+  gloss: z.string().max(500),
+  xref: z.string().max(200),
+  body: z.array(z.string().max(5000)).max(20),
+  live: z.string().max(2000),
+  verseNums: z.array(z.string().max(50)).max(50),
+  anchor: z.object({ v: z.string().max(50), word: z.string().max(100) }).nullable(),
+});
+
+export const studyWeekContentSchema = z.object({
+  subtitle: z.string().max(500),
+  keyVerse: z.string().min(1).max(2000),
+  keyRef: z.string().min(1).max(200),
+  study: z.object({
+    sections: z
+      .array(
+        z.object({
+          heading: z.string().min(1).max(300),
+          paras: z.array(z.string().max(5000)).max(50),
+          pulls: z.array(z.string().max(2000)).max(20).optional(),
+        })
+      )
+      .max(20),
+    parts: z
+      .array(
+        z.object({
+          label: z.string().min(1).max(100),
+          heading: z.string().min(1).max(300),
+          paras: z.array(z.string().max(5000)).max(50),
+          pulls: z.array(z.string().max(2000)).max(20).optional(),
+        })
+      )
+      .max(20),
+  }),
+  passageRef: z.string().min(1).max(200),
+  passage: z
+    .array(z.object({ c: z.number().int().min(1), n: z.number().int().min(1), text: z.string().max(2000) }))
+    .max(500),
+  stationsLabel: z.string().max(200),
+  stationsIntro: z.string().max(2000),
+  stations: z.array(studyStationSchema).max(20),
+  lifeTitle: z.string().max(300),
+  lifeIntro: z.string().max(2000),
+  practices: z.array(z.object({ n: z.number().int().min(1), title: z.string().max(300), body: z.string().max(2000) })).max(20),
+  prayerLead: z.string().max(1000),
+  prayerBeats: z
+    .array(z.object({ person: z.enum(["Father", "Son", "Spirit"]), verb: z.string().max(100), words: z.string().max(1000) }))
+    .max(10),
+  prayerClose: z.string().max(1000),
+  bottomLine: z.array(z.string().max(2000)).max(20),
+  benediction: z.array(z.string().max(2000)).max(20),
+  closingVerse: z.string().max(2000),
+  closingRef: z.string().max(200),
+  carry: z.string().max(2000),
+});
+
+export const lessonStudyContentUpdateSchema = z.object({
+  id: z.string().uuid(),
+  studyContent: studyWeekContentSchema,
+});
+
 // ---------- Admin: content blocks ----------
 export const contentBlockTypeSchema = z.enum(["text", "image", "video", "audio", "question", "callout"]);
 

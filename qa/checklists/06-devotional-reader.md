@@ -1,5 +1,10 @@
 # 06. Devotional reader (4 tabs)
 
+**Status note (2026-11-11):** the study-title-vs-product-title mismatch this checklist
+flags below is **fixed** as of that build (`lib/study/displayTitle.ts`) — see
+`qa/findings/FINDINGS_2026-11-07.md` #2 for the authoritative fixed/unfixed status of
+every numbered finding before treating anything below as still open.
+
 **Roles covered:** user (only role that reads devotional content)
 **Fixtures used:** `qa-devotional-fixture` (study), 5 days Jan 1–5 — Day 1 completed + real saved answer, Day 2 in_progress, Days 3–5 not started, Days 4–5 have no backfilled question block
 **Related automated spec:** `qa/e2e/specs/devotional-reader.spec.ts`

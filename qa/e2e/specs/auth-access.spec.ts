@@ -1,21 +1,13 @@
 import { test, expect } from "@playwright/test";
 
-// Role/session-level access control. NOTE: two assumptions in the original
-// task brief turned out not to match the real code, confirmed by reading
-// it rather than guessing:
-//  1. /account has NO server-side session guard at all (no layout.tsx
-//     checks it, AccountPageClient.tsx only checks client-side via
-//     supabase.auth.getUser()). A guest visiting /account directly gets a
-//     200 and is stuck on "Loading..." forever, never redirected to
-//     /login. This is asserted below as the REAL (surprising) behavior --
-//     see qa/checklists/02-auth-and-account.md for why this is flagged as
-//     a likely UX gap, not treated as already-correct.
-//  2. Neither /login nor /signup redirect an already-authenticated visitor
-//     away -- there's no guard in login/page.tsx, signup/page.tsx, or
-//     AuthForm.tsx. A logged-in user can still open the form and request
-//     another magic link. Asserted below as real behavior, flagged as a
-//     minor UX nit in the checklist, not a security issue (SECURITY.md's
-//     own entitlement/role checks don't depend on this).
+// Role/session-level access control.
+//
+// FIXED (qa/findings/FINDINGS_2026-11-07.md #5 and #7), both confirmed
+// missing by the original audit and fixed in this same build:
+//  1. /account now has a real server-side session guard
+//     (app/(marketing)/account/page.tsx), matching every other gated page.
+//  2. Both /login and /signup now redirect an already-authenticated visitor
+//     straight to `next` instead of showing the form again.
 
 test.describe("Guest (logged out)", () => {
   test("/library redirects to /login with a next param", async ({ page }) => {
@@ -23,12 +15,7 @@ test.describe("Guest (logged out)", () => {
     await expect(page).toHaveURL(/\/login\?next=%2Flibrary|\/login\?next=\/library/);
   });
 
-  test("/account does NOT redirect -- renders 200 and gets stuck on Loading (real, surprising behavior)", async ({ page }) => {
-    const res = await page.goto("/account");
-    expect(res?.status()).toBe(200);
-    await expect(page).toHaveURL(/\/account$/); // not redirected
-    await expect(page.locator("body")).toContainText("Loading...");
-  });
+  // /account's session guard is covered directly in account.spec.ts.
 
   test("/checkout/success with no orderId redirects home", async ({ page }) => {
     await page.goto("/checkout/success");
@@ -61,6 +48,52 @@ test.describe("Guest (logged out)", () => {
     );
     await expect(page.getByRole("link", { name: "Sign up instead" })).toBeVisible();
   });
+});
+
+test.describe("Already-authenticated visitor", () => {
+  test.use({ storageState: "qa/.auth/user.json" });
+
+  test("/login redirects to the default next (/library), not the form again", async ({ page }) => {
+    await page.goto("/login");
+    await expect(page).toHaveURL(/\/library$/);
+  });
+
+  test("/signup redirects to the default next (/library), not the form again", async ({ page }) => {
+    await page.goto("/signup");
+    await expect(page).toHaveURL(/\/library$/);
+  });
+
+  // Deliberately NOT auto-redirected when a specific `next` is present --
+  // see login/page.tsx's comment on the infinite-redirect-loop this would
+  // otherwise risk for a `next` the session doesn't actually have access
+  // to (e.g. a non-admin bounced here from /admin/products).
+  test("/login?next=... still shows the form rather than blindly trusting an explicit next", async ({ page }) => {
+    await page.goto("/login?next=/account");
+    await expect(page).toHaveURL(/\/login\?next=\/account/);
+    await expect(page.locator("h1")).toContainText("Log in");
+  });
+});
+
+// Regression test for a real open-redirect this build's own already-
+// authenticated-visitor fix (#7) could have introduced -- see
+// lib/auth/safeRedirect.ts and its unit tests for the exhaustive
+// path/URL-shape coverage (the actual exploit-prevention proof). Here,
+// confirming the integration point: an explicit `next` (malicious or not)
+// never auto-redirects at all while logged in -- see login/page.tsx's own
+// comment on why (the infinite-loop fix's `!next` gate also happens to mean
+// the vulnerable redirect() call can only ever fire with the hardcoded
+// default, never a query-param value) -- so the form renders instead of
+// following it anywhere.
+test.describe("Open-redirect guard on /login and /signup's next param", () => {
+  test.use({ storageState: "qa/.auth/user.json" });
+
+  for (const path of ["/login", "/signup"]) {
+    test(`${path}?next=https://evil.example renders the form, doesn't auto-redirect anywhere`, async ({ page }) => {
+      await page.goto(`${path}?next=https://evil.example`);
+      expect(new URL(page.url()).hostname).toBe("localhost");
+      await expect(page.locator("h1")).toContainText(path === "/login" ? "Log in" : "Create your account");
+    });
+  }
 });
 
 test.describe("Role gating of /admin (already smoke-tested for products; broader sweep here)", () => {

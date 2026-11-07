@@ -5,6 +5,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { ClearCartOnMount } from "@/components/commerce/ClearCartOnMount";
+import { isDigitalVariant, isPhysicalVariant } from "@/lib/stripe/products";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -36,10 +37,51 @@ export default async function CheckoutSuccessPage({
 
   const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
   const productIds = items.map((i) => i.productId);
-  const orderedProducts = await db.select().from(products).where(inArray(products.id, productIds));
+  const productsById = new Map(
+    (await db.select().from(products).where(inArray(products.id, productIds))).map((p) => [p.id, p])
+  );
 
-  const hasDigital = orderedProducts.some((p) => p.format === "digital");
-  const hasPhysical = orderedProducts.some((p) => p.format === "physical");
+  // REAL FIX (qa/findings/FINDINGS_2026-11-07.md #4): previously deduped by
+  // productId before rendering, so a "both"-format order (two order_items
+  // sharing one productId -- one variant: "physical", one "digital")
+  // rendered as a single line, always priced at the product's physical
+  // priceCents even when the digital line was what was actually charged.
+  // The bottom Total was always correct (order.totalCents), so the visible
+  // bug was a line-item breakdown that silently didn't add up to it.
+  // Iterating orderItems directly, one line per real purchase, fixes both:
+  // the missing second line and the wrong price. Also multiplies by
+  // quantity, which this page never did even though checkout itself always
+  // has (app/api/checkout/route.ts).
+  const lineItems = items
+    .map((item) => {
+      const product = productsById.get(item.productId);
+      if (!product) return null;
+      const unitPriceCents =
+        product.format === "both" && item.variant === "digital"
+          ? (product.digitalPriceCents ?? product.priceCents)
+          : product.priceCents;
+      // Checkout always sets `variant` for a "both"-format order_item, so a
+      // null one here shouldn't happen -- but the schema itself allows it,
+      // and isDigitalVariant/isPhysicalVariant both return false for
+      // format:"both" with no variant (found in review), which would show
+      // this page's visitor NEITHER the shipping-confirmation copy nor the
+      // "log in to access your content" link, no guidance at all. Treating
+      // an ambiguous "both" item as counting toward both is the safer
+      // failure mode -- worst case is one extra, harmless line of copy.
+      const variantKnown = product.format !== "both" || item.variant !== null;
+      return {
+        id: item.id,
+        title: product.title,
+        variant: item.variant,
+        totalCents: unitPriceCents * item.quantity,
+        isDigital: variantKnown ? isDigitalVariant(product.format, item.variant ?? undefined) : true,
+        isPhysical: variantKnown ? isPhysicalVariant(product.format, item.variant ?? undefined) : true,
+      };
+    })
+    .filter((li): li is NonNullable<typeof li> => li !== null);
+
+  const hasDigital = lineItems.some((li) => li.isDigital);
+  const hasPhysical = lineItems.some((li) => li.isPhysical);
 
   return (
     <div className="max-w-xl mx-auto px-4 py-10 sm:py-16 space-y-6">
@@ -48,10 +90,13 @@ export default async function CheckoutSuccessPage({
       <p className="text-moss">Order #{order.id.slice(0, 8)}</p>
 
       <div className="space-y-2 border-t border-b py-4">
-        {orderedProducts.map((p) => (
-          <div key={p.id} className="flex justify-between">
-            <span>{p.title}</span>
-            <span>${(p.priceCents / 100).toFixed(2)}</span>
+        {lineItems.map((li) => (
+          <div key={li.id} className="flex justify-between">
+            <span>
+              {li.title}
+              {li.variant && <span className="text-moss text-sm"> ({li.variant})</span>}
+            </span>
+            <span>${(li.totalCents / 100).toFixed(2)}</span>
           </div>
         ))}
         <div className="flex justify-between font-semibold pt-2">

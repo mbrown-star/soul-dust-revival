@@ -33,20 +33,20 @@ test.describe("Interactive Study reader", () => {
     await expect(page.getByText("Colossians 1:2").first()).toBeVisible();
     await expect(page.getByText("READ · REFLECT · RETURN")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Where We Are" })).toBeVisible();
-    // Part 1 is open by default on mount (openPart state initializes to 0) --
-    // its content is already visible without any click. This is itself a
-    // real finding (see qa/findings): it's never marked "read" on mount, only
-    // on an explicit toggle, so a reader who simply reads the already-open
-    // Part 1 and moves on gets credit for 0 of 2 -- and clicking the
-    // already-open "Part 1" header (as a new user would naturally try, not
-    // realizing it's already expanded) collapses it instead of opening it.
-    await expect(page.getByText("Fixture paragraph for part 1.")).toBeVisible();
+    // FIXED (qa/findings/FINDINGS_2026-11-07.md #3): all parts now start
+    // closed, so the first click on any part both opens it and marks it
+    // read -- no more default-open-but-unread part, no more a click on an
+    // already-open header unexpectedly collapsing it.
+    await expect(page.getByText("Fixture paragraph for part 1.")).toHaveCount(0);
     await expect(page.getByText("0 of 2 parts read")).toBeVisible();
 
-    // Opening Part 2 does correctly mark it read.
+    await page.getByRole("button", { name: /Part 1/ }).click();
+    await expect(page.getByText("Fixture paragraph for part 1.")).toBeVisible();
+    await expect(page.getByText("1 of 2 parts read")).toBeVisible();
+
     await page.getByRole("button", { name: /Part 2/ }).click();
     await expect(page.getByText("Fixture paragraph for part 2.")).toBeVisible();
-    await expect(page.getByText("1 of 2 parts read")).toBeVisible();
+    await expect(page.getByText("2 of 2 parts read")).toBeVisible();
   });
 
   test("Passage tab shows inline Greek matches, a fallback button for the unmatched station, and Hide It in Your Heart", async ({ page }) => {

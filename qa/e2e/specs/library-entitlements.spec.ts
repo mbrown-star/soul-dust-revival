@@ -22,20 +22,12 @@ test.describe("My Library / entitlements", () => {
       const notStartedSection = page.locator("section", { has: page.getByRole("heading", { name: "Not started" }) });
       const completedSection = page.locator("section", { has: page.getByRole("heading", { name: "Completed" }) });
 
-      // REAL FINDING (confirmed by reading components/study/LibraryCard.tsx
-      // and app/(study-app)/library/page.tsx): the card renders the STUDY's
-      // own `title` column, never the linked product's storefront title --
-      // the library query doesn't even join products. This is the same
-      // underlying problem CLAUDE.md already documents for the public
-      // /studies/[slug] page (the real Psalms devotional's raw-filename
-      // title leaking through), just confirmed here to be broader: it also
-      // affects My Library, not just that one page. A customer who bought
-      // "QA Devotional — In Progress" sees "QA Devotional Fixture" here
-      // instead -- asserting the real (confirmed, not-yet-fixed) behavior,
-      // not the product title a reader would expect.
-      await expect(continueSection.getByText("QA Devotional Fixture")).toBeVisible();
-      await expect(notStartedSection.getByText("QA Colossians-Shaped Study")).toBeVisible();
-      await expect(completedSection.getByText("QA Completed Study")).toBeVisible();
+      // FIXED (qa/findings/FINDINGS_2026-11-07.md #2): the card now renders
+      // the linked product's storefront title via lib/study/displayTitle.ts,
+      // not the study's own internal `title` column.
+      await expect(continueSection.getByText("QA Devotional — In Progress")).toBeVisible();
+      await expect(notStartedSection.getByText("QA Digital Study — Not Started")).toBeVisible();
+      await expect(completedSection.getByText("QA Study — Completed")).toBeVisible();
 
       // Information-consistency: progress fraction shown must match seeded state.
       await expect(continueSection.getByText("1/5")).toBeVisible(); // Day 1 completed of 5
@@ -43,7 +35,11 @@ test.describe("My Library / entitlements", () => {
       await expect(completedSection.getByText("1/1")).toBeVisible();
 
       // Button labels follow completed-count, not just bucket name.
-      await expect(notStartedSection.getByRole("link", { name: "Start" })).toBeVisible();
+      // exact: true -- the product's own display title ("...Not Started")
+      // now legitimately contains the substring "Start" too, since the
+      // title/product-title fix (#2) above, so a loose match would also hit
+      // the card's title link.
+      await expect(notStartedSection.getByRole("link", { name: "Start", exact: true })).toBeVisible();
       await expect(continueSection.getByRole("link", { name: "Continue" })).toBeVisible();
       await expect(completedSection.getByRole("link", { name: "Review" })).toBeVisible();
 
@@ -68,13 +64,9 @@ test.describe("My Library / entitlements", () => {
     test("My Library is empty -- role alone grants no study access", async ({ page }) => {
       await page.goto("/library");
       await expect(page.getByText("You don't have any studies or devotionals yet.")).toBeVisible();
-      // Real study titles (see the note above on title/product mismatch) --
-      // checking these rather than the product titles so an absence here
-      // actually exercises the render path, not just a string that was
-      // never going to match regardless.
-      await expect(page.getByText("QA Colossians-Shaped Study")).toHaveCount(0);
-      await expect(page.getByText("QA Devotional Fixture")).toHaveCount(0);
-      await expect(page.getByText("QA Completed Study")).toHaveCount(0);
+      await expect(page.getByText("QA Digital Study — Not Started")).toHaveCount(0);
+      await expect(page.getByText("QA Devotional — In Progress")).toHaveCount(0);
+      await expect(page.getByText("QA Study — Completed")).toHaveCount(0);
     });
 
     test("visiting an entitled-only study directly redirects to the purchase page, not a 403", async ({ page }) => {

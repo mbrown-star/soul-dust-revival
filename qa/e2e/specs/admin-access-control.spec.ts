@@ -180,3 +180,24 @@ test.describe("admin API route access control (a sample, not exhaustive)", () =>
     });
   });
 });
+
+test.describe("Admin nav active-section indicator (qa/findings/FINDINGS_2026-11-07.md #10)", () => {
+  test.use({ storageState: "qa/.auth/admin.json" });
+
+  test("the current section's link is marked aria-current, others are not", async ({ page }) => {
+    await page.goto("/admin/blog");
+    const nav = page.getByRole("navigation", { name: "Admin" });
+    await expect(nav.getByRole("link", { name: "Blog" })).toHaveAttribute("aria-current", "page");
+    await expect(nav.getByRole("link", { name: "Products" })).not.toHaveAttribute("aria-current", "page");
+  });
+
+  test("a sub-route still highlights its own top-level section", async ({ page }) => {
+    await page.goto("/admin/studies");
+    await page.getByRole("link", { name: /QA Colossians-Shaped Study/i }).click();
+    await expect(page).toHaveURL(/\/admin\/studies\/[0-9a-f-]+$/);
+    await expect(page.getByRole("navigation", { name: "Admin" }).getByRole("link", { name: "Studies" })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+  });
+});
