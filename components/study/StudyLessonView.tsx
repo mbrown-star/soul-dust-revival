@@ -214,6 +214,7 @@ export function StudyLessonView({
       <div role="tabpanel" hidden={tab !== "live"}>
         <LiveItTab
           lessonId={lessonId}
+          weekLabel={weekLabel}
           content={content}
           isDone={done.has("live")}
           onSetDone={(v) => setDone("live", v)}

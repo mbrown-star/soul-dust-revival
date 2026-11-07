@@ -6,11 +6,13 @@ import { PrayerTimer } from "../PrayerTimer";
 
 export function LiveItTab({
   lessonId,
+  weekLabel,
   content,
   isDone,
   onSetDone,
 }: {
   lessonId: string;
+  weekLabel: string;
   content: StudyWeekContent;
   isDone: boolean;
   onSetDone: (done: boolean) => void;
@@ -20,7 +22,10 @@ export function LiveItTab({
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="font-display font-bold text-xl text-ink">{content.lifeTitle}</h2>
+        <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700">
+          Life Application · {weekLabel}
+        </p>
+        <h2 className="font-display font-bold text-xl text-ink mt-0.5">{content.lifeTitle}</h2>
         <p className="font-serif text-ink mt-2">{content.lifeIntro}</p>
       </div>
 
