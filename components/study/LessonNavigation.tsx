@@ -3,39 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-
-type LessonStatus = "not_started" | "in_progress" | "completed";
-
-/**
- * Returns whether the save actually succeeded. `fetch` only rejects on a
- * genuine network failure -- a non-2xx response (401 from a stale session,
- * 403 from an entitlement check, a validation error) resolves normally, so
- * checking only for a thrown exception previously let a real server-side
- * failure look identical to success: the button would still optimistically
- * navigate to the next lesson while the "completed" write silently never
- * happened.
- */
-async function postProgress(lessonId: string, status: LessonStatus): Promise<boolean> {
-  try {
-    const res = await fetch("/api/progress", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lessonId, status }),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-// The top instance's "mark in progress" ping and the bottom instance's
-// "mark complete" write are two independent requests from two separate
-// component instances with no inherent ordering -- if the ping happens to
-// resolve *after* the completed write reaches the server, it would silently
-// overwrite "completed" back to "in_progress". Tracking the in-flight ping
-// here (outside React state, since the two instances don't share one) lets
-// the completed write wait for it first, so the two can never land out of order.
-const inFlightPings = new Map<string, Promise<boolean>>();
+import { type LessonStatus, postLessonProgress, pendingLessonProgressPings } from "@/lib/study/lessonProgress";
 
 /**
  * Sits at the top and bottom of a lesson: a "back to contents" link plus
@@ -75,7 +43,7 @@ export function LessonNavigation({
 
   useEffect(() => {
     if (position === "top" && initialStatus === "not_started") {
-      inFlightPings.set(lessonId, postProgress(lessonId, "in_progress"));
+      pendingLessonProgressPings.set(lessonId, postLessonProgress(lessonId, "in_progress"));
     }
     // Only ever needs to fire once, on the very first mount of this lesson page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -86,9 +54,9 @@ export function LessonNavigation({
     setError(null);
     // Wait for the "in progress" ping, if one is still in flight, so it can
     // never resolve after and clobber the completed write that's about to go out.
-    const pendingPing = inFlightPings.get(lessonId);
+    const pendingPing = pendingLessonProgressPings.get(lessonId);
     if (pendingPing) await pendingPing;
-    const ok = await postProgress(lessonId, "completed");
+    const ok = await postLessonProgress(lessonId, "completed");
     if (!ok) {
       setCompleting(false);
       setError("Couldn't save your progress — please try again.");

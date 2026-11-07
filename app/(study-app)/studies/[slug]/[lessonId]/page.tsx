@@ -267,6 +267,8 @@ export default async function LessonPage({
           nextHref={nextHref}
           bookLabel={study.title}
           weeks={studyLessons.map((l) => ({ id: l.id, title: l.title, href: `${studyHref}/${l.id}`, isCurrent: l.id === lesson.id }))}
+          studyHref={studyHref}
+          initialStatus={progressRow?.status ?? "not_started"}
         />
       ) : (
         <>
@@ -289,12 +291,14 @@ export default async function LessonPage({
         previousHref={previousHref}
         nextHref={nextHref}
         position="bottom"
-        // DevotionalAppView's own WalkedToggle already marks real completion
-        // (the same lesson_progress write this control makes) with a
-        // toggle-in-place interaction that fits staying on one day to reread
-        // or answer, rather than this control's mark-and-auto-navigate-to-
-        // next one -- showing both would be two controls for one action.
-        visible={!isDevotional}
+        // Hidden for both custom-header cases, each for its own real
+        // completion control that already covers this: a devotional's
+        // WalkedToggle (see DevotionalAppView), and a Study week's own Lift
+        // Up tab (see LiftUpTab and StudyLessonView's doc comment) -- both
+        // make the same lesson_progress write this button would, so showing
+        // this one too would be a second control for the same action,
+        // disconnected from the per-tab progress ring sitting right above it.
+        visible={!hasCustomHeader}
       />
     </div>
   );

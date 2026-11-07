@@ -6,11 +6,12 @@
  * alone, which only promises the *browser* won't cancel the request, not
  * that anything in the app actually waits to confirm it landed.
  *
- * Generalizes the pattern components/study/LessonNavigation.tsx already
- * built for its own two lesson_progress writes (`inFlightPings`, module-
- * scoped since its "mark in progress" and "mark complete" instances don't
- * share React state) into something any future autosave component can reuse
- * without re-inventing it.
+ * Generalizes the pattern lib/study/lessonProgress.ts already built for
+ * lesson_progress writes specifically (`pendingLessonProgressPings`,
+ * module-scoped since the "mark in progress" ping and a later completion
+ * write -- LessonNavigation's button, WalkedToggle, LiftUpTab -- are
+ * separate component instances with no shared React state) into something
+ * any future autosave component can reuse without re-inventing it.
  *
  * Deliberately NOT wired into every navigation trigger in this app as part
  * of the 2026-11-11 fix for QuestionBlock.tsx's save-on-navigate bug --

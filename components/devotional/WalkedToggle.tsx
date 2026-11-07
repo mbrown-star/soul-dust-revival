@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { postLessonProgress, pendingLessonProgressPings } from "@/lib/study/lessonProgress";
 
 /**
  * "I walked today" -- toggles this lesson's own lesson_progress between
@@ -27,19 +28,19 @@ export function WalkedToggle({
     setSaving(true);
     setError(null);
     const nextWalked = !walked;
-    try {
-      const res = await fetch("/api/progress", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lessonId, status: nextWalked ? "completed" : "not_started" }),
-      });
-      if (!res.ok) throw new Error("not ok");
-      setWalked(nextWalked);
-    } catch {
+    // See lib/study/lessonProgress.ts -- wait for this lesson's own "mark in
+    // progress" ping, if one is still in flight, so it can't resolve after
+    // and clobber this write.
+    const pendingPing = pendingLessonProgressPings.get(lessonId);
+    if (pendingPing) await pendingPing;
+    const ok = await postLessonProgress(lessonId, nextWalked ? "completed" : "not_started");
+    if (!ok) {
       setError("Couldn't save your progress — please try again.");
-    } finally {
       setSaving(false);
+      return;
     }
+    setWalked(nextWalked);
+    setSaving(false);
   }
 
   return (

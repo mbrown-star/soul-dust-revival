@@ -11,6 +11,7 @@ import { LiftUpTab } from "./study-tabs/LiftUpTab";
 import { GreekSheet } from "./GreekSheet";
 import { WeekPickerSheet, type WeekPickerItem } from "./WeekPickerSheet";
 import { useTabProgress } from "./useStudyProgress";
+import type { LessonStatus } from "@/lib/study/lessonProgress";
 
 const TABS = [
   { key: "study", label: "Study" },
@@ -51,6 +52,11 @@ function deriveBookLabel(studyTitle: string): string {
  * Study-kind lesson without it (the "Introduction" lesson, or any lesson
  * imported before this existed) falls back to the plain content-block
  * reading view in the lesson page.
+ *
+ * The lesson page no longer renders LessonNavigation here at all (see its own
+ * comment on why -- its "Mark complete & continue" button duplicated the Lift
+ * Up tab's own completion action below), so this renders its own "back to
+ * table of contents" link, matching DevotionalAppView's existing pattern.
  */
 export function StudyLessonView({
   lessonId,
@@ -61,6 +67,8 @@ export function StudyLessonView({
   nextHref,
   bookLabel,
   weeks,
+  studyHref,
+  initialStatus,
 }: {
   lessonId: string;
   lessonTitle: string;
@@ -70,6 +78,8 @@ export function StudyLessonView({
   nextHref: string | null;
   bookLabel: string;
   weeks: WeekPickerItem[];
+  studyHref: string;
+  initialStatus: LessonStatus;
 }) {
   const [tab, setTab] = useState<TabKey>("study");
   const [greekStationRef, setGreekStationRef] = useState<string | null>(null);
@@ -93,6 +103,10 @@ export function StudyLessonView({
 
   return (
     <div className="space-y-6">
+      <Link href={studyHref} className="inline-block text-sm text-moss hover:text-ink underline underline-offset-2">
+        ← Back to table of contents
+      </Link>
+
       <div className="flex items-start gap-3">
         {previousHref ? (
           <Link
@@ -221,7 +235,14 @@ export function StudyLessonView({
         />
       </div>
       <div role="tabpanel" hidden={tab !== "lift"}>
-        <LiftUpTab content={content} isDone={done.has("lift")} onSetDone={(v) => setDone("lift", v)} />
+        <LiftUpTab
+          lessonId={lessonId}
+          content={content}
+          initialStatus={initialStatus}
+          nextHref={nextHref}
+          isDone={done.has("lift")}
+          onSetDone={(v) => setDone("lift", v)}
+        />
       </div>
 
       {greekStation && (
