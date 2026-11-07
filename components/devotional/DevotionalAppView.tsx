@@ -6,6 +6,7 @@ import { DevotionalDayView } from "./DevotionalDayView";
 import { YearView, type YearDay } from "./YearView";
 import { JournalView, type JournalEntry } from "./JournalView";
 import { SixFacesOfTheDust } from "./SixFacesOfTheDust";
+import { ScrollFadeTabs } from "@/components/ui/ScrollFadeTabs";
 
 const TABS = [
   { key: "today", label: "Today" },
@@ -102,12 +103,7 @@ export function DevotionalAppView({
         </div>
       </div>
 
-      <div
-        role="tablist"
-        aria-label="Devotional sections"
-        className="no-scrollbar flex gap-1 overflow-x-auto border-b border-dusk/10 pb-px"
-        style={{ scrollbarWidth: "none" }}
-      >
+      <ScrollFadeTabs ariaLabel="Devotional sections">
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -122,7 +118,7 @@ export function DevotionalAppView({
             {t.label}
           </button>
         ))}
-      </div>
+      </ScrollFadeTabs>
 
       {/* Panels stay mounted (hidden, not removed) across tab switches, same
           reasoning as StudyLessonView -- switching to Year and back

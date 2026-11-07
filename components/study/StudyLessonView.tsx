@@ -12,6 +12,7 @@ import { GreekSheet } from "./GreekSheet";
 import { WeekPickerSheet, type WeekPickerItem } from "./WeekPickerSheet";
 import { useTabProgress } from "./useStudyProgress";
 import type { LessonStatus } from "@/lib/study/lessonProgress";
+import { ScrollFadeTabs } from "@/components/ui/ScrollFadeTabs";
 
 const TABS = [
   { key: "study", label: "Study" },
@@ -165,12 +166,7 @@ export function StudyLessonView({
         )}
       </div>
 
-      <div
-        role="tablist"
-        aria-label="Week sections"
-        className="no-scrollbar flex gap-1 overflow-x-auto border-b border-dusk/10 pb-px"
-        style={{ scrollbarWidth: "none" }}
-      >
+      <ScrollFadeTabs ariaLabel="Week sections">
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -191,7 +187,7 @@ export function StudyLessonView({
             {t.label}
           </button>
         ))}
-      </div>
+      </ScrollFadeTabs>
 
       {/* Every panel stays mounted (hidden, not removed) across tab switches --
           matching soul-dust-interactive's own study_template.html, which
