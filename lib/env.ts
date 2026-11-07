@@ -24,7 +24,32 @@ const envSchema = z.object({
   FACEBOOK_APP_SECRET: z.string().min(1),
   TOKEN_ENCRYPTION_KEY: z.string().min(1),
   CRON_SECRET: z.string().min(16, "CRON_SECRET should be a long random string"),
-});
+  // Optional: the marketing/app subdomain split (see lib/domains.ts). Unset
+  // in any environment that hasn't opted in yet, including local dev.
+  NEXT_PUBLIC_MARKETING_HOSTNAME: z.string().min(1).optional(),
+  NEXT_PUBLIC_APP_HOSTNAME: z.string().min(1).optional(),
+  NEXT_PUBLIC_COOKIE_DOMAIN: z.string().min(1).optional(),
+}).refine(
+  (env) => {
+    const configured = [
+      env.NEXT_PUBLIC_MARKETING_HOSTNAME,
+      env.NEXT_PUBLIC_APP_HOSTNAME,
+      env.NEXT_PUBLIC_COOKIE_DOMAIN,
+    ].filter(Boolean).length;
+    return configured === 0 || configured === 3;
+  },
+  {
+    // A staggered rollout (e.g. the two hostnames set but
+    // NEXT_PUBLIC_COOKIE_DOMAIN forgotten) would otherwise leave
+    // proxy.ts actively redirecting between hosts while the Supabase
+    // session cookie stays host-only -- a visitor bounced to the other
+    // subdomain looks logged out there even with a valid session. All
+    // three or none, enforced here rather than left to be discovered live.
+    message:
+      "NEXT_PUBLIC_MARKETING_HOSTNAME, NEXT_PUBLIC_APP_HOSTNAME, and NEXT_PUBLIC_COOKIE_DOMAIN must all be set together, or all left unset.",
+    path: ["NEXT_PUBLIC_COOKIE_DOMAIN"],
+  }
+);
 
 /**
  * Validates required environment variables at startup. Called from

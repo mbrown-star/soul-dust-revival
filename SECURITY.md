@@ -6,14 +6,30 @@ Below is what's enforced, where, and why — treat this as a starting checklist 
 before launch, not a guarantee of completeness.
 
 ## Auth cookie flags
-`lib/supabase/server.ts` and `lib/supabase/client.ts` both pass an explicit
-`cookieOptions: { secure: true, sameSite: "lax" }` to `@supabase/ssr`'s client
-constructors, rather than relying on the library's own default (which does not set
-`Secure` at all). `httpOnly: false` is the library default and is kept as-is — it's an
-inherent trade-off of this cookie-based SSR auth pattern (the browser client needs to
-read/refresh the session cookie), not a bug; it does mean a future XSS gap would have
-direct access to the session cookie, which is one more reason the DOMPurify
-sanitize-on-write/render pattern above matters.
+`lib/supabase/server.ts`, `lib/supabase/client.ts`, and `proxy.ts`'s own internal client
+all build their `cookieOptions` from `lib/domains.ts`'s `sessionCookieOptions()` — the
+single source of truth for this, rather than three hand-duplicated literals. It passes an
+explicit `{ secure: true, sameSite: "lax" }` to `@supabase/ssr`'s client constructors,
+rather than relying on the library's own default (which does not set `Secure` at all).
+`httpOnly: false` is the library default and is kept as-is — it's an inherent trade-off of
+this cookie-based SSR auth pattern (the browser client needs to read/refresh the session
+cookie), not a bug; it does mean a future XSS gap would have direct access to the session
+cookie, which is one more reason the DOMPurify sanitize-on-write/render pattern above
+matters.
+
+**Cookie domain scope (marketing/app subdomain split).** `sessionCookieOptions()` also sets
+`domain` once `NEXT_PUBLIC_MARKETING_HOSTNAME`/`NEXT_PUBLIC_APP_HOSTNAME`/
+`NEXT_PUBLIC_COOKIE_DOMAIN` are configured (see `lib/domains.ts`, and CLAUDE.md's entry on
+the subdomain split) — a leading-dot parent domain (e.g. `.souldustrevival.com`) so the
+session is shared between the marketing and app subdomains, letting a visitor log in on
+either and be authenticated on both. `lib/env.ts` requires all three vars together or none,
+so a staggered rollout fails loudly at boot rather than silently breaking cross-subdomain
+auth. **This widens the cookie's scope to every current and future subdomain of the
+configured parent domain**, not just the two intended hosts — before setting
+`NEXT_PUBLIC_COOKIE_DOMAIN` in a real environment, confirm no other subdomain (an old
+staging host, a demo Worker subdomain, etc.) should be untrusted with this session cookie.
+Unset (local dev today), the cookie stays host-only, unchanged from before the split
+existed.
 
 ## Server-side fetches of external URLs (SSRF)
 `publishToX` (`lib/social/publishers/x.ts`) fetches a post's image server-side before

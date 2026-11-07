@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { pathMatchesPrefix } from "@/lib/domains";
 
 // Same focus/hover treatment as the public SiteNav's linkClass -- no ring,
 // just a color change, so the two nav bars read as one system.
@@ -59,8 +60,11 @@ export function AdminNav() {
         // /admin/products is also the layout's own redirect target for a
         // bare /admin visit, and every section has sub-routes (e.g.
         // /admin/studies/[id]) that should still highlight their own top-
-        // level link, hence startsWith rather than an exact match.
-        const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        // level link, hence pathMatchesPrefix (exact match or subtree)
+        // rather than an exact match -- the same "exact or subtree" rule
+        // lib/domains.ts uses for the marketing/app domain split, shared
+        // rather than reimplemented a second time here.
+        const isActive = pathMatchesPrefix(pathname, item.href);
         return (
           <Link
             key={item.href}

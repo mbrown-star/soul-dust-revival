@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCart } from "@/lib/cart/CartContext";
+import { marketingUrl } from "@/lib/domains";
 
 export function CartLink() {
   const { items } = useCart();
@@ -9,7 +10,7 @@ export function CartLink() {
 
   return (
     <Link
-      href="/checkout"
+      href={marketingUrl("/checkout")}
       className="text-parchment/80 hover:text-gold focus:outline-none focus:text-gold p-1 -m-1"
     >
       Cart{count > 0 && <span aria-label={`, ${count} items`}> ({count})</span>}

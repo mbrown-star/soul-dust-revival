@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { CartLink } from "./CartLink";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { marketingUrl, appUrl } from "@/lib/domains";
 
 type NavItem = { label: string; href: string };
 
@@ -27,7 +28,10 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
     setProfileOpen(false);
     const supabase = createSupabaseBrowserClient();
     await supabase.auth.signOut();
-    router.push("/");
+    // marketingUrl, not a bare "/" -- logging out from the app domain should
+    // land on the real marketing homepage directly, not bounce through a
+    // middleware redirect from the app domain's own "/".
+    router.push(marketingUrl("/"));
     router.refresh();
   }
 
@@ -60,11 +64,15 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
   // Public items (visible to every visitor) sit at the left. Items that only
   // make sense once signed in sit at the far right, set off from the public
   // items by a vertical rule.
+  // marketingUrl/appUrl -- absolute cross-domain links once the subdomain
+  // split (lib/domains.ts) is configured, so these resolve directly instead
+  // of bouncing through a middleware redirect; plain relative paths
+  // otherwise (unchanged single-domain behavior).
   const publicItems: NavItem[] = [
-    { label: "Books & Studies", href: "/books" },
-    { label: "Blog", href: "/blog" },
+    { label: "Books & Studies", href: marketingUrl("/books") },
+    { label: "Blog", href: marketingUrl("/blog") },
   ];
-  const loggedInItems: NavItem[] = [{ label: "My Library", href: "/library" }];
+  const loggedInItems: NavItem[] = [{ label: "My Library", href: appUrl("/library") }];
 
   return (
     // REAL FIX (qa/findings/FINDINGS_2026-11-07.md #1): at a 375px mobile
@@ -143,7 +151,7 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
               className="absolute right-0 mt-2 w-44 bg-ink border border-parchment/15 rounded-lg shadow-lg py-1 z-10"
             >
                 <Link
-                  href="/account"
+                  href={appUrl("/account")}
                   role="menuitem"
                   onClick={() => setProfileOpen(false)}
                   className="flex items-center min-h-[44px] px-4 text-parchment/90 hover:bg-parchment/10 hover:text-gold focus:outline-none focus:text-gold"
@@ -152,7 +160,7 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
                 </Link>
                 {isAdmin && (
                   <Link
-                    href="/admin/products"
+                    href={marketingUrl("/admin/products")}
                     role="menuitem"
                     onClick={() => setProfileOpen(false)}
                     className="flex items-center min-h-[44px] px-4 text-parchment/90 hover:bg-parchment/10 hover:text-gold focus:outline-none focus:text-gold"

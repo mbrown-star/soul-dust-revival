@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { marketingUrl } from "@/lib/domains";
 
 // The single source of truth for the site's header chrome: sizing (sticky,
 // max-w-5xl, the same padding/height everywhere) and color (bg-ink/95 +
@@ -15,7 +16,7 @@ export function SiteHeaderShell({ children }: { children: React.ReactNode }) {
             a slight brightness lift on the badge ring and wordmark instead of
             an outline. */}
         <Link
-          href="/"
+          href={marketingUrl("/")}
           className="group flex items-center gap-2.5 flex-shrink-0 focus:outline-none"
         >
           <span

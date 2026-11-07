@@ -1,6 +1,16 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import {
+  splitEnabled,
+  isAppPath,
+  isSharedPath,
+  marketingUrl,
+  appUrl,
+  marketingHostname,
+  appHostname,
+  sessionCookieOptions,
+} from "@/lib/domains";
 
 // Same R2-hostname derivation as next.config.js's image remotePatterns, so
 // the CSP's img-src/media-src stay in sync with whatever R2_PUBLIC_BASE_URL
@@ -18,6 +28,28 @@ function getR2Hostname() {
 // /account, which has `export const dynamic = "force-dynamic"` for exactly
 // this reason.
 export async function proxy(request: NextRequest) {
+  // Marketing/app subdomain split (see lib/domains.ts) -- checked first and
+  // returned immediately on a redirect, before any of the CSP/session-refresh
+  // work below, since a redirect response doesn't need either (the browser
+  // re-runs this proxy against the new host once it follows the redirect).
+  // A no-op when the split isn't configured (local dev today).
+  if (splitEnabled()) {
+    const { hostname, pathname, search } = request.nextUrl;
+    if (!isSharedPath(pathname)) {
+      const wantsApp = isAppPath(pathname);
+      // 307 (temporary), not 308 -- this redirect is driven by env vars an
+      // operator can change or roll back, and a 308 is cached aggressively
+      // enough by real browsers that a visitor who hit the old mapping could
+      // keep following it from cache after the server-side config changes.
+      if (hostname === appHostname() && !wantsApp) {
+        return NextResponse.redirect(marketingUrl(pathname + search), 307);
+      }
+      if (hostname === marketingHostname() && wantsApp) {
+        return NextResponse.redirect(appUrl(pathname + search), 307);
+      }
+    }
+  }
+
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const isDev = process.env.NODE_ENV === "development";
   const r2Host = getR2Hostname();
@@ -78,7 +110,13 @@ export async function proxy(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      cookieOptions: { secure: true, sameSite: "lax" },
+      // sessionCookieOptions() -- the same single source of truth
+      // lib/supabase/server.ts/client.ts use. This client refreshes the
+      // session's access-token cookie on the fly (see the getUser() call
+      // below); without the same domain, a refresh here would silently
+      // overwrite the shared parent-domain cookie with a host-only one,
+      // breaking cross-subdomain auth sharing the next time it fires.
+      cookieOptions: sessionCookieOptions(),
       cookies: {
         get(name: string) {
           return request.cookies.get(name)?.value;

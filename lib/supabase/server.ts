@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { sessionCookieOptions } from "@/lib/domains";
 
 /**
  * Server-side Supabase client — use in Server Components, Route Handlers,
@@ -16,10 +17,11 @@ export async function createSupabaseServerClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      // Asserted explicitly rather than left to @supabase/ssr's library
-      // default, which doesn't set Secure at all -- this is the session
-      // cookie, so it should never be sent over a plaintext connection.
-      cookieOptions: { secure: true, sameSite: "lax" },
+      // sessionCookieOptions() -- the single source of truth also used by
+      // lib/supabase/client.ts and proxy.ts's own internal client, so the
+      // three can't drift out of sync with each other. See its doc comment
+      // in lib/domains.ts for what `secure`/`sameSite`/`domain` do here.
+      cookieOptions: sessionCookieOptions(),
       cookies: {
         get(name: string) {
           return cookieStore.get(name)?.value;

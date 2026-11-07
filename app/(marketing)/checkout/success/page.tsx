@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { ClearCartOnMount } from "@/components/commerce/ClearCartOnMount";
 import { isDigitalVariant, isPhysicalVariant } from "@/lib/stripe/products";
+import { appUrl } from "@/lib/domains";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -131,7 +132,7 @@ export default async function CheckoutSuccessPage({
       {/* Digital-only or mixed: prompt to log in and access the web app content. */}
       {hasDigital && (
         <Link
-          href="/login?next=/library"
+          href={appUrl("/login?next=/library")}
           className="inline-block bg-ink text-white rounded-lg px-6 py-3"
         >
           Log in to access your content
