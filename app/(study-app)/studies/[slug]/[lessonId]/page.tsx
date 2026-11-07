@@ -6,7 +6,10 @@ import { getSession } from "@/lib/auth/session";
 import { LessonBlock } from "@/components/study/LessonBlock";
 import { LessonNavigation } from "@/components/study/LessonNavigation";
 import { StudyLessonView } from "@/components/study/StudyLessonView";
-import { DevotionalDayView } from "@/components/devotional/DevotionalDayView";
+import { DevotionalAppView } from "@/components/devotional/DevotionalAppView";
+import { parseDayLabel, todaysDateLabel } from "@/lib/devotional/parseDayLabel";
+import type { YearDay } from "@/components/devotional/YearView";
+import type { JournalEntry } from "@/components/devotional/JournalView";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 
@@ -63,6 +66,14 @@ export default async function LessonPage({
   const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
   if (!lesson) redirect(`/studies/${slug}`);
 
+  // A study's own title isn't always a clean display name (some were
+  // imported with the raw source filename left in place) -- its linked
+  // product's title is the one actually shown on the storefront, so the
+  // devotional app shell's header uses that instead.
+  const displayStudyTitle = study.kind === "devotional"
+    ? (await db.query.products.findFirst({ where: eq(products.id, study.productId) }))?.title ?? study.title
+    : study.title;
+
   // Needed for previous/next navigation and the "back to contents" link --
   // same published-only ordering the study's own listing page uses.
   const studyLessons = await db
@@ -107,6 +118,110 @@ export default async function LessonPage({
   // back to the plain content-block reading view below.
   const hasCustomHeader = isDevotional || !!lesson.studyContent;
 
+  // The devotional's own 4-view app shell (Today / The Year / Journal / Six
+  // Faces of the Dust -- see DevotionalAppView) needs every day's own
+  // walked/answered status, not just the current one. All three extra
+  // queries below are scoped to this one study's lessons and this one
+  // user, bounded by the study's fixed lesson count (hundreds of rows at
+  // most for a year-long devotional) -- not per-lesson round trips.
+  let devotionalProps: {
+    totalDays: number;
+    daysWalked: number;
+    yearDays: YearDay[];
+    journalEntries: JournalEntry[];
+    questionBlockId: string | null;
+    todayAnswer: string | undefined;
+    pickUpWithToday: { href: string } | null;
+  } | null = null;
+
+  if (isDevotional) {
+    const lessonIds = studyLessons.map((l) => l.id);
+
+    const progressRows =
+      lessonIds.length === 0
+        ? []
+        : await db
+            .select({ lessonId: lessonProgress.lessonId, status: lessonProgress.status })
+            .from(lessonProgress)
+            .where(and(eq(lessonProgress.userId, session.userId), inArray(lessonProgress.lessonId, lessonIds)));
+    const statusByLessonId = new Map(progressRows.map((r) => [r.lessonId, r.status]));
+
+    const questionRows =
+      lessonIds.length === 0
+        ? []
+        : await db
+            .select({ id: contentBlocks.id, lessonId: contentBlocks.lessonId, questionPrompt: contentBlocks.questionPrompt })
+            .from(contentBlocks)
+            .where(and(inArray(contentBlocks.lessonId, lessonIds), eq(contentBlocks.type, "question")));
+    const questionBlockByLessonId = new Map(questionRows.map((r) => [r.lessonId, r]));
+
+    const questionBlockIds = questionRows.map((r) => r.id);
+    const devotionalAnswerRows =
+      questionBlockIds.length === 0
+        ? []
+        : await db
+            .select({ contentBlockId: responses.contentBlockId, answerText: responses.answerText })
+            .from(responses)
+            .where(and(eq(responses.userId, session.userId), inArray(responses.contentBlockId, questionBlockIds)));
+    const answerByQuestionBlockId = new Map(devotionalAnswerRows.map((r) => [r.contentBlockId, r.answerText ?? ""]));
+
+    const todayLabel = todaysDateLabel();
+    const yearDays: YearDay[] = [];
+    const journalEntries: JournalEntry[] = [];
+    let todayLessonId: string | null = null;
+
+    for (const l of studyLessons) {
+      const parsed = parseDayLabel(l.title);
+      if (!parsed) continue; // the "Introduction" lesson, or a hand-edited title
+      if (parsed.date === todayLabel) todayLessonId = l.id;
+
+      const questionBlock = questionBlockByLessonId.get(l.id);
+      const answer = questionBlock ? answerByQuestionBlockId.get(questionBlock.id) : undefined;
+      const answered = !!answer?.trim();
+      const href = `${studyHref}/${l.id}`;
+
+      yearDays.push({
+        lessonId: l.id,
+        href,
+        day: parsed.day,
+        date: parsed.date,
+        month: parsed.month,
+        dateNum: parsed.dateNum,
+        psalmRef: parsed.psalmRef,
+        psalmNumber: parsed.psalmNumber,
+        title: l.title,
+        walked: statusByLessonId.get(l.id) === "completed",
+        answered,
+        isToday: parsed.date === todayLabel,
+      });
+
+      if (answered && questionBlock) {
+        journalEntries.push({
+          lessonId: l.id,
+          href,
+          day: parsed.day,
+          date: parsed.date,
+          psalmRef: parsed.psalmRef,
+          question: questionBlock.questionPrompt ?? "",
+          answer: answer!,
+        });
+      }
+    }
+
+    const currentQuestionBlock = questionBlockByLessonId.get(lesson.id) ?? null;
+
+    devotionalProps = {
+      totalDays: yearDays.length,
+      daysWalked: yearDays.filter((d) => d.walked).length,
+      yearDays,
+      journalEntries,
+      questionBlockId: currentQuestionBlock?.id ?? null,
+      todayAnswer: currentQuestionBlock ? answerByQuestionBlockId.get(currentQuestionBlock.id) : undefined,
+      pickUpWithToday:
+        todayLessonId && todayLessonId !== lesson.id ? { href: `${studyHref}/${todayLessonId}` } : null,
+    };
+  }
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 sm:py-10 space-y-8 study-content-protected">
       <LessonNavigation
@@ -119,12 +234,25 @@ export default async function LessonPage({
         position="top"
         visible={!hasCustomHeader}
       />
-      {isDevotional ? (
-        <DevotionalDayView
-          dayLabel={lesson.title}
-          bodyHtml={blocks.find((b) => b.type === "text")?.body ?? ""}
-          previousHref={previousHref}
-          nextHref={nextHref}
+      {isDevotional && devotionalProps ? (
+        <DevotionalAppView
+          studyTitle={displayStudyTitle}
+          studyHref={studyHref}
+          totalDays={devotionalProps.totalDays}
+          daysWalked={devotionalProps.daysWalked}
+          yearDays={devotionalProps.yearDays}
+          journalEntries={devotionalProps.journalEntries}
+          today={{
+            dayLabel: lesson.title,
+            bodyHtml: blocks.find((b) => b.type === "text")?.body ?? "",
+            previousHref,
+            nextHref,
+            lessonId: lesson.id,
+            questionBlockId: devotionalProps.questionBlockId,
+            initialAnswer: devotionalProps.todayAnswer,
+            initialWalked: progressRow?.status === "completed",
+            pickUpWithToday: devotionalProps.pickUpWithToday,
+          }}
         />
       ) : lesson.studyContent ? (
         <StudyLessonView
@@ -159,6 +287,12 @@ export default async function LessonPage({
         previousHref={previousHref}
         nextHref={nextHref}
         position="bottom"
+        // DevotionalAppView's own WalkedToggle already marks real completion
+        // (the same lesson_progress write this control makes) with a
+        // toggle-in-place interaction that fits staying on one day to reread
+        // or answer, rather than this control's mark-and-auto-navigate-to-
+        // next one -- showing both would be two controls for one action.
+        visible={!isDevotional}
       />
     </div>
   );

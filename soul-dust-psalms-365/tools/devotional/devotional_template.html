@@ -1,0 +1,309 @@
+<title>Soul Dust Psalms 365</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+/* Layout: an app with four views (Today, Year, Journal, Six Faces). Today is one scrolling page in the book's order: key verse, reading, Lift Up Your Eyes, question. Year is a 12-month grid of 365 days. */
+:root{
+  --bg:#F4F0E4; --surface:#FFFDF7; --box:#EFE6C2; --fg:#2B2B2B; --muted:#6A6452;
+  --accent:#8C6F1F; --gold:#AD9A5F; --olive:#6B7338; --line:#DCD2B0; --shade:rgba(40,30,10,.2); --ink:#1F2A2E; --inkfg:#F1EAD4;
+  --display:"Archivo Black","Arial Black",Impact,sans-serif;
+  --ui:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --body:"Source Serif 4",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#16150F; --surface:#201E16; --box:#2B2818; --fg:#EDE6D3; --muted:#A99F86;
+  --accent:#D9BE6A; --gold:#CDB677; --olive:#A8B06B; --line:#3A3525; --shade:rgba(0,0,0,.55); --ink:#0E1416; --inkfg:#EDE6D3; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#16150F; --surface:#201E16; --box:#2B2818; --fg:#EDE6D3; --muted:#A99F86;
+  --accent:#D9BE6A; --gold:#CDB677; --olive:#A8B06B; --line:#3A3525; --shade:rgba(0,0,0,.55); --ink:#0E1416; --inkfg:#EDE6D3; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:18px;line-height:1.65}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:680px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 110px}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.top-inner{max-width:680px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 0}
+.headrow{display:flex;align-items:center;gap:14px}
+.titles{flex:1;min-width:0}
+.eyebrow{font-family:var(--ui);font-weight:600;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.apptitle{font-family:var(--display);font-size:20px;line-height:1.1;margin-top:2px}
+.ring{flex:none;width:56px;height:56px;position:relative}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .track{stroke:var(--line)} .ring .fill{stroke:var(--olive);transition:stroke-dashoffset .5s}
+.ring span{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-family:var(--ui);font-weight:700;font-size:12px;line-height:1.05;font-variant-numeric:tabular-nums}
+.ring span small{display:block;font-size:8px;letter-spacing:.08em;color:var(--muted);font-weight:600}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin-top:8px}
+nav.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;font-family:var(--ui);font-weight:600;font-size:13px;border:0;background:none;color:var(--muted);padding:10px 12px 12px;border-bottom:3px solid transparent;cursor:pointer}
+.tab[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+section.view{padding-top:22px}
+h2{font-family:var(--ui);font-weight:700;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--olive);margin:0 0 6px}
+p{margin:0 0 16px}
+.btn{font-family:var(--ui);font-weight:600;font-size:14px;border-radius:999px;padding:10px 18px;cursor:pointer;border:1.5px solid var(--fg);background:transparent;color:var(--fg)}
+.btn.primary{background:var(--fg);color:var(--bg)}
+.btn.complete{border-color:var(--olive);background:var(--olive);color:var(--bg)}
+.btn.small{font-size:13px;padding:7px 14px}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+/* day */
+.dayhead{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.dayhead .meta{flex:1;min-width:0;font-family:var(--ui);font-weight:700;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.arrow{flex:none;width:38px;height:38px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface);color:var(--fg);font-size:18px;cursor:pointer}
+.arrow:disabled{opacity:.35;cursor:default}
+h1.daytitle{font-family:var(--display);font-weight:400;font-size:clamp(26px,6.4vw,36px);line-height:1.08;margin:0 0 18px;text-wrap:balance}
+.backtoday{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--box);border-radius:12px;padding:12px 14px;margin:0 0 18px;font-family:var(--ui);font-size:14px}
+.backtoday span{flex:1;min-width:0}
+.keyv{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;margin:0 0 22px}
+.keyv .kv{font-style:italic;font-size:21px;line-height:1.45}
+.keyv .w{display:inline}
+.keyv .w.hid{color:transparent;background:var(--box);border-radius:4px;cursor:pointer}
+.keyv .w.hid.peek{color:var(--muted)}
+.kvrow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:12px}
+.cite{font-family:var(--ui);font-weight:700;font-size:12px;letter-spacing:.12em;color:var(--accent)}
+.linkbtn{all:unset;cursor:pointer;font-family:var(--ui);font-weight:600;font-size:13px;color:var(--olive);border-bottom:1.5px solid currentColor}
+.linkbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.memo{display:flex;align-items:center;gap:10px;margin-top:12px;font-family:var(--ui);font-size:12px;color:var(--muted)}
+.memo input{flex:1;accent-color:var(--accent)}
+.reading p{font-size:19px}
+.reading .v{border-radius:4px;transition:background .2s}
+.reading .v.speaking{background:var(--box)}
+.lift{background:var(--ink);color:var(--inkfg);border-radius:16px;padding:22px 20px;margin:28px 0 22px}
+.lift h2{color:var(--gold)}
+.lift p{font-style:italic;font-size:19px;margin:0}
+.question h2{color:var(--accent)}
+.question .qt{font-family:var(--display);font-size:clamp(20px,5vw,25px);line-height:1.22;margin:0 0 14px;text-wrap:balance}
+textarea{width:100%;min-height:150px;font:inherit;font-size:17px;line-height:30px;color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:2px 14px;resize:vertical;
+  background:var(--surface) repeating-linear-gradient(to bottom,transparent 0 29px,var(--line) 29px 30px);background-attachment:local;background-position:0 2px}
+.saved{font-family:var(--ui);font-size:12px;color:var(--olive);height:16px;margin-bottom:12px}
+.finish{border-top:1px solid var(--line);padding-top:20px;margin-top:10px}
+/* year */
+.yearsum{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 0 22px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+.stat b{display:block;font-family:var(--display);font-size:24px;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat span{font-family:var(--ui);font-size:12px;color:var(--muted)}
+.search{width:100%;font:inherit;font-family:var(--ui);font-size:15px;padding:11px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--fg);margin-bottom:18px}
+.month{margin:0 0 22px}
+.mhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px}
+.mhead h3{font-family:var(--display);font-weight:400;font-size:19px;margin:0}
+.mhead span{font-family:var(--ui);font-size:12px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.cell{aspect-ratio:1;max-width:100%;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-family:var(--ui);font-weight:600;font-size:12px;cursor:pointer;position:relative;padding:0;font-variant-numeric:tabular-nums}
+.cell.done{background:var(--olive);border-color:var(--olive);color:var(--bg)}
+.cell.today{outline:2.5px solid var(--accent);outline-offset:1px;color:var(--fg)}
+.cell.ans::after{content:"";position:absolute;right:4px;top:4px;width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.cell.done.ans::after{background:var(--bg)}
+.results{display:flex;flex-direction:column;gap:2px;margin-bottom:20px}
+.result{all:unset;cursor:pointer;display:flex;gap:12px;padding:10px 4px;border-bottom:1px solid var(--line)}
+.result b{flex:none;width:70px;font-family:var(--ui);font-size:12px;color:var(--accent);letter-spacing:.06em}
+.result span{flex:1;min-width:0}
+.result small{display:block;font-family:var(--ui);font-size:12px;color:var(--muted)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-family:var(--ui);font-size:12px;color:var(--muted);margin:-6px 0 18px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:5px;border:1px solid var(--line)}
+/* journal */
+.entry{all:unset;display:block;cursor:pointer;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:12px}
+.entry .em{font-family:var(--ui);font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--accent);text-transform:uppercase}
+.entry .eq{font-weight:600;margin:4px 0 8px}
+.entry .ea{white-space:pre-wrap;font-size:16px}
+.empty{color:var(--muted);font-size:16px}
+/* faces */
+.face{border-top:1px solid var(--line);padding:18px 0}
+.face .fn{font-family:var(--display);font-size:15px;color:var(--accent)}
+.face h3{font-family:var(--ui);font-weight:700;font-size:18px;margin:2px 0 8px}
+.face p{font-size:17px;margin:0 0 8px}
+.face .refs{font-family:var(--ui);font-size:11px;letter-spacing:.1em;color:var(--olive)}
+.face.lens{background:var(--ink);color:var(--inkfg);border-radius:16px;padding:20px;border:0;margin-top:10px}
+/* sheet */
+.scrim{position:fixed;inset:0;background:var(--shade);z-index:20}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -8px 30px var(--shade);max-height:82vh;overflow:auto;
+  padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));padding-block:10px calc(24px + env(safe-area-inset-bottom,0px))}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 10px}
+.sheet-inner{max-width:640px;margin:0 auto}
+.sheethead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+.sheethead h3{font-family:var(--display);font-weight:400;font-size:22px;margin:0}
+.close{font-family:var(--ui);font-size:13px;font-weight:600;border:0;background:none;color:var(--muted);cursor:pointer;padding:4px}
+.psalm p{margin:0 0 6px;font-size:18px}
+.psalm p.out{color:var(--muted)}
+.psalm sup{font-family:var(--ui);font-size:10px;font-weight:700;color:var(--accent);margin-right:3px}
+.webnote{font-family:var(--ui);font-size:11px;letter-spacing:.12em;color:var(--muted);margin-top:12px}
+.note{font-family:var(--ui);font-size:12px;color:var(--muted);border-top:1px solid var(--line);margin-top:36px;padding-top:12px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<header class="top"><div class="top-inner">
+  <div class="headrow">
+    <div class="titles">
+      <div class="eyebrow">Soul Dust Revival · Universal Edition</div>
+      <div class="apptitle">365 Days Through the Psalms</div>
+    </div>
+    <div class="ring" aria-label="Days walked this year">
+      <svg viewBox="0 0 40 40"><circle class="track" cx="20" cy="20" r="16" fill="none" stroke-width="4"/><circle class="fill" id="ringFill" cx="20" cy="20" r="16" fill="none" stroke-width="4" stroke-linecap="round" stroke-dasharray="100.53" stroke-dashoffset="100.53"/></svg>
+      <span id="ringTxt">0<small>OF 365</small></span>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist" id="tabs">
+    <button class="tab" type="button" role="tab" data-v="day" id="t-day">Today</button>
+    <button class="tab" type="button" role="tab" data-v="year" id="t-year">The Year</button>
+    <button class="tab" type="button" role="tab" data-v="journal" id="t-journal">Journal</button>
+    <button class="tab" type="button" role="tab" data-v="faces" id="t-faces">Six Faces of the Dust</button>
+  </nav>
+</div></header>
+
+<main class="wrap">
+<section class="view" id="v-day">
+  <div class="dayhead">
+    <button class="arrow" type="button" id="prevDay" aria-label="Previous day">←</button>
+    <div class="meta" id="dMeta"></div>
+    <button class="arrow" type="button" id="nextDay" aria-label="Next day">→</button>
+  </div>
+  <h1 class="daytitle" id="dTitle"></h1>
+  <div class="backtoday" id="backToday" hidden><span id="backTxt"></span><button class="btn small" type="button" id="goToday">Pick up with today</button></div>
+  <div class="keyv">
+    <div class="kv" id="dKv"></div>
+    <div class="kvrow"><span class="cite" id="dKr"></span><button class="linkbtn" type="button" id="openPsalm"></button></div>
+    <div class="memo"><span>Hide words</span><input type="range" id="hide" min="0" max="100" value="0" aria-label="Hide words to memorize the key verse"></div>
+  </div>
+  <div class="btnrow" style="margin-bottom:16px"><button class="btn small" type="button" id="listen">▶ Read it to me</button></div>
+  <div class="reading" id="dRead"></div>
+  <div class="lift"><h2>Lift Up Your Eyes</h2><p id="dLift"></p></div>
+  <div class="question">
+    <h2>A Question to Sit With</h2>
+    <p class="qt" id="dQ"></p>
+    <textarea id="ans" aria-label="Your answer" placeholder="Answer it out loud, or write it here…"></textarea>
+    <div class="saved" id="saved"></div>
+  </div>
+  <div class="finish btnrow"><button class="btn primary" type="button" id="markDone">I walked today</button><span id="doneNote" style="font-family:var(--ui);font-size:13px;color:var(--muted)"></span></div>
+</section>
+
+<section class="view" id="v-year" hidden>
+  <div class="yearsum">
+    <div class="stat"><b id="sWalked">0</b><span>days walked</span></div>
+    <div class="stat"><b id="sPsalms">0</b><span>of 150 psalms</span></div>
+    <div class="stat"><b id="sAns">0</b><span>answers written</span></div>
+  </div>
+  <input class="search" id="search" type="search" placeholder="Find a day: a psalm number, a title, a word…" aria-label="Search days">
+  <div class="results" id="results" hidden></div>
+  <div class="legend"><span><i style="background:var(--olive);border-color:var(--olive)"></i>Walked</span><span><i style="outline:2px solid var(--accent);outline-offset:1px"></i>Today</span><span><i style="position:relative;background:radial-gradient(circle at 80% 25%,var(--accent) 2px,var(--surface) 2.5px)"></i>Answer written</span></div>
+  <div id="months"></div>
+</section>
+
+<section class="view" id="v-journal" hidden>
+  <h2>Your Answers</h2>
+  <p style="color:var(--muted);font-size:16px">Every question you've sat with this year, newest first. Tap one to return to that day.</p>
+  <div id="entries"></div>
+</section>
+
+<section class="view" id="v-faces" hidden>
+  <h2>Before You Begin</h2>
+  <p>Psalm 119:25 prays, “My soul clings to the dust; Revive me according to Your word” (NKJV). The word dust carries more than one weight in Scripture. Naming its faces will help you recognize, day by day, which dust is clinging to you — and where God is reaching into it. Scripture speaks of the dust in at least six ways, and answers all six with a seventh.</p>
+  <div class="face"><div class="fn">I</div><h3>Frailty and Mortality</h3><p>You are a creature. “Yahweh God formed man from the dust of the ground” (Genesis 2:7), and the word after the fall is plain: “For you are dust, and you shall return to dust” (Genesis 3:19). Sometimes the dust is not sin but finiteness — tiredness, aging, the limits of a body that wears out. That is not a sign that God is displeased with you. “He remembers that we are dust” (Psalm 103:14). What you need in that dust is not self-improvement but revival, from the One who has never forgotten what you are made of.</p><div class="refs">GENESIS 2:7 · GENESIS 3:19 · PSALM 103:14 · ECCLESIASTES 12:7</div></div>
+  <div class="face"><div class="fn">II</div><h3>Humiliation and Lowliness</h3><p>“For our soul is bowed down to the dust” (Psalm 44:25). In Scripture, lying in the dust pictures being brought low — loss, shame, oppression, grief. The psalmist cries, “You have brought me into the dust of death” (Psalm 22:15). This dust often comes from suffering, not failure. Even here Lamentations holds out a thread: “Let him put his mouth in the dust, if it is so that there may be hope” (Lamentations 3:29). God draws near not when you soar but when you are pressed into the ground.</p><div class="refs">PSALM 44:25 · PSALM 22:15 · LAMENTATIONS 3:29</div></div>
+  <div class="face"><div class="fn">III</div><h3>Sin and Decay</h3><p>After the fall God told the serpent, “you shall eat dust all the days of your life” (Genesis 3:14). Dust became the food of the cursed. Job said, “I have become like dust and ashes” (Job 30:19). Some dust is inside you: compromise, neglect, unconfessed sin, affections that have drifted. The soul clings to it because sin entangles and habits enslave. Paul felt the weight: “What a wretched man I am! Who will deliver me out of the body of this death?” (Romans 7:24). And he knew the answer: “I thank God through Jesus Christ, our Lord!” (Romans 7:25).</p><div class="refs">GENESIS 3:14 · JOB 30:19 · PSALM 7:5 · ROMANS 7:24–25</div></div>
+  <div class="face"><div class="fn">IV</div><h3>Worldliness</h3><p>Dust stands for what is temporary and passing. Of the rich the psalm says, “when he dies he will carry nothing away” (Psalm 49:17). Isaiah asks, “Why do you spend money for that which is not bread?” (Isaiah 55:2). The soul clings to dust when it fastens onto lesser loves — comfort, approval, control, success — none of which can revive or satisfy. Even good gifts become dust when they take God’s place. Paul’s word is direct: “Set your mind on the things that are above, not on the things that are on the earth” (Colossians 3:2).</p><div class="refs">PSALM 49:17 · ISAIAH 55:2 · COLOSSIANS 3:2 · JAMES 4:4</div></div>
+  <div class="face"><div class="fn">V</div><h3>Death and Despair</h3><p>Sometimes the dust means death drawing near, in body or in spirit. “For my soul is full of troubles. My life draws near to Sheol” (Psalm 88:3). David argued with God from the edge: “Shall the dust praise you? Shall it declare your truth?” (Psalm 30:9). There is a despair so heavy it feels like dying — numb, dry, spent. The good news is that God’s word revives not only the sin-weary soul but the death-weary one. No darkness is too far down for the breath of His word to reach.</p><div class="refs">PSALM 88:3 · PSALM 30:9 · JOB 17:16</div></div>
+  <div class="face"><div class="fn">VI</div><h3>A Place God Delights to Revive</h3><p>Here is the gospel surprise: God often chooses the dust as His starting point. “He raises up the poor out of the dust” (Psalm 113:7). He dwells “with him also who is of a contrite and humble spirit, to revive the spirit of the humble” (Isaiah 57:15). In Ezekiel’s valley the word went out — “You dry bones, hear Yahweh’s word” (Ezekiel 37:4) — and breath came. At a tomb in Bethany Jesus cried, “Lazarus, come out!” (John 11:43). Dust is not the end. It is the ground where resurrection begins.</p><div class="refs">PSALM 113:7 · ISAIAH 57:15 · EZEKIEL 37:4–5 · JOHN 11:43</div></div>
+  <div class="face lens"><div class="fn" style="color:var(--gold)">VII</div><h3>The Christ-Centered Lens</h3><p>All of it gathers into one Person. Christ entered the dust: “The Word became flesh, and lived among us” (John 1:14). He carried the curse: “For him who knew no sin he made to be sin on our behalf” (2 Corinthians 5:21). He lay in the dust of death, all the way down. And He rose: “But now Christ has been raised from the dead” (1 Corinthians 15:20). Every kind of dust this book names — frailty, humiliation, sin, worldliness, despair — He answered by going into it and coming up out of it. So when you pray Psalm 119:25, you are praying to the Word made flesh, who came up out of the dust and reaches down to bring you with Him.</p><div class="refs" style="color:var(--gold)">JOHN 1:14 · 2 CORINTHIANS 5:21 · 1 CORINTHIANS 15:20</div></div>
+  <p class="note">Soul Dust Revival: A 365-Day Devotional Through the Psalms, Universal Edition. © 2026 MarketLife Ministries (Bible Studies, Inc.). Scripture from the World English Bible (public domain); Psalm 119:25 from the NKJV. Prototype: progress and answers save only in this browser.</p>
+</section>
+</main>
+
+<div class="scrim" id="scrim" hidden></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden><div class="grab"></div><div class="sheet-inner" id="sheetBody"></div></div>
+
+<script type="application/json" id="daysData">__DAYS__</script>
+<script type="application/json" id="psalmData">__PSALMS__</script>
+<script>
+const DAYS=JSON.parse(document.getElementById("daysData").textContent);
+const PS=JSON.parse(document.getElementById("psalmData").textContent);
+const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const store={get(k,d){try{const v=localStorage.getItem("sdr-ps365-"+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem("sdr-ps365-"+k,JSON.stringify(v))}catch(e){}}};
+let done=store.get("done",{}),ans=store.get("ans",{});
+const byDate={};DAYS.forEach(d=>byDate[d.dt]=d.d);
+function todayNum(){const n=new Date();const key=MONTHS[n.getMonth()]+" "+n.getDate();return byDate[key]||(n.getMonth()===1&&n.getDate()===29?59:1)}
+const TODAY=todayNum();
+let cur=TODAY;
+function parseRef(r){const m=r.match(/Psalm (\d+)(?: \(vv\. (\d+)–(\d+)\))?/);return {ch:+m[1],a:m[2]?+m[2]:null,b:m[3]?+m[3]:null}}
+
+// views
+function view(v){["day","year","journal","faces"].forEach(x=>{$("#v-"+x).hidden=x!==v;$("#t-"+x).setAttribute("aria-selected",x===v)});
+ $("#t-day").textContent=(v==="day"&&cur!==TODAY)?"Day "+cur:"Today";
+ if(v==="year")renderYear();if(v==="journal")renderJournal();window.scrollTo({top:0})}
+$$(".tab").forEach(t=>t.onclick=()=>{if(t.dataset.v==="day"&&$("#v-day").hidden===false)openDay(TODAY);else{if(t.dataset.v==="day")openDay(cur);else view(t.dataset.v)}});
+
+function paintRing(){const n=Object.keys(done).length;$("#ringFill").style.strokeDashoffset=100.53*(1-n/365);$("#ringTxt").innerHTML=n+"<small>OF 365</small>"}
+
+// day
+let memoWords=[],memoOrder=[];
+function openDay(n){cur=Math.min(365,Math.max(1,n));const d=DAYS[cur-1];stopSpeak();
+ $("#dMeta").textContent="Day "+d.d+" · "+d.dt+" · "+d.r;$("#dTitle").textContent=d.t;
+ $("#prevDay").disabled=cur===1;$("#nextDay").disabled=cur===365;
+ const off=cur!==TODAY;$("#backToday").hidden=!off;
+ if(off)$("#backTxt").textContent=cur<TODAY&&!done[cur]?"You're on an earlier day. No need to hurry to catch up.":"You're reading "+d.dt+". Today is Day "+TODAY+".";
+ memoWords=d.kv.split(" ");memoOrder=memoWords.map((w,i)=>i).sort((a,b)=>((a*7919)%17)-((b*7919)%17)||a-b);
+ $("#dKv").innerHTML="“"+memoWords.map(w=>'<span class="w">'+esc(w)+"</span>").join(" ")+"”";$("#hide").value=0;
+ $$("#dKv .w").forEach(s=>s.onclick=()=>{if(s.classList.contains("hid"))s.classList.toggle("peek")});
+ $("#dKr").textContent=d.kr.toUpperCase();
+ const p=parseRef(d.r);$("#openPsalm").textContent="Read "+(p.a?"Psalm "+p.ch+":"+p.a+"–"+p.b:"all of Psalm "+p.ch);
+ $("#dRead").innerHTML=d.p.map((t,i)=>'<p><span class="v" id="rp'+i+'">'+esc(t)+"</span></p>").join("");
+ $("#dLift").textContent=d.l;$("#dQ").textContent=d.q;
+ $("#ans").value=ans[cur]||"";$("#saved").textContent="";
+ paintDone();view("day");store.set("last",cur)}
+function paintDone(){const b=$("#markDone"),d=!!done[cur];b.textContent=d?"✓ Walked":"I walked today";b.classList.toggle("complete",d);b.classList.toggle("primary",!d);
+ $("#doneNote").textContent=d?"":(cur<365?"Tomorrow: "+DAYS[cur].t:"");paintRing()}
+$("#markDone").onclick=()=>{if(done[cur])delete done[cur];else done[cur]=1;store.set("done",done);paintDone()};
+$("#prevDay").onclick=()=>openDay(cur-1);$("#nextDay").onclick=()=>openDay(cur+1);$("#goToday").onclick=()=>openDay(TODAY);
+$("#hide").addEventListener("input",e=>{const h=new Set(memoOrder.slice(0,Math.round(memoWords.length*e.target.value/100)));$$("#dKv .w").forEach((s,i)=>{s.classList.toggle("hid",h.has(i));s.classList.remove("peek")})});
+let tm;$("#ans").addEventListener("input",e=>{const v=e.target.value;if(v.trim())ans[cur]=v;else delete ans[cur];store.set("ans",ans);$("#saved").textContent="Saved";clearTimeout(tm);tm=setTimeout(()=>$("#saved").textContent="",1300)});
+
+// psalm sheet
+let lastFocus=null;
+function openPsalm(full){const d=DAYS[cur-1],p=parseRef(d.r),vs=PS[p.ch]||[];lastFocus=document.activeElement;
+ const inR=i=>!p.a||full||(i+1>=p.a&&i+1<=p.b);
+ $("#sheetBody").innerHTML='<div class="sheethead"><h3 id="sheetTitle">Psalm '+p.ch+(p.a&&!full?":"+p.a+"–"+p.b:"")+'</h3><button class="close" type="button" id="closeSheet">Close ✕</button></div><div class="psalm">'+
+  vs.map((v,i)=>inR(i)?'<p class="'+(p.a&&full&&!(i+1>=p.a&&i+1<=p.b)?"out":"")+'"><sup>'+(i+1)+"</sup>"+esc(v)+"</p>":"").join("")+'</div>'+
+  (p.a&&!full?'<div class="btnrow" style="margin-top:14px"><button class="btn small" type="button" id="fullPs">Show all of Psalm '+p.ch+'</button></div>':"")+'<div class="webnote">WORLD ENGLISH BIBLE</div>';
+ $("#scrim").hidden=false;$("#sheet").hidden=false;$("#sheet").scrollTop=0;$("#closeSheet").onclick=closeSheet;$("#closeSheet").focus();
+ const f=$("#fullPs");if(f)f.onclick=()=>openPsalm(true)}
+function closeSheet(){$("#scrim").hidden=true;$("#sheet").hidden=true;if(lastFocus)lastFocus.focus()}
+$("#openPsalm").onclick=()=>openPsalm(false);$("#scrim").onclick=closeSheet;
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheet").hidden)closeSheet()});
+
+// listen
+const synth=window.speechSynthesis;let speaking=false;
+function stopSpeak(){if(synth&&speaking){synth.cancel()}speaking=false;$("#listen").textContent="▶ Read it to me";$$(".reading .v").forEach(v=>v.classList.remove("speaking"))}
+$("#listen").onclick=()=>{if(!synth){$("#listen").textContent="Audio isn't available in this browser";return}
+ if(speaking){stopSpeak();return}speaking=true;$("#listen").textContent="■ Stop";const d=DAYS[cur-1];
+ const parts=[[null,d.t+". "+d.kv],...d.p.map((t,i)=>["#rp"+i,t]),[null,"Lift up your eyes. "+d.l],[null,"A question to sit with. "+d.q]];
+ parts.forEach(([sel,t],i)=>{const u=new SpeechSynthesisUtterance(t);u.rate=.92;u.onstart=()=>{$$(".reading .v").forEach(v=>v.classList.remove("speaking"));if(sel)$(sel).classList.add("speaking")};
+  if(i===parts.length-1)u.onend=()=>stopSpeak();try{synth.speak(u)}catch(e){}})};
+
+// year
+function renderYear(){const walked=Object.keys(done).map(Number);
+ $("#sWalked").textContent=walked.length;$("#sAns").textContent=Object.keys(ans).length;
+ $("#sPsalms").textContent=new Set(walked.map(n=>parseRef(DAYS[n-1].r).ch)).size;
+ const M=$("#months");M.innerHTML="";
+ MONTHS.forEach(m=>{const ds=DAYS.filter(d=>d.dt.startsWith(m+" "));const first=parseRef(ds[0].r).ch,last=parseRef(ds[ds.length-1].r).ch;
+  const w=ds.filter(d=>done[d.d]).length;const el=document.createElement("div");el.className="month";
+  el.innerHTML='<div class="mhead"><h3>'+m+'</h3><span>Psalms '+first+"–"+last+" · "+w+"/"+ds.length+'</span></div><div class="grid">'+
+   ds.map(d=>'<button type="button" class="cell'+(done[d.d]?" done":"")+(d.d===TODAY?" today":"")+(ans[d.d]?" ans":"")+'" data-d="'+d.d+'" aria-label="'+esc(d.dt+": "+d.t)+'" title="'+esc(d.t+" · "+d.r)+'">'+d.dt.split(" ")[1]+"</button>").join("")+"</div>";
+  M.appendChild(el)});
+ $$(".cell").forEach(c=>c.onclick=()=>openDay(+c.dataset.d))}
+$("#search").addEventListener("input",e=>{const q=e.target.value.trim().toLowerCase();const R=$("#results");
+ if(!q){R.hidden=true;R.innerHTML="";return}
+ const num=/^\d+$/.test(q)?+q:null;
+ const hits=DAYS.filter(d=>num?parseRef(d.r).ch===num:(d.t+" "+d.kv+" "+d.r+" "+d.q).toLowerCase().includes(q)).slice(0,30);
+ R.hidden=false;R.innerHTML=hits.length?hits.map(d=>'<button type="button" class="result" data-d="'+d.d+'"><b>DAY '+d.d+"</b><span>"+esc(d.t)+"<small>"+esc(d.dt+" · "+d.r)+"</small></span></button>").join(""):'<p class="empty">No days match “'+esc(q)+'”.</p>';
+ $$(".result").forEach(b=>b.onclick=()=>openDay(+b.dataset.d))});
+
+// journal
+function renderJournal(){const E=$("#entries");const ks=Object.keys(ans).map(Number).sort((a,b)=>b-a);
+ E.innerHTML=ks.length?ks.map(n=>{const d=DAYS[n-1];return '<button type="button" class="entry" data-d="'+n+'"><div class="em">Day '+n+" · "+esc(d.dt)+" · "+esc(d.r)+'</div><div class="eq">'+esc(d.q)+'</div><div class="ea">'+esc(ans[n])+"</div></button>"}).join(""):
+  '<p class="empty">No answers yet. When you write an answer to a day’s question, it collects here.</p>';
+ $$(".entry").forEach(b=>b.onclick=()=>openDay(+b.dataset.d))}
+
+paintRing();
+const h=location.hash.slice(1);
+if(/^day-\d+$/.test(h))openDay(+h.slice(4));else if(["year","journal","faces"].includes(h)){openDay(TODAY);view(h)}else openDay(TODAY);
+</script>

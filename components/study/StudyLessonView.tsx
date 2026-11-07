@@ -31,6 +31,16 @@ function splitLessonTitle(lessonTitle: string): { weekLabel: string; weekTitle: 
   return match ? { weekLabel: match[1]!, weekTitle: match[2]! } : { weekLabel: lessonTitle, weekTitle: lessonTitle };
 }
 
+// "Soul Dust Revival Colossians" -> "Colossians" -- the breadcrumb prefixes its
+// own "Soul Dust Revival ·" (matching soul-dust-interactive's own
+// study_template.html: `"Soul Dust Revival · "+META.book+" · Week "+W.week`),
+// so the study's own title needs that shared brand prefix stripped first or
+// it shows up twice.
+function deriveBookLabel(studyTitle: string): string {
+  const stripped = studyTitle.replace(/^soul dust revival:?\s*/i, "").trim();
+  return stripped || studyTitle;
+}
+
 /**
  * The 5-tab interactive Study reader (Study / Passage / Work the Word /
  * Live It / Lift Up), following the printed order of each week -- see
@@ -68,6 +78,7 @@ export function StudyLessonView({
   const { done, setDone, percent } = useTabProgress(lessonId);
 
   const { weekLabel, weekTitle } = splitLessonTitle(lessonTitle);
+  const shortBookLabel = deriveBookLabel(bookLabel);
   const greekStation = content.stations.find((s) => s.ref === greekStationRef) ?? null;
 
   function goToStation(stationRef: string) {
@@ -101,7 +112,7 @@ export function StudyLessonView({
             onClick={() => setPickerOpen(true)}
             className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700 border-b border-dotted border-ember-700 hover:text-ink hover:border-ink"
           >
-            {bookLabel} · {weekLabel} ▾
+            Soul Dust Revival · {shortBookLabel} · {weekLabel} ▾
           </button>
           <h1 className="font-display font-bold text-2xl sm:text-3xl text-ink mt-0.5">{weekTitle}</h1>
           <p className="font-serif italic text-moss">{content.subtitle}</p>
@@ -221,7 +232,7 @@ export function StudyLessonView({
       )}
 
       {pickerOpen && (
-        <WeekPickerSheet bookLabel={bookLabel} weeks={weeks} onClose={() => setPickerOpen(false)} />
+        <WeekPickerSheet bookLabel={shortBookLabel} weeks={weeks} onClose={() => setPickerOpen(false)} />
       )}
     </div>
   );

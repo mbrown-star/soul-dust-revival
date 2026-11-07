@@ -27,7 +27,9 @@ export function WeekPickerSheet({
 }) {
   return (
     <Sheet label={`${bookLabel} · Choose a week`} onClose={onClose}>
-      <h2 className="font-display font-bold text-lg text-ink pr-8">{bookLabel}</h2>
+      <h2 className="font-display font-bold text-lg text-ink pr-8">
+        {bookLabel} · {weeks.length} {weeks.length === 1 ? "Week" : "Weeks"}
+      </h2>
       <div className="divide-y divide-dusk/10">
         {weeks.map((week, i) => {
           const percent = readTabProgressPercent(week.id);

@@ -2,13 +2,17 @@ import Link from "next/link";
 import { parseDevotionalHtml } from "@/lib/devotional/parseDevotionalHtml";
 import { HideWordsSlider } from "./HideWordsSlider";
 import { ReadAloudButton } from "./ReadAloudButton";
+import { QuestionBlock } from "@/components/study/QuestionBlock";
+import { WalkedToggle } from "./WalkedToggle";
 
 /**
  * The single-day devotional reading experience: a key-verse card (with a
- * memorization slider), the day's reading, and the book's own "Lift Up Your
- * Eyes" / "A Question to Sit With" sections each given their own visual
- * treatment instead of reading as one undifferentiated scroll of paragraphs.
- * Parses the lesson's existing stored HTML at render time (see
+ * memorization slider), the day's reading, "Lift Up Your Eyes" as a dark
+ * callout, and "A Question to Sit With" as a real saved answer (via
+ * QuestionBlock, once soul-dust-psalms-365's own devotional_template.html
+ * reference showed this should be an input, not display-only text) --
+ * matching the reference's own plain (not dark-card) treatment for this
+ * section. Parses the lesson's existing stored HTML at render time (see
  * parseDevotionalHtml) -- no data migration needed, works for every
  * already-imported day.
  */
@@ -17,11 +21,27 @@ export function DevotionalDayView({
   bodyHtml,
   previousHref,
   nextHref,
+  lessonId,
+  questionBlockId,
+  initialAnswer,
+  initialWalked,
+  pickUpWithToday,
 }: {
   dayLabel: string;
   bodyHtml: string;
   previousHref: string | null;
   nextHref: string | null;
+  lessonId: string;
+  // Null until scripts/backfill-devotional-question-blocks.ts has run for
+  // this lesson -- falls back to the plain display-only text so an
+  // unbackfilled lesson still renders its question rather than losing it.
+  questionBlockId: string | null;
+  initialAnswer?: string;
+  initialWalked: boolean;
+  // Set only when the day being viewed isn't the real day on the calendar --
+  // the book's own preface says there's no need to hurry to catch up, so
+  // this is an offer, not a nag.
+  pickUpWithToday?: { href: string } | null;
 }) {
   const parsed = parseDevotionalHtml(bodyHtml);
 
@@ -71,6 +91,18 @@ export function DevotionalDayView({
         <h1 className="font-display font-bold text-3xl sm:text-4xl text-ink text-center">{parsed.title}</h1>
       )}
 
+      {pickUpWithToday && (
+        <div className="flex flex-wrap items-center gap-3 bg-dusk/5 rounded-xl px-4 py-3">
+          <span className="flex-1 min-w-0 font-sans text-sm text-moss">No need to hurry to catch up.</span>
+          <Link
+            href={pickUpWithToday.href}
+            className="font-sans text-sm font-semibold border border-moss/30 rounded-full px-4 py-2 min-h-[44px] flex items-center hover:border-moss/60"
+          >
+            Pick up with today
+          </Link>
+        </div>
+      )}
+
       {parsed.keyVerseQuote && (
         <div className="bg-white border border-dusk/10 rounded-xl p-6">
           <HideWordsSlider verse={parsed.keyVerseQuote} />
@@ -107,17 +139,28 @@ export function DevotionalDayView({
       )}
 
       {parsed.questionParagraphs.length > 0 && (
-        <div className="bg-ink text-parchment rounded-xl p-6">
-          <p className="font-sans text-xs font-semibold uppercase tracking-wide text-gold mb-2">
+        <div>
+          <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700 mb-2">
             A Question to Sit With
           </p>
-          {parsed.questionParagraphs.map((p, i) => (
-            <p key={i} className="font-serif italic text-lg">
-              {p}
-            </p>
-          ))}
+          {questionBlockId ? (
+            <QuestionBlock
+              contentBlockId={questionBlockId}
+              prompt={parsed.questionParagraphs.join(" ")}
+              initialAnswer={initialAnswer}
+            />
+          ) : (
+            <>
+              <p className="font-display text-xl text-ink mb-4">{parsed.questionParagraphs.join(" ")}</p>
+              <p className="font-serif italic text-moss">
+                Answer it out loud, or write it here — saving isn&apos;t available for this day yet.
+              </p>
+            </>
+          )}
         </div>
       )}
+
+      <WalkedToggle lessonId={lessonId} initialWalked={initialWalked} nextDayLabel={nextHref ? "Tomorrow" : null} />
     </div>
   );
 }

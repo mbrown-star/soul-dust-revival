@@ -20,7 +20,7 @@ but an admin can also create or edit a `users` row directly from `/admin/users` 
 someone who won't self-signup) — same columns, same purpose, same access rules as above.
 | Full shipping address | `orders.shipping*` | Only collected for physical orders, only via Stripe's own checkout page — never stored anywhere except what Stripe's Checkout session collects |
 | Login timestamps + user agent | `login_events` | Access/engagement reporting (`/admin/reports/engagement`) |
-| Study answers | `responses.answerText` | The product's actual function — saving a user's own study responses |
+| Study and devotional answers | `responses.answerText` | The product's actual function — saving a user's own study responses and devotional "A Question to Sit With" reflections (added 2026-11-06; previously the devotional question was display-only and never persisted) |
 | Role, purchase history | `users.role`, `orders`/`order_items` | Access control; sales reporting |
 
 **Data minimization in practice**: country is collected as a 2-letter code, not a full
