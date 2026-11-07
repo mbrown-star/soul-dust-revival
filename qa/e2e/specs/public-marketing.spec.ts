@@ -115,26 +115,60 @@ test.describe("/privacy", () => {
 });
 
 test.describe("Nav bar", () => {
-  test("guest sees Books & Studies, Blog, Cart, Log in -- not My Library or Profile", async ({ page }) => {
+  // SiteNav.tsx renders two genuinely different structures depending on
+  // viewport (hidden sm:flex / sm:hidden, not just a CSS reflow of the same
+  // markup): the chromium project (desktop width) sees plain links and a
+  // "Profile" dropdown button; mobile-chromium (412px, below the sm:
+  // breakpoint) sees a single hamburger button whose menu holds everything,
+  // including the items a "Profile" dropdown would hold on desktop. Every
+  // item inside either menu has an explicit role="menuitem" (overriding its
+  // element's implicit role), so it's queried by that role, not "link".
+  const isMobile = (testInfo: { project: { name: string } }) => testInfo.project.name === "mobile-chromium";
+
+  test("guest sees Books & Studies, Blog, Cart, Log in -- not App or an account menu", async ({ page }, testInfo) => {
     await page.goto("/");
     const nav = page.getByRole("navigation", { name: "Primary" });
-    await expect(nav.getByRole("link", { name: "Books & Studies" })).toBeVisible();
-    await expect(nav.getByRole("link", { name: "Blog" })).toBeVisible();
-    await expect(nav.getByRole("link", { name: "Log in" })).toBeVisible();
-    await expect(nav.getByRole("link", { name: "My Library" })).toHaveCount(0);
+
+    if (isMobile(testInfo)) {
+      await nav.getByRole("button", { name: "Open menu" }).click();
+      await expect(page.getByRole("menuitem", { name: "Books & Studies" })).toBeVisible();
+      await expect(page.getByRole("menuitem", { name: "Blog" })).toBeVisible();
+      await expect(page.getByRole("menuitem", { name: "Log in" })).toBeVisible();
+      await expect(page.getByRole("menuitem", { name: "App" })).toHaveCount(0);
+    } else {
+      await expect(nav.getByRole("link", { name: "Books & Studies" })).toBeVisible();
+      await expect(nav.getByRole("link", { name: "Blog" })).toBeVisible();
+      await expect(nav.getByRole("link", { name: "Log in" })).toBeVisible();
+      await expect(nav.getByRole("link", { name: "App" })).toHaveCount(0);
+    }
   });
 
   test.describe("as qa-user", () => {
     test.use({ storageState: "qa/.auth/user.json" });
-    test("sees My Library and a Profile menu without an Admin link", async ({ page }, testInfo) => {
-      // FIXED (qa/findings/FINDINGS_2026-11-07.md #1): SiteNav.tsx now scopes
-      // overflow-x-auto to an inner wrapper around everything except
-      // Profile, keeping Profile itself always reachable (and its dropdown
-      // never clipped) regardless of viewport width -- verified on both the
-      // desktop and mobile-chromium projects, not just desktop.
+    test("sees App and an Account menu without Admin", async ({ page }, testInfo) => {
+      // FIXED (qa/findings/FINDINGS_2026-11-07.md #1, extended): the
+      // original fix kept "Profile" reachable outside the scrollable strip
+      // the other items could overflow into; the hamburger rewrite removes
+      // that strip (and the scrolling) entirely, since it gave no visual
+      // hint there was anything to scroll to in the first place -- verified
+      // on both the desktop and mobile-chromium projects, not just desktop.
       await page.goto("/");
       const nav = page.getByRole("navigation", { name: "Primary" });
-      await expect(nav.getByRole("link", { name: "My Library" })).toBeVisible();
+
+      if (isMobile(testInfo)) {
+        const menuButton = nav.getByRole("button", { name: "Open menu" });
+        const box = await menuButton.boundingBox();
+        expect(box, "menu button should have a layout box").not.toBeNull();
+        expect(box!.x + box!.width).toBeLessThanOrEqual(testInfo.project.use.viewport!.width!);
+
+        await menuButton.click();
+        await expect(page.getByRole("menuitem", { name: "App" })).toBeVisible();
+        await expect(page.getByRole("menuitem", { name: "Account" })).toBeVisible();
+        await expect(page.getByRole("menuitem", { name: "Admin" })).toHaveCount(0);
+        return;
+      }
+
+      await expect(nav.getByRole("link", { name: "App" })).toBeVisible();
       const profileButton = nav.getByRole("button", { name: /Profile/i });
 
       const box = await profileButton.boundingBox();
@@ -149,10 +183,11 @@ test.describe("Nav bar", () => {
 
   test.describe("as qa-admin", () => {
     test.use({ storageState: "qa/.auth/admin.json" });
-    test("sees an Admin item in the Profile menu", async ({ page }) => {
+    test("sees an Admin item in the menu", async ({ page }, testInfo) => {
       await page.goto("/");
       const nav = page.getByRole("navigation", { name: "Primary" });
-      await nav.getByRole("button", { name: /Profile/i }).click();
+      const buttonName = isMobile(testInfo) ? "Open menu" : /Profile/i;
+      await nav.getByRole("button", { name: buttonName }).click();
       await expect(page.getByRole("menuitem", { name: "Admin" })).toBeVisible();
     });
   });
