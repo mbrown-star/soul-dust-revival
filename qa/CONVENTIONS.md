@@ -94,6 +94,55 @@ has run.
 - Specs are **not** a substitute for judgment calls (does this copy read well, is this the right
   UX) — leave those to the matching checklist.
 
+## Testing for race conditions
+
+Added 2026-11-11, after a real bug (an answer typed into a question block could be lost if the
+reader navigated away immediately after typing, worse on mobile) reached production without the
+original 195-spec suite ever catching it. Worth understanding why, since it shapes the rule below:
+on a local dev server, a save completes in single-digit milliseconds — no realistic "navigate
+immediately after typing" gives a real browser's request-cancellation behavior any actual window
+to act in. The bug was only provable by *removing* that unrealistic speed advantage on purpose.
+
+**The standing rule:** any component that auto-saves on blur/change and sits on a page a reader
+can navigate away from (a `<Link>`, not just a full `page.goto()`) needs a dedicated test in
+`qa/e2e/specs/race-conditions/` that:
+
+1. Uses `qa/e2e/fixtures/networkThrottle.ts`'s `simulateSlowNetwork()` to add realistic latency to
+   the save request — don't wait for a "Saved" indicator before navigating; the whole point is to
+   leave a save in flight on purpose.
+2. Reloads afterward (or navigates back) and asserts the data actually persisted, not just that
+   the UI didn't show an error.
+3. Runs on the `mobile-webkit` project (see `playwright.config.ts`) in addition to the normal
+   desktop/mobile-chromium ones — **not a formality**. `mobile-chromium` is Chromium with a
+   phone-sized viewport, same network stack and request-cancellation behavior as desktop Chromium;
+   it cannot reproduce a Safari-specific timing quirk no matter how small the screen is. Real
+   WebKit is required to test anything claiming to fix "worse on mobile" behavior around
+   navigation. `mobile-webkit` is scoped via `testMatch` to only this folder, not the whole suite
+   — it exists to catch timing bugs, not to triple-run ordinary functional coverage.
+
+**Known environment limitation (2026-11-11):** `mobile-webkit` is correctly configured and should
+run normally on a real dev machine or CI runner, but in *this* project's current sandboxed agent
+session, WebKit's requests to the local dev server are being silently upgraded to HTTPS by
+something at the system/sandbox network layer (confirmed: every asset request fails with "A TLS
+error caused the secure connection to fail," reproduces against both `localhost` and `127.0.0.1`,
+and attempting to start an unrelated plain HTTP server to isolate the cause was itself blocked by
+the sandbox's own network-exposure permission check) — Chromium is unaffected because it uses its
+own network stack rather than the OS's. This is an environment quirk, not a bug in this project's
+code or test design; re-verify `mobile-webkit` actually runs the next time this suite is run
+somewhere other than this exact sandboxed session before relying on it.
+
+**When `keepalive: true` isn't enough.** The fix for the bug above was `fetch(..., { keepalive:
+true })`, which is the right-sized fix for a small, fire-and-forget save — it has no bearing on
+whether anything in the app actually *confirms* the save landed, only that the browser won't
+cancel it mid-flight. If a future autosave has a larger payload (near or over keepalive's ~64KB
+budget) or genuinely needs to know a save completed before doing something else, reach for
+`lib/hooks/pendingSaveRegistry.ts` instead (or alongside): a small registry a save registers
+itself in, and a navigation (or anything else) can explicitly await. It generalizes the pattern
+`components/study/LessonNavigation.tsx` already built for its own two `lesson_progress` writes.
+Deliberately not wired into every `<Link>` in the app as a blanket fix for the bug above — that
+would mean touching every navigation trigger on every page with an autosave field, real surface
+area for new bugs, for a guarantee `keepalive` doesn't actually need for a small text payload.
+
 ## Checklist file conventions
 
 Each `qa/checklists/NN-topic.md` file covers one area for a human (or an agent driving the

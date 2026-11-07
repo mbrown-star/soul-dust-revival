@@ -131,39 +131,8 @@ test.describe("Devotional reader", () => {
     await expect(page.getByRole("heading", { name: "Frailty and Mortality" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "The Christ-Centered Lens" })).toBeVisible();
   });
-
-  // Regression test for a live bug report (not in the original audit): an
-  // answer typed into a question block was lost if the reader navigated away
-  // (e.g. tapping "Next day") immediately after typing, worse on mobile.
-  // Root cause: QuestionBlock.tsx's onBlur save was a plain fetch() with no
-  // `keepalive`, so a real page navigation starting right after blur could
-  // abort the save request before it reached the server. On a fast local
-  // dev server the save usually completes before navigation has a real
-  // chance to cancel it either way, so this delays the response by 1.5s via
-  // route interception -- long enough that navigating immediately (this
-  // test never waits for the "Saved" indicator) gives the browser a real
-  // window to abort the request, which is exactly what reproduces the bug
-  // without `keepalive` and exactly what `keepalive` is for.
-  test("an answer typed just before navigating away is still saved (keepalive)", async ({ page }) => {
-    await page.route("**/api/responses", async (route) => {
-      await new Promise((r) => setTimeout(r, 1500));
-      // The navigation this test triggers can occasionally supersede this
-      // route between the delay ending and continue() running, which
-      // Playwright surfaces as "Route is already handled!" -- harmless here
-      // (the request either already completed via keepalive, which is
-      // exactly what's being tested, or Playwright itself finished handling
-      // it), so it shouldn't fail the test.
-      await route.continue().catch(() => {});
-    });
-
-    await openDay(page, "DAY 2");
-    const newAnswer = "Typed right before navigating away -- must still save.";
-    await page.getByLabel(/trust God's bigger plan/i).fill(newAnswer);
-    await page.getByRole("link", { name: "Next day" }).click();
-    await expect(page).toHaveURL(/\/studies\/qa-devotional-fixture\/[^/]+$/);
-
-    await page.unroute("**/api/responses");
-    await openDay(page, "DAY 2");
-    await expect(page.getByLabel(/trust God's bigger plan/i)).toHaveValue(newAnswer);
-  });
 });
+
+// The question-block-save-on-navigate race condition this fixture also
+// exercises now lives in its own file, run against both Chromium and real
+// WebKit -- see qa/e2e/specs/race-conditions/question-block-save.spec.ts.

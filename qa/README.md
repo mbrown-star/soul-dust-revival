@@ -35,8 +35,12 @@ Same local Postgres `npm test` already requires — see the root `BUILD_TASKS.md
 section if it isn't set up yet. Then:
 
 ```bash
-npx playwright install chromium   # downloads a local Chromium build for Playwright
+npx playwright install chromium webkit   # local Chromium + WebKit builds for Playwright
 ```
+
+WebKit is used specifically by the `mobile-webkit` project (real Safari engine, for the
+timing/race-condition tests in `qa/e2e/specs/race-conditions/` — see
+`qa/CONVENTIONS.md`'s "Testing for race conditions"), not the main functional suite.
 
 ## Running a QA pass
 
@@ -45,6 +49,7 @@ npm run qa:seed      # 1. (re)seed fixtures -- safe to re-run any time, fully id
 npm run qa:dev        # 2. start the QA dev server on :3100 (separate terminal/background)
 npm run test:e2e      # 3. run the desktop (chromium) suite
 npm run qa:seed && npm run test:e2e:mobile   # 4. re-seed, then run the mobile suite
+npm run test:e2e:race   # 5. the race-condition tests, on real WebKit (reseeds automatically)
 npm run test:e2e:report   # open the HTML report for the last run
 ```
 

@@ -19,6 +19,7 @@
     "qa:dev": "node qa/scripts/qa-dev-server.mjs",
     "test:e2e": "playwright test --project=chromium",
     "test:e2e:mobile": "npm run qa:seed && playwright test --project=mobile-chromium",
+    "test:e2e:race": "npm run qa:seed && playwright test --project=mobile-webkit",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report qa/playwright-report",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",

@@ -41,5 +41,19 @@ export default defineConfig({
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
     { name: "mobile-chromium", use: { ...devices["Pixel 7"] } },
+    // Real WebKit (Safari's engine), not Chromium with a phone-sized
+    // viewport -- mobile-chromium above is identical to desktop Chromium
+    // under the hood (same network stack, same request-cancellation
+    // behavior), so it can't reproduce a Safari-specific timing quirk no
+    // matter how small the screen is. Scoped to qa/e2e/specs/race-
+    // conditions/** only (not the whole suite) -- this project exists
+    // specifically to catch timing/race bugs around navigation and
+    // in-flight requests (see qa/CONVENTIONS.md "Testing for race
+    // conditions"), not to triple-run the full functional suite.
+    {
+      name: "mobile-webkit",
+      testMatch: /race-conditions\//,
+      use: { ...devices["iPhone 14"] },
+    },
   ],
 });
