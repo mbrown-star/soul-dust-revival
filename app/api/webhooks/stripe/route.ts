@@ -17,7 +17,16 @@ export async function POST(req: NextRequest) {
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(
+    // Cloudflare Workers has no Node `crypto` sync HMAC path the Stripe SDK's
+    // webhook signature verification needs -- `constructEvent` throws
+    // `CryptoProviderOnlySupportsAsyncError` there every time (its own
+    // message literally says "Use `await constructEventAsync(...)` instead"),
+    // which this try/catch was swallowing into a generic 400 "Invalid
+    // signature" on every real webhook delivery. Confirmed live: a real test
+    // purchase completed on Stripe's side, but the order stayed "pending"
+    // forever and no entitlement was ever granted, since Stripe's webhook
+    // call was rejected before `handleCheckoutCompleted` ever ran.
+    event = await stripe.webhooks.constructEventAsync(
       body,
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!

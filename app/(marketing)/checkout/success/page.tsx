@@ -4,6 +4,7 @@ import { eq, inArray } from "drizzle-orm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
+import { ClearCartOnMount } from "@/components/commerce/ClearCartOnMount";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -42,6 +43,7 @@ export default async function CheckoutSuccessPage({
 
   return (
     <div className="max-w-xl mx-auto px-4 py-10 sm:py-16 space-y-6">
+      <ClearCartOnMount />
       <h1 className="font-display font-bold text-2xl text-ink">Thank you for your order</h1>
       <p className="text-moss">Order #{order.id.slice(0, 8)}</p>
 
