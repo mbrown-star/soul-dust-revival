@@ -324,6 +324,13 @@ what's left, roughly in the order they need doing.
       generally doesn't — see SOCIAL.md)
 
 ## 6. End-to-end testing checklist
+**See also `qa/` (added 2026-11-11)** — a reusable, automated-plus-manual QA regression
+suite covering most of what's below against local dev with comprehensive fixtures, meant
+to be run after every build item (`qa/README.md` for setup/how-to-run,
+`qa/findings/FINDINGS_2026-11-07.md` for the first run's results). The checklist below
+stays as the staging/production-specific manual pass for whatever `qa/` can't cover
+locally (real Stripe test-mode payments, real social platform posting, etc.).
+
 Manual QA pass — walk through each of these against a real (ideally staging/test)
 deployment before treating any of it as launch-ready:
 
@@ -442,6 +449,7 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- **2026-11-11 (later) — built a reusable, automated-plus-manual QA regression suite (`qa/`) per explicit request, and ran the first full audit pass, surfacing a severe mobile nav bug and several real app bugs (not fixed, per the request's own research/audit framing).** 195 Playwright specs × 2 viewport projects (390 checks) plus 10 manual checklists, covering the whole app: storefront, checkout, account/auth, My Library, the Study and Devotional readers, the full admin console, and cron/social/connections. Headline findings: the public nav bar is completely unreachable at mobile widths (no responsive handling at all, unlike the admin nav); My Library shows a study's raw internal title instead of its product's storefront title (a second, broader instance of the already-documented devotional-title bug); the Study tab's first "Part" is open by default but never marked read; the checkout success page mis-prices/collapses line items for a "both"-format order. Full list with severities and recommendations in `qa/findings/FINDINGS_2026-11-07.md`; full infrastructure design (the magic-link-without-email login helper, the isolated local-Postgres dev server, fixture inventory) in `qa/README.md`/`qa/CONVENTIONS.md`. `npm run verify` and `npm test` (272, unchanged) both clean. See CLAUDE.md's same-dated entry for the complete writeup.
 - **2026-11-11 — re-verified the Study reader against `study_template.html` field by field and fixed two real gaps: the Passage tab was missing its whole "Hide It in Your Heart" memorization section, and a Greek station with no inline word match had no fallback way to reach its study.** `npm run verify` and `npm test` (272, unchanged) both clean; verified live against the real Colossians data. See CLAUDE.md's same-dated entry for the full design and what was deliberately left as-is. **Not yet redeployed to Cloudflare.**
 - **2026-11-10 — found and fixed three real production bugs in the checkout → payment → webhook flow (Stripe SDK hanging on Workers, the webhook never verifying, the cart never clearing), created the missing Stripe webhook endpoint, and worked around a Cloudflare Access conflict to get it actually delivering.** Verified end-to-end with a real test purchase: order status correctly flips to `paid` and the webhook reaches the Worker. See CLAUDE.md's same-dated entries for the full story. **One real stuck order from before the webhook existed (`4abcdde9-...`) still needs manual reconciliation** — this session's sandbox refused the one-off script that would fix it; needs the user's own terminal or a future session's explicit approval.
 - **2026-11-10 — fixed a breadcrumb bug the Study-reader chrome rebuild below introduced, built the devotional reader's own 4-view app shell (Today / The Year / Journal / Six Faces of the Dust) against a new `soul-dust-psalms-365/` reference, and ran the question-answer backfill against the real database (user approved).** Real per-account progress tracking (not localStorage) drives the Year calendar's stats/markers, and "A Question to Sit With" is now a real saved answer (365 real days + 1 seed lesson backfilled, 0 duplicates, confirmed live). `npm run verify` and `npm test` (272, 5 new) both clean. See CLAUDE.md's same-dated entries for the full design and review notes. **Not yet redeployed to Cloudflare.**

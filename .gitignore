@@ -42,3 +42,13 @@ next-env.d.ts
 
 # Vitest
 coverage/
+
+# Playwright QA suite -- storage states hold real (test-account) session
+# cookies, reports/results are run artifacts, neither belongs in git.
+qa/.auth/
+qa/playwright-report/
+qa/test-results/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

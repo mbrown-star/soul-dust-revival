@@ -15,6 +15,13 @@ const eslintConfig = [
       ".wrangler/**",
       "node_modules/**",
       "drizzle/**",
+      // Playwright's own generated run artifacts (qa/ regression suite) --
+      // the HTML report bundles Playwright's minified trace-viewer JS, which
+      // isn't app source and will produce nonsense lint errors (and can OOM
+      // ESLint) if linted.
+      "qa/playwright-report/**",
+      "qa/test-results/**",
+      "qa/.auth/**",
       "next-env.d.ts",
       "tailwind.config.js",
       "postcss.config.js",
