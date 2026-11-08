@@ -5,6 +5,8 @@ import {
   anthropicKeySchema,
   blogPostCreateSchema,
   blogPostUpdateSchema,
+  bundleDeleteSchema,
+  bundleSchema,
   checkoutSchema,
   connectionDisconnectSchema,
   contentBlockCreateSchema,
@@ -342,6 +344,71 @@ describe("productSchema", () => {
         }).success
       ).toBe(false);
     });
+  });
+});
+
+describe("bundleSchema", () => {
+  const base = {
+    title: "Colossians Box Set",
+    slug: "colossians-box-set",
+    priceCents: 4900,
+    format: "digital" as const,
+    active: true,
+    componentProductIds: [uuid],
+  };
+
+  it("accepts a minimal valid bundle", () => {
+    expect(bundleSchema.safeParse(base).success).toBe(true);
+  });
+
+  it("defaults featured to false when omitted", () => {
+    const parsed = bundleSchema.safeParse(base);
+    expect(parsed.success && parsed.data.featured).toBe(false);
+  });
+
+  it("rejects an empty componentProductIds array", () => {
+    expect(bundleSchema.safeParse({ ...base, componentProductIds: [] }).success).toBe(false);
+  });
+
+  it("rejects more than 50 components", () => {
+    const tooMany = Array.from({ length: 51 }, () => uuid);
+    expect(bundleSchema.safeParse({ ...base, componentProductIds: tooMany }).success).toBe(false);
+  });
+
+  it("rejects a non-UUID component id", () => {
+    expect(bundleSchema.safeParse({ ...base, componentProductIds: ["not-a-uuid"] }).success).toBe(false);
+  });
+
+  it("rejects format \"both\" -- a bundle is always physical or digital, never both", () => {
+    expect(bundleSchema.safeParse({ ...base, format: "both" }).success).toBe(false);
+  });
+
+  it("rejects an unknown format", () => {
+    expect(bundleSchema.safeParse({ ...base, format: "ebook" }).success).toBe(false);
+  });
+
+  it("rejects a negative or fractional price", () => {
+    expect(bundleSchema.safeParse({ ...base, priceCents: -1 }).success).toBe(false);
+    expect(bundleSchema.safeParse({ ...base, priceCents: 49.5 }).success).toBe(false);
+  });
+
+  it("accepts an optional id for an update", () => {
+    expect(bundleSchema.safeParse({ ...base, id: uuid }).success).toBe(true);
+  });
+
+  it("rejects a non-UUID id", () => {
+    expect(bundleSchema.safeParse({ ...base, id: "not-a-uuid" }).success).toBe(false);
+  });
+});
+
+describe("bundleDeleteSchema", () => {
+  it("accepts a valid id", () => {
+    expect(bundleDeleteSchema.safeParse({ id: uuid }).success).toBe(true);
+  });
+
+  it("rejects a missing or non-UUID id", () => {
+    expect(bundleDeleteSchema.safeParse({}).success).toBe(false);
+    expect(bundleDeleteSchema.safeParse({ id: "not-a-uuid" }).success).toBe(false);
   });
 });
 

@@ -1,14 +1,22 @@
 import { getDb } from "@/lib/db/client";
 import { products } from "@/lib/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, ne } from "drizzle-orm";
 import Link from "next/link";
 import Image from "next/image";
+import { CreateMenu } from "@/components/admin/CreateMenu";
 
 export default async function AdminProductsPage() {
   const db = await getDb();
   // Safety cap, not real pagination -- this list is admin-curated and
   // realistically stays in the dozens, but nothing should fetch unbounded.
-  const allProducts = await db.select().from(products).orderBy(desc(products.createdAt)).limit(100);
+  // Excludes bundles (type: "bundle") -- they're products.rows too, but get
+  // their own dedicated /admin/bundles list rather than mixing into this one.
+  const allProducts = await db
+    .select()
+    .from(products)
+    .where(ne(products.type, "bundle"))
+    .orderBy(desc(products.createdAt))
+    .limit(100);
   // Queried separately (not derived from the capped list above) so the
   // count stays correct even past the 100-row display cap.
   const featuredProducts = await db.query.products.findMany({
@@ -23,9 +31,13 @@ export default async function AdminProductsPage() {
           <h1 className="text-xl font-semibold">Products</h1>
           <p className="text-sm text-moss">{featuredProducts.length}/8 featured on the homepage</p>
         </div>
-        <Link href="/admin/products/new" className="inline-block bg-ink text-white rounded-lg px-4 py-2 text-center">
-          Add product
-        </Link>
+        <CreateMenu
+          label="Add product"
+          items={[
+            { label: "New product", href: "/admin/products/new" },
+            { label: "New bundle", href: "/admin/bundles/new" },
+          ]}
+        />
       </div>
 
       <div className="divide-y border rounded-lg">

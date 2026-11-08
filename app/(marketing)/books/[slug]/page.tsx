@@ -1,7 +1,9 @@
 import { getDb } from "@/lib/db/client";
-import { products } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { products, bundleItems } from "@/lib/db/schema";
+import { eq, asc } from "drizzle-orm";
 import { notFound } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
 import { AddToCartButton } from "@/components/commerce/AddToCartButton";
 import { AmazonBuyButton } from "@/components/commerce/AmazonBuyButton";
 import { CoverGallery } from "@/components/commerce/CoverGallery";
@@ -38,6 +40,32 @@ export default async function BookDetailPage({
 
   if (!product || !product.active) notFound();
 
+  // A bundle's own purchase (master cover, one price, one AddToCartButton) is
+  // handled by the exact same format-based branches below as any other
+  // product -- a bundle's `format` is always "physical" or "digital", never
+  // "both" (see bundleSchema). This is just the extra "what's included" list,
+  // each component purchasable on its own through its own existing buttons.
+  const components =
+    product.type === "bundle"
+      ? await db
+          .select({
+            id: products.id,
+            slug: products.slug,
+            title: products.title,
+            format: products.format,
+            priceCents: products.priceCents,
+            digitalPriceCents: products.digitalPriceCents,
+            imageUrl: products.imageUrl,
+            imageAlt: products.imageAlt,
+            amazonUrl: products.amazonUrl,
+            sellOnStripe: products.sellOnStripe,
+          })
+          .from(bundleItems)
+          .innerJoin(products, eq(bundleItems.componentProductId, products.id))
+          .where(eq(bundleItems.bundleProductId, product.id))
+          .orderBy(asc(bundleItems.orderIndex))
+      : [];
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
@@ -48,7 +76,11 @@ export default async function BookDetailPage({
 
         <div>
           <p className="font-sans text-xs uppercase tracking-wide text-moss mb-2">
-            {product.format === "digital"
+            {product.type === "bundle"
+              ? product.format === "digital"
+                ? "Bundle · Unlocks in the web app"
+                : "Bundle · Ships to you"
+              : product.format === "digital"
               ? "Study · Unlocks in the web app"
               : product.format === "both"
               ? "Book & Study · Ships, and unlocks in the web app"
@@ -127,7 +159,9 @@ export default async function BookDetailPage({
               </div>
 
               <p className="font-sans text-sm text-moss mt-6">
-                {product.format === "digital"
+                {product.type === "bundle"
+                  ? "One purchase, everything below included."
+                  : product.format === "digital"
                   ? "Digital studies require an account — you'll be prompted to sign up during checkout."
                   : "Ships within a few business days. No account needed to buy a physical book alone."}
               </p>
@@ -135,6 +169,73 @@ export default async function BookDetailPage({
           )}
         </div>
       </div>
+
+      {product.type === "bundle" && components.length > 0 && (
+        <div className="mt-16">
+          <h2 className="font-display font-bold text-2xl text-ink mb-6">What&apos;s included</h2>
+          <div className="divide-y border-t border-b border-moss/20">
+            {components.map((component) => (
+              <div key={component.id} className="flex items-center gap-4 py-5">
+                {component.imageUrl ? (
+                  <Image
+                    src={component.imageUrl}
+                    alt={component.imageAlt ?? ""}
+                    width={56}
+                    height={56}
+                    className="w-14 h-14 object-cover rounded"
+                  />
+                ) : (
+                  <div className="w-14 h-14 bg-moss/10 rounded flex-shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <Link href={`/books/${component.slug}`} className="font-sans font-semibold text-ink hover:text-moss">
+                    {component.title}
+                  </Link>
+                  <p className="font-sans text-sm text-moss">
+                    {component.format === "both"
+                      ? `$${(component.priceCents / 100).toFixed(2)} printed · $${((component.digitalPriceCents ?? 0) / 100).toFixed(2)} digital`
+                      : `$${(component.priceCents / 100).toFixed(2)} on its own`}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2 justify-end flex-shrink-0">
+                  {component.format === "both" ? (
+                    <>
+                      {component.sellOnStripe && (
+                        <AddToCartButton
+                          productId={component.id}
+                          title={component.title}
+                          priceCents={component.priceCents}
+                          format="physical"
+                          variant="physical"
+                          label="Buy printed"
+                        />
+                      )}
+                      <AddToCartButton
+                        productId={component.id}
+                        title={component.title}
+                        priceCents={component.digitalPriceCents ?? 0}
+                        format="digital"
+                        variant="digital"
+                        label="Buy digital"
+                      />
+                    </>
+                  ) : (
+                    component.sellOnStripe && (
+                      <AddToCartButton
+                        productId={component.id}
+                        title={component.title}
+                        priceCents={component.priceCents}
+                        format={component.format}
+                      />
+                    )
+                  )}
+                  {component.amazonUrl && <AmazonBuyButton amazonUrl={component.amazonUrl} />}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

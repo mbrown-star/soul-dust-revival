@@ -1,8 +1,8 @@
 import { getDb } from "@/lib/db/client";
-import { orders, orderItems, entitlements, products } from "@/lib/db/schema";
+import { orders, orderItems, entitlements, products, bundleItems } from "@/lib/db/schema";
 import { eq, inArray, and, ne } from "drizzle-orm";
 import type Stripe from "stripe";
-import { sendOrderConfirmationEmail } from "@/lib/email/send";
+import { sendOrderConfirmationEmail, sendBundleShipmentNotificationEmail } from "@/lib/email/send";
 import { isDigitalVariant, isPhysicalVariant } from "./products";
 
 /**
@@ -68,14 +68,24 @@ export async function handleCheckoutCompleted(session: Stripe.Checkout.Session, 
 
   const digitalItems = items.filter(isDigitalItem);
   const hasPhysical = items.some(isPhysicalItem);
+  const recipientEmail = order.guestEmail ?? session.customer_details?.email ?? "";
 
   // Only digital/webapp content grants an entitlement — physical books just
   // ship. One entitlement per distinct product, even if it somehow appears
   // in more than one digital line item (quantity already covers "more than
-  // one copy" without needing more than one entitlement row).
+  // one copy" without needing more than one entitlement row). A digital
+  // bundle is excluded from this ordinary per-item loop -- nothing gates
+  // content behind the bundle's own product id, only behind each
+  // component's -- and instead cascades below.
   if (order.userId) {
     const grantedProductIds = new Set<string>();
+    const digitalBundleIds: string[] = [];
     for (const item of digitalItems) {
+      const product = productById.get(item.productId)!;
+      if (product.type === "bundle") {
+        digitalBundleIds.push(product.id);
+        continue;
+      }
       if (grantedProductIds.has(item.productId)) continue;
       grantedProductIds.add(item.productId);
       await db.insert(entitlements).values({
@@ -85,6 +95,55 @@ export async function handleCheckoutCompleted(session: Stripe.Checkout.Session, 
         expiresAt: null,
       });
     }
+
+    // Buying a digital bundle cascades an entitlement to every one of its
+    // components, exactly as if each had been bought individually. Added to
+    // the same `grantedProductIds` set so a component that's *also*
+    // independently in the cart (bought both inside the bundle and on its
+    // own) still only gets one entitlement row.
+    if (digitalBundleIds.length > 0) {
+      const components = await db
+        .select({ bundleProductId: bundleItems.bundleProductId, componentProductId: bundleItems.componentProductId })
+        .from(bundleItems)
+        .where(inArray(bundleItems.bundleProductId, digitalBundleIds));
+      for (const { componentProductId } of components) {
+        if (grantedProductIds.has(componentProductId)) continue;
+        grantedProductIds.add(componentProductId);
+        await db.insert(entitlements).values({
+          userId: order.userId,
+          productId: componentProductId,
+          source: "purchase",
+          expiresAt: null,
+        });
+      }
+    }
+  }
+
+  // A physical bundle ships like any other physical product, but there's no
+  // Amazon fulfillment behind it (bundles are always Stripe-only -- see
+  // app/api/admin/bundles/route.ts) and no other automated fulfillment
+  // pipeline either, so the one person who actually packs and ships it needs
+  // a direct heads-up rather than relying on the admin "Reports" area.
+  const physicalBundleItems = items.filter((item) => {
+    const product = productById.get(item.productId)!;
+    return product.type === "bundle" && isPhysicalItem(item);
+  });
+  if (physicalBundleItems.length > 0) {
+    await sendBundleShipmentNotificationEmail({
+      orderId: order.id,
+      customerEmail: recipientEmail,
+      shippingName: order.shippingName,
+      shippingLine1: order.shippingLine1,
+      shippingLine2: order.shippingLine2,
+      shippingCity: order.shippingCity,
+      shippingState: order.shippingState,
+      shippingPostalCode: order.shippingPostalCode,
+      shippingCountry: order.shippingCountry,
+      bundles: physicalBundleItems.map((item) => ({
+        title: productById.get(item.productId)!.title,
+        quantity: item.quantity,
+      })),
+    });
   }
 
   const composition: "physical_only" | "digital_only" | "mixed" =
@@ -93,8 +152,6 @@ export async function handleCheckoutCompleted(session: Stripe.Checkout.Session, 
       : hasPhysical
       ? "physical_only"
       : "digital_only";
-
-  const recipientEmail = order.guestEmail ?? session.customer_details?.email ?? "";
 
   await sendOrderConfirmationEmail({
     to: recipientEmail,

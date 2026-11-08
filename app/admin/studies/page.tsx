@@ -3,6 +3,7 @@ import { studies } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 import Link from "next/link";
 import Image from "next/image";
+import { CreateMenu } from "@/components/admin/CreateMenu";
 
 export default async function AdminStudiesPage() {
   const db = await getDb();
@@ -14,9 +15,13 @@ export default async function AdminStudiesPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <h1 className="text-xl font-semibold">Studies</h1>
-        <Link href="/admin/studies/new" className="inline-block bg-ink text-white rounded-lg px-4 py-2 text-center">
-          Add study
-        </Link>
+        <CreateMenu
+          label="Add study"
+          items={[
+            { label: "New study", href: "/admin/studies/new" },
+            { label: "New bundle", href: "/admin/bundles/new" },
+          ]}
+        />
       </div>
 
       <div className="divide-y border rounded-lg">

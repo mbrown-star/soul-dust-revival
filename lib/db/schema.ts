@@ -152,6 +152,26 @@ export const entitlements = pgTable("entitlements", {
   expiresAt: timestamp("expires_at", { withTimezone: true }), // null = permanent
 });
 
+// A `products` row with type: "bundle" groups other existing products
+// together at one combined price -- this table is just the membership list.
+// Its own `format` ("physical" ships / "digital" grants access -- never
+// "both", which already means something different: two independent
+// purchases) decides what happens at checkout, reusing the existing
+// isPhysicalVariant/isDigitalVariant branching unchanged (lib/stripe/products.ts):
+// a physical bundle ships (Stripe only, never Amazon) and triggers a
+// founder-facing fulfillment email; a digital bundle grants an entitlement
+// for every component here when purchased (lib/stripe/webhook-handlers.ts).
+export const bundleItems = pgTable(
+  "bundle_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    bundleProductId: uuid("bundle_product_id").references(() => products.id).notNull(),
+    componentProductId: uuid("component_product_id").references(() => products.id).notNull(),
+    orderIndex: integer("order_index").notNull().default(0),
+  },
+  (table) => [unique("bundle_items_unique").on(table.bundleProductId, table.componentProductId)]
+);
+
 // ---------- CONTENT STRUCTURE ----------
 export const studies = pgTable("studies", {
   id: uuid("id").primaryKey().defaultRandom(),

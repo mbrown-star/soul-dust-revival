@@ -145,6 +145,44 @@ export const productDeleteSchema = z.object({
   id: z.string().uuid(),
 });
 
+// ---------- Admin: bundles ----------
+// A bundle is a `products` row (type: "bundle") plus its own membership list
+// (bundle_items) — see lib/db/schema.ts's comment on bundleItems for the
+// full design. Deliberately a separate, smaller schema from productSchema
+// rather than reusing it with a pile of bundle-specific .refine()s: a bundle
+// has no amazonUrl/sellOnStripe (always Stripe-only) and no digitalPriceCents
+// (one combined price, never a "both"-style split purchase), so reusing
+// productSchema would mean constantly refining away fields that don't apply.
+export const bundleSchema = z.object({
+  id: z.string().uuid().optional(),
+  title: z.string().min(1).max(200),
+  slug: z
+    .string()
+    .min(1)
+    .max(200)
+    .regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers, and hyphens only"),
+  description: z.string().max(5_000).optional().nullable(),
+  priceCents: z.number().int().min(0).max(100_000_00),
+  imageUrl: z.string().url().optional().nullable(), // the master cover
+  imageAlt: z.string().max(300).optional().nullable(),
+  // "physical": ships, Stripe-only, triggers the founder fulfillment email.
+  // "digital": grants an entitlement for every component on purchase, no
+  // shipping. Never "both" — see the schema comment above.
+  format: z.enum(["physical", "digital"]),
+  active: z.boolean(),
+  featured: z.boolean().default(false),
+  // The bundle's own membership list, replaced wholesale on every save (see
+  // app/api/admin/bundles/route.ts) — order in the array is the display
+  // order. At least one component, and a bundle can't contain itself or
+  // another bundle (checked server-side against the DB, not expressible
+  // here without a query).
+  componentProductIds: z.array(z.string().uuid()).min(1).max(50),
+});
+
+export const bundleDeleteSchema = z.object({
+  id: z.string().uuid(),
+});
+
 // ---------- Admin: studies ----------
 export const studySchema = z.object({
   id: z.string().uuid().optional(),

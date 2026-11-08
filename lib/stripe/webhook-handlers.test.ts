@@ -1,18 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import { getDb, type Db } from "@/lib/db/client";
-import { entitlements, orders, orderItems, products, users } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { bundleItems, entitlements, orders, orderItems, products, users } from "@/lib/db/schema";
+import { eq, inArray } from "drizzle-orm";
 import type Stripe from "stripe";
 
-// sendOrderConfirmationEmail calls the real Resend API -- mocked so these
-// tests never send a real email (or need a real RESEND_API_KEY).
+// sendOrderConfirmationEmail/sendBundleShipmentNotificationEmail both call
+// the real Resend API -- mocked so these tests never send a real email (or
+// need a real RESEND_API_KEY).
 vi.mock("@/lib/email/send", () => ({
   sendOrderConfirmationEmail: vi.fn().mockResolvedValue(undefined),
+  sendBundleShipmentNotificationEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
 const { handleCheckoutCompleted } = await import("./webhook-handlers");
-const { sendOrderConfirmationEmail } = await import("@/lib/email/send");
+const { sendOrderConfirmationEmail, sendBundleShipmentNotificationEmail } = await import("@/lib/email/send");
 
 function fakeCheckoutSession(orderId: string, overrides: Partial<Stripe.Checkout.Session> = {}) {
   return {
@@ -170,6 +172,139 @@ describe("handleCheckoutCompleted", () => {
         await db.delete(entitlements).where(eq(entitlements.productId, bothProduct!.id));
         await db.delete(orderItems).where(eq(orderItems.productId, bothProduct!.id));
         await db.delete(products).where(eq(products.id, bothProduct!.id));
+      }
+    });
+  });
+
+  describe("bundles", () => {
+    it("a digital bundle grants an entitlement for every component, not for the bundle itself", async () => {
+      const [componentA] = await db
+        .insert(products)
+        .values({ type: "study_access", format: "digital", title: "Component A", slug: `component-a-${randomUUID()}`, priceCents: 1000 })
+        .returning();
+      const [componentB] = await db
+        .insert(products)
+        .values({ type: "study_access", format: "digital", title: "Component B", slug: `component-b-${randomUUID()}`, priceCents: 1000 })
+        .returning();
+      const [bundle] = await db
+        .insert(products)
+        .values({ type: "bundle", format: "digital", title: "Digital Bundle", slug: `digital-bundle-${randomUUID()}`, priceCents: 1800 })
+        .returning();
+      await db.insert(bundleItems).values([
+        { bundleProductId: bundle!.id, componentProductId: componentA!.id, orderIndex: 0 },
+        { bundleProductId: bundle!.id, componentProductId: componentB!.id, orderIndex: 1 },
+      ]);
+
+      await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
+      await db.insert(orderItems).values({ orderId, productId: bundle!.id, quantity: 1 });
+
+      try {
+        await handleCheckoutCompleted(fakeCheckoutSession(orderId, { amount_total: 1800 }), "https://example.com");
+
+        const grants = await db.select().from(entitlements).where(eq(entitlements.userId, userId));
+        expect(grants.map((g) => g.productId).sort()).toEqual([componentA!.id, componentB!.id].sort());
+        expect(sendBundleShipmentNotificationEmail).not.toHaveBeenCalled();
+      } finally {
+        await db.delete(entitlements).where(inArray(entitlements.productId, [componentA!.id, componentB!.id, bundle!.id]));
+        await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
+        await db.delete(bundleItems).where(eq(bundleItems.bundleProductId, bundle!.id));
+        await db.delete(products).where(inArray(products.id, [componentA!.id, componentB!.id, bundle!.id]));
+      }
+    });
+
+    it("a component bought both inside a digital bundle and on its own still gets exactly one entitlement", async () => {
+      const [component] = await db
+        .insert(products)
+        .values({ type: "study_access", format: "digital", title: "Shared Component", slug: `shared-component-${randomUUID()}`, priceCents: 1000 })
+        .returning();
+      const [bundle] = await db
+        .insert(products)
+        .values({ type: "bundle", format: "digital", title: "Digital Bundle", slug: `digital-bundle-${randomUUID()}`, priceCents: 1800 })
+        .returning();
+      await db.insert(bundleItems).values({ bundleProductId: bundle!.id, componentProductId: component!.id, orderIndex: 0 });
+
+      await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
+      await db.insert(orderItems).values([
+        { orderId, productId: bundle!.id, quantity: 1 },
+        { orderId, productId: component!.id, quantity: 1 },
+      ]);
+
+      try {
+        await handleCheckoutCompleted(fakeCheckoutSession(orderId, { amount_total: 2800 }), "https://example.com");
+
+        const grants = await db.select().from(entitlements).where(eq(entitlements.userId, userId));
+        expect(grants).toHaveLength(1);
+        expect(grants[0]!.productId).toBe(component!.id);
+      } finally {
+        await db.delete(entitlements).where(inArray(entitlements.productId, [component!.id, bundle!.id]));
+        await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
+        await db.delete(bundleItems).where(eq(bundleItems.bundleProductId, bundle!.id));
+        await db.delete(products).where(inArray(products.id, [component!.id, bundle!.id]));
+      }
+    });
+
+    it("a physical bundle sends the founder shipment-notification email and grants no entitlement", async () => {
+      const [component] = await db
+        .insert(products)
+        .values({ type: "book", format: "physical", title: "Physical Component", slug: `physical-component-${randomUUID()}`, priceCents: 1500 })
+        .returning();
+      const [bundle] = await db
+        .insert(products)
+        .values({ type: "bundle", format: "physical", title: "Physical Bundle", slug: `physical-bundle-${randomUUID()}`, priceCents: 2500 })
+        .returning();
+      await db.insert(bundleItems).values({ bundleProductId: bundle!.id, componentProductId: component!.id, orderIndex: 0 });
+
+      await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
+      await db.insert(orderItems).values({ orderId, productId: bundle!.id, quantity: 1 });
+
+      try {
+        await handleCheckoutCompleted(
+          fakeCheckoutSession(orderId, {
+            amount_total: 2500,
+            shipping_details: { name: "Jane Reader", address: { line1: "1 Main St", line2: null, city: "Nashville", state: "TN", postal_code: "37201", country: "US" } },
+          } as Partial<Stripe.Checkout.Session>),
+          "https://example.com"
+        );
+
+        const grants = await db.select().from(entitlements).where(eq(entitlements.userId, userId));
+        expect(grants).toHaveLength(0);
+
+        expect(sendBundleShipmentNotificationEmail).toHaveBeenCalledTimes(1);
+        expect(sendBundleShipmentNotificationEmail).toHaveBeenCalledWith(
+          expect.objectContaining({
+            bundles: [{ title: "Physical Bundle", quantity: 1 }],
+            shippingName: "Jane Reader",
+          })
+        );
+      } finally {
+        await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
+        await db.delete(bundleItems).where(eq(bundleItems.bundleProductId, bundle!.id));
+        await db.delete(products).where(inArray(products.id, [component!.id, bundle!.id]));
+      }
+    });
+
+    it("does not send the bundle shipment email for a digital bundle", async () => {
+      const [component] = await db
+        .insert(products)
+        .values({ type: "study_access", format: "digital", title: "Digital-only Component", slug: `digital-only-${randomUUID()}`, priceCents: 1000 })
+        .returning();
+      const [bundle] = await db
+        .insert(products)
+        .values({ type: "bundle", format: "digital", title: "Digital Bundle", slug: `digital-bundle-${randomUUID()}`, priceCents: 1800 })
+        .returning();
+      await db.insert(bundleItems).values({ bundleProductId: bundle!.id, componentProductId: component!.id, orderIndex: 0 });
+
+      await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
+      await db.insert(orderItems).values({ orderId, productId: bundle!.id, quantity: 1 });
+
+      try {
+        await handleCheckoutCompleted(fakeCheckoutSession(orderId, { amount_total: 1800 }), "https://example.com");
+        expect(sendBundleShipmentNotificationEmail).not.toHaveBeenCalled();
+      } finally {
+        await db.delete(entitlements).where(inArray(entitlements.productId, [component!.id, bundle!.id]));
+        await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
+        await db.delete(bundleItems).where(eq(bundleItems.bundleProductId, bundle!.id));
+        await db.delete(products).where(inArray(products.id, [component!.id, bundle!.id]));
       }
     });
   });

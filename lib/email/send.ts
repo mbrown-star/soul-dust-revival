@@ -62,6 +62,63 @@ export async function sendOrderConfirmationEmail(params: OrderConfirmationParams
   });
 }
 
+const FOUNDER_EMAIL = "brad.bird@souldustrevival.com";
+
+type BundleShipmentNotificationParams = {
+  orderId: string;
+  customerEmail: string;
+  shippingName: string | null;
+  shippingLine1: string | null;
+  shippingLine2: string | null;
+  shippingCity: string | null;
+  shippingState: string | null;
+  shippingPostalCode: string | null;
+  shippingCountry: string | null;
+  bundles: { title: string; quantity: number }[];
+};
+
+/**
+ * A physical bundle has no automated fulfillment pipeline behind it (it's
+ * always Stripe-only, never Amazon -- see app/api/admin/bundles/route.ts),
+ * so a human has to pack and ship it. This is that human's only signal that
+ * one was just bought, sent straight to the founder rather than left to be
+ * noticed in the admin Reports area.
+ */
+export async function sendBundleShipmentNotificationEmail(params: BundleShipmentNotificationParams) {
+  const bundlesHtml = params.bundles
+    .map((b) => `<li>${escapeHtml(b.title)}${b.quantity > 1 ? ` × ${b.quantity}` : ""}</li>`)
+    .join("");
+
+  const addressLines = [
+    params.shippingName,
+    params.shippingLine1,
+    params.shippingLine2,
+    [params.shippingCity, params.shippingState, params.shippingPostalCode].filter(Boolean).join(", "),
+    params.shippingCountry,
+  ].filter((line): line is string => Boolean(line));
+
+  const addressHtml = addressLines.length
+    ? addressLines.map((line) => escapeHtml(line)).join("<br/>")
+    : "<em>No shipping address on file for this order.</em>";
+
+  const html = `
+    <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;">
+      <h2>A bundle order needs to ship</h2>
+      <p style="color:#666;">Order #${params.orderId.slice(0, 8)} · ${escapeHtml(params.customerEmail)}</p>
+      <ul>${bundlesHtml}</ul>
+      <p style="font-weight:600;">Ship to:</p>
+      <p>${addressHtml}</p>
+    </div>
+  `;
+
+  await resend.emails.send({
+    from: `Soul Dust Revival <${process.env.RESEND_FROM_EMAIL}>`,
+    to: FOUNDER_EMAIL,
+    subject: `Bundle purchase to ship — order #${params.orderId.slice(0, 8)}`,
+    html,
+  });
+}
+
 function escapeHtml(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }

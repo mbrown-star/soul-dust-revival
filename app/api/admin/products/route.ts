@@ -1,23 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/guard";
-import { getDb, type Db } from "@/lib/db/client";
+import { getDb } from "@/lib/db/client";
 import { products, studies, orderItems, entitlements } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { productSchema, productDeleteSchema } from "@/lib/validation/schemas";
-
-// Shown in the homepage's "Featured content" section, which has room for up
-// to this many tiles. "No more than N featured" is a cross-row count, so it
-// can't be expressed in productSchema's per-row Zod validation -- checked
-// here instead, against the current DB state.
-const MAX_FEATURED_PRODUCTS = 8;
-
-async function featuredCount(db: Db, excludeProductId?: string): Promise<number> {
-  const featured = await db.query.products.findMany({
-    where: eq(products.featured, true),
-    columns: { id: true },
-  });
-  return excludeProductId ? featured.filter((p) => p.id !== excludeProductId).length : featured.length;
-}
+import { MAX_FEATURED_PRODUCTS, featuredCount } from "@/lib/commerce/featuredLimit";
 
 export async function POST(req: NextRequest) {
   const session = await requireAdmin();

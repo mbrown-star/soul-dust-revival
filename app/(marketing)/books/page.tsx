@@ -57,7 +57,11 @@ export default async function BooksPage() {
                 )}
               </div>
               <p className="font-sans text-xs uppercase tracking-wide text-moss mb-1">
-                {p.format === "digital"
+                {p.type === "bundle"
+                  ? p.format === "digital"
+                    ? "Bundle · Web app"
+                    : "Bundle · Ships to you"
+                  : p.format === "digital"
                   ? "Study · Web app"
                   : p.format === "both"
                   ? "Book & Study"
