@@ -99,6 +99,78 @@ are outside what code can determine.
   `role="menu"`/`role="menuitem"` semantics, closes on Escape, and returns focus to the
   trigger button after a selection — standard WAI-ARIA menu-button behavior.
 
+**Callout background color — live contrast check**
+- `ColorPicker.tsx` (used by `BlockEditor.tsx` for a callout's background) computes a real
+  WCAG contrast ratio (`lib/color/contrast.ts`) against the two text colors that actually
+  render on top of it in `LessonBlock.tsx` — the title (`ink`, inherited from `<body>`) and
+  the body copy (`.prose`'s own default color, which is *not* `ink` — see the module's doc
+  comment) — and shows a live, computed warning (`role="alert"` when it fails) instead of
+  the static "remember to check this" reminder that used to sit next to the picker with no
+  way to act on it. Not a hard block on saving (a callout is a stylistic choice, and a
+  false positive from the two-fixed-text-color assumption is more costly here than for a
+  required field like alt text) — this is advisory, surfaced where an admin will actually
+  see it, computed from the real numbers rather than left to eyeballing.
+
+**Standing automated accessibility suite (axe-core, part of the QA suite)**
+`qa/e2e/specs/accessibility.spec.ts` (`npm run test:a11y`) runs axe-core against every
+major public page, both reader shells (every tab of each, not just the default one — a
+hidden-but-mounted tab panel is invisible to axe until actually switched to), and every
+admin section, as `qa-user`/`qa-admin`. This replaces "axe DevTools run by hand
+occasionally" with something that runs every time the QA suite runs and can't quietly
+stop happening. It's still a floor: screen-reader-only issues, caption/transcript
+accuracy, and anything behind a page a fixture doesn't cover are untouched by it — see
+"What still needs manual verification" below.
+
+The first real run found 4 contrast failures this pass fixed, all the same root cause —
+`ember-700` text is calibrated to pass WCAG AA against a full-strength `parchment`/white
+background (4.9–5.0:1) but drops to ~4.45:1 against the translucent tinted card
+backgrounds (`bg-dusk/5`, `bg-ember-700/10`) several eyebrow labels and a status badge
+sat on top of: the Devotional reader's "Lift Up Your Eyes" label, the Study reader's
+"Going Deeper · The Greek" and "Bottom Line" labels, the admin Studies list's "Study" kind
+badge, and the admin Social list's "scheduled" status badge. Fixed by recoloring the text
+(`moss` for the eyebrow labels, `ink` for the two badges, both of which clear >6:1 against
+the same backgrounds) rather than changing the backgrounds or the token itself — this is
+specifically about `ember-700` on a *diluted* background, not a flaw in the token itself,
+which still passes fine everywhere it sits on a full-strength background.
+
+**Manual keyboard-only pass (checkout + admin lesson authoring)**
+Driven by hand (Tab/Shift+Tab/Enter/Space/Arrow/Escape only, no mouse) against the local
+QA dev server: a full guest physical-purchase checkout (add to cart → email → country →
+"Proceed to payment") had a visible focus indicator at every step, correct tab order, no
+keyboard traps, and the cart/add-to-cart `aria-live` confirmations fired correctly — no
+findings. The admin lesson-authoring flow surfaced two real bugs, both fixed:
+- **`AddBlockButton.tsx` didn't check `res.ok`** — a failed add-block request (a 403 from
+  an expired session, a validation error, a network failure) was parsed and handed to
+  `onAdd()` as if it were a real block. The resulting block's drag/move/delete controls
+  then rendered as `"undefined block"` (`block.type` was `undefined` on the error body),
+  confusing for a sighted admin and actively misleading for a screen reader user told to
+  "move the undefined block," with no indication anything had actually failed. Fixed with
+  a `try`/`catch` + `res.ok` check and a visible `role="alert"` error message — the same
+  gap already flagged (not yet fixed) in 9 other admin files per the 2026-11-08 entry in
+  CLAUDE.md; this is one of those nine, found live rather than by code review.
+- **The Move Up/Down buttons could drop keyboard focus to `<body>`.** A button that
+  becomes `disabled` right after being activated (e.g. "Move up" at the new position 1)
+  can't hold focus, so the browser silently drops it to `<body>` — a keyboard user who
+  just reordered a block loses their place in the page entirely and has to re-navigate
+  from the top. Fixed in `SortableBlockList.tsx` by refocusing the moved block's own drag
+  handle (never disabled, so always a stable thing to land on) after a move.
+- **Confirmed working, no changes needed**: the `AddBlockButton` menu's full keyboard
+  path (Tab into it, Escape closes and returns focus to the trigger); the `@dnd-kit`
+  `KeyboardSensor` (Space to pick up, Arrow keys to move — a large card needs several
+  presses to cross into the next item's position, which is expected, not a bug, and
+  exactly why the Move Up/Down buttons exist as the lower-friction alternative — Space to
+  drop, Escape to cancel and correctly revert); the `aria-live` reorder announcement.
+- **Found, not fixed — flagged for follow-up**: a real, reproducible React hydration
+  mismatch on `/admin/studies/[id]/lessons/[lessonId]`, surfaced by the console while
+  exercising this flow (confirmed on a fresh hard navigation, not a Fast-Refresh-only
+  artifact). `@dnd-kit`'s own internal `aria-describedby="DndDescribedBy-N"` id numbering
+  disagrees between the server-rendered and client-hydrated passes. A real fix means
+  either pinning/wrapping `@dnd-kit`'s id generation to something stable across SSR and
+  hydration or investigating further upstream — not something to patch blind. Severity is
+  moderate: the description text itself is dnd-kit's own generic sortable instructions,
+  not a visible content change, but "won't be patched up" per React's own message means
+  the mismatched id persists until some other re-render touches that subtree.
+
 ## Automated audit run (axe-core, against the real dev server)
 Ran axe-core directly against the running app (not just the `jsx-a11y` lint rules,
 which only catch static-markup issues) across the homepage, `/books`, `/books/[slug]`,
@@ -126,12 +198,6 @@ file already calls for below (the gated pages weren't exercised beyond `generate
 without real auth), and no screen reader was used.
 
 ## What still needs manual verification (can't be fully automated)
-- **Color contrast of any custom brand colors.** Structural UI uses near-black on white,
-  which passes comfortably. But callout blocks (`components/study/LessonBlock.tsx`) let
-  an admin pick *any* background color via a free color picker — there's a reminder
-  in the admin UI, but nothing programmatically blocks a low-contrast combination.
-  Check every callout color choice against its text color at 4.5:1 (body text) or 3:1
-  (large text) before publishing.
 - **Caption/transcript accuracy.** The system enforces that a captions file and
   transcript field *exist* — it can't verify they're actually accurate or complete.
   Auto-generated captions are usually not good enough on their own; budget for human
@@ -143,10 +209,18 @@ without real auth), and no screen reader was used.
   `<h1>`/`<h2>` semantics either.
 - **The Tiptap editor toolbar itself** — verify it with an actual screen reader
   (VoiceOver, NVDA, or JAWS), not just automated tooling. Rich text editor toolbars are
-  a common source of subtle screen reader issues that automated checkers miss.
-- **Run automated audits regularly**: axe DevTools or Lighthouse in Chrome DevTools, and
-  WAVE (wave.webaim.org), on every major page — storefront, checkout, study/lesson pages,
-  and the full admin authoring flow. These catch a meaningful chunk of issues but not
-  everything; they're a floor, not a substitute for manual testing.
-- **Manual keyboard-only pass**: unplug the mouse and try to complete a full purchase,
-  and a full lesson-authoring flow, using only Tab/Shift+Tab/Enter/Space/Arrow keys.
+  a common source of subtle screen reader issues that automated checkers miss. This is
+  now the single biggest gap in this file: nothing in this project has been checked with
+  a real screen reader yet, only axe-core (a static/structural checker) and sighted
+  keyboard-only passes.
+- **The `@dnd-kit` hydration mismatch** flagged above — needs either a real fix or a
+  decision that it's low-impact enough to leave.
+- **A `WAVE` (wave.webaim.org) pass** as a second automated opinion alongside axe-core —
+  different tools catch different things, and `npm run test:a11y` only runs the one.
+
+**Done, no longer open items**: color contrast of callout blocks (now a live, computed
+check in `ColorPicker.tsx`, see above — still advisory, not a hard block, so a deliberately
+chosen low-contrast color can still be saved); running automated audits regularly (now
+`npm run test:a11y`, part of the standing QA suite, not a by-hand occasional task); the
+manual keyboard-only pass through checkout and the admin lesson-authoring flow (done, see
+above — though a *screen reader* pass through the same flows is still open, per above).

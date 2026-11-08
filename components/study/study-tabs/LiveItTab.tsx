@@ -57,7 +57,12 @@ export function LiveItTab({
 
       {content.bottomLine.length > 0 && (
         <div className="bg-dusk/5 border-l-4 border-ember rounded-r-xl p-5 space-y-3">
-          <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700">Bottom Line</p>
+          {/* FIXED (axe-core, qa/e2e/specs/accessibility.spec.ts): text-ember-700
+              at this size was 4.47:1 against the real bg-dusk/5 composited
+              background, under WCAG AA's 4.5:1 -- ember-700 only clears AA on
+              a full-strength parchment/white background (4.9-5.0:1), not this
+              diluted tint. moss clears it comfortably here. */}
+          <p className="font-sans text-xs font-semibold uppercase tracking-wide text-moss">Bottom Line</p>
           {content.bottomLine.map((p, i) => (
             <p key={i} className="font-serif text-ink">
               {p}

@@ -20,19 +20,35 @@ export function AddBlockButton({
   onAdd: (block: ContentBlockData) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const menuId = useId();
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   async function addBlock(type: ContentBlockData["type"]) {
-    const res = await fetch("/api/admin/content-blocks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lessonId, type }),
-    });
-    const block = (await res.json()) as ContentBlockData;
-    onAdd(block);
     setOpen(false);
-    buttonRef.current?.focus(); // return focus to the trigger, standard menu-button behavior
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/content-blocks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lessonId, type }),
+      });
+      // FIXED (found during a manual keyboard-only accessibility pass): a
+      // failed request (403 from an expired session, a validation error,
+      // a network failure) used to be parsed as if it were a real
+      // ContentBlockData and handed to onAdd() unchanged -- the error body
+      // has no `type`, so the new block's own drag/move/delete controls
+      // rendered as "undefined block" with no indication anything had gone
+      // wrong, confusing for a sighted admin and actively misleading for a
+      // screen reader user told to "move the undefined block."
+      if (!res.ok) throw new Error("add_block_failed");
+      const block = (await res.json()) as ContentBlockData;
+      onAdd(block);
+    } catch {
+      setError("Couldn't add that block — please try again.");
+    } finally {
+      buttonRef.current?.focus(); // return focus to the trigger, standard menu-button behavior
+    }
   }
 
   // Close on Escape, matching standard menu-button keyboard behavior (WAI-ARIA APG).
@@ -77,6 +93,11 @@ export function AddBlockButton({
             </button>
           ))}
         </div>
+      )}
+      {error && (
+        <p role="alert" className="text-xs text-error font-medium mt-1">
+          {error}
+        </p>
       )}
     </div>
   );

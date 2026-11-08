@@ -114,7 +114,10 @@ export function WorkTheWordTab({
 
         {isGreekOpen ? (
           <div className="bg-dusk/5 rounded-lg p-4 space-y-2">
-            <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700">
+            {/* FIXED (axe-core, qa/e2e/specs/accessibility.spec.ts): same
+                bg-dusk/5-vs-ember-700 contrast gap as LiveItTab's "Bottom
+                Line" label (4.47:1, under WCAG AA's 4.5:1) -- moss clears it. */}
+            <p className="font-sans text-xs font-semibold uppercase tracking-wide text-moss">
               Going Deeper · The Greek
             </p>
             <p className="font-serif text-xl text-ink">

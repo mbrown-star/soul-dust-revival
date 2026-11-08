@@ -42,11 +42,17 @@ export default async function AdminStudiesPage() {
                 <p className="font-medium">{s.title}</p>
                 {/* REAL FIX (qa/findings/FINDINGS_2026-11-07.md #9): there
                     was previously no way to tell a devotional from an
-                    interactive study on this list without opening each one. */}
+                    interactive study on this list without opening each one.
+                    FIXED (axe-core, qa/e2e/specs/accessibility.spec.ts):
+                    text-ember-700 on the tinted pill was 4.29:1, just under
+                    WCAG AA's 4.5:1 at this text size -- ink clears 15.9:1
+                    against the same background while keeping the pill's own
+                    ember tint as the visual differentiator from the moss
+                    "Devotional" pill. */}
                 <span
                   data-testid="study-kind-badge"
                   className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                    s.kind === "study" ? "bg-ember-700/10 text-ember-700" : "bg-moss/10 text-moss"
+                    s.kind === "study" ? "bg-ember-700/10 text-ink" : "bg-moss/10 text-moss"
                   }`}
                 >
                   {s.kind === "study" ? "Study" : "Devotional"}

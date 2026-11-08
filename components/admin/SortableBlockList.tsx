@@ -49,6 +49,7 @@ function SortableItem({
       <div
         {...attributes}
         {...listeners}
+        id={`drag-handle-${block.id}`}
         role="button"
         aria-label={`Drag to reorder ${block.type} block, position ${index + 1} of ${total}`}
         className="cursor-grab flex items-center justify-center w-11 h-11 mt-2 text-moss text-lg select-none touch-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink rounded"
@@ -129,9 +130,24 @@ export function SortableBlockList({
   function handleMove(index: number, direction: "up" | "down") {
     const newIndex = direction === "up" ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= blocks.length) return;
+    const movedBlockId = blocks[index]?.id;
     const reordered = arrayMove(blocks, index, newIndex);
     persistReorder(reordered);
     setAnnouncement(`Moved block to position ${newIndex + 1} of ${reordered.length}`);
+
+    // FIXED (manual keyboard-only pass): the Move Up/Down button a keyboard
+    // user just activated can become `disabled` at the new position (e.g.
+    // moving to position 1 disables "up") -- a disabled element can't hold
+    // focus, so the browser silently drops focus to <body>, losing the
+    // keyboard user's place in the page entirely. The drag handle is never
+    // disabled, so it's a stable thing to refocus regardless of direction or
+    // new position; the DOM update from the state change above needs a
+    // frame to land before the element exists at its new position.
+    if (movedBlockId) {
+      requestAnimationFrame(() => {
+        document.getElementById(`drag-handle-${movedBlockId}`)?.focus();
+      });
+    }
   }
 
   function updateBlock(updated: ContentBlockData) {

@@ -127,7 +127,13 @@ export function DevotionalDayView({
 
       {parsed.liftUpParagraphs.length > 0 && (
         <div className="bg-dusk/5 border-l-4 border-ember rounded-r-xl p-5">
-          <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700 mb-2">
+          {/* FIXED (axe-core, qa/e2e/specs/accessibility.spec.ts): text-ember-700
+              at this size (text-xs, not bold) was 4.46:1 against the real
+              composited background, just under WCAG AA's 4.5:1 -- ember-700
+              only clears AA at large/bold sizes (CLAUDE.md, 2026-11-05).
+              moss is the project's own small-accent-text token and clears
+              6.1:1 here. */}
+          <p className="font-sans text-xs font-semibold uppercase tracking-wide text-moss mb-2">
             Lift Up Your Eyes
           </p>
           {parsed.liftUpParagraphs.map((p, i) => (

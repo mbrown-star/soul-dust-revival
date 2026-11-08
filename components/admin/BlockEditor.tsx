@@ -246,10 +246,6 @@ export function BlockEditor({
               value={block.calloutColor ?? "#fef3c7"}
               onChange={(color) => update({ calloutColor: color })}
             />
-            <p className="text-xs text-moss mt-1">
-              Check contrast against the text color before publishing — WCAG requires at
-              least 4.5:1 for body text (3:1 for large text) against its background.
-            </p>
           </div>
           <RichTextEditor content={block.body ?? ""} onChange={(html) => update({ body: html })} />
         </div>

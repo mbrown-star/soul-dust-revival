@@ -6,9 +6,14 @@ import { PLATFORM_LABELS } from "@/lib/data/socialPlatforms";
 
 export const dynamic = "force-dynamic";
 
+// FIXED (axe-core, qa/e2e/specs/accessibility.spec.ts): "scheduled" used
+// text-ember-700 on bg-ember/10, which composites to 4.45:1 at this badge's
+// text-xs size -- under WCAG AA's 4.5:1 (ember-700 only clears AA against a
+// full-strength parchment/white background). Keeps the ember tint as the
+// visual cue, text recolored to ink (15.9:1 against the same background).
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-moss/10 text-moss",
-  scheduled: "bg-ember/10 text-ember-700",
+  scheduled: "bg-ember/10 text-ink",
   sending: "bg-gold/20 text-gold-700",
   published: "bg-success/10 text-success",
   failed: "bg-error/10 text-error",
