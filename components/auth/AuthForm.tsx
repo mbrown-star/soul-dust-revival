@@ -6,10 +6,23 @@ import Link from "next/link";
 
 type Mode = "login" | "signup";
 
-export function AuthForm({ mode, next }: { mode: Mode; next: string }) {
+export function AuthForm({
+  mode,
+  next,
+  initialError,
+}: {
+  mode: Mode;
+  next: string;
+  // Set when /auth/callback redirected back here because a magic-link code
+  // failed to exchange (expired, or already consumed -- commonly by an email
+  // client's own link-prefetching/security scanner, not the person's own
+  // click). Shown once; typing in the email field below clears it like any
+  // other error, since at that point the visitor is requesting a fresh link.
+  initialError?: "link_expired";
+}) {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError ?? null);
   const [loading, setLoading] = useState(false);
   const emailId = useId();
   const confirmationRef = useRef<HTMLParagraphElement>(null);
@@ -106,7 +119,12 @@ export function AuthForm({ mode, next }: { mode: Mode; next: string }) {
           .
         </p>
       )}
-      {error && error !== "no_account" && (
+      {error === "link_expired" && (
+        <p role="alert" className="text-sm text-error">
+          That link expired or was already used. Enter your email below to get a new one.
+        </p>
+      )}
+      {error && error !== "no_account" && error !== "link_expired" && (
         <p role="alert" className="text-sm text-error">
           {error}
         </p>
