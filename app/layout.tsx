@@ -1,4 +1,5 @@
 import { CartProvider } from "@/lib/cart/CartContext";
+import { SessionHashRecovery } from "@/components/auth/SessionHashRecovery";
 import type { Metadata, Viewport } from "next";
 import { Anton, Source_Serif_4, Archivo } from "next/font/google";
 import "./globals.css";
@@ -63,6 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
+        <SessionHashRecovery />
         <CartProvider>
           <main id="main-content">{children}</main>
         </CartProvider>
