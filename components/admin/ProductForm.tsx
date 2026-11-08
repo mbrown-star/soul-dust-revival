@@ -3,6 +3,7 @@
 import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { defaultCoverAltText } from "@/lib/images/coverAltText";
 
 // Keeps only digits and at most one decimal point -- lets an admin type a
 // price freely (including an in-progress "12." or a backspaced "") without
@@ -146,7 +147,16 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
       backImageUrl: string;
       frontImageUrl: string;
     };
-    setValues((v) => ({ ...v, coverPdfUrl, backImageUrl, imageUrl: frontImageUrl }));
+    setValues((v) => ({
+      ...v,
+      coverPdfUrl,
+      backImageUrl,
+      imageUrl: frontImageUrl,
+      // Only fills in a starting value -- never overwrites alt text the
+      // admin already typed, e.g. on a later re-upload of a new cover.
+      imageAlt: v.imageAlt.trim() ? v.imageAlt : defaultCoverAltText(v.title, "Front"),
+      backImageAlt: v.backImageAlt.trim() ? v.backImageAlt : defaultCoverAltText(v.title, "Back"),
+    }));
     setUploading(false);
   }
 

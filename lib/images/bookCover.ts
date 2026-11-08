@@ -54,11 +54,18 @@ const MAX_PIXELS = 6_000_000; // 6 megapixels -- a ~24MB RGBA buffer
 // cutting exactly at the midpoint, each crop stops this fraction of the
 // full image width short of it, discarding a band centered on the midpoint
 // that's wide enough to clear the spine for any trim/page-count this project
-// sells (checked against this project's own cover-spine math: the widest
-// spine relative to a full wrap's width is well under 5%). This is still an
-// estimate, not true spine detection -- a very long/thick book could in
-// principle have a wider spine than this margin covers.
-const SPINE_MARGIN_FRACTION = 0.04;
+// sells. This is still an estimate, not true spine detection -- a very
+// long/thick book could in principle have a wider spine than this margin
+// covers.
+//
+// Raised from 0.04 to 0.06 (2026-11-08) -- found live on a real study cover
+// upload that 4% still left a visible sliver of spine bleeding into the
+// front crop, which also reads as the cover art looking off-center in a
+// square preview thumbnail (object-cover centers the *crop*, not the
+// artwork inside it, so an asymmetric leftover strip on one edge shifts
+// where the actual cover art appears to sit). Not exact spine detection
+// either, still an estimate, just a wider margin of safety.
+const SPINE_MARGIN_FRACTION = 0.06;
 
 /**
  * Splits a full-wrap book cover PDF (back cover + spine + front cover, all

@@ -3,6 +3,7 @@
 import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { defaultCoverAltText } from "@/lib/images/coverAltText";
 
 type StudyFormValues = {
   id?: string;
@@ -70,7 +71,13 @@ export function StudyForm({
         return;
       }
 
-      setValues((v) => ({ ...v, coverImageUrl: data.coverImageUrl! }));
+      setValues((v) => ({
+        ...v,
+        coverImageUrl: data.coverImageUrl!,
+        // Only fills in a starting value -- never overwrites alt text the
+        // admin already typed, e.g. on a later re-upload of a new cover.
+        coverImageAlt: v.coverImageAlt.trim() ? v.coverImageAlt : defaultCoverAltText(v.title, "Front"),
+      }));
       setUploading(false);
     } catch {
       setUploadError("Upload failed — the server didn't respond as expected. Please try again.");

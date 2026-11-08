@@ -102,7 +102,7 @@ describe("splitBookCoverPdf", () => {
   });
 
   it("stops each crop short of the midpoint, so the spine band isn't included in either", async () => {
-    // Wide image so the 4%-of-width spine margin is more than a rounding
+    // Wide image so the 6%-of-width spine margin is more than a rounding
     // error: left quarter red (back cover), right quarter blue (front
     // cover), with a green band across the middle (the spine) that neither
     // crop should include any of.
@@ -113,7 +113,7 @@ describe("splitBookCoverPdf", () => {
       for (let x = 0; x < width; x++) {
         const i = (y * width + x) * 3;
         const midpoint = width / 2;
-        const inSpineBand = Math.abs(x - midpoint) < width * 0.03; // narrower than the 4% margin on each side
+        const inSpineBand = Math.abs(x - midpoint) < width * 0.05; // narrower than the 6% margin on each side
         const [r, g, b] = inSpineBand ? [0, 255, 0] : x < midpoint ? [255, 0, 0] : [0, 0, 255];
         rgb[i] = r;
         rgb[i + 1] = g;
