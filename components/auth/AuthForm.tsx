@@ -26,7 +26,7 @@ export function AuthForm({
   // callback route alone, since *every* fresh link came back already
   // `otp_expired`, confirmed on souldustrevival.com's real Google Workspace
   // mail hosting. The actual fix is this file: stop sending a clickable
-  // link at all and send a 6-digit code instead, which has no URL for
+  // link at all and send a numeric code instead, which has no URL for
   // anything to prefetch. `initialError`/`link_expired` is kept only so a
   // stale already-sent magic-link email (from before this change shipped,
   // or any leftover /auth/callback fallback) still shows a clear message
@@ -131,24 +131,34 @@ export function AuthForm({
           Enter your code
         </h1>
         <p className="text-sm text-moss">
-          We sent a 6-digit code to <span className="font-medium">{email}</span>.
+          We sent a code to <span className="font-medium">{email}</span>.
         </p>
 
-        <label htmlFor={codeId} className="sr-only">6-digit code</label>
+        {/* REAL BUG FOUND (2026-11-08, hit live immediately): this was
+            hardcoded to exactly 6 digits, assuming Supabase's default OTP
+            length -- the real project is configured to send 8-digit codes,
+            so the field silently truncated every real code to 6 digits and
+            verifyOtp always failed. Supabase's OTP length is a per-project
+            setting (Authentication -> Providers -> Email), not a fixed
+            constant, so this no longer assumes a specific length: a
+            generous maxLength (comfortably above any length Supabase would
+            realistically use) and "non-empty" is the only client-side
+            check -- verifyOtp itself is the real validator either way. */}
+        <label htmlFor={codeId} className="sr-only">Sign-in code</label>
         <input
           id={codeId}
           type="text"
           inputMode="numeric"
           autoComplete="one-time-code"
-          maxLength={6}
+          maxLength={12}
           required
-          placeholder="123456"
+          placeholder="Code"
           aria-invalid={!!error}
           aria-describedby={error ? `${codeId}-error` : undefined}
           className="w-full border rounded-lg p-3 text-center text-2xl tracking-widest focus:outline-none focus:ring-2 focus:ring-ink"
           value={code}
           onChange={(e) => {
-            setCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+            setCode(e.target.value.replace(/\D/g, "").slice(0, 12));
             setError(null);
           }}
         />
@@ -161,7 +171,7 @@ export function AuthForm({
 
         <button
           type="submit"
-          disabled={loading || code.length !== 6}
+          disabled={loading || code.length === 0}
           className="w-full bg-ink text-white rounded-lg p-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink"
         >
           {loading ? "Verifying..." : "Verify"}

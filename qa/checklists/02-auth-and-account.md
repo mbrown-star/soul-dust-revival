@@ -17,15 +17,20 @@ seeded paid + pending orders
 expired login attempt against souldustrevival.com's actual Google Workspace mail hosting and
 confirmed every fresh magic link came back `otp_expired` before the real click — Workspace's own
 link-prefetching/security scanning was consuming the single-use link first. The fix was to stop
-sending a link at all and send a 6-digit code instead (no URL for anything to prefetch); see
-`components/auth/AuthForm.tsx` and the 2026-11-08 CLAUDE.md entry. The walkthrough below reflects
-the new flow; `/auth/callback`'s `link_expired` handling is kept only as a fallback for a
-leftover pre-change email, not the primary path anymore.
+sending a link at all and send a numeric code instead (no URL for anything to prefetch); see
+`components/auth/AuthForm.tsx` and the 2026-11-08 CLAUDE.md entries. The walkthrough below
+reflects the new flow; `/auth/callback`'s `link_expired` handling is kept only as a fallback for
+a leftover pre-change email, not the primary path anymore.
+
+**Note:** the code length isn't hardcoded in the UI -- it's a Supabase project setting
+(Authentication → Providers → Email), confirmed live to currently be 8 digits, not the more
+common default of 6. The code input accepts up to 12 digits and only requires non-empty; don't
+assume 6 digits when testing.
 
 1. Open `/login` as a guest, enter a real email you control, submit. → **Expect:** the form is
-   replaced by "Enter your code" / "We sent a 6-digit code to {email}", and keyboard focus
-   visibly moves to that heading (tab/arrow keys shouldn't land back on the now-gone form fields).
-2. Open the real email, copy the 6-digit code, type it into the code field, submit. → **Expect:**
+   replaced by "Enter your code" / "We sent a code to {email}", and keyboard focus visibly moves
+   to that heading (tab/arrow keys shouldn't land back on the now-gone form fields).
+2. Open the real email, copy the code, type it into the code field, submit. → **Expect:**
    lands on `/library` (the default `next`), now shown as logged in in the nav.
 3. Repeat with `/signup?next=/checkout` for a brand-new email. → **Expect:** the same code-entry
    step, and after verifying, the destination respects `next=/checkout` rather than always going
