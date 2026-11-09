@@ -68,8 +68,6 @@ export default async function HomePage() {
                     <CoverThumbnail
                       imageUrl={p.imageUrl}
                       imageAlt={p.imageAlt}
-                      imageWidth={p.imageWidth}
-                      imageHeight={p.imageHeight}
                       sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
                     />
                   </div>
