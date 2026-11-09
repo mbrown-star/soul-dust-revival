@@ -302,8 +302,15 @@ export type StudyImportedLesson = {
 // space ("IWEEK 1", "IIWEEK 2", ... "XIIWEEK 12") -- tolerating an optional
 // roman-numeral prefix handles both forms without needing the Table of
 // Contents to locate each week (which has its own, differently-shaped
-// two-line entries and would need separate handling).
-const WEEK_HEADING = /^[IVXLCDM]*\s*WEEK\s+\d+\b/i;
+// two-line entries and would need separate handling). Case-sensitive on
+// purpose, matching literal "WEEK": every document in this family renders
+// the real title-page marker in full caps (a small-caps/display style),
+// while the Contents listing and ordinary recap prose both use normal title
+// case ("Week N ..."). A recap paragraph that happens to start a wrapped
+// line with "Week 4 let the mask fall..." must not be mistaken for a real
+// heading -- case is what tells the two apart, since a plain prefix match
+// (ignoring case) can't.
+const WEEK_HEADING = /^[IVXLCDM]*\s*WEEK\s+\d+\b/;
 
 /**
  * Strips every non-alphanumeric character and uppercases, so a label can be
@@ -316,20 +323,31 @@ function normalizeMarker(line: string): string {
   return line.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
 }
 
-const QUESTION_MARKER = "QUESTION";
 const GOING_DEEPER_PREFIX = "GOINGDEEPER";
 
+// Matches a "QUESTION" label whether it's alone on its own line (the
+// original format this parser was built against, with blank lines below it
+// meant to be written in) or immediately followed by the question's own
+// text on the same line ("QUESTION Where in your life right now are you
+// confessing..." -- a more compact layout some documents in this series
+// use instead). Case-sensitive and word-bounded so it doesn't fire on an
+// ordinary word that happens to start with the same letters, e.g.
+// "Questionable content" at the start of a wrapped line.
+const QUESTION_INLINE = /^QUESTION\b[:\s]*/;
+
 // A single verse-reference heading on its own line, e.g. "COLOSSIANS 1:3-4"
-// -- one book-ish name and a chapter[:verse] range, nothing else.
+// or a numbered book like "1 JOHN 1:9" -- an optional leading book number,
+// one book-ish name, and a chapter[:verse] range, nothing else.
 // Deliberately excludes a multi-reference citation LIST ("COLOSSIANS 1:2;
 // EPHESIANS 2:8; ..."), which belongs inside a callout's body, not acting as
 // a new section boundary -- the semicolon is what tells the two apart.
-const VERSE_REF_HEADING = /^[A-Z][A-Za-z]+(?:\s+[A-Za-z]+)*\s+\d+(?::\d+)?(?:[–-]\d+(?::\d+)?)?\s*$/;
+const VERSE_REF_HEADING =
+  /^(?:[123]\s+)?[A-Z][A-Za-z]+(?:\s+[A-Za-z]+)*\s+\d+(?::\d+)?(?:[–-]\d+(?::\d+)?)?\s*$/;
 
 function isStudySectionBoundary(line: string): boolean {
   if (line === "") return false;
+  if (QUESTION_INLINE.test(line)) return true;
   const norm = normalizeMarker(line);
-  if (norm === QUESTION_MARKER) return true;
   if (norm.startsWith(GOING_DEEPER_PREFIX)) return true;
   if (!line.includes(";") && VERSE_REF_HEADING.test(line)) return true;
   return false;
@@ -359,10 +377,12 @@ function splitWeekIntoBlocks(lines: string[]): StudyImportedBlock[] {
   while (i < lines.length) {
     const line = lines[i]!; // loop bound (i < lines.length) guarantees this index exists
 
-    if (line !== "" && normalizeMarker(line) === QUESTION_MARKER) {
+    const inlineQuestionMatch = line !== "" ? line.match(QUESTION_INLINE) : null;
+    if (inlineQuestionMatch) {
       flushText();
+      const inlineText = line.slice(inlineQuestionMatch[0].length).trim();
       i++;
-      const promptLines: string[] = [];
+      const promptLines: string[] = inlineText ? [inlineText] : [];
       while (i < lines.length && lines[i] !== "" && !isStudySectionBoundary(lines[i]!)) {
         promptLines.push(lines[i]!);
         i++;
@@ -398,73 +418,43 @@ function splitWeekIntoBlocks(lines: string[]): StudyImportedBlock[] {
 }
 
 /**
- * A Study document's Contents page lists each week as "WEEK N · Book C:V–V
- * · subtitle" (with a trailing page number before parsePdfToText strips
- * it) -- that line matches WEEK_HEADING too, and without being excluded it
- * would be mistaken for the week's real body heading. Distinguished from
- * the real one by a middle dot: the TOC's line always has one (it's a
- * single-line "Title · ref · subtitle" entry), the body's own title-page
- * marker never does (it's bare, e.g. "IWEEK 1"). Returns the "Contents"
- * heading's own index and the index just past the last TOC-shaped week
- * line, so the caller can exclude exactly that range -- not everything
- * before it, which would also discard a real foreword/preface that comes
- * *before* the Contents page. {start: -1, end: 0} means no Contents page
- * was found at all.
- */
-function findStudyTocRange(lines: string[]): { start: number; end: number } {
-  const contentsIndex = lines.findIndex((l) => /^(table of contents|contents)$/i.test(l));
-  if (contentsIndex === -1) return { start: -1, end: 0 };
-
-  let i = contentsIndex + 1;
-  let tocEnd = contentsIndex + 1;
-  while (i < lines.length) {
-    const line = lines[i]!; // loop bound (i < lines.length) guarantees this index exists
-    if (line === "") {
-      i++;
-      continue;
-    }
-
-    if (WEEK_HEADING.test(line) && line.includes("·")) {
-      tocEnd = i + 1;
-      i++;
-      continue;
-    }
-    // A plain title line immediately followed by a TOC-shaped week line is
-    // that entry's title, still part of the TOC block.
-    const next = lines[i + 1];
-    if (next !== undefined && WEEK_HEADING.test(next) && next.includes("·")) {
-      i++;
-      continue;
-    }
-    break;
-  }
-  return { start: contentsIndex, end: tocEnd };
-}
-
-/**
  * Splits a Study PDF's extracted text into lessons (one per week), each as
  * an ordered list of content blocks rather than a single HTML body -- see
- * the module comment above. Weeks are found directly by their own title-page
- * marker ("WEEK 1", "IIWEEK 2", ...), which is simpler and more reliable
- * here than table-of-contents matching: it's a single, unambiguous line that
- * appears exactly once per week, right where each week actually begins.
- * Content before the first week heading (a foreword/preface) becomes a
- * leading "Introduction" lesson, same convention as the Devotional path.
- * Still a heuristic over unstructured text -- review after import is
- * expected, same as every other import path here.
+ * the module comment above. Weeks are found by their own title-page marker
+ * ("WEEK 1", "IIWEEK 2", ...), not by locating a Table of Contents first:
+ * across the handful of real documents this parser has been run against,
+ * the Contents page's own entries for the same week have taken at least
+ * three different shapes -- "WEEK N · Book C:V–V · subtitle" (dotted, same
+ * case as a real heading), "Week N · Title ###" (title case, with a page
+ * number), and "from dust to ___ WEEK N" (the number at the *end* of the
+ * line) -- and a real week's own heading has sometimes carried the same
+ * kind of "· SOMETHING" suffix a dotted TOC entry does (a movement/theme
+ * tag). No single shared trait (a dot, a case, a position) reliably tells a
+ * TOC entry apart from a real heading across all of them. What's always
+ * true instead is simpler: a Contents listing can only ever come *before*
+ * the body it indexes, never after -- so when the same week number's own
+ * "WEEK N" marker appears more than once, the LAST occurrence is always the
+ * real one and every earlier occurrence is a Contents (or other front-
+ * matter) duplicate to discard. A week number that only appears once has no
+ * ambiguity to resolve either way. Content before the first real heading
+ * (a foreword, preface, and -- harmlessly folded in as plain text -- any
+ * Contents-page duplicate for week one) becomes a leading "Introduction"
+ * lesson, same convention as the Devotional path. Still a heuristic over
+ * unstructured text -- review after import is expected, same as every
+ * other import path here.
  */
 export function splitStudyPlainTextByHeadings(text: string): StudyImportedLesson[] {
   const lines = text.split("\n").map((l) => l.trim());
-  const tocRange = findStudyTocRange(lines);
 
-  const headingIndexes: number[] = [];
+  const lastIndexByWeekNumber = new Map<number, number>();
   lines.forEach((line, i) => {
-    // The Contents page's own entries ("WEEK 2 · Colossians 1:9–14 · from
-    // dust to the kingdom of light") also match WEEK_HEADING -- without
-    // skipping the TOC block first, every week would get a second, spurious
-    // "heading" there and the whole split would be shifted and mistitled.
-    if (i >= tocRange.end && WEEK_HEADING.test(line)) headingIndexes.push(i);
+    const match = WEEK_HEADING.exec(line);
+    // WEEK_HEADING's own pattern requires a \d+ group, so a match always
+    // contains a number -- this second match just extracts it.
+    const weekNumber = match ? Number(match[0].match(/\d+/)![0]) : null;
+    if (weekNumber !== null) lastIndexByWeekNumber.set(weekNumber, i);
   });
+  const headingIndexes = [...lastIndexByWeekNumber.values()].sort((a, b) => a - b);
 
   if (headingIndexes.length === 0) {
     return [{ title: "Imported Content", blocks: splitWeekIntoBlocks(lines) }];
@@ -472,15 +462,9 @@ export function splitStudyPlainTextByHeadings(text: string): StudyImportedLesson
 
   const lessons: StudyImportedLesson[] = [];
 
-  // Intro content is everything before the first real week heading, except
-  // the Table of Contents listing itself (its own line range, found above --
-  // not just "everything before tocRange.end", which would also discard a
-  // real foreword/preface that comes *before* the Contents page).
+  // Intro content is everything before the first real week heading.
   const firstHeadingIndex = headingIndexes[0]!;
-  const introLineIndexes = Array.from({ length: firstHeadingIndex }, (_, i) => i).filter(
-    (i) => !(tocRange.start !== -1 && i >= tocRange.start && i < tocRange.end)
-  );
-  const introLines = introLineIndexes.map((i) => lines[i]!);
+  const introLines = lines.slice(0, firstHeadingIndex);
   if (introLines.some((l) => l !== "")) {
     lessons.push({ title: "Introduction", blocks: splitWeekIntoBlocks(introLines) });
   }

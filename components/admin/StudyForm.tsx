@@ -234,7 +234,10 @@ export function StudyForm({
           ))}
         </select>
         <p className="text-xs text-moss mt-1">
-          Only digital products appear here — purchasing this product grants entitlement to this study.
+          Only digital (or &quot;both&quot;-format) products appear here, since buying one directly
+          grants entitlement to this study — this study&apos;s already-linked product is always
+          included too, even if it&apos;s physical-only (e.g. access instead comes from a bundle
+          purchase).
         </p>
       </div>
 

@@ -22,6 +22,24 @@ export default async function StudyDetailPage({ params }: { params: Promise<{ id
     .from(products)
     .where(or(eq(products.format, "digital"), eq(products.format, "both")));
 
+  // A study can be linked to a format "physical" product too (e.g. one of
+  // the four "The Journey" parts, each sold only as a physical book --
+  // access to its own study content is granted purely through "The
+  // Journey" bundle purchase, never by buying the part directly). That
+  // product never appears in digitalProducts above, so without this, the
+  // dropdown below would silently show the study as linked to whichever
+  // digital product happens to be first in the list -- misleading, and a
+  // real risk of actually reassigning the link if an admin picks a
+  // different option assuming the shown one is already correct.
+  const linkedProduct =
+    digitalProducts.some((p) => p.id === study.productId)
+      ? null
+      : await db.query.products.findFirst({
+          where: eq(products.id, study.productId),
+          columns: { id: true, title: true },
+        });
+  const productOptions = linkedProduct ? [linkedProduct, ...digitalProducts] : digitalProducts;
+
   const studyLessons = await db
     .select()
     .from(lessons)
@@ -42,7 +60,7 @@ export default async function StudyDetailPage({ params }: { params: Promise<{ id
           </p>
         )}
         <StudyForm
-          digitalProducts={digitalProducts}
+          digitalProducts={productOptions}
           initial={{
             id: study.id,
             title: study.title,

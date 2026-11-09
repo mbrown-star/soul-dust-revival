@@ -204,7 +204,7 @@ describe("splitStudyPlainTextByHeadings", () => {
     ];
   }
 
-  it("splits a Study document into one lesson per week using its own WEEK heading", () => {
+  it("splits a Study document into one lesson per week using its own WEEK heading, discarding a Contents listing's duplicate heading for the same week", () => {
     const text = [
       "Contents",
       "First Week Title",
@@ -218,9 +218,17 @@ describe("splitStudyPlainTextByHeadings", () => {
 
     const lessons = splitStudyPlainTextByHeadings(text);
 
-    expect(lessons).toHaveLength(2);
-    expect(lessons[0]!.title).toBe("Week 1: First Week Title");
-    expect(lessons[1]!.title).toBe("Week 2: Second Week Title");
+    // The Contents page's own "WEEK 1 · ..."/"WEEK 2 · ..." entries also
+    // match the heading pattern -- taking only the LAST occurrence of each
+    // week number (see this function's own doc comment) is what keeps them
+    // from being mistaken for a second, duplicate set of real weeks. The
+    // Contents text itself isn't specially recognized and so isn't
+    // discarded outright -- it's harmlessly folded into a leading
+    // "Introduction" lesson, same as any other front matter.
+    expect(lessons).toHaveLength(3);
+    expect(lessons[0]!.title).toBe("Introduction");
+    expect(lessons[1]!.title).toBe("Week 1: First Week Title");
+    expect(lessons[2]!.title).toBe("Week 2: Second Week Title");
   });
 
   it("extracts a QUESTION section as its own input block, not folded into reading text", () => {
@@ -231,6 +239,67 @@ describe("splitStudyPlainTextByHeadings", () => {
     const questionBlocks = lessons[0]!.blocks.filter((b) => b.type === "question");
     expect(questionBlocks).toHaveLength(1);
     expect(questionBlocks[0]).toMatchObject({ type: "question", questionPrompt: "Am I trusting or striving?" });
+  });
+
+  it("extracts a QUESTION label's own text as the question block's prompt when it's inline rather than on its own line", () => {
+    const text = [
+      ...buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις"),
+      "BOOK 1:5-6",
+      "QUESTION Where in your life right now are you leaning on your own strength instead of resting in grace?",
+    ].join("\n");
+
+    const lessons = splitStudyPlainTextByHeadings(text);
+
+    const questionBlocks = lessons[0]!.blocks.filter((b) => b.type === "question");
+    expect(questionBlocks).toHaveLength(2);
+    expect(questionBlocks[1]).toMatchObject({
+      type: "question",
+      questionPrompt: "Where in your life right now are you leaning on your own strength instead of resting in grace?",
+    });
+  });
+
+  it("does not mistake a word that merely starts with 'Question' for the QUESTION label", () => {
+    const text = [
+      ...buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις"),
+      "Questionable content never earns a place in this study.",
+    ].join("\n");
+
+    const lessons = splitStudyPlainTextByHeadings(text);
+
+    const questionBlocks = lessons[0]!.blocks.filter((b) => b.type === "question");
+    // Only the one real "QUESTION" block from buildWeek -- "Questionable"
+    // must stay ordinary reading text, not be read as a second question.
+    expect(questionBlocks).toHaveLength(1);
+    const allBodyHtml = lessons[0]!.blocks
+      .map((b) => (b.type === "callout" || b.type === "text" ? b.bodyHtml : ""))
+      .join("");
+    expect(allBodyHtml).toContain("Questionable content");
+  });
+
+  it("recognizes a numbered-book verse reference (e.g. '1 JOHN 1:9') as a section boundary", () => {
+    const text = [
+      ...buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις"),
+      "1 JOHN 1:9",
+      "If we confess our sins, he is faithful to forgive us.",
+      "QUESTION",
+      "Am I confessing specifics or only vague generalities?",
+    ].join("\n");
+
+    const lessons = splitStudyPlainTextByHeadings(text);
+
+    const callout = lessons[0]!.blocks.find((b) => b.type === "callout");
+    expect(callout?.type).toBe("callout");
+    if (callout?.type === "callout") {
+      // The numbered-book reference must end the callout, not be folded
+      // into its body as if it were unrecognized ordinary text.
+      expect(callout.bodyHtml).not.toContain("If we confess our sins");
+    }
+    const questionBlocks = lessons[0]!.blocks.filter((b) => b.type === "question");
+    expect(questionBlocks).toHaveLength(2);
+    expect(questionBlocks[1]).toMatchObject({
+      type: "question",
+      questionPrompt: "Am I confessing specifics or only vague generalities?",
+    });
   });
 
   it("extracts a Going Deeper section as a callout block with the studied word as its title", () => {

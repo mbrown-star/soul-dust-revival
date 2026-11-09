@@ -17,6 +17,7 @@ const activeLinkClass = "text-gold border-b-2 border-gold";
 const ADMIN_LINKS = [
   { label: "Products", href: "/admin/products" },
   { label: "Studies", href: "/admin/studies" },
+  { label: "Bundles", href: "/admin/bundles" },
   { label: "Leader Resources", href: "/admin/leader-resources" },
   { label: "Blog", href: "/admin/blog" },
   { label: "Social", href: "/admin/social" },
