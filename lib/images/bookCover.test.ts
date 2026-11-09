@@ -149,6 +149,180 @@ describe("splitBookCoverPdf", () => {
     }
   });
 
+  it("falls back to a plain spine-margin split when no genuine border can be found (a tiny localized bright spot isn't mistaken for one)", async () => {
+    // REGRESSION (found live 2026-11-09, reprocessing the real Colossians
+    // cover): the first version of this fix measured a border by scanning a
+    // single row, which can lock onto some other small bright feature near
+    // one edge instead of a real border frame -- a single-row sample has no
+    // way to tell a real, full-height border line from a small localized
+    // bright spot. Since fixed to require a column be bright across many
+    // sampled rows spread down the full height before it counts as a
+    // border stroke at all (see findBorderClusters) -- a spot only a few
+    // rows tall fails that bar outright, rather than needing a separate
+    // plausibility guard after the fact.
+    const width = 400;
+    const height = 200;
+    const bg: [number, number, number] = [40, 30, 20];
+    const accent: [number, number, number] = [255, 230, 180];
+
+    const rgb = new Uint8Array(width * height * 3);
+    const setPixel = (x: number, y: number, [r, g, b]: [number, number, number]) => {
+      const i = (y * width + x) * 3;
+      rgb[i] = r;
+      rgb[i + 1] = g;
+      rgb[i + 2] = b;
+    };
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) setPixel(x, y, bg);
+    }
+    // A tiny bright feature, only a few rows tall -- nothing resembling a
+    // border line that runs the full height.
+    for (let y = 95; y <= 104; y++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        setPixel(140 + dx, y, accent);
+        setPixel(260 + dx, y, accent);
+      }
+    }
+
+    const pdf = buildTestCoverPdf(width, height, rgb);
+    const { back, front } = await splitBookCoverPdf(pdf);
+
+    const backImage = PhotonImage.new_from_byteslice(back);
+    const frontImage = PhotonImage.new_from_byteslice(front);
+    try {
+      // Matches the plain spine-margin fallback exactly, not some crop
+      // shaped around the false spot.
+      const midpoint = Math.floor(width / 2);
+      const margin = Math.round(width * 0.06);
+      expect(backImage.get_width()).toBe(midpoint - margin);
+      expect(frontImage.get_width()).toBe(width - (midpoint + margin));
+    } finally {
+      backImage.free();
+      frontImage.free();
+    }
+  });
+
+  it("crops each half exactly to its own genuine double-line border, mirroring an equal margin on both sides and excluding the spine between them", async () => {
+    // Confirmed directly against several real, already-uploaded cover PDFs
+    // (2026-11-09): each half has its OWN complete double-line border
+    // already in the source art -- back and front are independent, fully
+    // enclosed boxes, not one shared frame with the spine left open. The
+    // real bug was that a blind, fixed-percentage spine margin was cutting
+    // the crop boundary right through that real border before any
+    // detection code ever ran. The fix finds each half's own real border
+    // directly (see findBorderClusters/findHalfBorders) and crops right at
+    // it, mirroring its own outer-edge margin onto the spine-facing side so
+    // the border reads as a complete, evenly margined box on every side.
+    //
+    // This cover also has a dense dark "spine" fill between the halves
+    // (never bright enough to read as a border stroke) and a one-row-only
+    // bright smear inside the back cover's own content area, simulating a
+    // line of real body text crossing whichever single row an older,
+    // single-row scan would have sampled -- both must be ignored.
+    const width = 700;
+    const height = 200;
+    const bg: [number, number, number] = [40, 30, 20];
+    const border: [number, number, number] = [255, 230, 180];
+    const spine: [number, number, number] = [15, 10, 8];
+
+    const rgb = new Uint8Array(width * height * 3);
+    const setPixel = (x: number, y: number, [r, g, b]: [number, number, number]) => {
+      const i = (y * width + x) * 3;
+      rgb[i] = r;
+      rgb[i + 1] = g;
+      rgb[i + 2] = b;
+    };
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) setPixel(x, y, bg);
+    }
+    // Full-height double-line border stroke pair (a ~10px gap between the
+    // two thin lines, like the real covers measured live).
+    const drawDoubleLine = (outerX: number, innerDirection: 1 | -1) => {
+      const innerX = outerX + innerDirection * 10;
+      for (let y = 0; y < height; y++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          setPixel(outerX + dx, y, border);
+          setPixel(innerX + dx, y, border);
+        }
+      }
+    };
+    // Back's own border: outer (trim-side) at x=30, inner (spine-side) at
+    // x=210 -- a 29px margin from the image's own left edge.
+    drawDoubleLine(30, 1);
+    drawDoubleLine(210, -1);
+    // Front's own border: inner (spine-side) at x=490, outer (trim-side) at
+    // x=670 -- a deliberately different, 28px margin from the image's own
+    // right edge (699), proving each half's margin is measured
+    // independently rather than copied from the other half.
+    drawDoubleLine(490, 1);
+    drawDoubleLine(670, -1);
+    // The spine itself: a dark fill, comfortably inside the gap between
+    // where both crops will end up, that should appear in neither.
+    for (let y = 0; y < height; y++) {
+      for (let x = 245; x <= 455; x++) setPixel(x, y, spine);
+    }
+    // A single-row-only bright smear inside the back cover's own content
+    // area -- the exact shape of a line of body text crossing one sampled
+    // row, which must NOT be treated as a third border cluster.
+    for (let x = 100; x <= 150; x++) setPixel(x, 100, border);
+
+    const pdf = buildTestCoverPdf(width, height, rgb);
+    const { back, front } = await splitBookCoverPdf(pdf);
+
+    const backImage = PhotonImage.new_from_byteslice(back);
+    const frontImage = PhotonImage.new_from_byteslice(front);
+    try {
+      // Exact crop boundaries: back ends just past its own inner border
+      // (211) by the same 29px margin its own outer border sits at (30);
+      // front starts just before its own inner border (490) by the same
+      // 28px margin its own outer border sits at (699-671=28).
+      expect(backImage.get_width()).toBe(241); // 211 + 29 + 1
+      expect(frontImage.get_width()).toBe(239); // 700 - (490 - 28)
+
+      const brightnessAt = (img: PhotonImage, x: number) => {
+        const w = img.get_width();
+        const h = img.get_height();
+        const pixels = img.get_raw_pixels();
+        const y = Math.floor(h / 2);
+        const i = (y * w + x) * 4;
+        return pixels[i]! + pixels[i + 1]! + pixels[i + 2]!;
+      };
+      const bgBrightness = bg[0] + bg[1] + bg[2];
+
+      // Both of back's own border strokes survived (outer near x=30, inner
+      // near x=200, well within its 241px-wide crop).
+      expect(brightnessAt(backImage, 30)).toBeGreaterThan(bgBrightness + 120);
+      expect(brightnessAt(backImage, 200)).toBeGreaterThan(bgBrightness + 120);
+      // Both of front's own border strokes survived too, at their own
+      // crop-local positions (490-461=29, 670-461=209).
+      expect(brightnessAt(frontImage, 29)).toBeGreaterThan(bgBrightness + 120);
+      expect(brightnessAt(frontImage, 209)).toBeGreaterThan(bgBrightness + 120);
+
+      // The spine's dark fill, and the one-row text smear, both land
+      // outside their respective crops -- no pixel in either final image
+      // is anywhere near the spine's distinct color.
+      const spineBrightness = spine[0] + spine[1] + spine[2];
+      const containsSpineColor = (img: PhotonImage) => {
+        const w = img.get_width();
+        const h = img.get_height();
+        const pixels = img.get_raw_pixels();
+        for (let y = 0; y < h; y += 7) {
+          for (let x = 0; x < w; x += 7) {
+            const i = (y * w + x) * 4;
+            const sum = pixels[i]! + pixels[i + 1]! + pixels[i + 2]!;
+            if (Math.abs(sum - spineBrightness) < 15) return true;
+          }
+        }
+        return false;
+      };
+      expect(containsSpineColor(backImage)).toBe(false);
+      expect(containsSpineColor(frontImage)).toBe(false);
+    } finally {
+      backImage.free();
+      frontImage.free();
+    }
+  });
+
   it("throws NoCoverImageFoundError when the PDF has no embedded image", async () => {
     const enc = new TextEncoder();
     // A minimal, image-free PDF (blank page, no XObject).
