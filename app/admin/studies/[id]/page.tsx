@@ -6,6 +6,7 @@ import { StudyForm } from "@/components/admin/StudyForm";
 import Link from "next/link";
 import { NewLessonButton } from "@/components/admin/NewLessonButton";
 import { PublishAllLessonsButton } from "@/components/admin/PublishAllLessonsButton";
+import { ReimportStudyForm } from "@/components/admin/ReimportStudyForm";
 
 export default async function StudyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -59,6 +60,9 @@ export default async function StudyDetailPage({ params }: { params: Promise<{ id
             . Review the auto-generated lessons below before publishing.
           </p>
         )}
+        <div className="mb-6">
+          <ReimportStudyForm studyId={study.id} lessonCount={studyLessons.length} />
+        </div>
         <StudyForm
           digitalProducts={productOptions}
           initial={{

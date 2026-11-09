@@ -438,6 +438,14 @@ export const studyImportFieldsSchema = z.object({
   kind: z.enum(["devotional", "study"]).default("devotional"),
 });
 
+// Re-upload replaces an existing study's lessons from a new document -- only
+// the target study id is admin-supplied; title/slug/productId/kind are
+// unchanged (those stay under the study's own normal metadata edit), and the
+// uploaded file itself isn't part of this JSON-shaped schema, same as above.
+export const studyReimportFieldsSchema = z.object({
+  studyId: z.string().uuid(),
+});
+
 // ---------- Admin: social media ----------
 const platformSchema = z.enum(["x", "facebook", "instagram"]);
 
