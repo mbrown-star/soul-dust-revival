@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { RichTextEditor } from "./RichTextEditor";
 import { IMMUTABLE_CACHE_CONTROL } from "@/lib/r2/cacheControl";
+import { useSavedIndicator } from "@/lib/hooks/useSavedIndicator";
 
 type ResourceFormValues = {
   id: string;
@@ -16,7 +17,7 @@ type ResourceFormValues = {
 export function LeaderResourceForm({ initial }: { initial: ResourceFormValues }) {
   const [values, setValues] = useState(initial);
   const [uploading, setUploading] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const { saved, markSaved } = useSavedIndicator();
 
   async function save(patch: Partial<ResourceFormValues>) {
     const updated = { ...values, ...patch };
@@ -26,8 +27,7 @@ export function LeaderResourceForm({ initial }: { initial: ResourceFormValues })
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: values.id, ...patch }),
     });
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 2000);
+    markSaved();
   }
 
   async function uploadFile(file: File) {

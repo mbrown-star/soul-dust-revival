@@ -4,6 +4,7 @@ import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { defaultCoverAltText } from "@/lib/images/coverAltText";
+import { useSavedIndicator } from "@/lib/hooks/useSavedIndicator";
 
 type StudyFormValues = {
   id?: string;
@@ -45,6 +46,7 @@ export function StudyForm({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { saved, markSaved } = useSavedIndicator();
 
   const altTextMissing = !!values.coverImageUrl && values.coverImageAlt.trim().length === 0;
 
@@ -114,14 +116,19 @@ export function StudyForm({
         return;
       }
 
-      // Editing an existing study pushes to the URL it's already on -- a
-      // no-op navigation that leaves this component mounted, so `saving`
-      // must be cleared explicitly here rather than relying on the push to
-      // unmount the form (that assumption only held for a brand-new study,
-      // which does push to a different URL). Same bug/fix as BlogPostForm.
       setSaving(false);
-      router.push(`/admin/studies/${data.id}`);
-      router.refresh();
+      if (initial?.id) {
+        // Editing an existing study stays on this same page -- there's
+        // nowhere else to navigate to, and navigating away is itself what
+        // used to pass for "did my save work?" feedback (see ProductForm's
+        // equivalent fix) -- just refresh server data and show "Saved".
+        router.refresh();
+        markSaved();
+      } else {
+        // A brand-new study has somewhere real to go: its own edit page.
+        router.push(`/admin/studies/${data.id}`);
+        router.refresh();
+      }
     } catch {
       setError("Save failed — the server didn't respond as expected. Please try again.");
       setSaving(false);
@@ -319,6 +326,10 @@ export function StudyForm({
             {deleting ? "Deleting..." : "Delete study"}
           </Button>
         )}
+
+        <p role="status" aria-live="polite" className="text-sm text-moss">
+          {saved ? "Saved" : ""}
+        </p>
       </div>
     </form>
   );

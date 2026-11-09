@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { defaultCoverAltText } from "@/lib/images/coverAltText";
 import { IMMUTABLE_CACHE_CONTROL } from "@/lib/r2/cacheControl";
+import { useSavedIndicator } from "@/lib/hooks/useSavedIndicator";
 
 // Keeps only digits and at most one decimal point -- lets an admin type a
 // price freely (including an in-progress "12." or a backspaced "") without
@@ -88,6 +89,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const { saved, markSaved } = useSavedIndicator();
 
   const isBook = values.type === "book";
   // "Both" sells the physical and digital versions of the same title as two
@@ -197,8 +199,20 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
         return;
       }
 
-      router.push("/admin/products");
-      router.refresh();
+      setSaving(false);
+      if (initial?.id) {
+        // Editing an existing product stays on this same page -- there's
+        // nowhere else to navigate to, and silently bouncing to the list
+        // used to be the only "did my save work?" signal at all. Refresh
+        // server data and show "Saved" instead.
+        router.refresh();
+        markSaved();
+      } else {
+        // A brand-new product has somewhere real to go: the list it'll now
+        // appear in.
+        router.push("/admin/products");
+        router.refresh();
+      }
     } catch {
       // A network failure here (not a server error response, which is
       // handled above) would otherwise leave the button on "Saving..."
@@ -562,6 +576,10 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
             {deleting ? "Deleting..." : "Delete product"}
           </Button>
         )}
+
+        <p role="status" aria-live="polite" className="text-sm text-moss">
+          {saved ? "Saved" : ""}
+        </p>
       </div>
     </form>
   );

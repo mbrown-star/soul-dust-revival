@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { defaultCoverAltText } from "@/lib/images/coverAltText";
 import { IMMUTABLE_CACHE_CONTROL } from "@/lib/r2/cacheControl";
+import { useSavedIndicator } from "@/lib/hooks/useSavedIndicator";
 
 // Sanitizes a price input the same way ProductForm.tsx's own price fields
 // do -- lets an admin type freely (including an in-progress "12." or a
@@ -76,6 +77,7 @@ export function BundleForm({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { saved, markSaved } = useSavedIndicator();
 
   function handleTitleChange(title: string) {
     setValues((v) => ({
@@ -163,8 +165,17 @@ export function BundleForm({
         return;
       }
 
-      router.push("/admin/bundles");
-      router.refresh();
+      setSaving(false);
+      if (initial?.id) {
+        // Editing an existing bundle stays on this same page -- same fix as
+        // ProductForm/StudyForm: refresh server data and show "Saved"
+        // instead of silently bouncing to the list being the only signal.
+        router.refresh();
+        markSaved();
+      } else {
+        router.push("/admin/bundles");
+        router.refresh();
+      }
     } catch {
       setError("Save failed — the server didn't respond as expected. Please try again.");
       setSaving(false);
@@ -462,6 +473,10 @@ export function BundleForm({
             {deleting ? "Deleting..." : "Delete bundle"}
           </Button>
         )}
+
+        <p role="status" aria-live="polite" className="text-sm text-moss">
+          {saved ? "Saved" : ""}
+        </p>
       </div>
     </form>
   );

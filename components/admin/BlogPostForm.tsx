@@ -4,6 +4,7 @@ import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { RichTextEditor } from "./RichTextEditor";
 import { Button } from "@/components/ui/Button";
+import { useSavedIndicator } from "@/lib/hooks/useSavedIndicator";
 
 type BlogFormValues = {
   id?: string;
@@ -35,6 +36,7 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const { saved, markSaved } = useSavedIndicator();
 
   // Tiptap's "empty" output is markup like <p></p>, not an empty string, so
   // checking values.body.length alone wouldn't catch an empty post -- same
@@ -105,14 +107,18 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
         return;
       }
 
-      // Editing an existing post pushes to the URL it's already on, which is a
-      // no-op navigation -- this component stays mounted, so saving must be
-      // cleared explicitly here rather than relying on a route change to reset
-      // it (that only happened to work for a brand-new post, which navigates
-      // to a different URL and unmounts this instance).
       setSaving(false);
-      router.push(`/admin/blog/${data.id}`);
-      router.refresh();
+      if (initial?.id) {
+        // Editing an existing post stays on this same page -- same fix as
+        // ProductForm/StudyForm/BundleForm: refresh server data and show
+        // "Saved" instead of a no-op navigation to the same URL being the
+        // only (invisible) signal the save worked.
+        router.refresh();
+        markSaved();
+      } else {
+        router.push(`/admin/blog/${data.id}`);
+        router.refresh();
+      }
     } catch {
       setError("Save failed — the server didn't respond as expected. Please try again.");
       setSaving(false);
@@ -244,6 +250,10 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
               {deleting ? "Deleting..." : "Delete post"}
             </Button>
           )}
+
+          <p role="status" aria-live="polite" className="text-sm text-moss">
+            {saved ? "Saved" : ""}
+          </p>
         </div>
       </form>
     </div>
