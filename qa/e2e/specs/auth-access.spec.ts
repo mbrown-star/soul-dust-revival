@@ -37,7 +37,7 @@ test.describe("Guest (logged out)", () => {
   test("login with a clearly nonexistent email surfaces the documented account-enumeration trade-off, with no new widening", async ({ page }) => {
     await page.goto("/login");
     await page.getByLabel(/Email address/i).fill(`qa-nonexistent-${Date.now()}@soul-dust-revival.test`);
-    await page.getByRole("button", { name: /Send login link/i }).click();
+    await page.getByRole("button", { name: /Send code/i }).click();
     // SECURITY_REVIEW.md: "/login revealing whether an email exists is a
     // documented trade-off. Do not widen it." This confirms the existing,
     // accepted behavior is unchanged -- not a new finding.

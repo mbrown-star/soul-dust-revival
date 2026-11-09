@@ -11,26 +11,38 @@ numbered finding before treating anything below as still open.
 seeded paid + pending orders
 **Related automated spec:** `qa/e2e/specs/auth-access.spec.ts`, `qa/e2e/specs/account.spec.ts`
 
-## Walkthrough — real magic-link login (manual only — cannot be scripted, see below)
+## Walkthrough — real OTP-code login (manual only — cannot be scripted, see below)
 
-1. Open `/login` as a guest, enter a real email you control, submit. → **Expect:** "Check your
-   email for a login link." replaces the form, and keyboard focus visibly moves to that message
-   (tab/arrow keys shouldn't land back on the now-gone form fields).
-2. Open the real email, click the link. → **Expect:** lands on `/library` (the default `next`),
-   now shown as logged in in the nav.
-3. Repeat with `/signup?next=/checkout` for a brand-new email. → **Expect:** "Check your email to
-   confirm your account and finish signing up," and the link's destination respects `next=/checkout`
-   rather than always going to `/library`.
+**Changed 2026-11-08:** login no longer sends a clickable magic-link URL. Traced a real
+expired login attempt against souldustrevival.com's actual Google Workspace mail hosting and
+confirmed every fresh magic link came back `otp_expired` before the real click — Workspace's own
+link-prefetching/security scanning was consuming the single-use link first. The fix was to stop
+sending a link at all and send a 6-digit code instead (no URL for anything to prefetch); see
+`components/auth/AuthForm.tsx` and the 2026-11-08 CLAUDE.md entry. The walkthrough below reflects
+the new flow; `/auth/callback`'s `link_expired` handling is kept only as a fallback for a
+leftover pre-change email, not the primary path anymore.
+
+1. Open `/login` as a guest, enter a real email you control, submit. → **Expect:** the form is
+   replaced by "Enter your code" / "We sent a 6-digit code to {email}", and keyboard focus
+   visibly moves to that heading (tab/arrow keys shouldn't land back on the now-gone form fields).
+2. Open the real email, copy the 6-digit code, type it into the code field, submit. → **Expect:**
+   lands on `/library` (the default `next`), now shown as logged in in the nav.
+3. Repeat with `/signup?next=/checkout` for a brand-new email. → **Expect:** the same code-entry
+   step, and after verifying, the destination respects `next=/checkout` rather than always going
+   to `/library`.
 4. While already logged in, navigate to `/login` directly. → **Expect (real behavior, not a bug
    to silently work around):** the login form renders again rather than redirecting you away —
    confirm this doesn't let you do anything harmful (it doesn't: submitting again just emails
-   another magic link to the same address), but note whether this reads as confusing UX.
+   another code to the same address), but note whether this reads as confusing UX.
+5. On the code-entry step, click "Use a different email." → **Expect:** returns to the plain
+   email form, with the email field cleared.
 
-*Why this is manual-only:* a real magic-link flow needs an inbox to receive mail — the automated
+*Why this is manual-only:* a real OTP-code flow needs an inbox to receive mail — the automated
 suite instead proves the server-side login mechanics work via `qa/e2e/global-setup.ts`'s use of
 Supabase's Admin API to generate and redeem a real OTP without sending mail, which is a faithful
-substitute for "click the email" but not a substitute for actually checking the email arrives,
-its copy, and its deliverability (SPF/DKIM) — check an actual inbox periodically, not just once.
+substitute for "read the code from the email" but not a substitute for actually checking the email
+arrives, its copy, and its deliverability (SPF/DKIM) — check an actual inbox periodically, not
+just once.
 
 ## Walkthrough — account-enumeration trade-off
 

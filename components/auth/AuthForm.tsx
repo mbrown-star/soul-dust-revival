@@ -18,18 +18,33 @@ export function AuthForm({
   // client's own link-prefetching/security scanner, not the person's own
   // click). Shown once; typing in the email field below clears it like any
   // other error, since at that point the visitor is requesting a fresh link.
+  //
+  // REAL BUG FOUND (2026-11-08, reported live, traced against a real email):
+  // this entire class of failure -- a clickable magic-link URL silently
+  // consumed by Google Workspace's own link-prefetching/security scanning
+  // before the person's real click -- turned out to be unfixable from the
+  // callback route alone, since *every* fresh link came back already
+  // `otp_expired`, confirmed on souldustrevival.com's real Google Workspace
+  // mail hosting. The actual fix is this file: stop sending a clickable
+  // link at all and send a 6-digit code instead, which has no URL for
+  // anything to prefetch. `initialError`/`link_expired` is kept only so a
+  // stale already-sent magic-link email (from before this change shipped,
+  // or any leftover /auth/callback fallback) still shows a clear message
+  // instead of a silent failure -- not the primary path anymore.
   initialError?: "link_expired";
 }) {
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [step, setStep] = useState<"email" | "code">("email");
+  const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(initialError ?? null);
   const [loading, setLoading] = useState(false);
   const emailId = useId();
-  const confirmationRef = useRef<HTMLParagraphElement>(null);
+  const codeId = useId();
+  const codeHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const isSignup = mode === "signup";
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -38,7 +53,6 @@ export function AuthForm({
     const { error: authError } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
         // This is what actually distinguishes signup from login functionally,
         // not just the page copy: signup may create a brand-new account,
         // while login only ever signs in an account that already exists.
@@ -59,38 +73,117 @@ export function AuthForm({
       return;
     }
 
-    setSent(true);
+    setStep("code");
   }
 
-  // Move focus to the confirmation message once it appears, since the form
-  // it replaces disappears from the DOM — without this, keyboard/screen
+  async function handleCodeSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    const supabase = createSupabaseBrowserClient();
+
+    const { error: authError } = await supabase.auth.verifyOtp({
+      email,
+      token: code,
+      type: "email",
+    });
+
+    setLoading(false);
+
+    if (authError) {
+      setError(authError.message);
+      return;
+    }
+
+    // A full browser navigation (not router.push) so this goes through
+    // proxy.ts's own marketing/app subdomain redirect the same way
+    // /auth/callback's server-side redirect already does -- `next` can be
+    // an app-domain path (e.g. /library) while this page is served from the
+    // marketing domain.
+    window.location.href = next;
+  }
+
+  // Move focus to the code step's heading once it appears, since the email
+  // form it replaces disappears from the DOM — without this, keyboard/screen
   // reader focus is left on a removed element (WCAG 2.4.3 Focus Order).
   useEffect(() => {
-    if (sent) confirmationRef.current?.focus();
-  }, [sent]);
+    if (step === "code") codeHeadingRef.current?.focus();
+  }, [step]);
 
-  if (sent) {
+  if (step === "code") {
     return (
-      <div className="max-w-sm mx-auto px-4 py-16 sm:py-20 text-center">
-        <p ref={confirmationRef} tabIndex={-1} role="status">
-          {isSignup
-            ? "Check your email to confirm your account and finish signing up."
-            : "Check your email for a login link."}
+      <form
+        onSubmit={handleCodeSubmit}
+        className="max-w-sm mx-auto px-4 py-16 sm:py-20 space-y-4"
+        aria-label="Enter your code"
+      >
+        <h1 ref={codeHeadingRef} tabIndex={-1} className="font-display font-bold text-2xl text-ink">
+          Enter your code
+        </h1>
+        <p className="text-sm text-moss">
+          We sent a 6-digit code to <span className="font-medium">{email}</span>.
         </p>
-      </div>
+
+        <label htmlFor={codeId} className="sr-only">6-digit code</label>
+        <input
+          id={codeId}
+          type="text"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={6}
+          required
+          placeholder="123456"
+          aria-invalid={!!error}
+          aria-describedby={error ? `${codeId}-error` : undefined}
+          className="w-full border rounded-lg p-3 text-center text-2xl tracking-widest focus:outline-none focus:ring-2 focus:ring-ink"
+          value={code}
+          onChange={(e) => {
+            setCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+            setError(null);
+          }}
+        />
+
+        {error && (
+          <p id={`${codeId}-error`} role="alert" className="text-sm text-error">
+            {error}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={loading || code.length !== 6}
+          className="w-full bg-ink text-white rounded-lg p-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink"
+        >
+          {loading ? "Verifying..." : "Verify"}
+        </button>
+
+        <p className="text-sm text-moss text-center">
+          <button
+            type="button"
+            className="underline font-medium focus:outline-none focus:ring-2 focus:ring-ink rounded"
+            onClick={() => {
+              setStep("email");
+              setCode("");
+              setError(null);
+            }}
+          >
+            Use a different email
+          </button>
+        </p>
+      </form>
     );
   }
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={handleEmailSubmit}
       className="max-w-sm mx-auto px-4 py-16 sm:py-20 space-y-4"
       aria-label={isSignup ? "Sign up" : "Log in"}
     >
       <h1 className="font-display font-bold text-2xl text-ink">{isSignup ? "Create your account" : "Log in"}</h1>
       {isSignup && (
         <p className="text-sm text-moss">
-          First time buying a study or book? Start here — we&apos;ll send a link to confirm your email.
+          First time buying a study or book? Start here — we&apos;ll send a code to confirm your email.
         </p>
       )}
 
@@ -121,7 +214,7 @@ export function AuthForm({
       )}
       {error === "link_expired" && (
         <p role="alert" className="text-sm text-error">
-          That link expired or was already used. Enter your email below to get a new one.
+          That link expired or was already used. Enter your email below to get a new code.
         </p>
       )}
       {error && error !== "no_account" && error !== "link_expired" && (
@@ -135,7 +228,7 @@ export function AuthForm({
         disabled={loading}
         className="w-full bg-ink text-white rounded-lg p-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink"
       >
-        {loading ? "Sending..." : isSignup ? "Sign up" : "Send login link"}
+        {loading ? "Sending..." : isSignup ? "Sign up" : "Send code"}
       </button>
 
       <p className="text-sm text-moss text-center">
