@@ -154,13 +154,15 @@ export const entitlements = pgTable("entitlements", {
 
 // A `products` row with type: "bundle" groups other existing products
 // together at one combined price -- this table is just the membership list.
-// Its own `format` ("physical" ships / "digital" grants access -- never
-// "both", which already means something different: two independent
-// purchases) decides what happens at checkout, reusing the existing
-// isPhysicalVariant/isDigitalVariant branching unchanged (lib/stripe/products.ts):
-// a physical bundle ships (Stripe only, never Amazon) and triggers a
-// founder-facing fulfillment email; a digital bundle grants an entitlement
-// for every component here when purchased (lib/stripe/webhook-handlers.ts).
+// Its own `format` ("physical" ships / "digital" grants access / "both" is
+// two independent purchases at their own prices, same as a regular
+// format-"both" product) decides what happens at checkout, reusing the
+// existing isPhysicalVariant/isDigitalVariant + variant branching unchanged
+// (lib/stripe/products.ts, keyed by order_items.variant not product.format):
+// a physical purchase ships (Stripe only, never Amazon -- a bundle never has
+// its own amazonUrl/sellOnStripe fields regardless of format) and triggers a
+// founder-facing fulfillment email; a digital purchase grants an entitlement
+// for every component here (lib/stripe/webhook-handlers.ts).
 export const bundleItems = pgTable(
   "bundle_items",
   {

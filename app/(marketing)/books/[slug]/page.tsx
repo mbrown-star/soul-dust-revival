@@ -40,11 +40,12 @@ export default async function BookDetailPage({
 
   if (!product || !product.active) notFound();
 
-  // A bundle's own purchase (master cover, one price, one AddToCartButton) is
+  // A bundle's own purchase (master cover, price(s), AddToCartButton(s)) is
   // handled by the exact same format-based branches below as any other
-  // product -- a bundle's `format` is always "physical" or "digital", never
-  // "both" (see bundleSchema). This is just the extra "what's included" list,
-  // each component purchasable on its own through its own existing buttons.
+  // product, format "both" included -- a bundle just never has its own
+  // amazonUrl/sellOnStripe (see bundleSchema). This is just the extra
+  // "what's included" list, each component purchasable on its own through
+  // its own existing buttons.
   const components =
     product.type === "bundle"
       ? await db
@@ -79,6 +80,8 @@ export default async function BookDetailPage({
             {product.type === "bundle"
               ? product.format === "digital"
                 ? "Bundle · Unlocks in the web app"
+                : product.format === "both"
+                ? "Bundle · Ships, and unlocks in the web app"
                 : "Bundle · Ships to you"
               : product.format === "digital"
               ? "Study · Unlocks in the web app"
@@ -97,7 +100,7 @@ export default async function BookDetailPage({
             <div className="space-y-6">
               <div className="border border-moss/20 rounded-lg p-4">
                 <h2 className="font-sans text-sm font-semibold uppercase tracking-wide text-moss mb-2">
-                  Printed book
+                  {product.type === "bundle" ? "Ships to you" : "Printed book"}
                 </h2>
                 <p className="font-sans text-xl font-semibold text-ink mb-3">
                   ${(product.priceCents / 100).toFixed(2)}
@@ -110,13 +113,15 @@ export default async function BookDetailPage({
                       priceCents={product.priceCents}
                       format="physical"
                       variant="physical"
-                      label="Buy the book"
+                      label={product.type === "bundle" ? "Buy the bundle" : "Buy the book"}
                     />
                   )}
                   {product.amazonUrl && <AmazonBuyButton amazonUrl={product.amazonUrl} />}
                 </div>
                 <p className="font-sans text-sm text-moss mt-3">
-                  Ships within a few business days. No account needed to buy the printed book alone.
+                  {product.type === "bundle"
+                    ? "Ships within a few business days. No account needed to buy the physical bundle alone."
+                    : "Ships within a few business days. No account needed to buy the printed book alone."}
                 </p>
               </div>
 

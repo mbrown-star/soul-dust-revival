@@ -60,6 +60,8 @@ export default async function BooksPage() {
                 {p.type === "bundle"
                   ? p.format === "digital"
                     ? "Bundle · Web app"
+                    : p.format === "both"
+                    ? "Bundle · Ships & web app"
                     : "Bundle · Ships to you"
                   : p.format === "digital"
                   ? "Study · Web app"

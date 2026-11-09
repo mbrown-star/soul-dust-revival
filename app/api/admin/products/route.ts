@@ -5,6 +5,7 @@ import { products, studies, orderItems, entitlements } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { productSchema, productDeleteSchema } from "@/lib/validation/schemas";
 import { MAX_FEATURED_PRODUCTS, featuredCount } from "@/lib/commerce/featuredLimit";
+import { stripePriceInvalidationFields } from "@/lib/stripe/products";
 
 export async function POST(req: NextRequest) {
   const session = await requireAdmin();
@@ -67,8 +68,6 @@ export async function PATCH(req: NextRequest) {
   // next checkout — Stripe Prices are immutable once created. Physical and
   // digital prices (and their Stripe IDs) are independent for format "both".
   const existing = await db.query.products.findFirst({ where: eq(products.id, body.id!) });
-  const priceChanged = existing && existing.priceCents !== body.priceCents;
-  const digitalPriceChanged = existing && existing.digitalPriceCents !== body.digitalPriceCents;
 
   // Only a transition into "featured" counts toward the limit -- re-saving a
   // product that's already featured isn't a new addition, so it's excluded
@@ -99,8 +98,7 @@ export async function PATCH(req: NextRequest) {
       amazonUrl: body.amazonUrl,
       sellOnStripe: body.sellOnStripe,
       active: body.active,
-      ...(priceChanged ? { stripePriceId: null, stripeProductId: null } : {}),
-      ...(digitalPriceChanged ? { digitalStripePriceId: null, digitalStripeProductId: null } : {}),
+      ...stripePriceInvalidationFields(existing, body),
     })
     .where(eq(products.id, body.id!))
     .returning();

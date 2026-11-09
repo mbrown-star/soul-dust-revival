@@ -31,9 +31,10 @@ type BundleFormValues = {
   slug: string;
   description: string;
   priceCents: number;
+  digitalPriceCents: number | null;
   imageUrl: string | null;
   imageAlt: string;
-  format: "physical" | "digital";
+  format: "physical" | "digital" | "both";
   active: boolean;
   featured: boolean;
   componentProductIds: string[];
@@ -51,6 +52,7 @@ export function BundleForm({
   const slugId = useId();
   const descId = useId();
   const priceId = useId();
+  const digitalPriceId = useId();
   const altId = useId();
 
   const [values, setValues] = useState<BundleFormValues>({
@@ -58,6 +60,7 @@ export function BundleForm({
     slug: initial?.slug ?? "",
     description: initial?.description ?? "",
     priceCents: initial?.priceCents ?? 0,
+    digitalPriceCents: initial?.digitalPriceCents ?? null,
     imageUrl: initial?.imageUrl ?? null,
     imageAlt: initial?.imageAlt ?? "",
     format: initial?.format ?? "digital",
@@ -66,6 +69,7 @@ export function BundleForm({
     componentProductIds: initial?.componentProductIds ?? [],
   });
   const [priceText, setPriceText] = useState(((initial?.priceCents ?? 0) / 100).toFixed(2));
+  const [digitalPriceText, setDigitalPriceText] = useState(((initial?.digitalPriceCents ?? 0) / 100).toFixed(2));
   const [slugTouched, setSlugTouched] = useState(!!initial?.slug);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -133,7 +137,12 @@ export function BundleForm({
     setError(null);
 
     const method = initial?.id ? "PATCH" : "POST";
-    const body = initial?.id ? { ...values, id: initial.id } : values;
+    // digitalPriceCents only means anything for format "both" -- forced to
+    // null otherwise regardless of whatever a prior "both" selection left in
+    // state, so switching away from "both" can't submit a stale value the
+    // schema would reject anyway (it requires exactly the opposite pairing).
+    const payload = { ...values, digitalPriceCents: values.format === "both" ? values.digitalPriceCents : null };
+    const body = initial?.id ? { ...payload, id: initial.id } : payload;
 
     try {
       const res = await fetch("/api/admin/bundles", {
@@ -223,7 +232,7 @@ export function BundleForm({
 
       <fieldset>
         <legend className="block text-sm font-medium mb-1">What happens on purchase</legend>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
           <label className="flex items-center gap-2">
             <input
               type="radio"
@@ -242,41 +251,102 @@ export function BundleForm({
             />
             <span className="text-sm">Ships to you</span>
           </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="format"
+              checked={values.format === "both"}
+              onChange={() =>
+                setValues((v) => ({
+                  ...v,
+                  format: "both",
+                  // Without this, a new bundle saved without ever touching the
+                  // Digital price field (which already shows "0.00" from
+                  // digitalPriceText's own initial state, looking already
+                  // filled in) would submit digitalPriceCents: null with
+                  // format: "both", which bundleSchema's refine rejects --
+                  // same fix ProductForm.tsx's own format selector already
+                  // applies for the identical reason.
+                  ...(v.digitalPriceCents == null ? { digitalPriceCents: 0 } : {}),
+                }))
+              }
+            />
+            <span className="text-sm">Both — sold separately</span>
+          </label>
         </div>
         <p className="text-xs text-moss mt-1">
-          {values.format === "digital"
-            ? "Buying this bundle grants access to every study/devotional below, same as buying each separately."
-            : "Always sold through Stripe (never Amazon). Collects a shipping address at checkout and emails the founder to pack and ship it — there's no automated fulfillment behind a bundle."}
+          {values.format === "digital" &&
+            "Buying this bundle grants access to every study/devotional below, same as buying each separately."}
+          {values.format === "physical" &&
+            "Always sold through Stripe (never Amazon). Collects a shipping address at checkout and emails the founder to pack and ship it — there's no automated fulfillment behind a bundle."}
+          {values.format === "both" &&
+            "Two independent purchases at their own prices below, same as a \"both\"-format product — buying the physical copy ships it (Stripe only, never Amazon) and emails the founder; buying digital access grants the entitlement cascade. A customer can buy either or both."}
         </p>
       </fieldset>
 
-      <div>
-        <label htmlFor={priceId} className="block text-sm font-medium mb-1">Bundle price (USD)</label>
-        <input
-          id={priceId}
-          required
-          type="text"
-          inputMode="decimal"
-          className="w-full sm:w-48 border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
-          value={priceText}
-          onChange={(e) => {
-            const sanitized = sanitizeDecimal(e.target.value);
-            setPriceText(sanitized);
-            const parsed = parseFloat(sanitized);
-            if (!Number.isNaN(parsed)) {
-              setValues((v) => ({ ...v, priceCents: Math.round(parsed * 100) }));
-            }
-          }}
-          onBlur={() => setPriceText((values.priceCents / 100).toFixed(2))}
-        />
-        {values.componentProductIds.length > 0 && (
-          <p className="text-xs text-moss mt-1">
-            Parts total ${(partsTotalCents / 100).toFixed(2)} separately
-            {values.priceCents < partsTotalCents &&
-              ` — this bundle saves $${((partsTotalCents - values.priceCents) / 100).toFixed(2)}`}
-          </p>
+      <div className="flex flex-wrap gap-4">
+        <div>
+          <label htmlFor={priceId} className="block text-sm font-medium mb-1">
+            {values.format === "both" ? "Physical price (USD)" : "Bundle price (USD)"}
+          </label>
+          <input
+            id={priceId}
+            required
+            type="text"
+            inputMode="decimal"
+            className="w-full sm:w-48 border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
+            value={priceText}
+            onChange={(e) => {
+              const sanitized = sanitizeDecimal(e.target.value);
+              setPriceText(sanitized);
+              const parsed = parseFloat(sanitized);
+              if (!Number.isNaN(parsed)) {
+                setValues((v) => ({ ...v, priceCents: Math.round(parsed * 100) }));
+              }
+            }}
+            onBlur={() => setPriceText((values.priceCents / 100).toFixed(2))}
+          />
+        </div>
+        {values.format === "both" && (
+          <div>
+            <label htmlFor={digitalPriceId} className="block text-sm font-medium mb-1">
+              Digital price (USD)
+            </label>
+            <input
+              id={digitalPriceId}
+              required
+              type="text"
+              inputMode="decimal"
+              className="w-full sm:w-48 border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
+              value={digitalPriceText}
+              onChange={(e) => {
+                const sanitized = sanitizeDecimal(e.target.value);
+                setDigitalPriceText(sanitized);
+                const parsed = parseFloat(sanitized);
+                if (!Number.isNaN(parsed)) {
+                  setValues((v) => ({ ...v, digitalPriceCents: Math.round(parsed * 100) }));
+                }
+              }}
+              onBlur={() => setDigitalPriceText(((values.digitalPriceCents ?? 0) / 100).toFixed(2))}
+            />
+          </div>
         )}
       </div>
+      {values.componentProductIds.length > 0 && values.format !== "both" && (
+        // partsTotalCents sums each part's own single price (its digital
+        // price for a "both"-format part) -- a one-to-one comparison against
+        // this bundle's own single price for "physical"/"digital". A "both"
+        // bundle has two independent prices of its own with no single
+        // combined figure that means the same thing, so this comparison is
+        // skipped rather than adding one up (physical + digital) that would
+        // compare a different, bigger basket against partsTotalCents' one
+        // price per part.
+        <p className="text-xs text-moss -mt-3">
+          Parts total ${(partsTotalCents / 100).toFixed(2)} separately
+          {values.priceCents < partsTotalCents &&
+            ` — this bundle saves $${((partsTotalCents - values.priceCents) / 100).toFixed(2)}`}
+        </p>
+      )}
 
       <div>
         <span className="block text-sm font-medium mb-1" id="bundle-cover-label">Master cover image</span>

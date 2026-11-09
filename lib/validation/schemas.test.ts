@@ -379,8 +379,16 @@ describe("bundleSchema", () => {
     expect(bundleSchema.safeParse({ ...base, componentProductIds: ["not-a-uuid"] }).success).toBe(false);
   });
 
-  it("rejects format \"both\" -- a bundle is always physical or digital, never both", () => {
-    expect(bundleSchema.safeParse({ ...base, format: "both" }).success).toBe(false);
+  describe("format: \"both\"", () => {
+    it("requires digitalPriceCents", () => {
+      expect(bundleSchema.safeParse({ ...base, format: "both" }).success).toBe(false);
+      expect(bundleSchema.safeParse({ ...base, format: "both", digitalPriceCents: 999 }).success).toBe(true);
+    });
+
+    it("rejects digitalPriceCents on a plain physical or digital bundle", () => {
+      expect(bundleSchema.safeParse({ ...base, format: "physical", digitalPriceCents: 999 }).success).toBe(false);
+      expect(bundleSchema.safeParse({ ...base, format: "digital", digitalPriceCents: 999 }).success).toBe(false);
+    });
   });
 
   it("rejects an unknown format", () => {

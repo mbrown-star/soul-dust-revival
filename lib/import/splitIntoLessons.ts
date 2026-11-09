@@ -196,6 +196,20 @@ function splitByHeadingKeywords(lines: string[]): ImportedLesson[] {
     return [{ title: "Imported Content", bodyHtml: paragraphsToHtml(lines) }];
   }
 
+  // An "Introduction" section is only genuine front matter when at least one
+  // other real section follows it — see narrowToForewordAndPreface's own
+  // comment. When it's the document's only section, nothing heading-shaped
+  // was found anywhere at all, and this *is* the whole document, not
+  // boilerplate to narrow down.
+  if (sections.length > 1 && sections[0]!.title === "Introduction") {
+    const kept = narrowToForewordAndPreface(sections[0]!.lines);
+    if (kept.length > 0) {
+      sections[0]!.lines = kept;
+    } else {
+      sections.shift();
+    }
+  }
+
   return sections.map((s) => ({
     title: s.title,
     bodyHtml: paragraphsToHtml(s.lines),
@@ -220,6 +234,63 @@ function looksLikeHeadingLine(line: string): boolean {
   // reference like "COLOSSIANS 1:3–4" or a numbered item like "1. RECEIVE
   // GRACE" qualify, not just a line made entirely of capitalized words.
   return words.length > 0 && words.every((w) => !/[a-zA-Z]/.test(w) || /^[^a-zA-Z]*[A-Z]/.test(w));
+}
+
+// The only front-matter section labels worth keeping as a document's
+// "Introduction" lesson -- everything else before the first real Week/Day
+// heading (a title page, a Table-of-Contents duplicate, a dedication,
+// acknowledgments, "how to use this book", ...) is front-matter boilerplate
+// that doesn't belong in the app as a lesson's content, not something worth
+// reviewing and trimming by hand on every single import.
+const FRONT_MATTER_KEEP_HEADING = /^(FOREWORD|PREFACE)\b/i;
+
+// A closed set of OTHER recognized front-matter labels -- seeing one of these
+// ends whatever Foreword/Preface section was being kept, the same way the
+// document's own real Week/Day heading would. Deliberately a closed set, not
+// "any heading-shaped line": an earlier version of this function used
+// looksLikeHeadingLine alone to decide when to stop keeping, which let an
+// ordinary short, punctuation-free sentence *inside* a real Foreword (a
+// pull-quote-style line, a rhetorical device this document family already
+// uses elsewhere) silently end the kept section early. Matching this
+// project's own established convention elsewhere in this file
+// (QUESTION_INLINE/GOING_DEEPER_PREFIX/VERSE_REF_HEADING are closed,
+// purpose-built markers too, not a generic "looks like a heading" reuse).
+const FRONT_MATTER_END_HEADING = /^(ACKNOWLEDG(E)?MENTS?|DEDICATION|COPYRIGHT|CONTENTS|TABLE OF CONTENTS|INTRODUCTION)\b/i;
+
+// A Table-of-Contents entry for "Foreword"/"Preface" itself ("Foreword
+// .......... 3", "Preface 5") matches FRONT_MATTER_KEEP_HEADING's prefix
+// check too, but it's a page reference, not the section's real start --
+// recognized by the trailing dot-leader/page-number shape, the same way
+// extractTableOfContents above tells a TOC entry apart from a real heading.
+const TOC_DOT_LEADER_SUFFIX = /(?:[.\s]{3,}|\t+)\d+\s*$/;
+
+/**
+ * Narrows a document's front matter (everything before its first real
+ * Week/Day heading) down to just its Foreword and/or Preface sections.
+ * Starts keeping at a line matching FRONT_MATTER_KEEP_HEADING (that isn't
+ * itself a Table-of-Contents page reference) and stops at a line matching
+ * FRONT_MATTER_END_HEADING -- both checks also require the line to be
+ * heading-shaped (looksLikeHeadingLine), so an ordinary sentence that merely
+ * starts with one of these words ("How to use this study was explained
+ * yesterday.") is never mistaken for a real section boundary either
+ * direction. Returns an empty array when no Foreword/Preface is ever found,
+ * so the caller can drop the Introduction lesson entirely rather than
+ * publish an empty one.
+ */
+function narrowToForewordAndPreface(lines: string[]): string[] {
+  const kept: string[] = [];
+  let keeping = false;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const headingShaped = looksLikeHeadingLine(trimmed);
+    if (headingShaped && FRONT_MATTER_KEEP_HEADING.test(trimmed) && !TOC_DOT_LEADER_SUFFIX.test(trimmed)) {
+      keeping = true;
+    } else if (headingShaped && FRONT_MATTER_END_HEADING.test(trimmed)) {
+      keeping = false;
+    }
+    if (keeping) kept.push(line);
+  }
+  return kept;
 }
 
 /**
@@ -436,12 +507,14 @@ function splitWeekIntoBlocks(lines: string[]): StudyImportedBlock[] {
  * "WEEK N" marker appears more than once, the LAST occurrence is always the
  * real one and every earlier occurrence is a Contents (or other front-
  * matter) duplicate to discard. A week number that only appears once has no
- * ambiguity to resolve either way. Content before the first real heading
- * (a foreword, preface, and -- harmlessly folded in as plain text -- any
- * Contents-page duplicate for week one) becomes a leading "Introduction"
- * lesson, same convention as the Devotional path. Still a heuristic over
- * unstructured text -- review after import is expected, same as every
- * other import path here.
+ * ambiguity to resolve either way. Content before the first real heading is
+ * narrowed down to just its Foreword/Preface sections (see
+ * narrowToForewordAndPreface) and becomes a leading "Introduction" lesson --
+ * the title page, any Contents-page duplicate for week one, and any other
+ * front-matter boilerplate are discarded rather than folded in, same
+ * convention as the Devotional path. No Foreword or Preface at all means no
+ * Introduction lesson. Still a heuristic over unstructured text -- review
+ * after import is expected, same as every other import path here.
  */
 export function splitStudyPlainTextByHeadings(text: string): StudyImportedLesson[] {
   const lines = text.split("\n").map((l) => l.trim());
@@ -462,10 +535,11 @@ export function splitStudyPlainTextByHeadings(text: string): StudyImportedLesson
 
   const lessons: StudyImportedLesson[] = [];
 
-  // Intro content is everything before the first real week heading.
+  // Intro content is everything before the first real week heading, narrowed
+  // down to just its Foreword/Preface sections -- see narrowToForewordAndPreface.
   const firstHeadingIndex = headingIndexes[0]!;
-  const introLines = lines.slice(0, firstHeadingIndex);
-  if (introLines.some((l) => l !== "")) {
+  const introLines = narrowToForewordAndPreface(lines.slice(0, firstHeadingIndex));
+  if (introLines.length > 0) {
     lessons.push({ title: "Introduction", blocks: splitWeekIntoBlocks(introLines) });
   }
 

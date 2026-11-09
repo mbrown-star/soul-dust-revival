@@ -283,6 +283,105 @@ describe("handleCheckoutCompleted", () => {
       }
     });
 
+    it("a format \"both\" bundle cascades entitlements and sends the founder email, each from its own order-item variant", async () => {
+      const [component] = await db
+        .insert(products)
+        .values({
+          type: "study_access",
+          format: "digital",
+          title: "Both-bundle Component",
+          slug: `both-bundle-component-${randomUUID()}`,
+          priceCents: 1000,
+        })
+        .returning();
+      const [bundle] = await db
+        .insert(products)
+        .values({
+          type: "bundle",
+          format: "both",
+          title: "Both Bundle",
+          slug: `both-bundle-${randomUUID()}`,
+          priceCents: 8000,
+          digitalPriceCents: 5000,
+        })
+        .returning();
+      await db.insert(bundleItems).values({ bundleProductId: bundle!.id, componentProductId: component!.id, orderIndex: 0 });
+
+      await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
+      // One order containing both of the bundle's own independent purchase
+      // routes -- a real customer buying the physical copy and digital
+      // access together, same cart.
+      await db.insert(orderItems).values([
+        { orderId, productId: bundle!.id, quantity: 1, variant: "physical" },
+        { orderId, productId: bundle!.id, quantity: 1, variant: "digital" },
+      ]);
+
+      try {
+        await handleCheckoutCompleted(
+          fakeCheckoutSession(orderId, {
+            amount_total: 13000,
+            shipping_details: { name: "Jane Reader", address: { line1: "1 Main St", line2: null, city: "Nashville", state: "TN", postal_code: "37201", country: "US" } },
+          } as Partial<Stripe.Checkout.Session>),
+          "https://example.com"
+        );
+
+        const grants = await db.select().from(entitlements).where(eq(entitlements.userId, userId));
+        expect(grants).toHaveLength(1);
+        expect(grants[0]!.productId).toBe(component!.id);
+
+        expect(sendBundleShipmentNotificationEmail).toHaveBeenCalledTimes(1);
+        expect(sendBundleShipmentNotificationEmail).toHaveBeenCalledWith(
+          expect.objectContaining({ bundles: [{ title: "Both Bundle", quantity: 1 }] })
+        );
+      } finally {
+        await db.delete(entitlements).where(inArray(entitlements.productId, [component!.id, bundle!.id]));
+        await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
+        await db.delete(bundleItems).where(eq(bundleItems.bundleProductId, bundle!.id));
+        await db.delete(products).where(inArray(products.id, [component!.id, bundle!.id]));
+      }
+    });
+
+    it("a format \"both\" bundle bought only for its digital variant grants the cascade and sends no founder email", async () => {
+      const [component] = await db
+        .insert(products)
+        .values({
+          type: "study_access",
+          format: "digital",
+          title: "Both-bundle Digital-only Component",
+          slug: `both-bundle-digital-only-${randomUUID()}`,
+          priceCents: 1000,
+        })
+        .returning();
+      const [bundle] = await db
+        .insert(products)
+        .values({
+          type: "bundle",
+          format: "both",
+          title: "Both Bundle Digital Only",
+          slug: `both-bundle-digital-only-${randomUUID()}`,
+          priceCents: 8000,
+          digitalPriceCents: 5000,
+        })
+        .returning();
+      await db.insert(bundleItems).values({ bundleProductId: bundle!.id, componentProductId: component!.id, orderIndex: 0 });
+
+      await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
+      await db.insert(orderItems).values({ orderId, productId: bundle!.id, quantity: 1, variant: "digital" });
+
+      try {
+        await handleCheckoutCompleted(fakeCheckoutSession(orderId, { amount_total: 5000 }), "https://example.com");
+
+        const grants = await db.select().from(entitlements).where(eq(entitlements.userId, userId));
+        expect(grants.map((g) => g.productId)).toEqual([component!.id]);
+        expect(sendBundleShipmentNotificationEmail).not.toHaveBeenCalled();
+      } finally {
+        await db.delete(entitlements).where(inArray(entitlements.productId, [component!.id, bundle!.id]));
+        await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
+        await db.delete(bundleItems).where(eq(bundleItems.bundleProductId, bundle!.id));
+        await db.delete(products).where(inArray(products.id, [component!.id, bundle!.id]));
+      }
+    });
+
     it("does not send the bundle shipment email for a digital bundle", async () => {
       const [component] = await db
         .insert(products)

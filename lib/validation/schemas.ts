@@ -7,6 +7,15 @@ export const countryCodeSchema = z
   .string()
   .refine((v) => v === "OTHER" || /^[A-Z]{2}$/.test(v), "Invalid country code");
 
+// Shared by productSchema and bundleSchema below: digitalPriceCents is the
+// whole point of format "both" (its separate, independently-purchasable
+// digital price) and meaningless otherwise -- a "digital"-only row keeps
+// using priceCents, so a stray digitalPriceCents there would just be dead,
+// confusing data. One check so the two schemas can't silently diverge on it.
+function hasValidDigitalPriceCentsForFormat(v: { format: string; digitalPriceCents?: number | null }): boolean {
+  return v.format === "both" ? v.digitalPriceCents != null : v.digitalPriceCents == null;
+}
+
 // ---------- Checkout ----------
 export const checkoutSchema = z.object({
   items: z
@@ -125,11 +134,7 @@ export const productSchema = z
     message: "At least one purchase route (Stripe or Amazon) is required",
     path: ["sellOnStripe"],
   })
-  // digitalPriceCents is the whole point of format "both" (its separate,
-  // independently-purchasable digital price) and meaningless otherwise —
-  // "digital"-only products keep using priceCents, so a stray
-  // digitalPriceCents there would just be dead, confusing data.
-  .refine((p) => (p.format === "both" ? p.digitalPriceCents != null : p.digitalPriceCents == null), {
+  .refine(hasValidDigitalPriceCentsForFormat, {
     message: "Digital price is required for a \"both\" format product, and not used otherwise",
     path: ["digitalPriceCents"],
   });
@@ -150,34 +155,47 @@ export const productDeleteSchema = z.object({
 // (bundle_items) — see lib/db/schema.ts's comment on bundleItems for the
 // full design. Deliberately a separate, smaller schema from productSchema
 // rather than reusing it with a pile of bundle-specific .refine()s: a bundle
-// has no amazonUrl/sellOnStripe (always Stripe-only) and no digitalPriceCents
-// (one combined price, never a "both"-style split purchase), so reusing
-// productSchema would mean constantly refining away fields that don't apply.
-export const bundleSchema = z.object({
-  id: z.string().uuid().optional(),
-  title: z.string().min(1).max(200),
-  slug: z
-    .string()
-    .min(1)
-    .max(200)
-    .regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers, and hyphens only"),
-  description: z.string().max(5_000).optional().nullable(),
-  priceCents: z.number().int().min(0).max(100_000_00),
-  imageUrl: z.string().url().optional().nullable(), // the master cover
-  imageAlt: z.string().max(300).optional().nullable(),
-  // "physical": ships, Stripe-only, triggers the founder fulfillment email.
-  // "digital": grants an entitlement for every component on purchase, no
-  // shipping. Never "both" — see the schema comment above.
-  format: z.enum(["physical", "digital"]),
-  active: z.boolean(),
-  featured: z.boolean().default(false),
-  // The bundle's own membership list, replaced wholesale on every save (see
-  // app/api/admin/bundles/route.ts) — order in the array is the display
-  // order. At least one component, and a bundle can't contain itself or
-  // another bundle (checked server-side against the DB, not expressible
-  // here without a query).
-  componentProductIds: z.array(z.string().uuid()).min(1).max(50),
-});
+// has no amazonUrl/sellOnStripe at all (always Stripe-only, for either of its
+// purchase routes — see the format comment below), so reusing productSchema
+// would mean constantly refining away fields that don't apply.
+export const bundleSchema = z
+  .object({
+    id: z.string().uuid().optional(),
+    title: z.string().min(1).max(200),
+    slug: z
+      .string()
+      .min(1)
+      .max(200)
+      .regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers, and hyphens only"),
+    description: z.string().max(5_000).optional().nullable(),
+    priceCents: z.number().int().min(0).max(100_000_00),
+    // Digital price, used only for format "both" — same convention as
+    // productSchema's own digitalPriceCents (a "digital"-only bundle keeps
+    // using priceCents above, unchanged).
+    digitalPriceCents: z.number().int().min(0).max(100_000_00).optional().nullable(),
+    imageUrl: z.string().url().optional().nullable(), // the master cover
+    imageAlt: z.string().max(300).optional().nullable(),
+    // "physical": ships, Stripe-only, triggers the founder fulfillment email.
+    // "digital": grants an entitlement for every component on purchase, no
+    // shipping. "both": two independent purchases, same as a regular
+    // format-"both" product — the physical half still ships via Stripe only
+    // (never Amazon — a bundle never has its own amazonUrl/sellOnStripe
+    // fields at all) and triggers the founder email; the digital half grants
+    // the entitlement cascade.
+    format: z.enum(["physical", "digital", "both"]),
+    active: z.boolean(),
+    featured: z.boolean().default(false),
+    // The bundle's own membership list, replaced wholesale on every save (see
+    // app/api/admin/bundles/route.ts) — order in the array is the display
+    // order. At least one component, and a bundle can't contain itself or
+    // another bundle (checked server-side against the DB, not expressible
+    // here without a query).
+    componentProductIds: z.array(z.string().uuid()).min(1).max(50),
+  })
+  .refine(hasValidDigitalPriceCentsForFormat, {
+    message: "Digital price is required for a \"both\" format bundle, and not used otherwise",
+    path: ["digitalPriceCents"],
+  });
 
 export const bundleDeleteSchema = z.object({
   id: z.string().uuid(),

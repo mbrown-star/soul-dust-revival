@@ -5,6 +5,7 @@ import { products, bundleItems, orderItems, entitlements } from "@/lib/db/schema
 import { eq, inArray } from "drizzle-orm";
 import { bundleSchema, bundleDeleteSchema } from "@/lib/validation/schemas";
 import { MAX_FEATURED_PRODUCTS, featuredCount } from "@/lib/commerce/featuredLimit";
+import { stripePriceInvalidationFields } from "@/lib/stripe/products";
 
 // A bundle is a `products` row (type: "bundle") plus a bundle_items
 // membership list -- see lib/db/schema.ts's comment on bundleItems. This
@@ -64,14 +65,15 @@ export async function POST(req: NextRequest) {
         slug: body.slug,
         description: body.description,
         priceCents: body.priceCents,
+        digitalPriceCents: body.digitalPriceCents,
         imageUrl: body.imageUrl,
         imageAlt: body.imageAlt,
         active: body.active,
         featured: body.featured,
-        // A bundle is always Stripe-only (never Amazon) -- there's no
-        // custom-fulfillment path through a third-party marketplace, and
-        // the founder-ship-notification email only fires off our own
-        // webhook.
+        // A bundle is always Stripe-only (never Amazon), for either purchase
+        // route of a "both" bundle included -- there's no custom-fulfillment
+        // path through a third-party marketplace, and the founder-ship-
+        // notification email only fires off our own webhook.
         sellOnStripe: true,
         amazonUrl: null,
       })
@@ -127,10 +129,6 @@ export async function PATCH(req: NextRequest) {
     );
   }
 
-  // A price change invalidates any already-created Stripe Price, same as
-  // the regular products route -- Stripe Prices are immutable once created.
-  const priceChanged = existing.priceCents !== body.priceCents;
-
   const bundle = await db.transaction(async (tx) => {
     const [updated] = await tx
       .update(products)
@@ -140,11 +138,16 @@ export async function PATCH(req: NextRequest) {
         slug: body.slug,
         description: body.description,
         priceCents: body.priceCents,
+        digitalPriceCents: body.digitalPriceCents,
         imageUrl: body.imageUrl,
         imageAlt: body.imageAlt,
         active: body.active,
         featured: body.featured,
-        ...(priceChanged ? { stripePriceId: null, stripeProductId: null } : {}),
+        // Same invalidation rule as the regular products route -- a price
+        // change clears any already-created Stripe Price, since Stripe
+        // Prices are immutable once created. Each of a "both" bundle's two
+        // independent prices is invalidated independently.
+        ...stripePriceInvalidationFields(existing, body),
       })
       .where(eq(products.id, id))
       .returning();

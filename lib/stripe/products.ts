@@ -19,6 +19,32 @@ export function isPhysicalVariant(format: ProductFormat, variant?: "physical" | 
 }
 
 /**
+ * Fields to merge into a `products` row UPDATE when its price(s) changed,
+ * clearing any cached Stripe Price/Product ids so getOrCreateStripePrice
+ * creates a fresh one next checkout -- Stripe Prices are immutable once
+ * created. The physical and digital sides are invalidated independently,
+ * since a format "both" product or bundle has two independent prices.
+ * Shared by the products and bundles admin routes, which previously each
+ * defined their own identical copy of this logic.
+ */
+export function stripePriceInvalidationFields(
+  existing: { priceCents: number; digitalPriceCents: number | null } | undefined,
+  body: { priceCents: number; digitalPriceCents?: number | null }
+): {
+  stripePriceId?: null;
+  stripeProductId?: null;
+  digitalStripePriceId?: null;
+  digitalStripeProductId?: null;
+} {
+  const priceChanged = existing && existing.priceCents !== body.priceCents;
+  const digitalPriceChanged = existing && existing.digitalPriceCents !== (body.digitalPriceCents ?? null);
+  return {
+    ...(priceChanged ? { stripePriceId: null, stripeProductId: null } : {}),
+    ...(digitalPriceChanged ? { digitalStripePriceId: null, digitalStripeProductId: null } : {}),
+  };
+}
+
+/**
  * Returns a Stripe Price ID for a given product (or, for a format "both"
  * product, one of its two independent variants), creating the underlying
  * Stripe Product + Price on first use and caching both IDs on the row.

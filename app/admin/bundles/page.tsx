@@ -40,7 +40,11 @@ export default async function AdminBundlesPage() {
                 )}
               </p>
               <p className="text-sm text-moss">
-                {b.format === "physical" ? "Ships" : "Digital access"} · ${(b.priceCents / 100).toFixed(2)}
+                {b.format === "physical"
+                  ? `Ships · $${(b.priceCents / 100).toFixed(2)}`
+                  : b.format === "digital"
+                  ? `Digital access · $${(b.priceCents / 100).toFixed(2)}`
+                  : `Ships $${(b.priceCents / 100).toFixed(2)} · Digital $${((b.digitalPriceCents ?? 0) / 100).toFixed(2)}`}
                 {!b.active && " · inactive"}
               </p>
             </div>

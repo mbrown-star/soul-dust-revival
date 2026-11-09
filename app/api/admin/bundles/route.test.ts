@@ -126,6 +126,77 @@ describe("admin bundles route", () => {
     expect(bundle.amazonUrl).toBeNull();
   });
 
+  it("creates a format \"both\" bundle with its own digital price, still Stripe-only/no Amazon", async () => {
+    createdProductIds = [];
+    createdBundleIds = [];
+    await signInAsAdmin();
+    const component = await makeComponent(db);
+    createdProductIds.push(component.id);
+
+    const res = await POST(
+      request(baseBundle([component.id], { format: "both", priceCents: 8000, digitalPriceCents: 5000 }))
+    );
+    expect(res.status).toBe(200);
+    const bundle = (await res.json()) as {
+      id: string;
+      format: string;
+      priceCents: number;
+      digitalPriceCents: number | null;
+      sellOnStripe: boolean;
+      amazonUrl: string | null;
+    };
+    createdBundleIds.push(bundle.id);
+    expect(bundle.format).toBe("both");
+    expect(bundle.priceCents).toBe(8000);
+    expect(bundle.digitalPriceCents).toBe(5000);
+    expect(bundle.sellOnStripe).toBe(true);
+    expect(bundle.amazonUrl).toBeNull();
+  });
+
+  it("PATCH resets the digital Stripe price/product ids when digitalPriceCents changes, leaving the physical ones alone", async () => {
+    createdProductIds = [];
+    createdBundleIds = [];
+    await signInAsAdmin();
+    const component = await makeComponent(db);
+    createdProductIds.push(component.id);
+
+    const createRes = await POST(
+      request(baseBundle([component.id], { format: "both", priceCents: 8000, digitalPriceCents: 5000 }))
+    );
+    const bundle = (await createRes.json()) as { id: string };
+    createdBundleIds.push(bundle.id);
+
+    // Simulate Stripe IDs already having been created for both sides (the
+    // real flow only populates these lazily, on first checkout).
+    await db
+      .update(products)
+      .set({
+        stripeProductId: "prod_physical_test",
+        stripePriceId: "price_physical_test",
+        digitalStripeProductId: "prod_digital_test",
+        digitalStripePriceId: "price_digital_test",
+      })
+      .where(eq(products.id, bundle.id));
+
+    const patchRes = await PATCH(
+      request(
+        { ...baseBundle([component.id], { format: "both", priceCents: 8000, digitalPriceCents: 6000 }), id: bundle.id },
+        "PATCH"
+      )
+    );
+    expect(patchRes.status).toBe(200);
+
+    const [updated] = await db.select().from(products).where(eq(products.id, bundle.id));
+    expect(updated!.digitalPriceCents).toBe(6000);
+    // Digital price changed -- its Stripe IDs are cleared so a new Price
+    // gets created on next checkout, since Stripe Prices are immutable.
+    expect(updated!.digitalStripeProductId).toBeNull();
+    expect(updated!.digitalStripePriceId).toBeNull();
+    // Physical price was unchanged -- its own Stripe IDs are left alone.
+    expect(updated!.stripeProductId).toBe("prod_physical_test");
+    expect(updated!.stripePriceId).toBe("price_physical_test");
+  });
+
   it("rejects a bundle containing itself as a component (nonexistent id at create time, then checked post-creation)", async () => {
     createdProductIds = [];
     createdBundleIds = [];

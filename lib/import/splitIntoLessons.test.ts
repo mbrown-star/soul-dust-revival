@@ -113,13 +113,12 @@ describe("splitPlainTextByHeadings", () => {
     const lessons = splitPlainTextByHeadings(text);
     // Fewer than 2 TOC-shaped entries means this was never treated as a real
     // TOC at all, so the keyword fallback runs on the whole document as-is
-    // (unchanged pre-existing behavior) -- the "Contents" line and the
-    // non-entry line under it become a leading Introduction section, same
-    // as any other content before the first real heading would.
-    expect(lessons).toHaveLength(2);
-    expect(lessons[0]!.title).toBe("Introduction");
-    expect(lessons[1]!.title).toBe("Week 1");
-    expect(lessons[1]!.bodyHtml).toContain("Actual content starts here.");
+    // -- the "Contents" line and the non-entry line under it have no
+    // Foreword/Preface heading of their own, so they're narrowed away to
+    // nothing and no Introduction section is produced at all.
+    expect(lessons).toHaveLength(1);
+    expect(lessons[0]!.title).toBe("Week 1");
+    expect(lessons[0]!.bodyHtml).toContain("Actual content starts here.");
   });
 
   it("skips the whole detected TOC block (not just individual entries) when falling back, so its own dot-leader lines aren't mistaken for headings", () => {
@@ -130,6 +129,7 @@ describe("splitPlainTextByHeadings", () => {
       "",
       // Body never actually repeats "Day 1"/"Day 2" as its own heading line
       // (e.g. a PDF whose extracted text order doesn't match reading order).
+      "Preface",
       "Some unrelated preface text.",
       "Week 1",
       "Real content under a totally different heading style.",
@@ -144,6 +144,85 @@ describe("splitPlainTextByHeadings", () => {
     expect(lessons[0]!.bodyHtml).toContain("Some unrelated preface text.");
     expect(lessons[1]!.title).toBe("Week 1");
     expect(lessons[1]!.bodyHtml).toContain("Real content under a totally different heading style.");
+  });
+
+  it("narrows the Introduction down to just its Foreword/Preface sections, discarding other front matter", () => {
+    const text = [
+      "Soul Dust Revival",
+      "A Devotional",
+      "Copyright 2026 Marketlife Ministries",
+      "Foreword",
+      "This book began on a dusty road.",
+      "Acknowledgments",
+      "Thanks to everyone who made this possible.",
+      "Preface",
+      "Read one day at a time.",
+      "Day 1",
+      "First day's content.",
+    ].join("\n");
+
+    const lessons = splitPlainTextByHeadings(text);
+
+    expect(lessons).toHaveLength(2);
+    expect(lessons[0]!.title).toBe("Introduction");
+    expect(lessons[0]!.bodyHtml).toContain("This book began on a dusty road.");
+    expect(lessons[0]!.bodyHtml).toContain("Read one day at a time.");
+    // Everything else before the Foreword, and the Acknowledgments section
+    // sitting between Foreword and Preface, are all discarded.
+    expect(lessons[0]!.bodyHtml).not.toContain("Copyright");
+    expect(lessons[0]!.bodyHtml).not.toContain("Marketlife");
+    expect(lessons[0]!.bodyHtml).not.toContain("Thanks to everyone");
+    expect(lessons[1]!.title).toBe("Day 1");
+  });
+
+  it("drops the Introduction lesson entirely when its front matter has no Foreword or Preface at all", () => {
+    const text = [
+      "Soul Dust Revival",
+      "A Devotional",
+      "Table of Contents",
+      "Day 1",
+      "First day's content.",
+    ].join("\n");
+
+    const lessons = splitPlainTextByHeadings(text);
+
+    expect(lessons).toHaveLength(1);
+    expect(lessons[0]!.title).toBe("Day 1");
+  });
+
+  it("doesn't mistake a dot-leader \"Foreword\"/\"Preface\" page reference for the real section, and doesn't truncate a real Foreword at a heading-shaped line within it", () => {
+    // REGRESSION: a dot-leader page reference like "Foreword .......... 3"
+    // starts with the recognized label too, but it's a page reference, not
+    // the section's real start -- and a short, punctuation-free line
+    // *inside* the real Foreword's own prose (a pull-quote-style sentence,
+    // "Dust Is Not The End") must not be mistaken for a boundary that ends
+    // the section early either. No literal "Table of Contents"/"Contents"
+    // heading here on purpose -- this fixture is for the keyword-heuristic
+    // path specifically (see the TOC-based path's own, separate tests above).
+    const text = [
+      "Soul Dust Revival",
+      "Foreword .......... 3",
+      "Preface .......... 5",
+      "",
+      "Foreword",
+      "Dust Is Not The End",
+      "This book began on a dusty road, long before the first word was written.",
+      "Day 1",
+      "First day's content.",
+    ].join("\n");
+
+    const lessons = splitPlainTextByHeadings(text);
+
+    expect(lessons).toHaveLength(2);
+    expect(lessons[0]!.title).toBe("Introduction");
+    // The real Foreword's own content, including the pull-quote-style line
+    // partway through it, all survives...
+    expect(lessons[0]!.bodyHtml).toContain("Dust Is Not The End");
+    expect(lessons[0]!.bodyHtml).toContain("This book began on a dusty road");
+    // ...but the dot-leader page references for Foreword/Preface never
+    // leaked in as if they were real section content.
+    expect(lessons[0]!.bodyHtml).not.toContain("..........");
+    expect(lessons[1]!.title).toBe("Day 1");
   });
 
   it("splits consecutive sentence-ending lines into separate paragraphs instead of merging the whole section into one", () => {
@@ -222,13 +301,12 @@ describe("splitStudyPlainTextByHeadings", () => {
     // match the heading pattern -- taking only the LAST occurrence of each
     // week number (see this function's own doc comment) is what keeps them
     // from being mistaken for a second, duplicate set of real weeks. The
-    // Contents text itself isn't specially recognized and so isn't
-    // discarded outright -- it's harmlessly folded into a leading
-    // "Introduction" lesson, same as any other front matter.
-    expect(lessons).toHaveLength(3);
-    expect(lessons[0]!.title).toBe("Introduction");
-    expect(lessons[1]!.title).toBe("Week 1: First Week Title");
-    expect(lessons[2]!.title).toBe("Week 2: Second Week Title");
+    // Contents text itself has no Foreword/Preface heading of its own, so
+    // it's narrowed away to nothing and no Introduction lesson is produced
+    // at all (see narrowToForewordAndPreface).
+    expect(lessons).toHaveLength(2);
+    expect(lessons[0]!.title).toBe("Week 1: First Week Title");
+    expect(lessons[1]!.title).toBe("Week 2: Second Week Title");
   });
 
   it("extracts a QUESTION section as its own input block, not folded into reading text", () => {
@@ -348,9 +426,9 @@ describe("splitStudyPlainTextByHeadings", () => {
     expect(questionBlocks).toHaveLength(1);
   });
 
-  it("puts content before the first WEEK heading into a leading Introduction lesson", () => {
+  it("puts a Foreword/Preface found before the first WEEK heading into a leading Introduction lesson", () => {
     const text = [
-      "A Word Before the First Page",
+      "Foreword",
       "Some foreword content.",
       ...buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις"),
     ].join("\n");
@@ -359,6 +437,47 @@ describe("splitStudyPlainTextByHeadings", () => {
 
     expect(lessons[0]!.title).toBe("Introduction");
     expect(lessons[1]!.title).toBe("Week 1: First Week Title");
+  });
+
+  it("narrows a Study document's Introduction down to just its Foreword/Preface sections, discarding the title page and a Contents duplicate", () => {
+    const text = [
+      "Marketlife Ministries",
+      "Soul Dust Revival",
+      "A Study Of",
+      "Colossians",
+      "Contents",
+      "Week 1 · Title 5",
+      "Foreword",
+      "A word from the author before the study begins.",
+      "Preface",
+      "How to use this study.",
+      ...buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις"),
+    ].join("\n");
+
+    const lessons = splitStudyPlainTextByHeadings(text);
+
+    expect(lessons).toHaveLength(2);
+    expect(lessons[0]!.title).toBe("Introduction");
+    const introText = lessons[0]!.blocks.map((b) => (b.type === "text" ? b.bodyHtml : "")).join("\n");
+    expect(introText).toContain("A word from the author before the study begins.");
+    expect(introText).toContain("How to use this study.");
+    expect(introText).not.toContain("Marketlife");
+    expect(introText).not.toContain("Colossians");
+    expect(introText).not.toContain("Contents");
+    expect(lessons[1]!.title).toBe("Week 1: First Week Title");
+  });
+
+  it("drops a Study document's Introduction lesson entirely when its front matter has no Foreword or Preface at all", () => {
+    const text = [
+      "Marketlife Ministries",
+      "Soul Dust Revival",
+      ...buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις"),
+    ].join("\n");
+
+    const lessons = splitStudyPlainTextByHeadings(text);
+
+    expect(lessons).toHaveLength(1);
+    expect(lessons[0]!.title).toBe("Week 1: First Week Title");
   });
 
   it("treats the whole document as a single lesson when no WEEK heading is found at all", () => {
