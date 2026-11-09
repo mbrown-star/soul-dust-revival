@@ -15,6 +15,28 @@ export async function GET(req: NextRequest) {
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/library";
 
+  // REAL BUG FOUND (2026-11-08, later): the fix above only covers a `code`
+  // that's present but fails to exchange. When Supabase's own /verify step
+  // fails BEFORE ever issuing a code -- most commonly `otp_expired`, the
+  // same prefetch/already-used scenario described above -- GoTrue redirects
+  // here with no `code` param at all, just `error`/`error_code`/
+  // `error_description`. With no `code`, the `if (code)` block below was
+  // skipped entirely and execution fell straight through to the final
+  // `redirect(origin + next)`, silently sending the visitor to e.g.
+  // `/library` as if login had succeeded. That then bounced through the
+  // marketing/app subdomain split (since `/library` is an app path) and
+  // landed on the app domain's own unauthenticated `/login` -- the same
+  // "silently lands back on login" failure mode the fix above was meant to
+  // close, just reached through GoTrue's other failure path. Confirmed live
+  // by tracing a real expired magic-link verify URL and watching it redirect
+  // here with `error_code=otp_expired` and no `code`.
+  if (!code && searchParams.has("error")) {
+    const loginUrl = new URL("/login", origin);
+    loginUrl.searchParams.set("next", next);
+    loginUrl.searchParams.set("error", "link_expired");
+    return NextResponse.redirect(loginUrl);
+  }
+
   if (code) {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);

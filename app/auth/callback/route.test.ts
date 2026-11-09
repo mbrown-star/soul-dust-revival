@@ -91,6 +91,31 @@ describe("GET /auth/callback", () => {
     expect(location.searchParams.get("error")).toBe("link_expired");
   });
 
+  // REGRESSION (found live 2026-11-08, traced against a real expired
+  // magic-link verify URL): when Supabase's /verify step itself fails --
+  // most commonly `otp_expired`, an already-used/expired link -- GoTrue
+  // redirects here with no `code` param at all, just `error`/`error_code`/
+  // `error_description`. The `if (code)` block above never ran in this
+  // case, so it fell through to the unconditional redirect(next) -- the
+  // exact "silently lands back on login" bug the fix two tests up was
+  // supposed to close, just reached through GoTrue's other failure path.
+  it("with a GoTrue-level error and no code, redirects to /login with a visible reason instead of next", async () => {
+    const res = await GET(
+      callbackRequest({
+        error: "access_denied",
+        error_code: "otp_expired",
+        error_description: "Email link is invalid or has expired",
+        next: "/library",
+      })
+    );
+
+    const location = new URL(res.headers.get("location")!);
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.get("next")).toBe("/library");
+    expect(location.searchParams.get("error")).toBe("link_expired");
+    expect(exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+
   it("does not write any user/login-event rows when the exchange fails", async () => {
     exchangeCodeForSession.mockResolvedValue({
       data: { user: null },
