@@ -66,6 +66,21 @@ export const products = pgTable("products", {
   // describe the physical side for "both" (same as they already do for a
   // plain "physical" product). See productSchema and ProductForm.tsx.
   format: text("format").notNull().$type<"physical" | "digital" | "both">(),
+  // What the product's companion content actually *is* -- independent of
+  // `type`/`format`, which are about how it's sold and delivered, not what
+  // kind of reading experience is behind it. "study"/"devotional" mirror
+  // studies.kind exactly (a product doesn't automatically inherit its linked
+  // study's kind -- the two are admin-set independently, since a product can
+  // exist with no linked study at all). "book" means no interactions:
+  // nothing to read in the app, just the physical/digital book itself --
+  // the right default for most type: "book" products, which is why it's the
+  // column default (existing rows backfilled to "book" is the conservative,
+  // always-safe assumption; a one-time data migration reclassified every
+  // real product that actually has a linked study to match, see CLAUDE.md).
+  kind: text("kind").notNull().default("book").$type<"study" | "devotional" | "book">(),
+  // Only meaningful for a physical book (type: "book", format "physical" or
+  // "both") -- null means not yet specified, not "softback by default".
+  bookBinding: text("book_binding").$type<"softback" | "hardback">(),
   title: text("title").notNull(),
   slug: text("slug").notNull().unique(), // used for public /books/[slug] pages
   description: text("description"),

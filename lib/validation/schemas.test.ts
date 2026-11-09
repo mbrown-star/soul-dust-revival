@@ -345,6 +345,39 @@ describe("productSchema", () => {
       ).toBe(false);
     });
   });
+
+  it("defaults kind to \"book\" when omitted", () => {
+    const parsed = productSchema.safeParse(base);
+    expect(parsed.success && parsed.data.kind).toBe("book");
+  });
+
+  it("accepts kind \"study\" and \"devotional\"", () => {
+    expect(productSchema.safeParse({ ...base, kind: "study" }).success).toBe(true);
+    expect(productSchema.safeParse({ ...base, kind: "devotional" }).success).toBe(true);
+  });
+
+  it("rejects an unknown kind", () => {
+    expect(productSchema.safeParse({ ...base, kind: "newsletter" }).success).toBe(false);
+  });
+
+  it("allows a physical product's bookBinding to be softback or hardback", () => {
+    expect(
+      productSchema.safeParse({ ...base, type: "book", format: "physical", bookBinding: "softback" }).success
+    ).toBe(true);
+    expect(
+      productSchema.safeParse({ ...base, type: "book", format: "physical", bookBinding: "hardback" }).success
+    ).toBe(true);
+  });
+
+  it("rejects bookBinding on a purely digital product", () => {
+    expect(productSchema.safeParse({ ...base, format: "digital", bookBinding: "hardback" }).success).toBe(false);
+  });
+
+  it("allows bookBinding on a \"both\"-format product (it still has a physical side)", () => {
+    expect(
+      productSchema.safeParse({ ...base, format: "both", digitalPriceCents: 999, bookBinding: "softback" }).success
+    ).toBe(true);
+  });
 });
 
 describe("bundleSchema", () => {

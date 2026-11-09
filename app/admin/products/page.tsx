@@ -61,6 +61,20 @@ export default async function AdminProductsPage() {
             <div className="flex-1">
               <p className="font-medium flex items-center gap-2">
                 {p.title}
+                {/* Same differentiator the Study list already has (and the
+                    same accessible-contrast tokens) -- a plain book has
+                    nothing to distinguish, so it gets no badge at all rather
+                    than a redundant "Book" pill. */}
+                {p.kind !== "book" && (
+                  <span
+                    data-testid="product-kind-badge"
+                    className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                      p.kind === "study" ? "bg-ember-700/10 text-ink" : "bg-moss/10 text-moss"
+                    }`}
+                  >
+                    {p.kind === "study" ? "Study" : "Devotional"}
+                  </span>
+                )}
                 {p.featured && (
                   <span className="text-xs font-medium bg-gold/20 text-gold-700 rounded-full px-2 py-0.5">
                     Featured
@@ -72,6 +86,7 @@ export default async function AdminProductsPage() {
                 {p.format === "both" && p.digitalPriceCents != null && ` / $${(p.digitalPriceCents / 100).toFixed(2)} digital`}
                 {" · "}
                 {[p.sellOnStripe && "Stripe", p.amazonUrl && "Amazon"].filter(Boolean).join(" + ")}
+                {p.bookBinding && ` · ${p.bookBinding === "hardback" ? "Hardback" : "Softback"}`}
                 {!p.active && " · inactive"}
               </p>
             </div>

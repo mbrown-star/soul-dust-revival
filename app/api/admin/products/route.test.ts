@@ -221,3 +221,68 @@ describe("admin products route — delete", () => {
     expect(res.status).toBe(403);
   });
 });
+
+describe("admin products route — kind and bookBinding", () => {
+  let createdProductIds: string[];
+  let adminUserId: string;
+  let db: Db;
+
+  afterEach(async () => {
+    if (createdProductIds?.length) {
+      await db.delete(products).where(inArray(products.id, createdProductIds));
+    }
+    createdProductIds = [];
+    if (adminUserId) await db.delete(users).where(eq(users.id, adminUserId));
+    vi.mocked(requireAdmin).mockReset();
+  });
+
+  async function signInAsAdmin() {
+    db = await getDb();
+    const [admin] = await db
+      .insert(users)
+      .values({ email: `admin-${randomUUID()}@example.com`, role: "admin" })
+      .returning();
+    adminUserId = admin!.id;
+    createdProductIds = [];
+    vi.mocked(requireAdmin).mockResolvedValue({ userId: adminUserId, email: "admin@example.com", role: "admin" });
+  }
+
+  it("defaults a new product's kind to \"book\" when omitted", async () => {
+    await signInAsAdmin();
+    const res = await POST(request(baseProduct()));
+    const json = (await res.json()) as { id: string; kind: string };
+    createdProductIds.push(json.id);
+    expect(json.kind).toBe("book");
+  });
+
+  it("saves an explicit kind and bookBinding on create", async () => {
+    await signInAsAdmin();
+    const res = await POST(
+      request(baseProduct({ type: "book", format: "physical", kind: "study", bookBinding: "hardback" }))
+    );
+    const json = (await res.json()) as { id: string; kind: string; bookBinding: string };
+    createdProductIds.push(json.id);
+    expect(json.kind).toBe("study");
+    expect(json.bookBinding).toBe("hardback");
+  });
+
+  it("updates kind and bookBinding on an existing product", async () => {
+    await signInAsAdmin();
+    const insertValues = baseProduct({ type: "book", format: "physical" });
+    const [product] = await db.insert(products).values(insertValues as typeof products.$inferInsert).returning();
+    createdProductIds.push(product!.id);
+
+    const res = await PATCH(
+      request({ ...insertValues, id: product!.id, kind: "devotional", bookBinding: "softback" }, "PATCH")
+    );
+    const json = (await res.json()) as { kind: string; bookBinding: string };
+    expect(json.kind).toBe("devotional");
+    expect(json.bookBinding).toBe("softback");
+  });
+
+  it("rejects bookBinding on a purely digital product", async () => {
+    await signInAsAdmin();
+    const res = await POST(request(baseProduct({ format: "digital", bookBinding: "hardback" })));
+    expect(res.status).toBe(400);
+  });
+});

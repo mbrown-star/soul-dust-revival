@@ -26,6 +26,8 @@ type ProductFormValues = {
   digitalPriceCents: number | null;
   format: "physical" | "digital" | "both";
   type: string;
+  kind: "study" | "devotional" | "book";
+  bookBinding: "softback" | "hardback" | null;
   imageUrl: string | null;
   imageAlt: string;
   backImageUrl: string | null;
@@ -45,6 +47,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
   const priceId = useId();
   const digitalPriceId = useId();
   const formatId = useId();
+  const bookBindingId = useId();
   const altId = useId();
   const backAltId = useId();
   const amazonUrlId = useId();
@@ -56,6 +59,8 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
     digitalPriceCents: initial?.digitalPriceCents ?? null,
     format: initial?.format ?? "digital",
     type: initial?.type ?? "book",
+    kind: initial?.kind ?? "book",
+    bookBinding: initial?.bookBinding ?? null,
     imageUrl: initial?.imageUrl ?? null,
     imageAlt: initial?.imageAlt ?? "",
     backImageUrl: initial?.backImageUrl ?? null,
@@ -180,6 +185,9 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
       ...values,
       amazonUrl: showBookOptions && values.amazonUrl ? values.amazonUrl : null,
       digitalPriceCents: values.format === "both" ? values.digitalPriceCents : null,
+      // Binding only describes a physical copy -- matches productSchema's
+      // own refine rejecting it for a purely digital product.
+      bookBinding: showBookOptions ? values.bookBinding : null,
     };
     const body = initial?.id ? { ...payload, id: initial.id } : payload;
 
@@ -317,6 +325,44 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
         </select>
       </div>
 
+      <fieldset>
+        <legend className="block text-sm font-medium mb-1">Kind</legend>
+        <div className="flex flex-wrap gap-4">
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="kind"
+              checked={values.kind === "book"}
+              onChange={() => setValues((v) => ({ ...v, kind: "book" }))}
+            />
+            <span className="text-sm">Book (no interactions)</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="kind"
+              checked={values.kind === "devotional"}
+              onChange={() => setValues((v) => ({ ...v, kind: "devotional" }))}
+            />
+            <span className="text-sm">Devotional (reader-only)</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="kind"
+              checked={values.kind === "study"}
+              onChange={() => setValues((v) => ({ ...v, kind: "study" }))}
+            />
+            <span className="text-sm">Study (interactive, saves answers)</span>
+          </label>
+        </div>
+        <p className="text-xs text-moss mt-1">
+          What this product&apos;s companion content actually is, shown in its own storefront
+          eyebrow — independent of Format above (which is about how it&apos;s sold/delivered).
+          &quot;Book&quot; is the right choice whenever there&apos;s no linked study at all.
+        </p>
+      </fieldset>
+
       {showBookOptions && (
         <fieldset className="border rounded-lg p-4">
           <legend className="text-sm font-medium px-1">Book Purchase Options</legend>
@@ -342,6 +388,27 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
               }}
               onBlur={() => setPriceText((values.priceCents / 100).toFixed(2))}
             />
+          </div>
+
+          <div className="mb-3">
+            <label htmlFor={bookBindingId} className="block text-sm font-medium mb-1">
+              Binding <span className="text-moss font-normal">(optional)</span>
+            </label>
+            <select
+              id={bookBindingId}
+              className="w-full sm:w-48 border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
+              value={values.bookBinding ?? ""}
+              onChange={(e) =>
+                setValues((v) => ({
+                  ...v,
+                  bookBinding: e.target.value ? (e.target.value as "softback" | "hardback") : null,
+                }))
+              }
+            >
+              <option value="">Not specified</option>
+              <option value="softback">Softback</option>
+              <option value="hardback">Hardback</option>
+            </select>
           </div>
 
           <label className="flex items-center gap-2">

@@ -7,6 +7,7 @@ import Image from "next/image";
 import { AddToCartButton } from "@/components/commerce/AddToCartButton";
 import { AmazonBuyButton } from "@/components/commerce/AmazonBuyButton";
 import { CoverGallery } from "@/components/commerce/CoverGallery";
+import { productKindBindingSuffix } from "@/lib/commerce/productEyebrow";
 import type { Metadata } from "next";
 
 // Rendered dynamically per-request rather than statically at build time —
@@ -88,6 +89,7 @@ export default async function BookDetailPage({
               : product.format === "both"
               ? "Book & Study · Ships, and unlocks in the web app"
               : "Book · Ships to you"}
+            {product.type !== "bundle" && productKindBindingSuffix(product.kind, product.bookBinding)}
           </p>
           <h1 className="font-display font-bold text-3xl sm:text-4xl text-ink mb-4">
             {product.title}

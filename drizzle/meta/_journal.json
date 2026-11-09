@@ -64,6 +64,13 @@
       "when": 1794173937104,
       "tag": "0008_fantastic_guardsmen",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794246309272,
+      "tag": "0009_superb_master_chief",
+      "breakpoints": true
     }
   ]
 }

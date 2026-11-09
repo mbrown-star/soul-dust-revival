@@ -3,6 +3,7 @@ import { products } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
 import Image from "next/image";
+import { productKindBindingSuffix } from "@/lib/commerce/productEyebrow";
 
 // Rendered dynamically per-request rather than statically at build time —
 // this reads live product/post data an admin can change anytime, and a
@@ -68,6 +69,7 @@ export default async function BooksPage() {
                   : p.format === "both"
                   ? "Book & Study"
                   : "Book · Ships to you"}
+                {p.type !== "bundle" && productKindBindingSuffix(p.kind, p.bookBinding)}
               </p>
               <h2 className="font-display font-semibold text-ink group-hover:text-moss">
                 {p.title}

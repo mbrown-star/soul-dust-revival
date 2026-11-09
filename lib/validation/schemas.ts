@@ -76,6 +76,12 @@ export const productSchema = z
     digitalPriceCents: z.number().int().min(0).max(100_000_00).optional().nullable(),
     format: z.enum(["physical", "digital", "both"]),
     type: z.enum(["book", "study_access", "bundle"]),
+    // Independent of type/format -- see lib/db/schema.ts's own comment on
+    // this column for why.
+    kind: z.enum(["study", "devotional", "book"]).default("book"),
+    // Only meaningful for a physical book -- the .refine() below rejects it
+    // whenever there's no physical copy to describe.
+    bookBinding: z.enum(["softback", "hardback"]).optional().nullable(),
     imageUrl: z.string().url().optional().nullable(), // front cover, for book products
     imageAlt: z.string().max(300).optional().nullable(), // optional — see the note on alt text below
     backImageUrl: z.string().url().optional().nullable(),
@@ -137,6 +143,10 @@ export const productSchema = z
   .refine(hasValidDigitalPriceCentsForFormat, {
     message: "Digital price is required for a \"both\" format product, and not used otherwise",
     path: ["digitalPriceCents"],
+  })
+  .refine((p) => p.format !== "digital" || p.bookBinding == null, {
+    message: "Binding only applies to a physical book",
+    path: ["bookBinding"],
   });
 
 // Alt text is no longer required by this schema (previously required for a

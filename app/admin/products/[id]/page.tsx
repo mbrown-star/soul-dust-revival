@@ -23,6 +23,8 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           digitalPriceCents: product.digitalPriceCents,
           format: product.format,
           type: product.type,
+          kind: product.kind,
+          bookBinding: product.bookBinding,
           imageUrl: product.imageUrl,
           imageAlt: product.imageAlt ?? "",
           backImageUrl: product.backImageUrl,
