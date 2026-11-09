@@ -4,6 +4,7 @@ import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { defaultCoverAltText } from "@/lib/images/coverAltText";
+import { IMMUTABLE_CACHE_CONTROL } from "@/lib/r2/cacheControl";
 
 // Sanitizes a price input the same way ProductForm.tsx's own price fields
 // do -- lets an admin type freely (including an in-progress "12." or a
@@ -96,7 +97,11 @@ export function BundleForm({
         body: JSON.stringify({ key, contentType: file.type }),
       });
       const { uploadUrl, publicUrl } = (await res.json()) as { uploadUrl: string; publicUrl: string };
-      await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+      await fetch(uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type, "Cache-Control": IMMUTABLE_CACHE_CONTROL },
+      });
 
       setValues((v) => ({
         ...v,

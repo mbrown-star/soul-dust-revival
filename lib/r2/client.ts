@@ -15,6 +15,10 @@ export const r2 = new S3Client({
 
 export const R2_BUCKET = process.env.R2_BUCKET_NAME!;
 
+// Re-exported for convenience in server-only files that already import from
+// here -- see lib/r2/cacheControl.ts for why it lives in its own module.
+export { IMMUTABLE_CACHE_CONTROL } from "./cacheControl";
+
 /**
  * Public URL for an object, assuming the bucket is connected to a
  * Cloudflare R2 public bucket domain or a custom domain via R2's public access.

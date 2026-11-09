@@ -3,6 +3,7 @@
 import { useState, useId } from "react";
 import { RichTextEditor } from "./RichTextEditor";
 import { ColorPicker } from "./ColorPicker";
+import { IMMUTABLE_CACHE_CONTROL } from "@/lib/r2/cacheControl";
 
 export type ContentBlockData = {
   id: string;
@@ -61,7 +62,11 @@ export function BlockEditor({
       body: JSON.stringify({ key, contentType: file.type }),
     });
     const { uploadUrl, publicUrl } = (await res.json()) as { uploadUrl: string; publicUrl: string };
-    await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+    await fetch(uploadUrl, {
+      method: "PUT",
+      body: file,
+      headers: { "Content-Type": file.type, "Cache-Control": IMMUTABLE_CACHE_CONTROL },
+    });
     update({ imageUrl: publicUrl });
     setUploading(false);
   }
@@ -88,7 +93,11 @@ export function BlockEditor({
       body: JSON.stringify({ key, contentType: "text/vtt" }),
     });
     const { uploadUrl, publicUrl } = (await res.json()) as { uploadUrl: string; publicUrl: string };
-    await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": "text/vtt" } });
+    await fetch(uploadUrl, {
+      method: "PUT",
+      body: file,
+      headers: { "Content-Type": "text/vtt", "Cache-Control": IMMUTABLE_CACHE_CONTROL },
+    });
     update({ captionsUrl: publicUrl });
     setUploading(false);
   }

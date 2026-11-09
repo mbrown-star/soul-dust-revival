@@ -3,6 +3,7 @@
 import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { ALL_PLATFORMS, PLATFORM_LIMITS, PLATFORM_LABELS, SocialPlatform } from "@/lib/data/socialPlatforms";
+import { IMMUTABLE_CACHE_CONTROL } from "@/lib/r2/cacheControl";
 
 type TargetConfig = {
   frequency: "once" | "daily" | "weekly";
@@ -57,7 +58,11 @@ export default function NewSocialPostPage() {
       body: JSON.stringify({ key, contentType: file.type }),
     });
     const { uploadUrl, publicUrl } = (await res.json()) as { uploadUrl: string; publicUrl: string };
-    await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+    await fetch(uploadUrl, {
+      method: "PUT",
+      body: file,
+      headers: { "Content-Type": file.type, "Cache-Control": IMMUTABLE_CACHE_CONTROL },
+    });
     setImageUrl(publicUrl);
     setUploading(false);
   }

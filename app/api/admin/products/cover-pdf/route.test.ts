@@ -8,6 +8,7 @@ vi.mock("@/lib/r2/client", () => ({
   r2: { send: sendMock },
   R2_BUCKET: "test-bucket",
   r2PublicUrl: (key: string) => `https://assets.example.com/${key}`,
+  IMMUTABLE_CACHE_CONTROL: "public, max-age=31536000, immutable",
 }));
 
 const { POST } = await import("./route");
@@ -165,5 +166,12 @@ describe("POST /api/admin/products/cover-pdf", () => {
     expect(json.coverPdfUrl).not.toContain("my-cover");
 
     expect(sendMock).toHaveBeenCalledTimes(3);
+    // Every uploaded object (source PDF + both crops) is cached as immutable --
+    // each is stored under a fresh server-generated key, never overwritten in
+    // place, so a long-lived Cache-Control is always safe and is what gives
+    // next/image's Cloudflare Images binding an "immutable" signal to work with.
+    for (const call of sendMock.mock.calls) {
+      expect(call[0].input.CacheControl).toBe("public, max-age=31536000, immutable");
+    }
   });
 });

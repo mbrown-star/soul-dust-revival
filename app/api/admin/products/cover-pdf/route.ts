@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/guard";
 import { splitBookCoverPdf, NoCoverImageFoundError, CoverTooLargeError } from "@/lib/images/bookCover";
-import { r2, R2_BUCKET, r2PublicUrl } from "@/lib/r2/client";
+import { r2, R2_BUCKET, r2PublicUrl, IMMUTABLE_CACHE_CONTROL } from "@/lib/r2/client";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 
 export const runtime = "nodejs"; // unpdf/photon need Node-style binary handling, not the edge runtime
@@ -68,6 +68,7 @@ export async function POST(req: NextRequest) {
         Key: `book-covers/${id}/source.pdf`,
         Body: pdfBuffer,
         ContentType: "application/pdf",
+        CacheControl: IMMUTABLE_CACHE_CONTROL,
       })
     ),
     r2.send(
@@ -76,6 +77,7 @@ export async function POST(req: NextRequest) {
         Key: `book-covers/${id}/back.jpg`,
         Body: Buffer.from(split.back),
         ContentType: "image/jpeg",
+        CacheControl: IMMUTABLE_CACHE_CONTROL,
       })
     ),
     r2.send(
@@ -84,6 +86,7 @@ export async function POST(req: NextRequest) {
         Key: `book-covers/${id}/front.jpg`,
         Body: Buffer.from(split.front),
         ContentType: "image/jpeg",
+        CacheControl: IMMUTABLE_CACHE_CONTROL,
       })
     ),
   ]);

@@ -9,7 +9,7 @@ import {
   splitPlainTextByHeadings,
   splitStudyPlainTextByHeadings,
 } from "@/lib/import/splitIntoLessons";
-import { r2, R2_BUCKET, r2PublicUrl } from "@/lib/r2/client";
+import { r2, R2_BUCKET, r2PublicUrl, IMMUTABLE_CACHE_CONTROL } from "@/lib/r2/client";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { studyImportFieldsSchema } from "@/lib/validation/schemas";
 import { sanitizeHtml } from "@/lib/sanitize/html";
@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
       Key: key,
       Body: buffer,
       ContentType: file.type,
+      CacheControl: IMMUTABLE_CACHE_CONTROL,
     })
   );
   const sourceFileUrl = r2PublicUrl(key);

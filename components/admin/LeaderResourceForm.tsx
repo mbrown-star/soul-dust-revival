@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { RichTextEditor } from "./RichTextEditor";
+import { IMMUTABLE_CACHE_CONTROL } from "@/lib/r2/cacheControl";
 
 type ResourceFormValues = {
   id: string;
@@ -42,7 +43,11 @@ export function LeaderResourceForm({ initial }: { initial: ResourceFormValues })
       body: JSON.stringify({ key, contentType: "application/pdf" }),
     });
     const { uploadUrl, publicUrl } = (await res.json()) as { uploadUrl: string; publicUrl: string };
-    await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": "application/pdf" } });
+    await fetch(uploadUrl, {
+      method: "PUT",
+      body: file,
+      headers: { "Content-Type": "application/pdf", "Cache-Control": IMMUTABLE_CACHE_CONTROL },
+    });
     await save({ fileUrl: publicUrl, fileName: file.name });
     setUploading(false);
   }

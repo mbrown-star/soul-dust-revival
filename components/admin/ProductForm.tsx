@@ -4,6 +4,7 @@ import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { defaultCoverAltText } from "@/lib/images/coverAltText";
+import { IMMUTABLE_CACHE_CONTROL } from "@/lib/r2/cacheControl";
 
 // Keeps only digits and at most one decimal point -- lets an admin type a
 // price freely (including an in-progress "12." or a backspaced "") without
@@ -120,7 +121,11 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
     });
     const { uploadUrl, publicUrl } = (await res.json()) as { uploadUrl: string; publicUrl: string };
 
-    await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+    await fetch(uploadUrl, {
+      method: "PUT",
+      body: file,
+      headers: { "Content-Type": file.type, "Cache-Control": IMMUTABLE_CACHE_CONTROL },
+    });
 
     setValues((v) => ({ ...v, imageUrl: publicUrl }));
     setUploading(false);

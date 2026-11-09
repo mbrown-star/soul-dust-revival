@@ -90,6 +90,13 @@ async function main() {
       const frontKey = r2KeyFromPublicUrl(product.imageUrl);
 
       console.log(`    Re-uploading to the existing keys (back: ${backKey}, front: ${frontKey})...`);
+      // Deliberately no immutable Cache-Control here, unlike the live admin
+      // upload routes (lib/r2/client.ts's IMMUTABLE_CACHE_CONTROL) -- this
+      // script is the one place that overwrites an existing R2 key in place
+      // rather than minting a fresh UUID, specifically to fix already-wrong
+      // bytes at an already-published URL. A long immutable max-age would
+      // make it harder for a browser that already cached the old bytes to
+      // ever see the correction.
       await Promise.all([
         r2.send(
           new PutObjectCommand({ Bucket: R2_BUCKET, Key: backKey, Body: Buffer.from(back), ContentType: "image/jpeg" })

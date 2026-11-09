@@ -12,6 +12,7 @@ vi.mock("@/lib/r2/client", () => ({
   r2: { send: sendMock },
   R2_BUCKET: "test-bucket",
   r2PublicUrl: (key: string) => `https://assets.example.com/${key}`,
+  IMMUTABLE_CACHE_CONTROL: "public, max-age=31536000, immutable",
 }));
 
 const parsePdfToTextMock = vi.fn();
@@ -139,6 +140,11 @@ describe("POST /api/admin/studies/import", () => {
     const blocks = await db.select().from(contentBlocks).where(eq(contentBlocks.lessonId, studyLessons[0]!.id));
     expect(blocks).toHaveLength(1);
     expect(blocks[0]!.type).toBe("text");
+
+    // The stored source document is cached as immutable -- it's stored under
+    // a fresh random UUID key, never overwritten in place.
+    expect(sendMock).toHaveBeenCalledTimes(1);
+    expect(sendMock.mock.calls[0]![0].input.CacheControl).toBe("public, max-age=31536000, immutable");
   });
 
   it("imports a Study PDF with QUESTION and Going Deeper sections as their own content blocks", async () => {

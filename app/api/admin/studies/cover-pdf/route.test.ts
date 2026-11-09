@@ -8,6 +8,7 @@ vi.mock("@/lib/r2/client", () => ({
   r2: { send: sendMock },
   R2_BUCKET: "test-bucket",
   r2PublicUrl: (key: string) => `https://assets.example.com/${key}`,
+  IMMUTABLE_CACHE_CONTROL: "public, max-age=31536000, immutable",
 }));
 
 const { POST } = await import("./route");
@@ -130,5 +131,6 @@ describe("POST /api/admin/studies/cover-pdf", () => {
     expect(json.coverImageUrl).not.toContain("my-cover");
     // Only the front image is uploaded -- no back cover, no source PDF.
     expect(sendMock).toHaveBeenCalledTimes(1);
+    expect(sendMock.mock.calls[0]![0].input.CacheControl).toBe("public, max-age=31536000, immutable");
   });
 });
