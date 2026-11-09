@@ -160,6 +160,16 @@ what's left, roughly in the order they need doing.
 >    encryption-key values at build time, **except** `NEXT_PUBLIC_SUPABASE_URL`,
 >    `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `R2_PUBLIC_BASE_URL` (see note below — these
 >    three must be real).
+>    **As of 2026-11-16, `NEXT_PUBLIC_MARKETING_HOSTNAME`/`NEXT_PUBLIC_APP_HOSTNAME`/
+>    `NEXT_PUBLIC_COOKIE_DOMAIN` must *also* be set to their real staging values on
+>    every deploy** (`staging.souldustrevival.com` / `app.staging.souldustrevival.com`
+>    / `.staging.souldustrevival.com`) — the marketing/app subdomain split is no
+>    longer a one-off test, it's staging's own standing configuration. **Found the hard
+>    way 2026-11-09 (later): several deploys in a row used the generic placeholder
+>    procedure and silently left these three unset, regressing the split back off with
+>    no error anywhere — it just made the "App" nav link resolve to a plain path that
+>    stayed on whichever domain served the page, instead of routing to the app
+>    subdomain.** Check this section before every `cf:deploy`, not just the first one.
 >    Also note: `STRIPE_SECRET_KEY` and `RESEND_API_KEY` can't be left truly blank the
 >    way `.env.example` has them — the `Stripe`/`Resend` SDK constructors run at
 >    *module* scope and throw immediately on an empty string, which fails the build
@@ -246,12 +256,15 @@ what's left, roughly in the order they need doing.
 > the ones prefixed `NEXT_PUBLIC_*`** — anything read there shares this same build-time
 > bake-in behavior regardless of its name.
 
-> ### Testing the marketing/app subdomain split on staging first (2026-11-12)
+> ### The marketing/app subdomain split on staging (2026-11-12, verified 2026-11-16, now standing config)
 > This is **one Worker**, not separate staging/production deployments — `staging.
 > souldustrevival.com` and the eventual `souldustrevival.com`/`app.souldustrevival.com`
-> are all just custom domains pointed at the same running Worker/build/database. So
-> testing the split means a *temporary* deploy with staging's own values, not a
-> permanently separate environment running alongside production.
+> are all just custom domains pointed at the same running Worker/build/database.
+> **The split is no longer a one-off test — it's staging's permanent configuration as
+> of 2026-11-16, which means its three `NEXT_PUBLIC_*` vars (see "4. Deployment" above)
+> need to be set to their real staging values on *every* deploy from now on, not just
+> once.** Forgetting them doesn't error — it silently reverts staging to single-domain
+> behavior (found the hard way 2026-11-09, after several deploys in a row omitted them).
 >
 > **1. Dashboard prerequisites (not doable from this session — no DNS/zone-edit or
 > Access permissions on this session's API token, same limitation as the original
