@@ -175,6 +175,31 @@ describe("splitPlainTextByHeadings", () => {
     expect(lessons[1]!.title).toBe("Day 1");
   });
 
+  it("stops the Introduction at a 'Before We Begin' essay following the Preface", () => {
+    const text = [
+      "Soul Dust Revival",
+      "A Devotional",
+      "Foreword",
+      "This book began on a dusty road.",
+      "Preface",
+      "Read one day at a time.",
+      "Before We Begin",
+      "The Six Faces of the Dust is a reflective essay about what it means to cling to the dust.",
+      "Day 1",
+      "First day's content.",
+    ].join("\n");
+
+    const lessons = splitPlainTextByHeadings(text);
+
+    expect(lessons).toHaveLength(2);
+    expect(lessons[0]!.title).toBe("Introduction");
+    expect(lessons[0]!.bodyHtml).toContain("This book began on a dusty road.");
+    expect(lessons[0]!.bodyHtml).toContain("Read one day at a time.");
+    expect(lessons[0]!.bodyHtml).not.toContain("Before We Begin");
+    expect(lessons[0]!.bodyHtml).not.toContain("Six Faces of the Dust");
+    expect(lessons[1]!.title).toBe("Day 1");
+  });
+
   it("drops the Introduction lesson entirely when its front matter has no Foreword or Preface at all", () => {
     const text = [
       "Soul Dust Revival",
@@ -464,6 +489,37 @@ describe("splitStudyPlainTextByHeadings", () => {
     expect(introText).not.toContain("Marketlife");
     expect(introText).not.toContain("Colossians");
     expect(introText).not.toContain("Contents");
+    expect(lessons[1]!.title).toBe("Week 1: First Week Title");
+  });
+
+  it("stops the Introduction at a 'Before We Begin' essay following the Preface, instead of keeping it as if it were still Preface content", () => {
+    // REGRESSION: the real Colossians document's front matter is Foreword ->
+    // Preface -> a "Before We Begin" / "Six Faces of the Dust" essay, with no
+    // heading in between Preface and the essay -- before BEFORE_WE_BEGIN was
+    // added to FRONT_MATTER_END_HEADING, nothing told narrowToForewordAndPreface
+    // to stop keeping, so the whole essay silently rode along as if it were
+    // still part of the Preface.
+    const text = [
+      "Marketlife Ministries",
+      "Soul Dust Revival",
+      "Foreword",
+      "A word from the author before the study begins.",
+      "Preface",
+      "How to use this study.",
+      "Before We Begin",
+      "The Six Faces of the Dust is a reflective essay that has nothing to do with the preface.",
+      ...buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις"),
+    ].join("\n");
+
+    const lessons = splitStudyPlainTextByHeadings(text);
+
+    expect(lessons).toHaveLength(2);
+    expect(lessons[0]!.title).toBe("Introduction");
+    const introText = lessons[0]!.blocks.map((b) => (b.type === "text" ? b.bodyHtml : "")).join("\n");
+    expect(introText).toContain("A word from the author before the study begins.");
+    expect(introText).toContain("How to use this study.");
+    expect(introText).not.toContain("Before We Begin");
+    expect(introText).not.toContain("Six Faces of the Dust");
     expect(lessons[1]!.title).toBe("Week 1: First Week Title");
   });
 

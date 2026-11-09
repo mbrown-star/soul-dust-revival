@@ -255,7 +255,16 @@ const FRONT_MATTER_KEEP_HEADING = /^(FOREWORD|PREFACE)\b/i;
 // project's own established convention elsewhere in this file
 // (QUESTION_INLINE/GOING_DEEPER_PREFIX/VERSE_REF_HEADING are closed,
 // purpose-built markers too, not a generic "looks like a heading" reuse).
-const FRONT_MATTER_END_HEADING = /^(ACKNOWLEDG(E)?MENTS?|DEDICATION|COPYRIGHT|CONTENTS|TABLE OF CONTENTS|INTRODUCTION)\b/i;
+//
+// "BEFORE WE BEGIN" is this document family's own lead-in heading for "The
+// Six Faces of the Dust" -- a third front-matter essay that, in a real
+// document (Colossians), sits directly after the Preface with no other
+// heading in between. Without it here, that whole essay (and everything
+// after it, up to the first real Week/Day heading) silently rode along as
+// if it were still part of the Preface, since nothing told the function to
+// stop keeping.
+const FRONT_MATTER_END_HEADING =
+  /^(ACKNOWLEDG(E)?MENTS?|DEDICATION|COPYRIGHT|CONTENTS|TABLE OF CONTENTS|INTRODUCTION|BEFORE WE BEGIN)\b/i;
 
 // A Table-of-Contents entry for "Foreword"/"Preface" itself ("Foreword
 // .......... 3", "Preface 5") matches FRONT_MATTER_KEEP_HEADING's prefix
