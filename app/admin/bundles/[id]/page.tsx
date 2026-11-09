@@ -52,6 +52,8 @@ export default async function EditBundlePage({ params }: { params: Promise<{ id:
           digitalPriceCents: bundle.digitalPriceCents,
           imageUrl: bundle.imageUrl,
           imageAlt: bundle.imageAlt ?? "",
+          imageWidth: bundle.imageWidth,
+          imageHeight: bundle.imageHeight,
           format: bundle.format as "physical" | "digital" | "both",
           active: bundle.active,
           featured: bundle.featured,

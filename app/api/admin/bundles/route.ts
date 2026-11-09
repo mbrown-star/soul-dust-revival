@@ -68,6 +68,8 @@ export async function POST(req: NextRequest) {
         digitalPriceCents: body.digitalPriceCents,
         imageUrl: body.imageUrl,
         imageAlt: body.imageAlt,
+        imageWidth: body.imageWidth,
+        imageHeight: body.imageHeight,
         active: body.active,
         featured: body.featured,
         // A bundle is always Stripe-only (never Amazon), for either purchase
@@ -141,6 +143,8 @@ export async function PATCH(req: NextRequest) {
         digitalPriceCents: body.digitalPriceCents,
         imageUrl: body.imageUrl,
         imageAlt: body.imageAlt,
+        imageWidth: body.imageWidth,
+        imageHeight: body.imageHeight,
         active: body.active,
         featured: body.featured,
         // Same invalidation rule as the regular products route -- a price

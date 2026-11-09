@@ -202,7 +202,7 @@ describe("splitBookCoverPdf", () => {
     }
   });
 
-  it("crops each half exactly to its own genuine double-line border, mirroring an equal margin on both sides and excluding the spine between them", async () => {
+  it("crops each half exactly to its own genuine double-line border plus a small fixed cushion, excluding the spine between them", async () => {
     // Confirmed directly against several real, already-uploaded cover PDFs
     // (2026-11-09): each half has its OWN complete double-line border
     // already in the source art -- back and front are independent, fully
@@ -210,9 +210,12 @@ describe("splitBookCoverPdf", () => {
     // real bug was that a blind, fixed-percentage spine margin was cutting
     // the crop boundary right through that real border before any
     // detection code ever ran. The fix finds each half's own real border
-    // directly (see findBorderClusters/findHalfBorders) and crops right at
-    // it, mirroring its own outer-edge margin onto the spine-facing side so
-    // the border reads as a complete, evenly margined box on every side.
+    // directly (see findBorderClusters/findHalfBorders) and crops just past
+    // its own inner (spine-facing) edge, by a small fixed cushion -- not by
+    // mirroring its own outer-edge margin, which overshot into the spine
+    // itself on a real cover whose outer margin was proportionally much
+    // wider than its actual spine (found live 2026-11-09, later; see the
+    // regression test below).
     //
     // This cover also has a dense dark "spine" fill between the halves
     // (never bright enough to read as a border stroke) and a one-row-only
@@ -272,12 +275,12 @@ describe("splitBookCoverPdf", () => {
     const backImage = PhotonImage.new_from_byteslice(back);
     const frontImage = PhotonImage.new_from_byteslice(front);
     try {
-      // Exact crop boundaries: back ends just past its own inner border
-      // (211) by the same 29px margin its own outer border sits at (30);
-      // front starts just before its own inner border (490) by the same
-      // 28px margin its own outer border sits at (699-671=28).
-      expect(backImage.get_width()).toBe(241); // 211 + 29 + 1
-      expect(frontImage.get_width()).toBe(239); // 700 - (490 - 28)
+      // Exact crop boundaries: each half ends/starts just past its own
+      // inner border by the same small fixed cushion (1% of the 700px
+      // width, rounded = 7px) -- not a margin mirrored from its own
+      // (deliberately different, 29px vs 28px) outer-edge margin.
+      expect(backImage.get_width()).toBe(218); // 211 + 7
+      expect(frontImage.get_width()).toBe(218); // 700 - (489 - 7)
 
       const brightnessAt = (img: PhotonImage, x: number) => {
         const w = img.get_width();
@@ -294,9 +297,11 @@ describe("splitBookCoverPdf", () => {
       expect(brightnessAt(backImage, 30)).toBeGreaterThan(bgBrightness + 120);
       expect(brightnessAt(backImage, 200)).toBeGreaterThan(bgBrightness + 120);
       // Both of front's own border strokes survived too, at their own
-      // crop-local positions (490-461=29, 670-461=209).
-      expect(brightnessAt(frontImage, 29)).toBeGreaterThan(bgBrightness + 120);
-      expect(brightnessAt(frontImage, 209)).toBeGreaterThan(bgBrightness + 120);
+      // crop-local positions (front crop starts at original x=482: its
+      // inner border's two stroke-lines land at local x=489-482=7 and
+      // 499-482=17, its outer border's at 659-482=177 and 669-482=187).
+      expect(brightnessAt(frontImage, 8)).toBeGreaterThan(bgBrightness + 120);
+      expect(brightnessAt(frontImage, 178)).toBeGreaterThan(bgBrightness + 120);
 
       // The spine's dark fill, and the one-row text smear, both land
       // outside their respective crops -- no pixel in either final image
@@ -317,6 +322,212 @@ describe("splitBookCoverPdf", () => {
       };
       expect(containsSpineColor(backImage)).toBe(false);
       expect(containsSpineColor(frontImage)).toBe(false);
+    } finally {
+      backImage.free();
+      frontImage.free();
+    }
+  });
+
+  it("never bleeds spine content into either crop when a cover's outer margin is proportionally wider than its actual spine (REGRESSION, found live 2026-11-09, later)", async () => {
+    // Reproduces the exact real failure shape found on the live "Revive Me"
+    // cover: a wide outer (trim-side) margin relative to a comparatively
+    // narrow actual spine. Mirroring the outer margin onto the spine side
+    // (the pre-fix behavior) pushed each crop's boundary past the OTHER
+    // half's own border entirely, bleeding the spine's own rotated title
+    // text into both the back and front crops.
+    const width = 500;
+    const height = 100;
+    const bg: [number, number, number] = [40, 30, 20];
+    const border: [number, number, number] = [255, 230, 180];
+    const spineText: [number, number, number] = [255, 255, 255];
+
+    const rgb = new Uint8Array(width * height * 3);
+    const setPixel = (x: number, y: number, [r, g, b]: [number, number, number]) => {
+      const i = (y * width + x) * 3;
+      rgb[i] = r;
+      rgb[i + 1] = g;
+      rgb[i + 2] = b;
+    };
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) setPixel(x, y, bg);
+    }
+    const drawDoubleLine = (outerX: number, innerDirection: 1 | -1) => {
+      const innerX = outerX + innerDirection * 8;
+      for (let y = 0; y < height; y++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          setPixel(outerX + dx, y, border);
+          setPixel(innerX + dx, y, border);
+        }
+      }
+    };
+    // A wide 60px outer margin on each side (12% of the full width) --
+    // proportionally much wider than the ~40px spine gap between the two
+    // halves' own inner borders (back's inner edge at x=220, front's inner
+    // edge at x=280).
+    drawDoubleLine(60, 1); // back: outer at 60, inner at 68..then merged border spans to ~220
+    drawDoubleLine(220, -1); // back's own inner (spine-facing) border
+    drawDoubleLine(280, 1); // front's own inner (spine-facing) border
+    drawDoubleLine(440, -1); // front: outer margin mirrors back's (500-440=60)
+    // Spine title text, centered in the gap between the two inner borders
+    // (220 to 280) -- exactly the content a bad crop would bleed in.
+    for (let y = 20; y < 80; y++) {
+      for (let x = 245; x <= 255; x++) setPixel(x, y, spineText);
+    }
+
+    const pdf = buildTestCoverPdf(width, height, rgb);
+    const { back, front } = await splitBookCoverPdf(pdf);
+
+    const backImage = PhotonImage.new_from_byteslice(back);
+    const frontImage = PhotonImage.new_from_byteslice(front);
+    try {
+      // The two crops must never overlap -- back's crop must end before
+      // front's crop begins in the original image's coordinate space.
+      const backWidth = backImage.get_width();
+      const frontWidth = frontImage.get_width();
+      const frontCropStartInOriginal = width - frontWidth;
+      expect(backWidth).toBeLessThanOrEqual(frontCropStartInOriginal);
+
+      // Neither crop contains the spine title text's distinctive color.
+      const textBrightness = spineText[0] + spineText[1] + spineText[2];
+      const containsSpineText = (img: PhotonImage) => {
+        const w = img.get_width();
+        const h = img.get_height();
+        const pixels = img.get_raw_pixels();
+        for (let y = 0; y < h; y += 3) {
+          for (let x = 0; x < w; x += 3) {
+            const i = (y * w + x) * 4;
+            const sum = pixels[i]! + pixels[i + 1]! + pixels[i + 2]!;
+            if (Math.abs(sum - textBrightness) < 15) return true;
+          }
+        }
+        return false;
+      };
+      expect(containsSpineText(backImage)).toBe(false);
+      expect(containsSpineText(frontImage)).toBe(false);
+    } finally {
+      backImage.free();
+      frontImage.free();
+    }
+  });
+
+  it("equalizes the margin on all four sides of each half's border box, not just the spine side (per explicit requirement, 2026-11-09, latest)", async () => {
+    // A genuine, fully-enclosed border box per half (left/right AND
+    // top/bottom strokes, not full-height vertical lines like the other
+    // tests here) with deliberately unequal natural margins on every side,
+    // so the only way every margin check below can pass is if the crop
+    // actually equalizes them down to the smallest one, rather than just
+    // preserving whatever asymmetric margin the source happened to have.
+    const width = 600;
+    const height = 300;
+    const bg: [number, number, number] = [40, 30, 20];
+    const border: [number, number, number] = [255, 230, 180];
+
+    const rgb = new Uint8Array(width * height * 3);
+    const setPixel = (x: number, y: number, [r, g, b]: [number, number, number]) => {
+      const i = (y * width + x) * 3;
+      rgb[i] = r;
+      rgb[i + 1] = g;
+      rgb[i + 2] = b;
+    };
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) setPixel(x, y, bg);
+    }
+    const drawVLine = (x: number, yStart: number, yEnd: number) => {
+      for (let y = yStart; y <= yEnd; y++) {
+        for (let dx = -1; dx <= 1; dx++) setPixel(x + dx, y, border);
+      }
+    };
+    const drawHLine = (y: number, xStart: number, xEnd: number) => {
+      for (let x = xStart; x <= xEnd; x++) {
+        for (let dy = -1; dy <= 1; dy++) setPixel(x, y + dy, border);
+      }
+    };
+    // Back's own box: left=20 (margin ~19 from x=0), right=240 (a wide
+    // margin from the spine, since the real spine gap dwarfs this box's own
+    // side margins), top=30 (margin ~29 from y=0), bottom=260 (margin ~38
+    // from y=299) -- deliberately closer to its own left/top than its own
+    // bottom. The vertical strokes span the box's own top-to-bottom extent
+    // (a real closed rectangle), which also keeps them within the >=80% of
+    // full page height findVerticalBorderClusters needs to detect them.
+    drawVLine(20, 30, 260);
+    drawVLine(240, 30, 260);
+    drawHLine(30, 20, 240);
+    drawHLine(260, 20, 240);
+    // Front's own box: left=360, right=560 (margin ~38 from x=599), top=50
+    // (margin ~49 from y=0), bottom=270 (margin ~28 from y=299) -- a
+    // visibly different shape/position from back's, deliberately closer to
+    // its own right/bottom than its own top.
+    drawVLine(360, 50, 270);
+    drawVLine(560, 50, 270);
+    drawHLine(50, 360, 560);
+    drawHLine(270, 360, 560);
+
+    const pdf = buildTestCoverPdf(width, height, rgb);
+    const { back, front } = await splitBookCoverPdf(pdf);
+
+    const backImage = PhotonImage.new_from_byteslice(back);
+    const frontImage = PhotonImage.new_from_byteslice(front);
+    try {
+      // Finds where the border's bright stroke actually landed inside a
+      // crop, independently in each direction -- self-verifying against the
+      // crop's own real pixels rather than trusting hand-derived offset
+      // arithmetic. Returns the first and last bright position along that
+      // edge.
+      const findBrightEdges = (img: PhotonImage, axis: "x" | "y") => {
+        const w = img.get_width();
+        const h = img.get_height();
+        const pixels = img.get_raw_pixels();
+        const bgBrightness = bg[0] + bg[1] + bg[2];
+        const length = axis === "x" ? w : h;
+        const mid = axis === "x" ? Math.floor(h / 2) : Math.floor(w / 2);
+        const brightnessAt = (pos: number) => {
+          const x = axis === "x" ? pos : mid;
+          const y = axis === "x" ? mid : pos;
+          const i = (y * w + x) * 4;
+          return pixels[i]! + pixels[i + 1]! + pixels[i + 2]!;
+        };
+        let first = -1;
+        let last = -1;
+        for (let pos = 0; pos < length; pos++) {
+          if (brightnessAt(pos) > bgBrightness + 120) {
+            if (first === -1) first = pos;
+            last = pos;
+          }
+        }
+        return { first, last, length };
+      };
+
+      const backX = findBrightEdges(backImage, "x");
+      const backY = findBrightEdges(backImage, "y");
+      // Margin on every one of the four sides must be the same value --
+      // that's exactly what "the border rectangle is centered" means.
+      const backLeftMargin = backX.first;
+      const backRightMargin = backX.length - 1 - backX.last;
+      const backTopMargin = backY.first;
+      const backBottomMargin = backY.length - 1 - backY.last;
+      expect(backRightMargin).toBe(backLeftMargin);
+      expect(backTopMargin).toBe(backLeftMargin);
+      expect(backBottomMargin).toBe(backLeftMargin);
+      // The box sits closer to its own left/top (~19px/~29px margins) than
+      // its own bottom (~38px margin) in the source -- the equalized margin
+      // must land near the smallest of those figures, not an average or
+      // the largest one. A little slack accounts for the border stroke's
+      // own width and JPEG re-encoding.
+      expect(backLeftMargin).toBeLessThan(34);
+
+      const frontX = findBrightEdges(frontImage, "x");
+      const frontY = findBrightEdges(frontImage, "y");
+      const frontLeftMargin = frontX.first;
+      const frontRightMargin = frontX.length - 1 - frontX.last;
+      const frontTopMargin = frontY.first;
+      const frontBottomMargin = frontY.length - 1 - frontY.last;
+      expect(frontRightMargin).toBe(frontLeftMargin);
+      expect(frontTopMargin).toBe(frontLeftMargin);
+      expect(frontBottomMargin).toBe(frontLeftMargin);
+      // Front's box sits closer to its own bottom (~28px margin) than its
+      // own right/top (~38px/~49px margins) -- same "smallest wins" check,
+      // mirrored.
+      expect(frontLeftMargin).toBeLessThan(34);
     } finally {
       backImage.free();
       frontImage.free();

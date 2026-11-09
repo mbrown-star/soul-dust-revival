@@ -4,6 +4,7 @@ import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { defaultCoverAltText } from "@/lib/images/coverAltText";
+import { readImageDimensions } from "@/lib/images/readImageDimensions";
 import { IMMUTABLE_CACHE_CONTROL } from "@/lib/r2/cacheControl";
 import { useSavedIndicator } from "@/lib/hooks/useSavedIndicator";
 
@@ -30,8 +31,12 @@ type ProductFormValues = {
   bookBinding: "softback" | "hardback" | null;
   imageUrl: string | null;
   imageAlt: string;
+  imageWidth: number | null;
+  imageHeight: number | null;
   backImageUrl: string | null;
   backImageAlt: string;
+  backImageWidth: number | null;
+  backImageHeight: number | null;
   coverPdfUrl: string | null;
   amazonUrl: string | null;
   sellOnStripe: boolean;
@@ -63,8 +68,12 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
     bookBinding: initial?.bookBinding ?? null,
     imageUrl: initial?.imageUrl ?? null,
     imageAlt: initial?.imageAlt ?? "",
+    imageWidth: initial?.imageWidth ?? null,
+    imageHeight: initial?.imageHeight ?? null,
     backImageUrl: initial?.backImageUrl ?? null,
     backImageAlt: initial?.backImageAlt ?? "",
+    backImageWidth: initial?.backImageWidth ?? null,
+    backImageHeight: initial?.backImageHeight ?? null,
     coverPdfUrl: initial?.coverPdfUrl ?? null,
     amazonUrl: initial?.amazonUrl ?? null,
     sellOnStripe: initial?.sellOnStripe ?? true,
@@ -121,6 +130,14 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
     const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
     const key = `products/${crypto.randomUUID()}.${ext}`;
 
+    // There's no server-side decode step on this plain (non-PDF-split)
+    // upload path -- the file goes straight to R2 via the presigned PUT
+    // below -- so this is the only place the image's real dimensions can be
+    // read at all. A failure here (a corrupt/unreadable file) still lets
+    // the upload itself proceed; the display layer falls back to a
+    // reasonable default ratio when these are null.
+    const dimensions = await readImageDimensions(file).catch(() => null);
+
     const res = await fetch("/api/admin/upload-url", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -134,7 +151,12 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
       headers: { "Content-Type": file.type, "Cache-Control": IMMUTABLE_CACHE_CONTROL },
     });
 
-    setValues((v) => ({ ...v, imageUrl: publicUrl }));
+    setValues((v) => ({
+      ...v,
+      imageUrl: publicUrl,
+      imageWidth: dimensions?.width ?? null,
+      imageHeight: dimensions?.height ?? null,
+    }));
     setUploading(false);
   }
 
@@ -154,16 +176,25 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
       return;
     }
 
-    const { coverPdfUrl, backImageUrl, frontImageUrl } = (await res.json()) as {
-      coverPdfUrl: string;
-      backImageUrl: string;
-      frontImageUrl: string;
-    };
+    const { coverPdfUrl, backImageUrl, frontImageUrl, backImageWidth, backImageHeight, frontImageWidth, frontImageHeight } =
+      (await res.json()) as {
+        coverPdfUrl: string;
+        backImageUrl: string;
+        frontImageUrl: string;
+        backImageWidth: number;
+        backImageHeight: number;
+        frontImageWidth: number;
+        frontImageHeight: number;
+      };
     setValues((v) => ({
       ...v,
       coverPdfUrl,
       backImageUrl,
+      backImageWidth,
+      backImageHeight,
       imageUrl: frontImageUrl,
+      imageWidth: frontImageWidth,
+      imageHeight: frontImageHeight,
       // Only fills in a starting value -- never overwrites alt text the
       // admin already typed, e.g. on a later re-upload of a new cover.
       imageAlt: v.imageAlt.trim() ? v.imageAlt : defaultCoverAltText(v.title, "Front"),

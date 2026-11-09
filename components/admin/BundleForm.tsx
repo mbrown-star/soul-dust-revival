@@ -4,6 +4,7 @@ import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { defaultCoverAltText } from "@/lib/images/coverAltText";
+import { readImageDimensions } from "@/lib/images/readImageDimensions";
 import { IMMUTABLE_CACHE_CONTROL } from "@/lib/r2/cacheControl";
 import { useSavedIndicator } from "@/lib/hooks/useSavedIndicator";
 
@@ -36,6 +37,8 @@ type BundleFormValues = {
   digitalPriceCents: number | null;
   imageUrl: string | null;
   imageAlt: string;
+  imageWidth: number | null;
+  imageHeight: number | null;
   format: "physical" | "digital" | "both";
   active: boolean;
   featured: boolean;
@@ -65,6 +68,8 @@ export function BundleForm({
     digitalPriceCents: initial?.digitalPriceCents ?? null,
     imageUrl: initial?.imageUrl ?? null,
     imageAlt: initial?.imageAlt ?? "",
+    imageWidth: initial?.imageWidth ?? null,
+    imageHeight: initial?.imageHeight ?? null,
     format: initial?.format ?? "digital",
     active: initial?.active ?? true,
     featured: initial?.featured ?? false,
@@ -92,6 +97,12 @@ export function BundleForm({
     const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
     const key = `bundles/${crypto.randomUUID()}.${ext}`;
 
+    // No server-side decode step on this upload path -- read the real
+    // dimensions here, client-side, the same way ProductForm's own generic
+    // image upload does. A failed read still lets the upload proceed; the
+    // display layer falls back to a reasonable default ratio when null.
+    const dimensions = await readImageDimensions(file).catch(() => null);
+
     try {
       const res = await fetch("/api/admin/upload-url", {
         method: "POST",
@@ -108,6 +119,8 @@ export function BundleForm({
       setValues((v) => ({
         ...v,
         imageUrl: publicUrl,
+        imageWidth: dimensions?.width ?? null,
+        imageHeight: dimensions?.height ?? null,
         // Only fills in a starting value -- never overwrites alt text the
         // admin already typed, e.g. on a later re-upload of a new cover.
         imageAlt: v.imageAlt.trim() ? v.imageAlt : defaultCoverAltText(v.title, "Front"),

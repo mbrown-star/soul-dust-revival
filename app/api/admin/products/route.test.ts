@@ -286,3 +286,57 @@ describe("admin products route — kind and bookBinding", () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe("admin products route — image dimensions", () => {
+  let createdProductIds: string[];
+  let adminUserId: string;
+  let db: Db;
+
+  afterEach(async () => {
+    if (createdProductIds?.length) {
+      await db.delete(products).where(inArray(products.id, createdProductIds));
+    }
+    createdProductIds = [];
+    if (adminUserId) await db.delete(users).where(eq(users.id, adminUserId));
+    vi.mocked(requireAdmin).mockReset();
+  });
+
+  async function signInAsAdmin() {
+    db = await getDb();
+    const [admin] = await db
+      .insert(users)
+      .values({ email: `admin-${randomUUID()}@example.com`, role: "admin" })
+      .returning();
+    adminUserId = admin!.id;
+    createdProductIds = [];
+    vi.mocked(requireAdmin).mockResolvedValue({ userId: adminUserId, email: "admin@example.com", role: "admin" });
+  }
+
+  it("saves imageWidth/imageHeight and backImageWidth/backImageHeight on create", async () => {
+    await signInAsAdmin();
+    const res = await POST(
+      request(baseProduct({ imageWidth: 974, imageHeight: 1563, backImageWidth: 940, backImageHeight: 1563 }))
+    );
+    const json = (await res.json()) as {
+      id: string;
+      imageWidth: number;
+      imageHeight: number;
+      backImageWidth: number;
+      backImageHeight: number;
+    };
+    createdProductIds.push(json.id);
+    expect(json.imageWidth).toBe(974);
+    expect(json.imageHeight).toBe(1563);
+    expect(json.backImageWidth).toBe(940);
+    expect(json.backImageHeight).toBe(1563);
+  });
+
+  it("defaults image dimensions to null when omitted", async () => {
+    await signInAsAdmin();
+    const res = await POST(request(baseProduct()));
+    const json = (await res.json()) as { id: string; imageWidth: number | null; imageHeight: number | null };
+    createdProductIds.push(json.id);
+    expect(json.imageWidth).toBeNull();
+    expect(json.imageHeight).toBeNull();
+  });
+});

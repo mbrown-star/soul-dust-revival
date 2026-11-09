@@ -157,13 +157,27 @@ describe("POST /api/admin/products/cover-pdf", () => {
     const res = await POST(pdfRequest(form));
 
     expect(res.status).toBe(200);
-    const json = (await res.json()) as { coverPdfUrl: string; backImageUrl: string; frontImageUrl: string };
+    const json = (await res.json()) as {
+      coverPdfUrl: string;
+      backImageUrl: string;
+      frontImageUrl: string;
+      backImageWidth: number;
+      backImageHeight: number;
+      frontImageWidth: number;
+      frontImageHeight: number;
+    };
 
     expect(json.coverPdfUrl).toMatch(/^https:\/\/assets\.example\.com\/book-covers\/[0-9a-f-]+\/source\.pdf$/);
     expect(json.backImageUrl).toMatch(/^https:\/\/assets\.example\.com\/book-covers\/[0-9a-f-]+\/back\.jpg$/);
     expect(json.frontImageUrl).toMatch(/^https:\/\/assets\.example\.com\/book-covers\/[0-9a-f-]+\/front\.jpg$/);
     // Never derived from the uploaded filename.
     expect(json.coverPdfUrl).not.toContain("my-cover");
+    // The real crop dimensions, for the storefront to render at the image's
+    // own true aspect ratio instead of a fixed-ratio crop box.
+    expect(json.backImageWidth).toBeGreaterThan(0);
+    expect(json.backImageHeight).toBeGreaterThan(0);
+    expect(json.frontImageWidth).toBeGreaterThan(0);
+    expect(json.frontImageHeight).toBeGreaterThan(0);
 
     expect(sendMock).toHaveBeenCalledTimes(3);
     // Every uploaded object (source PDF + both crops) is cached as immutable --

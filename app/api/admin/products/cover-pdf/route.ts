@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
   const pdfBuffer = Buffer.from(await file.arrayBuffer());
 
-  let split: { back: Uint8Array; front: Uint8Array };
+  let split: Awaited<ReturnType<typeof splitBookCoverPdf>>;
   try {
     split = await splitBookCoverPdf(new Uint8Array(pdfBuffer));
   } catch (err) {
@@ -95,5 +95,9 @@ export async function POST(req: NextRequest) {
     coverPdfUrl: r2PublicUrl(`book-covers/${id}/source.pdf`),
     backImageUrl: r2PublicUrl(`book-covers/${id}/back.jpg`),
     frontImageUrl: r2PublicUrl(`book-covers/${id}/front.jpg`),
+    backImageWidth: split.backWidth,
+    backImageHeight: split.backHeight,
+    frontImageWidth: split.frontWidth,
+    frontImageHeight: split.frontHeight,
   });
 }

@@ -16,6 +16,14 @@ function hasValidDigitalPriceCentsForFormat(v: { format: string; digitalPriceCen
   return v.format === "both" ? v.digitalPriceCents != null : v.digitalPriceCents == null;
 }
 
+// Shared by productSchema and bundleSchema below: an image file's own real
+// pixel dimensions, captured at upload time (see readImageDimensions.ts /
+// the cover-pdf routes) so the storefront can render it at its true aspect
+// ratio instead of forcing it into one fixed-ratio crop box. A generous but
+// real ceiling, well above anything a real cover/photo needs — guards
+// against a corrupted or hostile client-reported value, not a real limit.
+const imageDimensionSchema = z.number().int().positive().max(20_000).optional().nullable();
+
 // ---------- Checkout ----------
 export const checkoutSchema = z.object({
   items: z
@@ -84,8 +92,12 @@ export const productSchema = z
     bookBinding: z.enum(["softback", "hardback"]).optional().nullable(),
     imageUrl: z.string().url().optional().nullable(), // front cover, for book products
     imageAlt: z.string().max(300).optional().nullable(), // optional — see the note on alt text below
+    imageWidth: imageDimensionSchema,
+    imageHeight: imageDimensionSchema,
     backImageUrl: z.string().url().optional().nullable(),
     backImageAlt: z.string().max(300).optional().nullable(), // optional — see the note on alt text below
+    backImageWidth: imageDimensionSchema,
+    backImageHeight: imageDimensionSchema,
     coverPdfUrl: z.string().url().optional().nullable(),
     // This becomes an <a href> rendered to every visitor, so it's checked
     // against the *parsed hostname* (https-only, host ending in a real
@@ -185,6 +197,8 @@ export const bundleSchema = z
     digitalPriceCents: z.number().int().min(0).max(100_000_00).optional().nullable(),
     imageUrl: z.string().url().optional().nullable(), // the master cover
     imageAlt: z.string().max(300).optional().nullable(),
+    imageWidth: imageDimensionSchema,
+    imageHeight: imageDimensionSchema,
     // "physical": ships, Stripe-only, triggers the founder fulfillment email.
     // "digital": grants an entitlement for every component on purchase, no
     // shipping. "both": two independent purchases, same as a regular

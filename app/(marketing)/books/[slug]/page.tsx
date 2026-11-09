@@ -7,7 +7,7 @@ import Image from "next/image";
 import { AddToCartButton } from "@/components/commerce/AddToCartButton";
 import { AmazonBuyButton } from "@/components/commerce/AmazonBuyButton";
 import { CoverGallery } from "@/components/commerce/CoverGallery";
-import { productKindBindingSuffix } from "@/lib/commerce/productEyebrow";
+import { productEyebrowLabel } from "@/lib/commerce/productEyebrow";
 import type { Metadata } from "next";
 
 // Rendered dynamically per-request rather than statically at build time —
@@ -78,18 +78,12 @@ export default async function BookDetailPage({
 
         <div>
           <p className="font-sans text-xs uppercase tracking-wide text-moss mb-2">
-            {product.type === "bundle"
-              ? product.format === "digital"
-                ? "Bundle · Unlocks in the web app"
-                : product.format === "both"
-                ? "Bundle · Ships, and unlocks in the web app"
-                : "Bundle · Ships to you"
-              : product.format === "digital"
-              ? "Study · Unlocks in the web app"
-              : product.format === "both"
-              ? "Book & Study · Ships, and unlocks in the web app"
-              : "Book · Ships to you"}
-            {product.type !== "bundle" && productKindBindingSuffix(product.kind, product.bookBinding)}
+            {productEyebrowLabel({
+              type: product.type,
+              kind: product.kind,
+              format: product.format,
+              bookBinding: product.bookBinding,
+            })}
           </p>
           <h1 className="font-display font-bold text-3xl sm:text-4xl text-ink mb-4">
             {product.title}

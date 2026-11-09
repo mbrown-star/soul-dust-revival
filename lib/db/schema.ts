@@ -86,12 +86,26 @@ export const products = pgTable("products", {
   description: text("description"),
   imageUrl: text("image_url"), // Cloudflare R2 public URL -- front cover, for book products
   imageAlt: text("image_alt"), // encouraged but not enforced (WCAG 1.1.1) -- see ACCESSIBILITY.md
+  // The real pixel dimensions of imageUrl's file -- captured at upload time
+  // (server-side for the cover-PDF split path, client-side for the plain
+  // single-image upload path) so the storefront can render the image at its
+  // own true aspect ratio via next/image's width/height props, instead of
+  // forcing every cover into one fixed-ratio crop box regardless of its
+  // real shape (found live 2026-11-09: real covers vary from ~0.665 to
+  // ~0.766 width/height, so a single fixed box always cropped someone's
+  // cover). Null for a product whose image predates this, or whose upload
+  // path hasn't been updated to report it -- display code falls back to a
+  // reasonable default ratio in that case.
+  imageWidth: integer("image_width"),
+  imageHeight: integer("image_height"),
   // Book products: the back-cover image and the original full-wrap cover PDF
   // it (and imageUrl) were split from -- see lib/images/bookCover.ts. Null
   // for non-book products and for any book product using the older
   // plain-image upload path instead of the PDF-split flow.
   backImageUrl: text("back_image_url"),
   backImageAlt: text("back_image_alt"), // encouraged but not enforced (WCAG 1.1.1) -- see ACCESSIBILITY.md
+  backImageWidth: integer("back_image_width"),
+  backImageHeight: integer("back_image_height"),
   coverPdfUrl: text("cover_pdf_url"), // retained for reference/reprints
   priceCents: integer("price_cents").notNull(), // physical price for "both"; the only price for "physical"/"digital"
   // Digital price + Stripe IDs, used only for format "both" -- a plain

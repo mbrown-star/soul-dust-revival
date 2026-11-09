@@ -2,8 +2,8 @@ import { getDb } from "@/lib/db/client";
 import { products } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
-import Image from "next/image";
-import { productKindBindingSuffix } from "@/lib/commerce/productEyebrow";
+import { productEyebrowLabel } from "@/lib/commerce/productEyebrow";
+import { CoverThumbnail } from "@/components/commerce/CoverThumbnail";
 
 // Rendered dynamically per-request rather than statically at build time —
 // this reads live product/post data an admin can change anytime, and a
@@ -42,34 +42,22 @@ export default async function BooksPage() {
               href={`/books/${p.slug}`}
               className="group focus:outline-none focus:ring-2 focus:ring-ink rounded-lg"
             >
-              <div className="aspect-[3/4] bg-dusk rounded-lg overflow-hidden mb-3 relative">
-                {p.imageUrl ? (
-                  <Image
-                    src={p.imageUrl}
-                    alt={p.imageAlt ?? ""}
-                    fill
-                    sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                    className="object-cover group-hover:scale-105 transition-transform"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-parchment/70 font-display text-sm">
-                    Soul Dust Revival
-                  </div>
-                )}
+              <div className="mb-3">
+                <CoverThumbnail
+                  imageUrl={p.imageUrl}
+                  imageAlt={p.imageAlt}
+                  imageWidth={p.imageWidth}
+                  imageHeight={p.imageHeight}
+                  sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                />
               </div>
               <p className="font-sans text-xs uppercase tracking-wide text-moss mb-1">
-                {p.type === "bundle"
-                  ? p.format === "digital"
-                    ? "Bundle · Web app"
-                    : p.format === "both"
-                    ? "Bundle · Ships & web app"
-                    : "Bundle · Ships to you"
-                  : p.format === "digital"
-                  ? "Study · Web app"
-                  : p.format === "both"
-                  ? "Book & Study"
-                  : "Book · Ships to you"}
-                {p.type !== "bundle" && productKindBindingSuffix(p.kind, p.bookBinding)}
+                {productEyebrowLabel({
+                  type: p.type,
+                  kind: p.kind,
+                  format: p.format,
+                  bookBinding: p.bookBinding,
+                })}
               </p>
               <h2 className="font-display font-semibold text-ink group-hover:text-moss">
                 {p.title}
