@@ -63,9 +63,19 @@ export function AuthForm({
     setLoading(false);
 
     if (authError) {
-      // Supabase returns an error here (rather than silently succeeding)
-      // when shouldCreateUser is false and no account exists for that email.
-      if (!isSignup) {
+      // REAL BUG FOUND (2026-11-08, hit live right after this flow shipped):
+      // this used to treat *any* login error as "no account exists" --
+      // right, when shouldCreateUser is false and the email genuinely has no
+      // account, Supabase returns error_code "otp_disabled". But testing
+      // this same flow heavily in one sitting tripped Supabase's own OTP
+      // send rate limit (error_code "over_email_send_rate_limit", a 429),
+      // which this code was showing as "we couldn't find an account for
+      // that email" -- actively misleading for a real, existing account,
+      // and exactly the kind of error that could make someone think they
+      // need to sign up again. Now only the specific "no account" error
+      // code gets that message; anything else (rate limit included) shows
+      // Supabase's own real message instead.
+      if (!isSignup && authError.code === "otp_disabled") {
         setError("no_account");
       } else {
         setError(authError.message);
