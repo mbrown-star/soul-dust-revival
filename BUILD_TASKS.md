@@ -446,9 +446,18 @@ the mode set.
       admin toggle for `isSample` yet, and **re-importing a study's document recreates
       its lessons without the flag** — re-run this script after re-importing Colossians
       or the Psalms devotional.
-- [ ] `wrangler.jsonc`: an `env.production` Worker (e.g. `soul-dust-revival-prod`) with
-      the same Hyperdrive and Images bindings; its own secrets set (`wrangler secret put
-      --env production`). Stripe can stay on test keys — checkout is closed.
+- [x] `wrangler.jsonc`: an `env.production` Worker, `soul-dust-revival-prod`, with its
+      own Hyperdrive config (`soul-dust-revival-prod-db`, `8279fc0c…`, caching disabled
+      from the start, same session-pooler origin as staging's) and the Images binding.
+      Built in sneak-peek mode with the production hostnames and deployed 2026-11-10 to
+      `https://soul-dust-revival-prod.matt-brown-8a1.workers.dev` (version `3fdd4cd7`;
+      0 secret hits in the build). Deploy with
+      `npx opennextjs-cloudflare deploy --env production -- --keep-vars`.
+- [ ] **Production secrets.** The Worker has none yet, so every page returns 500 (env
+      validation). Copy the same 23 secret names staging has (`wrangler secret list
+      --name soul-dust-revival`) with `wrangler secret bulk <file.json> --env production`,
+      deleting the JSON file afterward. Secrets take effect without a rebuild. Stripe can
+      stay on test keys — checkout is closed.
 - [ ] Domains: move `app.souldustrevival.com` from the staging Worker to the production
       Worker; add `souldustrevival.com` (and a `www` redirect). No Cloudflare Access on
       production.
