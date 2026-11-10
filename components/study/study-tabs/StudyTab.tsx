@@ -77,6 +77,7 @@ export function StudyTab({
         </div>
       ))}
 
+      {content.study.parts.length > 0 && (
       <div className="space-y-3">
         <p className="font-sans text-xs font-semibold uppercase tracking-wide text-moss">Four Parts</p>
         {content.study.parts.map((part, i) => {
@@ -127,6 +128,7 @@ export function StudyTab({
           {readParts.size} of {content.study.parts.length} parts read
         </p>
       </div>
+      )}
 
       <WeekMediaSlot slot="tab:study" />
 

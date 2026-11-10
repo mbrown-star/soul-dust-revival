@@ -5,8 +5,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { appUrl } from "@/lib/domains";
 import { LessonHeader } from "@/components/admin/builder/LessonHeader";
-import { LessonBuilder } from "@/components/admin/builder/LessonBuilder";
-import { StudyWeekGate } from "@/components/admin/builder/study/StudyWeekGate";
+import { LessonEditorBody } from "@/components/admin/builder/LessonEditorBody";
 
 export const dynamic = "force-dynamic";
 
@@ -29,11 +28,6 @@ export default async function LessonEditorPage({
     .orderBy(asc(contentBlocks.orderIndex));
 
   const isStudyKind = study.kind === "study";
-  // Once a Study lesson has a structured week, its only content_blocks rows
-  // are the stations' answer plumbing, owned by the week builder -- the
-  // free-form block canvas would just be a second, out-of-sync way to edit
-  // them, so it's hidden.
-  const usesWeekBuilder = isStudyKind && !!lesson.studyContent;
 
   return (
     <div className="space-y-8">
@@ -49,22 +43,14 @@ export default async function LessonEditorPage({
         />
       </div>
 
-      {isStudyKind && (
-        <StudyWeekGate
-          lessonId={lesson.id}
-          initialContent={lesson.studyContent}
-          r2PublicBaseUrl={process.env.R2_PUBLIC_BASE_URL}
-        />
-      )}
-
-      {!usesWeekBuilder && (
-        <LessonBuilder
-          lessonId={lesson.id}
-          initialBlocks={blocks}
-          studyKind={study.kind}
-          r2PublicBaseUrl={process.env.R2_PUBLIC_BASE_URL}
-        />
-      )}
+      <LessonEditorBody
+        lessonId={lesson.id}
+        isStudyKind={isStudyKind}
+        studyKind={study.kind}
+        initialStudyContent={lesson.studyContent}
+        initialBlocks={blocks}
+        r2PublicBaseUrl={process.env.R2_PUBLIC_BASE_URL}
+      />
     </div>
   );
 }

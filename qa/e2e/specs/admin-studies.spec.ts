@@ -42,6 +42,9 @@ test.describe("admin studies list and editor, as qa-admin", () => {
     await page.getByRole("link", { name: study }).click();
     await page.getByRole("link", { name: lesson }).click();
     await expect(page).toHaveURL(/\/lessons\/[0-9a-f-]+$/);
+    // Interactions before hydration (focusing a drag handle, clicking a
+    // button) are silently lost; wait for the page to settle first.
+    await page.waitForLoadState("networkidle");
   }
 
   // A Study lesson with structured content opens in the week builder: one

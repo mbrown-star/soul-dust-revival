@@ -16,10 +16,12 @@ export function StudyWeekGate({
   lessonId,
   initialContent,
   r2PublicBaseUrl,
+  onFirstSave,
 }: {
   lessonId: string;
   initialContent: StudyWeekContent | null;
   r2PublicBaseUrl?: string;
+  onFirstSave?: () => void;
 }) {
   const [content, setContent] = useState(initialContent);
 
@@ -43,6 +45,7 @@ export function StudyWeekGate({
       initialContent={content}
       alreadySaved={initialContent !== null}
       r2PublicBaseUrl={r2PublicBaseUrl}
+      onFirstSave={onFirstSave}
     />
   );
 }

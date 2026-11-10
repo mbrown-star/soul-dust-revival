@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import type { StudyWeekContent, WeekMedia } from "@/lib/study/studyContent";
 import { mapWeekMedia } from "@/lib/study/weekMedia";
 import { BuilderConfigContext } from "../blockEditors";
@@ -37,14 +36,16 @@ export function StudyWeekBuilder({
   initialContent,
   alreadySaved,
   r2PublicBaseUrl,
+  onFirstSave,
 }: {
   lessonId: string;
   initialContent: StudyWeekContent;
   r2PublicBaseUrl?: string;
   /** False for a week that has never been saved yet (started from empty). */
   alreadySaved: boolean;
+  /** Called once, when a week that didn't exist yet is saved for the first time. */
+  onFirstSave?: () => void;
 }) {
-  const router = useRouter();
   // Any station still without an answer-block id (older data) gets one now,
   // for the same reason new stations get theirs on creation: the server
   // creates the block under the id the builder already holds.
@@ -82,9 +83,7 @@ export function StudyWeekBuilder({
     }
     if (!savedOnce.current) {
       savedOnce.current = true;
-      // The page's server-rendered parts (which editor shows for this
-      // lesson) depend on whether structured content exists yet.
-      router.refresh();
+      onFirstSave?.();
     }
   });
 
