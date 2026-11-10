@@ -1,7 +1,20 @@
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { generateSignedStreamUrl } from "./signing";
+import { generateSignedStreamUrl, streamCustomerHost } from "./signing";
+
+describe("streamCustomerHost", () => {
+  it.each([
+    "abc123",
+    "customer-abc123",
+    "customer-abc123.cloudflarestream.com",
+    "abc123.cloudflarestream.com",
+    "https://customer-abc123.cloudflarestream.com/",
+    " customer-abc123.cloudflarestream.com\n",
+  ])("normalizes %j to the one playback host", (value) => {
+    expect(streamCustomerHost(value)).toBe("customer-abc123.cloudflarestream.com");
+  });
+});
 
 describe("generateSignedStreamUrl", () => {
   let publicKey: string;

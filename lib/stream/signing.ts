@@ -23,5 +23,21 @@ export function generateSignedStreamUrl(mediaId: string): string {
     { algorithm: "RS256" }
   );
 
-  return `https://customer-${process.env.CLOUDFLARE_STREAM_CUSTOMER_CODE}.cloudflarestream.com/${token}/manifest/video.m3u8`;
+  return `https://${streamCustomerHost(process.env.CLOUDFLARE_STREAM_CUSTOMER_CODE!)}/${token}/manifest/video.m3u8`;
+}
+
+/**
+ * The account's Stream playback host. The dashboard shows it as a whole
+ * host ("customer-abc123.cloudflarestream.com"), and the env var has been
+ * set that way, which once produced "...cloudflarestream.com.cloudflarestream.com"
+ * -- so accept the bare code, "customer-<code>", or the full host.
+ */
+export function streamCustomerHost(customerCode: string): string {
+  const code = customerCode
+    .trim()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/.*$/, "")
+    .replace(/\.cloudflarestream\.com$/, "")
+    .replace(/^customer-/, "");
+  return `customer-${code}.cloudflarestream.com`;
 }
