@@ -31,5 +31,31 @@
   // real headroom without going anywhere near that ceiling.
   "limits": {
     "cpu_ms": 60000
+  },
+  // The production Worker (souldustrevival.com, app.souldustrevival.com),
+  // deployed with `--env production`. Same database and Supabase project as
+  // staging, but its own Worker, secrets, and Hyperdrive config (caching
+  // disabled from the start). Bindings aren't inherited by an environment,
+  // so each one is repeated here. The sneak-peek switch is a build-time
+  // NEXT_PUBLIC_LAUNCH_MODE, not a var -- see BUILD_TASKS.md.
+  "env": {
+    "production": {
+      "name": "soul-dust-revival-prod",
+      "services": [
+        {
+          "binding": "WORKER_SELF_REFERENCE",
+          "service": "soul-dust-revival-prod"
+        }
+      ],
+      "images": {
+        "binding": "IMAGES"
+      },
+      "hyperdrive": [
+        {
+          "binding": "HYPERDRIVE",
+          "id": "8279fc0c3ba24f2f99461f8b26fd61d1"
+        }
+      ]
+    }
   }
 }
