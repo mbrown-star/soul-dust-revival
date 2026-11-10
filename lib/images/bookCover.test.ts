@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { PhotonImage } from "@cf-wasm/photon";
-import {
-  CoverTooLargeError,
-  DISPLAY_MARGIN_IN,
-  KNOWN_TRIMS,
-  NoCoverImageFoundError,
-  splitBookCoverPdf,
-} from "./bookCover";
+import { CoverTooLargeError, DISPLAY_MARGIN_IN, KNOWN_TRIMS, NoCoverImageFoundError } from "./bookCover";
+import { splitBookCoverPdf } from "./splitBookCoverPdf";
 
 /**
  * Builds a minimal, valid single-page PDF with one embedded, uncompressed

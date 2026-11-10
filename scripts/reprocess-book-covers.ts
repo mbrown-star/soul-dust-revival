@@ -21,15 +21,9 @@
 import { getDb } from "../lib/db/client";
 import { products, studies } from "../lib/db/schema";
 import { eq, isNotNull } from "drizzle-orm";
-import { splitBookCoverPdf } from "../lib/images/bookCover";
+import { splitBookCoverPdf } from "../lib/images/splitBookCoverPdf";
 import { r2, R2_BUCKET, r2PublicUrl, IMMUTABLE_CACHE_CONTROL } from "../lib/r2/client";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-
-// splitBookCoverPdf's default pixel cap (6 megapixels) is sized for the
-// admin upload route's Cloudflare Workers memory ceiling (128MB/isolate) --
-// this script runs in a plain Node process with no such ceiling, and the
-// real stored source PDFs are print-resolution (300ppi) KDP covers.
-const NODE_MAX_PIXELS = 80_000_000;
 
 async function putJpeg(key: string, bytes: Uint8Array) {
   await r2.send(
@@ -72,7 +66,7 @@ async function main() {
     try {
       const res = await fetch(product.coverPdfUrl);
       if (!res.ok) throw new Error(`Failed to fetch source PDF: ${res.status} ${res.statusText}`);
-      const split = await splitBookCoverPdf(new Uint8Array(await res.arrayBuffer()), NODE_MAX_PIXELS);
+      const split = await splitBookCoverPdf(new Uint8Array(await res.arrayBuffer()));
       const linkedStudies = studiesWithCovers.filter((s) => s.productId === product.id);
 
       console.log(

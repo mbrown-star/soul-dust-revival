@@ -184,20 +184,22 @@ and rendered with `dangerouslySetInnerHTML`. To keep this safe:
   — also a known gap, see the same CLAUDE.md entry.
 - **Study document imports** (`.docx`/`.pdf`) are capped at 25MB server-side before
   parsing, bounding worst-case parse time from an oversized upload.
-- **Book cover PDF uploads** (`app/api/admin/products/cover-pdf/route.ts`,
-  `lib/images/bookCover.ts`): same 25MB input-size cap as study imports, enforced
-  before parsing. Unlike a plain image upload, this one is processed entirely
-  server-side (not a direct-to-R2 presigned PUT), so all three resulting R2 keys
-  (source PDF + back/front cover images) are fully server-generated, never
-  client-supplied. Because a PDF's declared image dimensions aren't bounded by its
-  compressed file size (a small file can decode to an enormous pixel buffer),
-  this also checks the page's physical size (rejects anything over ~60in per
-  side) before extracting the image, and the extracted image's pixel count
-  (rejects over 50 megapixels) before any further processing — both guard
-  against a crafted PDF trying to force a large decode allocation. The physical
-  page-size check is the more meaningful of the two, since it runs before pdf.js
-  decodes anything; see the code comment in `lib/images/bookCover.ts` for why it
-  isn't a complete guarantee on its own.
+- **Book cover PDF uploads** (`lib/images/uploadBookCover.ts`,
+  `app/api/admin/cover-upload-urls/route.ts`): as of 2026-11-10 the PDF is split in
+  the admin's own browser, not on the server -- a 300ppi KDP cover decodes to far
+  more than a Workers isolate's 128MB. The server's only role is
+  `/api/admin/cover-upload-urls` (`requireAdmin()`, Zod-validated
+  `coverUploadUrlsSchema`), which issues 5-minute presigned PUTs under one fresh
+  `crypto.randomUUID()` folder -- every key server-generated, never
+  client-supplied (unlike `uploadUrlSchema` above). Trade-offs: the 25MB source-PDF
+  cap and the pixel/page-size guards (`extractCoverImage` in
+  `lib/images/bookCover.ts`: ~60in per side, 40 megapixels in the browser) now run
+  client-side, so they protect the admin's tab rather than the server; and the
+  stored crops are whatever the admin's browser produced. Both are acceptable
+  because only an admin can obtain the upload links, and the same presigned-PUT
+  size-cap gap above already applies to every admin image upload. The stored source
+  PDF is still parsed server-side by `scripts/reprocess-book-covers.ts` (Node, run
+  by hand), which treats it as untrusted input with the same guards.
 
 ## Environment variables
 `lib/env.ts` validates all required environment variables at server startup

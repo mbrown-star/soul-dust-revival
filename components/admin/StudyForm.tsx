@@ -4,6 +4,7 @@ import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { defaultCoverAltText } from "@/lib/images/coverAltText";
+import { CoverUploadError, uploadBookCoverPdf } from "@/lib/images/uploadBookCover";
 import { useSavedIndicator } from "@/lib/hooks/useSavedIndicator";
 
 type StudyFormValues = {
@@ -60,31 +61,21 @@ export function StudyForm({
     setUploading(true);
     setUploadError(null);
 
-    const formData = new FormData();
-    formData.set("file", file);
-
     try {
-      const res = await fetch("/api/admin/studies/cover-pdf", { method: "POST", body: formData });
-      const data = (await res.json()) as { coverImageUrl?: string; message?: string };
-
-      if (!res.ok || !data.coverImageUrl) {
-        setUploadError(data.message ?? "Couldn't process that cover PDF. Please try a different file.");
-        setUploading(false);
-        return;
-      }
-
+      const { frontImageUrl } = await uploadBookCoverPdf(file, "study");
       setValues((v) => ({
         ...v,
-        coverImageUrl: data.coverImageUrl!,
+        coverImageUrl: frontImageUrl,
         // Only fills in a starting value -- never overwrites alt text the
         // admin already typed, e.g. on a later re-upload of a new cover.
         coverImageAlt: v.coverImageAlt.trim() ? v.coverImageAlt : defaultCoverAltText(v.title, "Front"),
       }));
-      setUploading(false);
-    } catch {
-      setUploadError("Upload failed — the server didn't respond as expected. Please try again.");
-      setUploading(false);
+    } catch (err) {
+      setUploadError(
+        err instanceof CoverUploadError ? err.message : "Couldn't process that cover PDF. Please try a different file."
+      );
     }
+    setUploading(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {

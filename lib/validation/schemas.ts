@@ -397,6 +397,12 @@ export const uploadUrlSchema = z.object({
   contentType: z.enum(ALLOWED_IMAGE_TYPES as [string, ...string[]]),
 });
 
+// What a book-cover PDF upload is for: a product keeps the source PDF and
+// both crops, a study only its front cover. Keys are always server-generated.
+export const coverUploadUrlsSchema = z.object({
+  target: z.enum(["product", "study"]),
+});
+
 // Leader resource downloads (guides, notes) — a separate, narrower allowlist
 // from the image upload endpoint above, so widening this one for PDFs
 // doesn't also widen what the general-purpose image endpoint will accept.

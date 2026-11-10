@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { defaultCoverAltText } from "@/lib/images/coverAltText";
 import { readImageDimensions } from "@/lib/images/readImageDimensions";
+import { CoverUploadError, uploadBookCoverPdf, type UploadedBookCover } from "@/lib/images/uploadBookCover";
 import { IMMUTABLE_CACHE_CONTROL } from "@/lib/r2/cacheControl";
 import { useSavedIndicator } from "@/lib/hooks/useSavedIndicator";
 
@@ -164,37 +165,26 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
     setUploading(true);
     setUploadError(null);
 
-    const formData = new FormData();
-    formData.set("file", file);
-
-    const res = await fetch("/api/admin/products/cover-pdf", { method: "POST", body: formData });
-
-    if (!res.ok) {
-      const { message } = (await res.json().catch(() => ({ message: null }))) as { message: string | null };
-      setUploadError(message || "Couldn't process that cover PDF. Please try a different file.");
+    let cover: UploadedBookCover;
+    try {
+      cover = await uploadBookCoverPdf(file, "product");
+    } catch (err) {
+      setUploadError(
+        err instanceof CoverUploadError ? err.message : "Couldn't process that cover PDF. Please try a different file."
+      );
       setUploading(false);
       return;
     }
 
-    const { coverPdfUrl, backImageUrl, frontImageUrl, backImageWidth, backImageHeight, frontImageWidth, frontImageHeight } =
-      (await res.json()) as {
-        coverPdfUrl: string;
-        backImageUrl: string;
-        frontImageUrl: string;
-        backImageWidth: number;
-        backImageHeight: number;
-        frontImageWidth: number;
-        frontImageHeight: number;
-      };
     setValues((v) => ({
       ...v,
-      coverPdfUrl,
-      backImageUrl,
-      backImageWidth,
-      backImageHeight,
-      imageUrl: frontImageUrl,
-      imageWidth: frontImageWidth,
-      imageHeight: frontImageHeight,
+      coverPdfUrl: cover.coverPdfUrl,
+      backImageUrl: cover.backImageUrl,
+      backImageWidth: cover.backWidth,
+      backImageHeight: cover.backHeight,
+      imageUrl: cover.frontImageUrl,
+      imageWidth: cover.frontWidth,
+      imageHeight: cover.frontHeight,
       // Only fills in a starting value -- never overwrites alt text the
       // admin already typed, e.g. on a later re-upload of a new cover.
       imageAlt: v.imageAlt.trim() ? v.imageAlt : defaultCoverAltText(v.title, "Front"),

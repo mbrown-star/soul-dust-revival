@@ -1,5 +1,9 @@
+// The book-cover crop logic, shared by the admin's browser (which does the
+// real uploads -- see splitBookCoverInBrowser.ts) and Node (the reprocess
+// script and tests -- see splitBookCoverPdf.ts). Deliberately free of any
+// image-encoding dependency so both can import it: it only extracts the
+// embedded cover bitmap from the PDF and decides where to crop.
 import { extractImages, getDocumentProxy } from "unpdf";
-import { PhotonImage, crop } from "@cf-wasm/photon";
 
 export class NoCoverImageFoundError extends Error {
   constructor() {
@@ -23,30 +27,6 @@ export class CoverTooLargeError extends Error {
 // specifically to force a large allocation inside pdf.js's own image decode,
 // which runs before any of our own checks get a chance to run.
 const MAX_PAGE_POINTS_PER_SIDE = 60 * 72; // 60 inches, in PDF points (72/inch)
-
-// The real use for these images is a web product photo/gallery, not a print
-// file -- there's no reason to process print-resolution pixel counts. This
-// bounds the RGBA buffers this function allocates on top of whatever pdf.js
-// already decoded (see the module-level comment below for why this doesn't
-// fully close the gap on its own).
-//
-// This was originally 50 megapixels, sized for a local/Node memory budget --
-// found live, via wrangler tail, that Cloudflare Workers has a hard 128MB
-// memory ceiling per isolate, fixed on every plan (unlike the CPU time
-// limit, there is no config to raise it). At peak, this pipeline holds
-// several full-size buffers alive at once: the decoded source image, its
-// RGBA conversion, a copy inside Photon's WASM memory, both crop outputs
-// (back + front), and JPEG-encoding scratch space -- roughly 4-5x a single
-// RGBA buffer's size. 50 megapixels is 200MB of RGBA alone, which exceeds
-// the ceiling before any of those other buffers even exist. A real KDP
-// cover PDF (300 DPI print resolution) routinely decodes well above even
-// this new, much lower cap -- that's expected and intentional: this feature
-// was never meant to process print-resolution files, and the error message
-// below says so. toRgba() below no longer copies the already-4-channel
-// case (the common one), which removed one of those full-size buffers --
-// raised slightly from this fix's first, more conservative value (4
-// megapixels) to account for that, while staying well short of the ceiling.
-const MAX_PIXELS = 6_000_000; // 6 megapixels -- a ~24MB RGBA buffer
 
 // Fallback only, used when findVerticalBorderClusters below can't find a
 // genuine border at all (a cover design with no border frame, or whose
@@ -94,7 +74,7 @@ const BORDER_SCAN_MARGIN_FRACTION = 0.08;
 // left-to-right in the source -- the spine-side gap is wider by exactly the
 // bleed, a quirk of that build script -- which doesn't matter here, since
 // the crop is drawn around the box itself, not around the trim panel.
-type TrimSpec = {
+export type TrimSpec = {
   name: "6x9" | "8.5x11";
   trimWidthIn: number;
   trimHeightIn: number;
@@ -259,7 +239,7 @@ function findHalfBorders(
   };
 }
 
-type CropBounds = { x0: number; y0: number; x1: number; y1: number };
+export type CropBounds = { x0: number; y0: number; x1: number; y1: number };
 
 /**
  * Given one half's own detected left/right border and (optionally) its own
@@ -299,7 +279,7 @@ function equalizeHalfBorder(
 
   if (!horizontal) {
     // innerBudgetMax already reflects the caller's cushion-or-tighter
-    // policy (see splitBookCoverPdf) -- nothing further to cap it by here.
+    // policy (see detectedBorderBounds) -- nothing further to cap it by here.
     return isSpineOnLeft
       ? { x0: Math.max(0, vertical.left.start - innerBudgetMax), y0: 0, x1: width, y1: height }
       : { x0: 0, y0: 0, x1: Math.min(width, vertical.right.end + innerBudgetMax), y1: height };
@@ -459,50 +439,32 @@ function detectedBorderBounds(
   };
 }
 
+export type CoverImage = {
+  rgba: Uint8Array;
+  width: number;
+  height: number;
+  pageWidthIn: number;
+  pageHeightIn: number;
+};
+
 /**
- * Splits a full-wrap book cover PDF (back cover + spine + front cover, all
- * on one page, as KDP's print-cover template produces) into two JPEG
- * images: the back cover and the front cover, each showing its double-line
- * border box with an equal margin all the way around.
+ * Extracts the flattened cover bitmap from a full-wrap KDP cover PDF (back
+ * cover + spine + front cover on one page) as RGBA pixels, plus the page's
+ * physical size, which computeCoverCrops needs to recognize the trim.
  *
- * A cover on one of KNOWN_TRIMS (identified from the page size) is cropped
- * from that trim's exact border geometry (trimGeometryBounds) -- same shape
- * and same physical margin for every cover of that trim. Anything else falls
- * back to detecting the border from the art alone (detectedBorderBounds).
- * Either way the two crops are defensively clamped so they can never
- * overlap, even on an unusually narrow spine.
- *
- * Security note: a malicious PDF could in principle declare an embedded
- * image's pixel dimensions far larger than its physical page size (the
- * image XObject's own /Width and /Height, not the page's MediaBox, drive
- * how many bytes pdf.js decodes) to force a large allocation purely from
- * calling unpdf's extractImages(), before this function's own MAX_PIXELS
- * check ever runs. The MAX_PAGE_POINTS_PER_SIDE check below only rules out
- * the common case of an absurdly large physical page; it is not a complete
- * guarantee against a hostile XObject on a small page. The route that calls
- * this already requires admin auth and caps the uploaded file to 25MB.
- *
- * `maxPixels` defaults to MAX_PIXELS, the figure sized for the admin route's
- * actual Cloudflare Workers memory ceiling (see the constant's own comment).
- * A caller that doesn't run inside that Workers isolate -- namely, a one-off
- * Node maintenance script re-processing an already-stored source PDF -- can
- * pass a much higher value, since the 128MB-per-isolate constraint this cap
- * exists for simply doesn't apply to a plain Node process.
+ * Security note: a malicious PDF could declare an embedded image's pixel
+ * dimensions far larger than its physical page (the image XObject's own
+ * /Width and /Height drive how much pdf.js decodes), forcing a large
+ * allocation inside extractImages() before the `maxPixels` check here runs.
+ * MAX_PAGE_POINTS_PER_SIDE only rules out an absurdly large physical page.
+ * Only admins can upload a cover PDF, and the upload runs in their own
+ * browser tab, so the worst case is crashing that tab.
  */
-export async function splitBookCoverPdf(
-  pdfBytes: Uint8Array,
-  maxPixels: number = MAX_PIXELS
-): Promise<{
-  back: Uint8Array;
-  front: Uint8Array;
-  backWidth: number;
-  backHeight: number;
-  frontWidth: number;
-  frontHeight: number;
-  method: CoverSplitMethod;
-  trim: TrimSpec["name"] | null;
-}> {
-  const pdf = await getDocumentProxy(pdfBytes);
+export async function extractCoverImage(pdfBytes: Uint8Array, maxPixels: number): Promise<CoverImage> {
+  // In a browser, pdf.js would otherwise hand decoded images back as
+  // ImageBitmaps rather than raw pixels, which extractImages() skips --
+  // turning these off makes the browser decode exactly as Node does.
+  const pdf = await getDocumentProxy(pdfBytes, { isOffscreenCanvasSupported: false, isImageDecoderSupported: false });
   const page = await pdf.getPage(1);
   // page.view is always a 4-element [x1,y1,x2,y2] tuple per pdf.js's own
   // contract; TS just types it as number[] since it comes from a JS lib.
@@ -526,58 +488,54 @@ export async function splitBookCoverPdf(
 
   if (image.width * image.height > maxPixels) {
     throw new CoverTooLargeError(
-      `This cover image is too high-resolution to process (${image.width}x${image.height}). Please re-export it at a lower resolution -- this only needs to look good on a web product page, not in print.`
+      `This cover image is too high-resolution to process (${image.width}x${image.height}). Please re-export it at a lower resolution.`
     );
   }
 
-  const rgba = toRgba(image.data, image.channels, image.width, image.height);
-  const photonImage = new PhotonImage(rgba, image.width, image.height);
+  return {
+    rgba: toRgba(image.data, image.channels, image.width, image.height),
+    width: image.width,
+    height: image.height,
+    pageWidthIn: pageWidthPoints / 72,
+    pageHeightIn: pageHeightPoints / 72,
+  };
+}
 
-  try {
-    const fullRaw = photonImage.get_raw_pixels();
-    const clusters = findVerticalBorderClusters(fullRaw, image.width, image.height);
+export type CoverCrops = {
+  back: CropBounds;
+  front: CropBounds;
+  method: CoverSplitMethod;
+  trim: TrimSpec["name"] | null;
+};
 
-    const pageWidthIn = pageWidthPoints / 72;
-    const pageHeightIn = pageHeightPoints / 72;
-    const geometry = trimGeometryBounds(fullRaw, image.width, image.height, pageWidthIn, pageHeightIn, clusters);
-    const { back: backBounds, front: frontBounds, method, trim } = geometry
-      ? { ...geometry, method: "trim-geometry" as const }
-      : { ...detectedBorderBounds(fullRaw, image.width, image.height, clusters), trim: null };
+/**
+ * Decides where to cut the back and front covers out of a full-wrap cover,
+ * so each shows its double-line border box with an equal margin all the
+ * way around. Bounds are pixel rectangles, x0/y0 inclusive and x1/y1
+ * exclusive.
+ *
+ * A cover on one of KNOWN_TRIMS (identified from the page size) is cropped
+ * from that trim's exact border geometry (trimGeometryBounds) -- same shape
+ * and same physical margin for every cover of that trim. Anything else falls
+ * back to detecting the border from the art alone (detectedBorderBounds).
+ * Either way the two crops are clamped so they can never overlap, even on
+ * an unusually narrow spine.
+ */
+export function computeCoverCrops(cover: CoverImage): CoverCrops {
+  const { rgba, width, height, pageWidthIn, pageHeightIn } = cover;
+  const clusters = findVerticalBorderClusters(rgba, width, height);
+  const geometry = trimGeometryBounds(rgba, width, height, pageWidthIn, pageHeightIn, clusters);
+  const { back, front, method, trim } = geometry
+    ? { ...geometry, method: "trim-geometry" as const }
+    : { ...detectedBorderBounds(rgba, width, height, clusters), trim: null };
 
-    // Defensive: the two crops must never overlap (or touch) along the x
-    // axis, regardless of how narrow a real spine turns out to be relative
-    // to the margins computed above -- split whatever gap is left right
-    // down the middle instead. (The two halves' y-axis crops are
-    // independent of each other and can never overlap this way.)
-    let backCropEnd = backBounds.x1;
-    let frontCropStart = frontBounds.x0;
-    if (frontCropStart <= backCropEnd) {
-      const splitPoint = Math.floor((backCropEnd + frontCropStart) / 2);
-      backCropEnd = splitPoint;
-      frontCropStart = splitPoint + 1;
-    }
-
-    const backImage = crop(photonImage, backBounds.x0, backBounds.y0, backCropEnd, backBounds.y1);
-    const frontImage = crop(photonImage, frontCropStart, frontBounds.y0, frontBounds.x1, frontBounds.y1);
-
-    try {
-      return {
-        back: backImage.get_bytes_jpeg(90),
-        front: frontImage.get_bytes_jpeg(90),
-        backWidth: backImage.get_width(),
-        backHeight: backImage.get_height(),
-        frontWidth: frontImage.get_width(),
-        frontHeight: frontImage.get_height(),
-        method,
-        trim,
-      };
-    } finally {
-      backImage.free();
-      frontImage.free();
-    }
-  } finally {
-    photonImage.free();
+  // The two halves' y-axis crops are independent and can't overlap; along x,
+  // split whatever gap is left down the middle if they'd touch.
+  if (front.x0 <= back.x1) {
+    const splitPoint = Math.floor((back.x1 + front.x0) / 2);
+    return { back: { ...back, x1: splitPoint }, front: { ...front, x0: splitPoint + 1 }, method, trim };
   }
+  return { back, front, method, trim };
 }
 
 /** `findHorizontalBorderClusters`'s first and last cluster as {top, bottom}, or null when fewer than 2 were found. */
@@ -586,9 +544,10 @@ function toTopBottom(clusters: BorderCluster[]): { top: BorderCluster; bottom: B
 }
 
 /**
- * Photon's PhotonImage constructor expects 4-channel (RGBA) raw pixels;
- * unpdf can hand back 1 (grayscale), 3 (RGB), or 4 channels depending on
- * the embedded image's color space, so grayscale/RGB need expanding first.
+ * Both encoders (Photon in Node, canvas ImageData in the browser) and the
+ * border scan here expect 4-channel (RGBA) pixels; unpdf can hand back 1
+ * (grayscale), 3 (RGB), or 4 channels depending on the embedded image's
+ * color space, so grayscale/RGB need expanding first.
  *
  * The already-4-channel case returns a *view* over the same underlying
  * buffer, not a copy -- `new Uint8Array(data)` (a Uint8ClampedArray) looked
