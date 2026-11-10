@@ -38,8 +38,28 @@ export function WorkTheWordTab({
     () => new Set(content.stations.filter((st) => (initialAnswers[st.questionBlockId] ?? "").trim()).map((st) => st.questionBlockId))
   );
 
-  const station = content.stations[current]!;
-  const isGreekOpen = revealed.has(station.ref);
+  const station = content.stations[current];
+  // A week built in the admin can be saved before it has any stations.
+  if (!station) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h2 className="font-display font-bold text-xl text-ink">{content.stationsLabel}</h2>
+          {content.stationsIntro && <p className="font-serif text-ink mt-2">{content.stationsIntro}</p>}
+        </div>
+        <WeekMediaSlot slot="tab:work" />
+        <button
+          type="button"
+          onClick={onAdvanceToLive}
+          className="min-h-[44px] px-4 rounded-full bg-ink text-parchment text-sm font-sans font-semibold"
+        >
+          Go to Live It →
+        </button>
+      </div>
+    );
+  }
+  const stationRef = station.ref;
+  const isGreekOpen = revealed.has(stationRef);
 
   function checkAllDone(nextRevealed: Set<string>, nextAnswered: Set<string>) {
     const allDone = content.stations.every((st) => nextRevealed.has(st.ref) && nextAnswered.has(st.questionBlockId));
@@ -59,7 +79,7 @@ export function WorkTheWordTab({
   function revealGreek() {
     setRevealed((prev) => {
       const next = new Set(prev);
-      next.add(station.ref);
+      next.add(stationRef);
       checkAllDone(next, answered);
       return next;
     });

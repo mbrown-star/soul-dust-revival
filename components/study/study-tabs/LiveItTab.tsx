@@ -55,7 +55,9 @@ export function LiveItTab({
         })}
       </ul>
 
-      <PrayerTimer lead={content.prayerLead} beats={content.prayerBeats} close={content.prayerClose} />
+      {(content.prayerLead || content.prayerBeats.length > 0 || content.prayerClose) && (
+        <PrayerTimer lead={content.prayerLead} beats={content.prayerBeats} close={content.prayerClose} />
+      )}
 
       {content.bottomLine.length > 0 && (
         <div className="bg-dusk/5 border-l-4 border-ember rounded-r-xl p-5 space-y-3">

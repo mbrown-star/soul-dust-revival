@@ -247,6 +247,39 @@ test.describe("admin studies list and editor, as qa-admin", () => {
     await expect(page.getByRole("link", { name: "QA Draft To Delete" })).toHaveCount(0);
   });
 
+  // Regression: the Study reader crashed (500) on a week saved before it had
+  // any stations -- the Work the Word tab assumed at least one.
+  test("a brand-new week with only its required fields opens in the reader", async ({ page }) => {
+    await page.goto("/admin/studies");
+    await page.getByRole("link", { name: /QA Colossians-Shaped Study/i }).click();
+    await expect(page).toHaveURL(/\/admin\/studies\/[0-9a-f-]+$/);
+    const studyUrl = page.url();
+    await page.getByLabel("New lesson title").fill("QA Empty Week");
+    await page.getByRole("button", { name: "+ Add lesson" }).click();
+    await expect(page).toHaveURL(/\/lessons\/[0-9a-f-]+$/);
+    const lessonId = page.url().split("/lessons/")[1]!;
+
+    await page.getByRole("button", { name: "Start building this week" }).click();
+    await page.getByLabel(/^Key verse/).first().fill("A verse.");
+    await page.getByLabel(/^Key verse reference/).fill("Col 1:1");
+    await page.getByRole("tab", { name: /^Passage/ }).click();
+    await page.getByLabel(/^Passage reference/).fill("Col 1:1-2");
+    await expect(page.getByRole("status").filter({ hasText: "All changes saved" })).toBeVisible();
+    // Once the week exists, the free-form block canvas goes away without a reload.
+    await expect(page.getByRole("navigation", { name: "Add a block" })).toHaveCount(0);
+
+    const res = await page.goto(`/studies/qa-study-not-started/${lessonId}`);
+    expect(res?.status()).toBe(200);
+    await page.getByRole("tab", { name: /Work the Word/ }).click();
+    await expect(page.getByRole("button", { name: "Go to Live It →" })).toBeVisible();
+
+    await page.goto(studyUrl);
+    await page.waitForLoadState("networkidle");
+    page.once("dialog", (dialog) => void dialog.accept());
+    await page.getByRole("button", { name: "Delete draft lesson QA Empty Week" }).click();
+    await expect(page.getByRole("link", { name: "QA Empty Week" })).toHaveCount(0);
+  });
+
   test("lessons reorder on the study page, and the order persists", async ({ page }) => {
     await page.goto("/admin/studies");
     await page.getByRole("link", { name: /QA Colossians-Shaped Study/i }).click();
