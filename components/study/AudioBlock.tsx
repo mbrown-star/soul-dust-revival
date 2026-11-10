@@ -4,22 +4,27 @@ import { useEffect, useState } from "react";
 
 export function AudioBlock({
   contentBlockId,
+  mediaUrl,
   transcript,
 }: {
   contentBlockId: string;
+  /** A linked (not uploaded) source -- played directly, no signed URL needed. */
+  mediaUrl: string | null;
   transcript: string | null;
 }) {
-  const [url, setUrl] = useState<string | null>(null);
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const url = mediaUrl ?? signedUrl;
 
   useEffect(() => {
+    if (mediaUrl) return;
     fetch("/api/stream/sign-url", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ contentBlockId }),
     })
       .then((r) => r.json())
-      .then((data) => setUrl((data as { url: string }).url));
-  }, [contentBlockId]);
+      .then((data) => setSignedUrl((data as { url: string }).url));
+  }, [contentBlockId, mediaUrl]);
 
   if (!url) return <div className="h-12 bg-moss/10 animate-pulse rounded-lg" aria-hidden="true" />;
 

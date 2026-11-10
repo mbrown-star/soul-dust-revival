@@ -86,6 +86,26 @@ are outside what code can determine.
     is the more robust guarantee.
 - Reorder results are announced via a `role="status" aria-live="polite"` region, since
   the visual reflow alone isn't perceivable to a screen reader user (WCAG 4.1.3).
+- **Lesson builder (2026-11-10)**: the same handle + Move up/down pattern now lives in one
+  shared `components/admin/builder/SortableRow.tsx`, used by every reorderable list in
+  the admin: lesson blocks, a study's lesson list, and every list inside a Study week
+  (sections, parts, stations, practices, prayer beats, paragraphs). In addition:
+  - dnd-kit's drag announcements are replaced with readable ones (`dragAnnouncements()`).
+    The defaults read out each item's database UUID ("Draggable item a55a02d0-… was moved
+    over…").
+  - The block palette is click-to-add (Enter/Space append the block). Only pointer drags
+    start a drag there, so keyboard users never get trapped in a drag they didn't mean to
+    start. Positional insertion by keyboard goes through the "+ Insert here" button
+    between every pair of blocks.
+  - Palette and insert buttons carry their visible text in their accessible names (WCAG
+    2.5.3, found by the axe run below). The Study week's tabs follow the WAI-ARIA tabs
+    pattern (arrow keys, `aria-selected`, roving tabindex), and each tab shows a count of
+    required fields still empty.
+  - Per-block save state is a live region, so a "Saved" or "Not saved" result is
+    announced, not just shown.
+  - `qa/e2e/specs/accessibility.spec.ts` runs axe on the block builder and on every tab of
+    the week builder. `admin-studies.spec.ts` exercises a real keyboard drag (Space, arrow,
+    Space) and a real pointer drag from the palette.
 
 **Rich text content (Tiptap editor)**
 - Output is real semantic HTML (`<h2>`, `<ul>`, `<a>`, etc.), not styled `<div>`s, so
@@ -95,9 +115,9 @@ are outside what code can determine.
   preserves these semantic tags rather than stripping them to plain text.
 
 **Menus**
-- The block-type picker (`AddBlockButton`) uses proper `aria-haspopup`/`aria-expanded`/
-  `role="menu"`/`role="menuitem"` semantics, closes on Escape, and returns focus to the
-  trigger button after a selection — standard WAI-ARIA menu-button behavior.
+- The block-type picker is now the lesson builder's palette (plain buttons in a labelled
+  `<nav aria-label="Add a block">`) plus the inline "+ Insert here" toggles, which
+  replaced `AddBlockButton`'s menu button in 2026-11-10.
 
 **Callout background color — live contrast check**
 - `ColorPicker.tsx` (used by `BlockEditor.tsx` for a callout's background) computes a real
@@ -160,7 +180,11 @@ findings. The admin lesson-authoring flow surfaced two real bugs, both fixed:
   presses to cross into the next item's position, which is expected, not a bug, and
   exactly why the Move Up/Down buttons exist as the lower-friction alternative — Space to
   drop, Escape to cancel and correctly revert); the `aria-live` reorder announcement.
-- **Found, not fixed — flagged for follow-up**: a real, reproducible React hydration
+- **Likely resolved 2026-11-10** (see below): every builder `DndContext` now gets a
+  stable `id` from `useId()`, which is what dnd-kit derives its `DndDescribedBy-…` ids
+  from. A production-build check of both builder pages logged no console errors or
+  hydration warnings. That check didn't use `next dev`'s more verbose hydration diff, so
+  re-confirm there. The original finding, kept for context: a real, reproducible React hydration
   mismatch on `/admin/studies/[id]/lessons/[lessonId]`, surfaced by the console while
   exercising this flow (confirmed on a fresh hard navigation, not a Fast-Refresh-only
   artifact). `@dnd-kit`'s own internal `aria-describedby="DndDescribedBy-N"` id numbering
@@ -213,8 +237,8 @@ without real auth), and no screen reader was used.
   now the single biggest gap in this file: nothing in this project has been checked with
   a real screen reader yet, only axe-core (a static/structural checker) and sighted
   keyboard-only passes.
-- **The `@dnd-kit` hydration mismatch** flagged above — needs either a real fix or a
-  decision that it's low-impact enough to leave.
+- **The `@dnd-kit` hydration mismatch** flagged above — likely fixed 2026-11-10 (stable
+  `DndContext` ids); re-confirm against `next dev`'s console once, then drop this item.
 - **A `WAVE` (wave.webaim.org) pass** as a second automated opinion alongside axe-core —
   different tools catch different things, and `npm run test:a11y` only runs the one.
 

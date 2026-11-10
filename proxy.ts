@@ -12,17 +12,6 @@ import {
   sessionCookieOptions,
 } from "@/lib/domains";
 
-// Same R2-hostname derivation as next.config.js's image remotePatterns, so
-// the CSP's img-src/media-src stay in sync with whatever R2_PUBLIC_BASE_URL
-// is actually configured, instead of a hardcoded or wildcarded domain.
-function getR2Hostname() {
-  try {
-    return new URL(process.env.R2_PUBLIC_BASE_URL!).hostname;
-  } catch {
-    return "example-not-configured.r2.dev";
-  }
-}
-
 // Nonce-based CSP (see SECURITY.md). Requires every page to be dynamically
 // rendered to get a fresh nonce per request -- this app already is, except
 // /account, which has `export const dynamic = "force-dynamic"` for exactly
@@ -52,7 +41,6 @@ export async function proxy(request: NextRequest) {
 
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const isDev = process.env.NODE_ENV === "development";
-  const r2Host = getR2Hostname();
 
   // Supabase Auth (browser client), direct-to-R2 presigned uploads, and
   // Cloudflare Stream (direct creator upload + signed HLS playback) are all
@@ -68,12 +56,18 @@ export async function proxy(request: NextRequest) {
   // is also ignored for the whole directive in nonce-aware browsers, so a
   // nonce there would silently break every inline style with no fallback.
   // script-src keeps the strict nonce, which is where it matters for XSS.
+  //
+  // img-src/media-src also allow any https: origin, because a lesson block
+  // can link an image, video, or audio file hosted elsewhere (admin-entered,
+  // https-only -- see httpsUrlSchema in lib/validation/schemas.ts). Images
+  // and media can't execute script, so this widens what can be displayed,
+  // not what can run; script-src/connect-src are unchanged.
   const cspHeader = `
     default-src 'self';
     script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""};
     style-src 'self' 'unsafe-inline';
-    img-src 'self' blob: data: https://${r2Host};
-    media-src 'self' https://${r2Host} https://*.cloudflarestream.com;
+    img-src 'self' blob: data: https:;
+    media-src 'self' https:;
     font-src 'self';
     connect-src 'self' https://*.supabase.co https://*.r2.cloudflarestorage.com https://api.cloudflare.com https://upload.videodelivery.net https://*.cloudflarestream.com;
     object-src 'none';

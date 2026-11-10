@@ -1,3 +1,5 @@
+import { htmlToPlainText } from "@/lib/content/plainText";
+
 export type ParsedDevotionalDay = {
   title: string;
   keyVerseQuote: string | null;
@@ -28,7 +30,7 @@ const PLAIN_PARAGRAPH = /^<p>(.*)<\/p>$/;
  * being split into named parts.
  */
 export function parseDevotionalHtml(html: string): ParsedDevotionalDay {
-  const paragraphs = html
+  const paragraphs = normalizeBlockBoundaries(html)
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
@@ -53,7 +55,7 @@ export function parseDevotionalHtml(html: string): ParsedDevotionalDay {
     const plainMatch = paragraph.match(PLAIN_PARAGRAPH);
 
     if (headingMatch) {
-      const heading = headingMatch[1] ?? "";
+      const heading = htmlToPlainText(headingMatch[1]);
       const normalized = heading.replace(/[^a-zA-Z]/g, "").toUpperCase();
 
       if (section === "title" && result.title === "") {
@@ -81,7 +83,7 @@ export function parseDevotionalHtml(html: string): ParsedDevotionalDay {
     }
 
     if (plainMatch) {
-      const text = plainMatch[1] ?? "";
+      const text = htmlToPlainText(plainMatch[1]);
       if (section === "keyVerse" && isQuote(text)) {
         result.keyVerseQuote = text;
         section = "citation";
@@ -109,6 +111,25 @@ export function parseDevotionalHtml(html: string): ParsedDevotionalDay {
   }
 
   return result;
+}
+
+// The importer writes one paragraph per line, but the admin's rich-text
+// editor serializes HTML with no newlines and writes headings as <h2> --
+// without this, editing a day in the admin collapsed the whole day into one
+// unparsed paragraph on the reader.
+function normalizeBlockBoundaries(html: string): string {
+  return (
+    html
+      .replace(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi, "<p><strong>$1</strong></p>")
+      // List items and quotes become their own paragraphs (the reader shows
+      // plain paragraphs), rather than being dropped as unrecognized lines.
+      .replace(/<li[^>]*>/gi, "<p>")
+      .replace(/<\/li>/gi, "</p>")
+      .replace(/<\/?(ul|ol|blockquote)[^>]*>/gi, "")
+      .replace(/<p>(\s*<p>)+/gi, "<p>")
+      .replace(/<\/p>(\s*<\/p>)+/gi, "</p>")
+      .replace(/<\/p>\s*(?=<)/gi, "</p>\n")
+  );
 }
 
 function pushToSection(result: ParsedDevotionalDay, section: "title" | "keyVerse" | "citation" | "body" | "lift" | "question", text: string) {

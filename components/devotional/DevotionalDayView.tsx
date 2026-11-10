@@ -26,6 +26,7 @@ export function DevotionalDayView({
   initialAnswer,
   initialWalked,
   pickUpWithToday,
+  extraContent,
 }: {
   dayLabel: string;
   bodyHtml: string;
@@ -42,6 +43,9 @@ export function DevotionalDayView({
   // the book's own preface says there's no need to hurry to catch up, so
   // this is an offer, not a nag.
   pickUpWithToday?: { href: string } | null;
+  // Any other blocks an admin added to this day (images, video, callouts...),
+  // rendered after the day's own printed parts, in the builder's order.
+  extraContent?: React.ReactNode;
 }) {
   const parsed = parseDevotionalHtml(bodyHtml);
 
@@ -165,6 +169,8 @@ export function DevotionalDayView({
           )}
         </div>
       )}
+
+      {extraContent}
 
       <WalkedToggle lessonId={lessonId} initialWalked={initialWalked} nextDayLabel={nextHref ? "Tomorrow" : null} />
     </div>

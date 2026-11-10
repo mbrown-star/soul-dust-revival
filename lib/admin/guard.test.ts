@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { eq, like, or } from "drizzle-orm";
+import { eq, like } from "drizzle-orm";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getDb, type Db } from "@/lib/db/client";
 import { users } from "@/lib/db/schema";
@@ -28,9 +28,9 @@ describe("guard", () => {
     // node-postgres Client (per getDb()'s per-request-client model), and a
     // plain (non-pooled) Client doesn't support concurrent queries: pg emits
     // a (soon-to-be-hard-error) deprecation warning if you try.
-    const [admin] = await db.insert(users).values({ email: `admin-${randomUUID()}@example.com`, role: "admin" }).returning();
-    const [leader] = await db.insert(users).values({ email: `leader-${randomUUID()}@example.com`, role: "leader" }).returning();
-    const [user] = await db.insert(users).values({ email: `user-${randomUUID()}@example.com`, role: "user" }).returning();
+    const [admin] = await db.insert(users).values({ email: `guard-admin-${randomUUID()}@example.com`, role: "admin" }).returning();
+    const [leader] = await db.insert(users).values({ email: `guard-leader-${randomUUID()}@example.com`, role: "leader" }).returning();
+    const [user] = await db.insert(users).values({ email: `guard-user-${randomUUID()}@example.com`, role: "user" }).returning();
     adminId = admin!.id;
     leaderId = leader!.id;
     userId = user!.id;
@@ -50,17 +50,16 @@ describe("guard", () => {
   // bug this file's beforeEach/afterEach comments document), this deletes
   // anything still matching this file's own distinctive insert pattern
   // rather than leaving it to accumulate silently. Scoped tightly to the
-  // `{role}-{uuid}@example.com` shape used only here, never a broad delete.
+  // `guard-{role}-{uuid}@example.com` shape used only here, never a broad delete.
   afterAll(async () => {
     const cleanupDb = await getDb();
     await cleanupDb
       .delete(users)
       .where(
-        or(
-          like(users.email, "admin-%@example.com"),
-          like(users.email, "leader-%@example.com"),
-          like(users.email, "user-%@example.com")
-        )
+        // `guard-` prefix: other test files create `admin-…`/`user-…` users
+        // with progress and answers attached, and a pattern matching those
+        // made this cleanup delete them mid-run (or fail on their foreign keys).
+        like(users.email, "guard-%@example.com")
       );
   });
 

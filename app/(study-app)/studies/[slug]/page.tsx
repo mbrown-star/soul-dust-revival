@@ -1,7 +1,7 @@
 import { getDb } from "@/lib/db/client";
 import { studies, lessons, products, lessonProgress } from "@/lib/db/schema";
 import { eq, asc, and, inArray } from "drizzle-orm";
-import { hasEntitlement } from "@/lib/entitlements/check";
+import { getStudyAccess } from "@/lib/entitlements/check";
 import { getSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -25,13 +25,13 @@ export async function generateMetadata({
   const db = await getDb();
 
   const study = await db.query.studies.findFirst({ where: eq(studies.slug, slug) });
-  if (!study || !study.published) return { title: "Studies" };
+  if (!study) return { title: "Studies" };
 
   const session = await getSession();
   if (!session) return { title: "Studies" };
 
-  const allowed = await hasEntitlement(session.userId, study.productId);
-  if (!allowed) return { title: "Studies" };
+  const access = await getStudyAccess(session, study.productId);
+  if (!access.allowed || (!study.published && !access.isAdminPreview)) return { title: "Studies" };
   // REAL FIX (qa/findings/FINDINGS_2026-11-07.md #2's broader root cause):
   // study.title isn't always customer-facing -- see lib/study/displayTitle.ts.
   return { title: await getDisplayStudyTitle(db, study) };
@@ -49,14 +49,15 @@ export default async function StudyPage({
   // An unpublished study isn't ready for a customer to see at all -- treat
   // it the same as "doesn't exist" rather than gating it only by
   // entitlement, so a draft can't leak just because someone bought the
-  // linked product early.
-  if (!study || !study.published) redirect("/studies");
-
+  // linked product early. (An admin can still preview it.)
+  if (!study) redirect("/studies");
   const session = await getSession();
+  if (!study.published && !session) redirect("/studies");
   if (!session) redirect(`/login?next=/studies/${slug}`);
 
-  const allowed = await hasEntitlement(session.userId, study.productId);
-  if (!allowed) {
+  const access = await getStudyAccess(session, study.productId);
+  if (!study.published && !access.isAdminPreview) redirect("/studies");
+  if (!access.allowed) {
     // The study's slug and its linked product's slug are two different
     // fields on two different rows and are never guaranteed to match, so
     // reusing the study's slug here would send people to the wrong (or a

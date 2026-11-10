@@ -87,6 +87,11 @@ a test run touched that database. `npm run qa:dev` forces `DATABASE_URL` to
 way `vitest.setup.ts` does for `npm test` — so this suite can run as aggressively as it
 wants (creating orders, completing lessons, editing products) with zero risk to real data.
 
+**If another `next dev` is already running in this folder** (Next refuses a second one),
+use `npm run build` then `node qa/scripts/qa-start-server.mjs` instead -- same isolated
+database on :3100, serving the production build with `next start`. Rebuild and restart it
+after code changes.
+
 **The one thing that isn't isolated:** there's no separate staging Supabase *Auth*
 project yet (SECURITY_REVIEW.md recommends one). The three QA login identities
 (`qa-user@`, `qa-leader@`, `qa-admin@soul-dust-revival.test`) necessarily live in the one

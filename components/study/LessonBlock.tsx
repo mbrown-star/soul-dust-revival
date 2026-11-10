@@ -3,27 +3,14 @@ import Image from "next/image";
 import { VideoBlock } from "./VideoBlock";
 import { AudioBlock } from "./AudioBlock";
 import { QuestionBlock } from "./QuestionBlock";
-
-type ContentBlock = {
-  id: string;
-  type: "text" | "image" | "video" | "audio" | "question" | "callout";
-  body: string | null;
-  imageUrl: string | null;
-  imageAlt: string | null;
-  mediaId: string | null;
-  captionsUrl: string | null;
-  transcript: string | null;
-  questionPrompt: string | null;
-  calloutTitle: string | null;
-  calloutColor: string | null;
-};
+import { DEFAULT_CALLOUT_COLOR, hasMediaSource, isR2Url, type ContentBlockData } from "@/lib/content/blocks";
 
 /**
  * Renders a single content block based on its type.
  * This is the core of the flexible lesson model — a lesson is just an
  * ordered list of these, mixing text/image/video/audio/questions/callouts freely.
  */
-export function LessonBlock({ block, initialAnswer }: { block: ContentBlock; initialAnswer?: string }) {
+export function LessonBlock({ block, initialAnswer }: { block: ContentBlockData; initialAnswer?: string }) {
   switch (block.type) {
     case "text":
       return (
@@ -33,7 +20,7 @@ export function LessonBlock({ block, initialAnswer }: { block: ContentBlock; ini
         />
       );
     case "image":
-      // Alt text is required at write-time in the admin UI (see BlockEditor.tsx),
+      // Alt text is required at write-time in the admin UI (see components/admin/builder/blockEditors.tsx),
       // so this should always be populated — the fallback string exists only
       // to fail loudly/visibly rather than silently if older data lacks it.
       //
@@ -42,7 +29,23 @@ export function LessonBlock({ block, initialAnswer }: { block: ContentBlock; ini
       // dimensions aren't known ahead of time (these are arbitrary admin
       // uploads) — it still gets real optimization (format conversion, lazy
       // loading, responsive srcset) without needing to store image dimensions.
-      return block.imageUrl ? (
+      if (!block.imageUrl) return null;
+      // next/image only optimizes hosts in next.config.js's remotePatterns
+      // (the R2 bucket); an image an admin linked from elsewhere renders as
+      // a plain <img> instead.
+      if (!isR2Url(block.imageUrl, process.env.R2_PUBLIC_BASE_URL)) {
+        return (
+          // eslint-disable-next-line @next/next/no-img-element -- external URL, not optimizable by next/image
+          <img
+            src={block.imageUrl}
+            alt={block.imageAlt || "Image missing alt text"}
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            className="w-full h-auto rounded-lg"
+          />
+        );
+      }
+      return (
         <Image
           src={block.imageUrl}
           alt={block.imageAlt || "Image missing alt text"}
@@ -52,17 +55,20 @@ export function LessonBlock({ block, initialAnswer }: { block: ContentBlock; ini
           style={{ width: "100%", height: "auto" }}
           className="rounded-lg"
         />
-      ) : null;
+      );
     case "video":
+      if (!hasMediaSource(block)) return null;
       return (
         <VideoBlock
           contentBlockId={block.id}
+          mediaUrl={block.mediaUrl}
           captionsUrl={block.captionsUrl}
           transcript={block.transcript}
         />
       );
     case "audio":
-      return <AudioBlock contentBlockId={block.id} transcript={block.transcript} />;
+      if (!hasMediaSource(block)) return null;
+      return <AudioBlock contentBlockId={block.id} mediaUrl={block.mediaUrl} transcript={block.transcript} />;
     case "question":
       return (
         <QuestionBlock contentBlockId={block.id} prompt={block.questionPrompt ?? ""} initialAnswer={initialAnswer} />
@@ -71,7 +77,7 @@ export function LessonBlock({ block, initialAnswer }: { block: ContentBlock; ini
       return (
         <div
           className="rounded-lg p-5"
-          style={{ backgroundColor: block.calloutColor ?? "#fef3c7" }}
+          style={{ backgroundColor: block.calloutColor ?? DEFAULT_CALLOUT_COLOR }}
         >
           {block.calloutTitle && <p className="font-semibold mb-2">{block.calloutTitle}</p>}
           <div

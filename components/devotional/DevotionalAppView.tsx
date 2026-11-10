@@ -61,6 +61,7 @@ export function DevotionalAppView({
     initialAnswer?: string;
     initialWalked: boolean;
     pickUpWithToday?: { href: string } | null;
+    extraContent?: React.ReactNode;
   };
   yearDays: YearDay[];
   journalEntries: JournalEntry[];
@@ -134,6 +135,7 @@ export function DevotionalAppView({
           initialAnswer={today.initialAnswer}
           initialWalked={today.initialWalked}
           pickUpWithToday={today.pickUpWithToday}
+          extraContent={today.extraContent}
         />
       </div>
       <div role="tabpanel" hidden={tab !== "year"}>

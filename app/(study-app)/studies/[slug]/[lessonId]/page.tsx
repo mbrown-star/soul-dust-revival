@@ -1,7 +1,7 @@
 import { getDb } from "@/lib/db/client";
 import { studies, lessons, contentBlocks, products, lessonProgress, responses } from "@/lib/db/schema";
 import { eq, asc, and, inArray } from "drizzle-orm";
-import { hasEntitlement } from "@/lib/entitlements/check";
+import { getStudyAccess } from "@/lib/entitlements/check";
 import { getSession } from "@/lib/auth/session";
 import { LessonBlock } from "@/components/study/LessonBlock";
 import { LessonNavigation } from "@/components/study/LessonNavigation";
@@ -33,11 +33,12 @@ export async function generateMetadata({
   const session = await getSession();
   if (!session) return { title: "Studies" };
 
-  const allowed = await hasEntitlement(session.userId, study.productId);
-  if (!allowed) return { title: "Studies" };
+  const access = await getStudyAccess(session, study.productId);
+  if (!access.allowed) return { title: "Studies" };
 
-  const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
-  return { title: lesson?.title ?? "Studies" };
+  const lesson = await db.query.lessons.findFirst({ where: and(eq(lessons.id, lessonId), eq(lessons.studyId, study.id)) });
+  if (!lesson || (!access.isAdminPreview && (!lesson.published || !study.published))) return { title: "Studies" };
+  return { title: lesson.title };
 }
 
 export default async function LessonPage({
@@ -54,8 +55,8 @@ export default async function LessonPage({
   const session = await getSession();
   if (!session) redirect(`/login?next=/studies/${slug}/${lessonId}`);
 
-  const allowed = await hasEntitlement(session.userId, study.productId);
-  if (!allowed) {
+  const access = await getStudyAccess(session, study.productId);
+  if (!access.allowed) {
     // Look up the linked product's own slug — a study's slug and its linked
     // product's slug are two different fields on two different rows and are
     // never guaranteed to match, so reusing the study's slug here would send
@@ -64,8 +65,14 @@ export default async function LessonPage({
     redirect(product ? `/books/${product.slug}` : "/books");
   }
 
-  const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
+  // Scoped to this study: access was just checked against *this* study's
+  // product, so a lesson id from a different study must not load here.
+  // Drafts (an unpublished lesson or study) are visible only to an admin
+  // previewing them.
+  const lesson = await db.query.lessons.findFirst({ where: and(eq(lessons.id, lessonId), eq(lessons.studyId, study.id)) });
   if (!lesson) redirect(`/studies/${slug}`);
+  if (!access.isAdminPreview && (!lesson.published || !study.published)) redirect(`/studies/${slug}`);
+  const isDraftPreview = !lesson.published || !study.published;
 
   // A study's own title isn't always a clean display name (some were
   // imported with the raw source filename left in place) -- its linked
@@ -154,8 +161,15 @@ export default async function LessonPage({
         : await db
             .select({ id: contentBlocks.id, lessonId: contentBlocks.lessonId, questionPrompt: contentBlocks.questionPrompt })
             .from(contentBlocks)
-            .where(and(inArray(contentBlocks.lessonId, lessonIds), eq(contentBlocks.type, "question")));
-    const questionBlockByLessonId = new Map(questionRows.map((r) => [r.lessonId, r]));
+            .where(and(inArray(contentBlocks.lessonId, lessonIds), eq(contentBlocks.type, "question")))
+            .orderBy(asc(contentBlocks.orderIndex));
+    // A day's "Question to Sit With" is its first question block. Any other
+    // question an admin added is shown as an extra block after the day, so it
+    // must not take over this slot (and the reader's saved answer with it).
+    const questionBlockByLessonId = new Map<string, (typeof questionRows)[number]>();
+    for (const row of questionRows) {
+      if (!questionBlockByLessonId.has(row.lessonId)) questionBlockByLessonId.set(row.lessonId, row);
+    }
 
     const questionBlockIds = questionRows.map((r) => r.id);
     const devotionalAnswerRows =
@@ -224,8 +238,21 @@ export default async function LessonPage({
     };
   }
 
+  // A devotional day's printed parts come from its first text block (and its
+  // "question to sit with" answer block); anything else the admin added is
+  // shown after them, in the builder's order.
+  const dayTextBlock = isDevotional ? blocks.find((b) => b.type === "text") : undefined;
+  const devotionalExtraBlocks = isDevotional
+    ? blocks.filter((b) => b.id !== dayTextBlock?.id && b.id !== devotionalProps?.questionBlockId)
+    : [];
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 sm:py-10 space-y-8 study-content-protected">
+      {isDraftPreview && (
+        <p role="status" className="text-sm rounded-lg bg-gold/20 text-ink px-4 py-2">
+          Admin preview: this {study.published ? "lesson" : "study"} is a draft, so readers can&apos;t see it yet.
+        </p>
+      )}
       <LessonNavigation
         studyHref={studyHref}
         studyTitle={displayStudyTitle}
@@ -246,7 +273,7 @@ export default async function LessonPage({
           journalEntries={devotionalProps.journalEntries}
           today={{
             dayLabel: lesson.title,
-            bodyHtml: blocks.find((b) => b.type === "text")?.body ?? "",
+            bodyHtml: dayTextBlock?.body ?? "",
             previousHref,
             nextHref,
             lessonId: lesson.id,
@@ -254,6 +281,14 @@ export default async function LessonPage({
             initialAnswer: devotionalProps.todayAnswer,
             initialWalked: progressRow?.status === "completed",
             pickUpWithToday: devotionalProps.pickUpWithToday,
+            extraContent:
+              devotionalExtraBlocks.length > 0 ? (
+                <div className="space-y-8">
+                  {devotionalExtraBlocks.map((block) => (
+                    <LessonBlock key={block.id} block={block} initialAnswer={answerByBlockId.get(block.id)} />
+                  ))}
+                </div>
+              ) : null,
           }}
         />
       ) : lesson.studyContent ? (

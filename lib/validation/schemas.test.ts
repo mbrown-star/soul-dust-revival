@@ -7,6 +7,7 @@ import {
   blogPostUpdateSchema,
   bundleDeleteSchema,
   bundleSchema,
+  captionsUploadUrlSchema,
   checkoutSchema,
   connectionDisconnectSchema,
   contentBlockCreateSchema,
@@ -717,5 +718,33 @@ describe("blogPostCreateSchema / blogPostUpdateSchema", () => {
 
   it("rejects an invalid slug on update when provided", () => {
     expect(blogPostUpdateSchema.safeParse({ id: uuid, slug: "Not Valid!" }).success).toBe(false);
+  });
+});
+
+describe("content block media schemas", () => {
+  const id = "11111111-1111-4111-8111-111111111111";
+
+  it("accepts only https URLs for images, linked media, and captions", () => {
+    for (const field of ["imageUrl", "mediaUrl", "captionsUrl"] as const) {
+      expect(contentBlockUpdateSchema.safeParse({ id, [field]: "https://cdn.example.com/a" }).success).toBe(true);
+      expect(contentBlockUpdateSchema.safeParse({ id, [field]: "http://cdn.example.com/a" }).success).toBe(false);
+      expect(contentBlockUpdateSchema.safeParse({ id, [field]: "javascript:alert(1)" }).success).toBe(false);
+      expect(contentBlockUpdateSchema.safeParse({ id, [field]: null }).success).toBe(true);
+    }
+  });
+
+  it("allows WebVTT on the captions upload endpoint, and nothing else", () => {
+    expect(captionsUploadUrlSchema.safeParse({ contentType: "text/vtt" }).success).toBe(true);
+    expect(captionsUploadUrlSchema.safeParse({ contentType: "image/png" }).success).toBe(false);
+  });
+
+  it("still rejects text/vtt on the image-only upload endpoint", () => {
+    expect(uploadUrlSchema.safeParse({ key: "captions/a.vtt", contentType: "text/vtt" }).success).toBe(false);
+  });
+
+  it("accepts an insert position and initial fields when creating a block", () => {
+    const parsed = contentBlockCreateSchema.safeParse({ lessonId: id, type: "text", insertAt: 2, initial: { body: "<p>x</p>" } });
+    expect(parsed.success).toBe(true);
+    expect(contentBlockCreateSchema.safeParse({ lessonId: id, type: "text", insertAt: -1 }).success).toBe(false);
   });
 });

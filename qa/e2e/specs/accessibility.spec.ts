@@ -96,4 +96,24 @@ test.describe("axe: as qa-admin", () => {
       await expectNoSeriousViolations(page);
     });
   }
+
+  test("lesson list and block builder (devotional lesson)", async ({ page }) => {
+    await page.goto("/admin/studies");
+    await page.getByRole("link", { name: /QA Devotional Fixture/i }).click();
+    await expectNoSeriousViolations(page);
+    await page.getByRole("link", { name: /DAY 1/i }).click();
+    await expect(page.getByRole("navigation", { name: "Add a block" })).toBeVisible();
+    await expectNoSeriousViolations(page);
+  });
+
+  // Every tab, since a hidden tab panel is invisible to axe until shown.
+  test("week builder (study lesson), every tab", async ({ page }) => {
+    await page.goto("/admin/studies");
+    await page.getByRole("link", { name: /QA Colossians-Shaped Study/i }).click();
+    await page.getByRole("link", { name: /Week 1: Grace and Truth/i }).click();
+    for (const tab of ["Study", "Passage", "Work the Word", "Live It", "Lift Up"]) {
+      await page.getByRole("tab", { name: new RegExp(`^${tab}`) }).click();
+      await expectNoSeriousViolations(page);
+    }
+  });
 });

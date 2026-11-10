@@ -95,6 +95,18 @@ anything that doesn't match — rather than trusting client-shaped JSON directly
   DOMPurify-sanitize-on-write/render pattern elsewhere doesn't cover (that protects the
   public render, not the editor's own HTML parsing while editing).
 
+### Reader access and admin preview
+All reader access to a study goes through `getStudyAccess()` in `lib/entitlements/check.ts`:
+an entitlement to the study's linked product, **or** the admin role. Admins get in so the
+lesson builder's "Preview as reader" works; they already control all of this content in the
+admin console, so this grants nothing new, and anything they save while previewing (answers,
+progress) is scoped to their own account. Only admins can open an unpublished study or lesson
+in the reader. The reader lesson page also requires the lesson to belong to the study in its
+URL. Before 2026-11-10 it loaded any lesson id under any study the visitor was entitled to,
+so a buyer of one study could read another study's lessons by editing the URL. Used by the
+reader pages, `/api/progress`, `/api/responses`, and `/api/stream/sign-url`. `My Library`'s
+"Start over" (`/api/progress/reset`) stays entitlement-only.
+
 ## Signup vs. login trade-off (account enumeration)
 `/login` and `/signup` are functionally distinct, not just different copy on the same
 form: login sets Supabase's `shouldCreateUser: false`, so submitting an email with no
@@ -176,6 +188,30 @@ and rendered with `dangerouslySetInnerHTML`. To keep this safe:
   touch `lib/sanitize/html.ts` without running that file's tests, since a green `npm test` run
   on its own previously provided false confidence here (nothing in the existing suite asserted
   on sanitize() output at all).
+
+## Linked (external) media in lesson blocks
+Since 2026-11-10 an image, video, or audio block can point at a file hosted elsewhere
+instead of an upload (`content_blocks.image_url` / `media_url`, set from the admin lesson
+builder's "Use a link" option):
+- Only `https://` URLs are accepted (`httpsUrlSchema` in `lib/validation/schemas.ts` --
+  plain `z.string().url()` would also accept `javascript:`, `data:`, and `http:`). The same
+  rule now also covers `imageUrl` and `captionsUrl`.
+- Each block type may only write its own columns (`FIELDS_BY_TYPE` / `fieldsOutsideType()` in
+  `lib/content/blocks.ts`, enforced by `app/api/admin/content-blocks/route.ts`), and a block
+  plays from either an uploaded Stream asset (`media_id`) or a linked URL, never both.
+- **CSP:** `img-src` and `media-src` in `proxy.ts` allow any `https:` origin, so linked files
+  can load. Images and media can't execute script; `script-src`/`connect-src` are unchanged.
+  The reader renders a non-R2 image as a plain `<img referrerpolicy="no-referrer">` rather than
+  widening `next/image`'s `remotePatterns`.
+- **Trade-off, stated in the admin UI:** a linked video/audio URL is a permanent, shareable link
+  anyone with the lesson can copy, unlike an uploaded file's expiring signed Stream URL. Use
+  uploads for anything that should stay behind the purchase. Loading a linked file also sends
+  the reader's IP address to that host (see PRIVACY.md).
+- Caption files now upload through their own `/api/admin/captions-upload-url` (`text/vtt`
+  only, and the **server** picks the R2 key, so a caller can't aim the upload at an existing
+  object). They previously went through the image-only `/api/admin/upload-url`, whose
+  allowlist rejected `text/vtt`, so caption uploads could never succeed. (The older
+  image/PDF upload routes still accept a client-chosen key -- a known, deferred finding; see CLAUDE.md's 2026-11-03 test-suite entry.)
 
 ## File uploads
 - **Product/study/lesson images**: only `image/jpeg`, `image/png`, `image/webp`,

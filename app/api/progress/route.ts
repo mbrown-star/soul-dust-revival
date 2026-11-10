@@ -5,7 +5,7 @@ import { getDb } from "@/lib/db/client";
 import { lessonProgress, lessons, studies } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { progressSchema } from "@/lib/validation/schemas";
-import { hasEntitlement } from "@/lib/entitlements/check";
+import { getStudyAccess } from "@/lib/entitlements/check";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   if (!lesson) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const study = await db.query.studies.findFirst({ where: eq(studies.id, lesson.studyId) });
-  if (!study || !(await hasEntitlement(session.userId, study.productId))) {
+  if (!study || !(await getStudyAccess(session, study.productId)).allowed) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

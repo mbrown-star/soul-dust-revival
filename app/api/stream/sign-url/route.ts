@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/client";
 import { contentBlocks, lessons, studies } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { hasEntitlement } from "@/lib/entitlements/check";
+import { getStudyAccess } from "@/lib/entitlements/check";
 import { generateSignedStreamUrl } from "@/lib/stream/signing";
 import { streamSignUrlSchema } from "@/lib/validation/schemas";
 
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   const study = await db.query.studies.findFirst({ where: eq(studies.id, lesson.studyId) });
   if (!study) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const allowed = await hasEntitlement(session.userId, study.productId);
+  const { allowed } = await getStudyAccess(session, study.productId);
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const url = generateSignedStreamUrl(block.mediaId);

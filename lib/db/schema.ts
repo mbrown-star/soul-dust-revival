@@ -9,6 +9,7 @@ import {
   jsonb,
 } from "drizzle-orm/pg-core";
 import type { StudyWeekContent } from "@/lib/study/studyContent";
+import type { ContentBlockType } from "@/lib/content/blocks";
 
 // ---------- USERS ----------
 export const users = pgTable("users", {
@@ -244,11 +245,12 @@ export const contentBlocks = pgTable("content_blocks", {
   id: uuid("id").primaryKey().defaultRandom(),
   lessonId: uuid("lesson_id").references(() => lessons.id).notNull(),
   orderIndex: integer("order_index").notNull(),
-  type: text("type").notNull().$type<"text" | "image" | "video" | "audio" | "question" | "callout">(),
+  type: text("type").notNull().$type<ContentBlockType>(),
   body: text("body"), // rich text HTML (from Tiptap) for 'text' and 'callout' blocks
   imageUrl: text("image_url"), // R2 public URL for 'image' blocks
   imageAlt: text("image_alt"), // required alt text for 'image' blocks (WCAG 1.1.1)
-  mediaId: text("media_id"), // Cloudflare Stream UID for video/audio
+  mediaId: text("media_id"), // Cloudflare Stream UID for an uploaded video/audio
+  mediaUrl: text("media_url"), // https URL for a video/audio linked by URL instead of uploaded -- never set alongside mediaId
   captionsUrl: text("captions_url"), // WebVTT captions file (R2 URL) for 'video' blocks (WCAG 1.2.2)
   transcript: text("transcript"), // full text transcript for 'video'/'audio' blocks (WCAG 1.2.1)
   questionPrompt: text("question_prompt"), // for 'question' blocks

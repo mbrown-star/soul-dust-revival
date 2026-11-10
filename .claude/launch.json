@@ -8,6 +8,18 @@
       "port": 3000
     },
     {
+      "name": "qa-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "qa:dev"],
+      "port": 3100
+    },
+    {
+      "name": "qa-start",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["qa/scripts/qa-start-server.mjs"],
+      "port": 3100
+    },
+    {
       "name": "interactive-prototype",
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "4100", "--directory", "soul-dust-interactive/dist"],

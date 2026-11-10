@@ -7,7 +7,7 @@ import { useEffect, useId, useRef, useState } from "react";
  * A "+ Add X" button that opens a small dropdown of creation links, used
  * where the admin products/studies list pages now offer "New bundle"
  * alongside their existing plain create link. Same WAI-ARIA menu-button
- * semantics as AddBlockButton.tsx (aria-haspopup/aria-expanded,
+ * semantics as a standard WAI-ARIA menu button (aria-haspopup/aria-expanded,
  * role="menu"/"menuitem", Escape closes and returns focus to the trigger) —
  * these are navigation links, not in-place actions, so each item is a real
  * `<Link>` rather than a button with an onClick.

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CONTENT_BLOCK_TYPES, isHttpsUrl } from "@/lib/content/blocks";
 
 // ISO 3166-1 alpha-2 country code, or the "OTHER" sentinel for a buyer/user
 // whose country isn't in the shorter selector lists (checkout, admin user
@@ -263,14 +264,20 @@ export const lessonUpdateSchema = z.object({
   published: z.boolean(),
 });
 
+// Every lesson in one study, in its new order -- same full-list rule as
+// contentBlockReorderSchema.
 export const lessonReorderSchema = z.object({
-  reorder: z.array(z.object({ id: z.string().uuid(), orderIndex: z.number().int().min(0) })),
+  reorder: z.array(z.object({ id: z.string().uuid(), orderIndex: z.number().int().min(0) })).min(1).max(1_000),
 });
 
 // A document import creates a study's lessons as drafts for review (see
 // app/api/admin/studies/import/route.ts) -- for a long document that splits
 // into dozens or hundreds of lessons (e.g. a 365-day devotional), publishing
 // each one individually isn't a reasonable workflow once review is done.
+export const lessonDeleteSchema = z.object({
+  id: z.string().uuid(),
+});
+
 export const lessonBulkPublishSchema = z.object({
   studyId: z.string().uuid(),
   published: z.boolean(),
@@ -351,20 +358,26 @@ export const lessonStudyContentUpdateSchema = z.object({
 });
 
 // ---------- Admin: content blocks ----------
-export const contentBlockTypeSchema = z.enum(["text", "image", "video", "audio", "question", "callout"]);
+export const contentBlockTypeSchema = z.enum(CONTENT_BLOCK_TYPES);
 
-export const contentBlockCreateSchema = z.object({
-  lessonId: z.string().uuid(),
-  type: contentBlockTypeSchema,
-});
+// Media URLs end up in <img>/<video>/<audio>/<track> src attributes on the
+// reader, so only https is accepted -- z.string().url() alone would also
+// accept javascript:, data:, and plain http: URLs.
+const httpsUrlSchema = z
+  .string()
+  .max(2_000)
+  .refine(isHttpsUrl, "Must be an https:// URL");
 
-export const contentBlockUpdateSchema = z.object({
-  id: z.string().uuid(),
+// The editable columns of a block, all optional. Which of these a given block
+// may actually use depends on its type -- see FIELDS_BY_TYPE in
+// lib/content/blocks.ts, enforced by the content-blocks route.
+const contentBlockFieldsSchema = z.object({
   body: z.string().max(200_000).optional().nullable(), // rich text HTML, generous cap
-  imageUrl: z.string().url().optional().nullable(),
+  imageUrl: httpsUrlSchema.optional().nullable(),
   imageAlt: z.string().max(300).optional().nullable(), // required in the UI whenever imageUrl is set
   mediaId: z.string().max(200).optional().nullable(),
-  captionsUrl: z.string().url().optional().nullable(), // WebVTT captions for video blocks
+  mediaUrl: httpsUrlSchema.optional().nullable(),
+  captionsUrl: httpsUrlSchema.optional().nullable(), // WebVTT captions for video blocks
   transcript: z.string().max(50_000).optional().nullable(), // full transcript for video/audio blocks
   questionPrompt: z.string().max(2_000).optional().nullable(),
   calloutTitle: z.string().max(200).optional().nullable(),
@@ -375,8 +388,24 @@ export const contentBlockUpdateSchema = z.object({
     .nullable(),
 });
 
+// `insertAt` places the new block at that position instead of appending it.
+// `initial` pre-fills its fields, which is how the builder duplicates a block
+// and restores one after an undone delete, in one request.
+export const contentBlockCreateSchema = z.object({
+  lessonId: z.string().uuid(),
+  type: contentBlockTypeSchema,
+  insertAt: z.number().int().min(0).max(10_000).optional(),
+  initial: contentBlockFieldsSchema.optional(),
+});
+
+export const contentBlockUpdateSchema = contentBlockFieldsSchema.extend({
+  id: z.string().uuid(),
+});
+
+// Every block in one lesson, in its new order. The route rejects a list that
+// mixes lessons or leaves any of the lesson's blocks out.
 export const contentBlockReorderSchema = z.object({
-  reorder: z.array(z.object({ id: z.string().uuid(), orderIndex: z.number().int().min(0) })),
+  reorder: z.array(z.object({ id: z.string().uuid(), orderIndex: z.number().int().min(0) })).min(1).max(1_000),
 });
 
 export const contentBlockDeleteSchema = z.object({
@@ -415,6 +444,15 @@ const ALLOWED_RESOURCE_FILE_TYPES = ["application/pdf"];
 export const resourceFileUploadUrlSchema = z.object({
   key: r2KeySchema,
   contentType: z.enum(ALLOWED_RESOURCE_FILE_TYPES as [string, ...string[]]),
+});
+
+// WebVTT captions for video blocks -- its own endpoint for the same reason
+// as resource files above. Caption uploads previously went through
+// uploadUrlSchema, whose image-only allowlist rejected text/vtt, so they
+// could never succeed. The server picks the R2 key, so a caller can't aim
+// the upload at an existing object.
+export const captionsUploadUrlSchema = z.object({
+  contentType: z.literal("text/vtt"),
 });
 
 // ---------- Admin: user roles ----------

@@ -26,7 +26,7 @@ test.describe("admin studies list and editor, as qa-admin", () => {
     await page.goto("/admin/studies");
     await page.getByRole("link", { name: /QA Devotional Fixture/i }).click();
     await expect(page).toHaveURL(/\/admin\/studies\/[0-9a-f-]+$/);
-    await expect(page.getByText("Kind")).toBeVisible();
+    await expect(page.getByText("Kind", { exact: true })).toBeVisible();
     await expect(page.getByRole("radio", { name: /^Devotional/i })).toBeChecked();
     await expect(page.getByRole("radio", { name: /^Study/i })).not.toBeChecked();
   });
@@ -37,81 +37,201 @@ test.describe("admin studies list and editor, as qa-admin", () => {
     await expect(page.getByRole("radio", { name: /^Study/i })).toBeChecked();
   });
 
-  // FIXED (qa/findings/FINDINGS_2026-11-07.md #8): a Study-kind lesson's
-  // structured studyContent now has a real editor
-  // (components/admin/StudyContentEditor.tsx), and the plain content_blocks
-  // editor is hidden for such a lesson (its own content_blocks are just the
-  // per-station question-save plumbing now, not meant for direct editing).
-  test("lesson editor for a studyContent-backed lesson shows the structured editor, not the plain content-block one", async ({
-    page,
-  }) => {
+  async function openLesson(page: import("@playwright/test").Page, study: RegExp, lesson: RegExp) {
     await page.goto("/admin/studies");
-    await page.getByRole("link", { name: /QA Colossians-Shaped Study/i }).click();
-    await page.getByRole("link", { name: /Week 1: Grace and Truth/i }).click();
+    await page.getByRole("link", { name: study }).click();
+    await page.getByRole("link", { name: lesson }).click();
     await expect(page).toHaveURL(/\/lessons\/[0-9a-f-]+$/);
+  }
+
+  // A Study lesson with structured content opens in the week builder: one
+  // tab per reader tab, and no free-form block palette (its question blocks
+  // are the stations' answer plumbing, owned by the week).
+  test("a studyContent-backed lesson opens in the week builder, laid out by reader tab", async ({ page }) => {
+    await openLesson(page, /QA Colossians-Shaped Study/i, /Week 1: Grace and Truth/i);
+    await expect(page.getByRole("tab", { name: /^Study/ })).toHaveAttribute("aria-selected", "true");
     await expect(page.getByLabel("Subtitle")).toHaveValue("A QA fixture week");
-    await expect(page.getByLabel("Passage reference (e.g. Colossians 1:1–14)")).toHaveValue("Colossians 1:1–14");
-    await expect(page.getByText("Station 1 — 1:2 (χάρις)")).toBeVisible();
-    // The plain content-block editor (and its "Add block" affordance) is
-    // hidden entirely for this lesson now.
-    await expect(page.getByRole("button", { name: /add block/i })).toHaveCount(0);
+
+    await page.getByRole("tab", { name: /^Passage/ }).click();
+    await expect(page.getByLabel("Passage reference")).toHaveValue("Colossians 1:1–14");
+
+    await page.getByRole("tab", { name: /^Work the Word/ }).click();
+    await expect(page.getByRole("button", { name: /1\. 1:2 · χάρις/ })).toBeVisible();
+
+    await expect(page.getByRole("navigation", { name: "Add a block" })).toHaveCount(0);
   });
 
-  test("editing and saving the structured content persists across a reload", async ({ page }) => {
-    await page.goto("/admin/studies");
-    await page.getByRole("link", { name: /QA Colossians-Shaped Study/i }).click();
-    await page.getByRole("link", { name: /Week 1: Grace and Truth/i }).click();
+  test("week edits autosave and persist across a reload", async ({ page }) => {
+    await openLesson(page, /QA Colossians-Shaped Study/i, /Week 1: Grace and Truth/i);
 
-    const subtitleField = page.getByLabel("Subtitle");
-    await subtitleField.fill("Edited via the real admin editor");
-    await page.getByRole("button", { name: "Save study content" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
+    await page.getByLabel("Subtitle").fill("Edited via the week builder");
+    await expect(page.getByRole("status").filter({ hasText: "All changes saved" })).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel("Subtitle")).toHaveValue("Edited via the week builder");
+
+    await page.getByLabel("Subtitle").fill("A QA fixture week");
+    await expect(page.getByRole("status").filter({ hasText: "All changes saved" })).toBeVisible();
+  });
+
+  test("stations reorder with Move buttons, and the new order persists", async ({ page }) => {
+    await openLesson(page, /QA Colossians-Shaped Study/i, /Week 1: Grace and Truth/i);
+    await page.getByRole("tab", { name: /^Work the Word/ }).click();
+
+    await page.getByRole("button", { name: /Move station 1 \(1:2\) down/ }).click();
+    await expect(page.getByRole("button", { name: /1\. 1:4/ })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: "All changes saved" })).toBeVisible();
 
     await page.reload();
-    await expect(page.getByLabel("Subtitle")).toHaveValue("Edited via the real admin editor");
+    await page.getByRole("tab", { name: /^Work the Word/ }).click();
+    await expect(page.getByRole("button", { name: /1\. 1:4/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /2\. 1:2 · χάρις/ })).toBeVisible();
 
-    // Restore the fixture's original value so other specs/reruns aren't
-    // affected by this one's edit.
-    await page.getByLabel("Subtitle").fill("A QA fixture week");
-    await page.getByRole("button", { name: "Save study content" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
+    // Restore the fixture order.
+    await page.getByRole("button", { name: /Move station 2 \(1:2\) up/ }).click();
+    await expect(page.getByRole("status").filter({ hasText: "All changes saved" })).toBeVisible();
   });
 
-  test("the plain fallback lesson (no studyContent) offers to create structured content, and still has the content-block editor", async ({
-    page,
-  }) => {
+  test("the plain fallback lesson (no studyContent) offers to start a week, and keeps its block canvas", async ({ page }) => {
+    await openLesson(page, /QA Colossians-Shaped Study/i, /^Introduction$/i);
+    await expect(page.getByRole("button", { name: "Start building this week" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Add a block" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Text block" })).toContainText(/QA fixture lesson with no structured studyContent/i);
+  });
+
+  test("a devotional-kind lesson never offers a structured week", async ({ page }) => {
+    await openLesson(page, /QA Devotional Fixture/i, /DAY 1/i);
+    await expect(page.getByRole("button", { name: "Start building this week" })).toHaveCount(0);
+    await expect(page.getByRole("navigation", { name: "Add a block" })).toBeVisible();
+  });
+
+  // Starting a week saves nothing until its required fields are filled --
+  // this fixture lesson is also relied on by study-reader.spec.ts's
+  // "falls back to the plain reading view" test, so it must stay unsaved.
+  test("starting a week shows an empty builder that reports what's still required", async ({ page }) => {
+    await openLesson(page, /QA Colossians-Shaped Study/i, /^Introduction$/i);
+    await page.getByRole("button", { name: "Start building this week" }).click();
+
+    await expect(page.getByLabel("Subtitle")).toHaveValue("");
+    await page.getByLabel("Subtitle").fill("A draft subtitle, not yet saved");
+    await expect(page.getByRole("status").filter({ hasText: /Not saved yet -- 3 fields need filling in/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: "+ Add section" })).toBeVisible();
+    await page.getByRole("tab", { name: /^Work the Word/ }).click();
+    await expect(page.getByRole("button", { name: "+ Add station" })).toBeVisible();
+  });
+
+  test("a block added from the palette can use a linked image, survives a reload, and can be removed", async ({ page }) => {
+    await openLesson(page, /QA Devotional Fixture/i, /DAY 1/i);
+
+    await page.getByRole("button", { name: "Add Image block" }).click();
+    await page.getByText("Use a link").click();
+    const link = page.getByLabel("image link");
+    await link.fill("https://example.com/qa-builder.png");
+    await link.press("Enter");
+    await page.getByLabel(/Alt text/).fill("A QA builder test image");
+    await expect(page.getByRole("status").filter({ hasText: "Saved" }).last()).toBeVisible();
+
+    await page.reload();
+    const card = page.getByRole("button", { name: /Image A QA builder test image/ });
+    await expect(card).toBeVisible();
+
+    await page.getByRole("button", { name: "Remove this image" }).click();
+    await expect(page.getByText("Removed the image block.")).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("button", { name: /Image A QA builder test image/ })).toHaveCount(0);
+  });
+
+  test("a linked image must be https", async ({ page }) => {
+    await openLesson(page, /QA Devotional Fixture/i, /DAY 1/i);
+    await page.getByRole("button", { name: "Add Image block" }).click();
+    await page.getByText("Use a link").click();
+    const link = page.getByLabel("image link");
+    await link.fill("http://example.com/insecure.png");
+    await link.press("Enter");
+    await expect(page.getByText("Enter a full https:// link.")).toBeVisible();
+
+    await page.getByRole("button", { name: "Remove this image" }).click();
+    await expect(page.getByText("Removed the image block.")).toBeVisible();
+  });
+
+  test("dragging a block type from the palette inserts it where it's dropped", async ({ page }) => {
+    await openLesson(page, /QA Devotional Fixture/i, /DAY 1/i);
+    await page.getByRole("button", { name: "Collapse all" }).click();
+    const cardToggles = page.locator('[aria-controls][aria-expanded]').filter({ hasText: /^(Text|Question|Callout)/ });
+    await expect(cardToggles.first()).toContainText("Text");
+
+    const source = (await page.getByRole("button", { name: /Add Callout block/ }).boundingBox())!;
+    const target = (await cardToggles.first().boundingBox())!;
+    await page.mouse.move(source.x + 30, source.y + 15);
+    await page.mouse.down();
+    await page.mouse.move(source.x + 50, source.y + 30, { steps: 5 });
+    await page.mouse.move(target.x + 80, target.y + 10, { steps: 20 });
+    await page.mouse.up();
+
+    await expect(cardToggles.first()).toContainText("Callout");
+    await page.reload();
+    await page.getByRole("button", { name: "Collapse all" }).click();
+    await expect(cardToggles.first()).toContainText("Callout");
+
+    await page.getByRole("button", { name: "Remove this callout" }).click();
+    await expect(page.getByText("Removed the callout block.")).toBeVisible();
+  });
+
+  test("blocks reorder by keyboard drag (Space, arrow, Space) and the order persists", async ({ page }) => {
+    await openLesson(page, /QA Devotional Fixture/i, /DAY 1/i);
+    await page.getByRole("button", { name: "Collapse all" }).click();
+    const cardToggles = page.locator('[aria-controls][aria-expanded]').filter({ hasText: /^(Text|Question)/ });
+    await expect(cardToggles.first()).toContainText("Text");
+
+    await page.getByRole("button", { name: /Drag to reorder Text block, position 1/ }).focus();
+    await page.keyboard.press("Space");
+    // dnd-kit's live region says what's being dragged, in words (not ids).
+    await expect(page.getByText(/Text block 1 is over Text block 1\./)).toBeAttached();
+    await page.keyboard.press("ArrowDown");
+    await expect(page.getByText(/Text block 1 is over Question block 2\./)).toBeAttached();
+    await page.keyboard.press("Space");
+    await expect(cardToggles.first()).toContainText("Question");
+    await page.waitForResponse((r) => r.url().includes("/api/admin/content-blocks") && r.request().method() === "PATCH");
+
+    await page.reload();
+    await page.getByRole("button", { name: "Collapse all" }).click();
+    await expect(cardToggles.first()).toContainText("Question");
+
+    // Restore the fixture order.
+    await page.getByRole("button", { name: "Move Question block down" }).click();
+    await expect(cardToggles.first()).toContainText("Text");
+  });
+
+  test("a draft lesson can be added and then deleted; published lessons have no Delete", async ({ page }) => {
     await page.goto("/admin/studies");
     await page.getByRole("link", { name: /QA Colossians-Shaped Study/i }).click();
-    await page.getByRole("link", { name: /^Introduction$/i }).click();
-    await expect(page.locator("body")).toContainText(/no structured Study content yet/i);
-    await expect(page.getByRole("button", { name: "Create structured Study content" })).toBeVisible();
-    // The content-block editor for this lesson's existing plain text block
-    // is still present underneath, unaffected.
-    await expect(page.getByText(/QA fixture lesson with no structured studyContent/i)).toBeVisible();
+    await expect(page).toHaveURL(/\/admin\/studies\/[0-9a-f-]+$/);
+    const studyUrl = page.url();
+    await expect(page.getByRole("button", { name: /Delete draft lesson Week 1: Grace and Truth/ })).toHaveCount(0);
+
+    await page.getByLabel("New lesson title").fill("QA Draft To Delete");
+    await page.getByRole("button", { name: "+ Add lesson" }).click();
+    await expect(page).toHaveURL(/\/lessons\/[0-9a-f-]+$/);
+
+    await page.goto(studyUrl);
+    page.once("dialog", (dialog) => void dialog.accept());
+    await page.getByRole("button", { name: "Delete draft lesson QA Draft To Delete" }).click();
+    await expect(page.getByRole("link", { name: "QA Draft To Delete" })).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByRole("link", { name: "QA Draft To Delete" })).toHaveCount(0);
   });
 
-  test("a devotional-kind lesson never shows the structured-content gate", async ({ page }) => {
-    await page.goto("/admin/studies");
-    await page.getByRole("link", { name: /QA Devotional Fixture/i }).click();
-    await page.getByRole("link", { name: /DAY 1/i }).click();
-    await expect(page.getByRole("button", { name: "Create structured Study content" })).toHaveCount(0);
-  });
-
-  // Deliberately does NOT click "Save study content" -- this fixture lesson
-  // (no studyContent) is also relied on by study-reader.spec.ts's own
-  // "falls back to the plain reading view" test, which would break if this
-  // one actually persisted new content to it.
-  test("clicking 'Create structured Study content' reveals a fillable, empty editor", async ({ page }) => {
+  test("lessons reorder on the study page, and the order persists", async ({ page }) => {
     await page.goto("/admin/studies");
     await page.getByRole("link", { name: /QA Colossians-Shaped Study/i }).click();
-    await page.getByRole("link", { name: /^Introduction$/i }).click();
-    await page.getByRole("button", { name: "Create structured Study content" }).click();
+    const items = page.getByRole("listitem");
+    await expect(items.first()).toContainText("Week 1: Grace and Truth");
 
-    const subtitleField = page.getByLabel("Subtitle");
-    await expect(subtitleField).toHaveValue("");
-    await subtitleField.fill("A draft subtitle, not yet saved");
-    await expect(page.getByRole("button", { name: "Save study content" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Add section" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Add station" })).toBeVisible();
+    await page.getByRole("button", { name: "Move Week 1: Grace and Truth down" }).click();
+    await expect(items.first()).toContainText("Introduction");
+    await page.reload();
+    await expect(page.getByRole("listitem").first()).toContainText("Introduction");
+
+    await page.getByRole("button", { name: "Move Week 1: Grace and Truth up" }).click();
+    await expect(page.getByRole("listitem").first()).toContainText("Week 1: Grace and Truth");
   });
 });

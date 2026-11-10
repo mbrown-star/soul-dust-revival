@@ -33,6 +33,12 @@ address, for every order — full street address is only ever collected by Strip
 checkout page, and only for physical orders that need it, never duplicated into this
 app's own database beyond what's already stored in `orders.shipping*`.
 
+**Third-party media hosts:** a lesson block can link an image, video, or audio file hosted
+outside this app (admin-entered, https only -- see SECURITY.md "Linked (external) media").
+When a reader opens that lesson, their browser fetches the file directly from that host, which
+sees the reader's IP address and user agent (no referrer is sent for images). Nothing else
+about the reader is shared. Prefer uploads for anything where that matters.
+
 ## Why country is collected on every order (including guest, including digital)
 Data-protection obligations differ meaningfully by where the *buyer* is, not where the
 business is incorporated — GDPR (EU/EEA/UK), CCPA/CPRA (California), PIPEDA (Canada),

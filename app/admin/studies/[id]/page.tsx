@@ -3,8 +3,7 @@ import { studies, products, lessons } from "@/lib/db/schema";
 import { eq, asc, or } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { StudyForm } from "@/components/admin/StudyForm";
-import Link from "next/link";
-import { NewLessonButton } from "@/components/admin/NewLessonButton";
+import { LessonList } from "@/components/admin/builder/LessonList";
 import { PublishAllLessonsButton } from "@/components/admin/PublishAllLessonsButton";
 import { ReimportStudyForm } from "@/components/admin/ReimportStudyForm";
 
@@ -82,29 +81,22 @@ export default async function StudyDetailPage({ params }: { params: Promise<{ id
       <div>
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <h2 className="text-lg font-semibold">Lessons</h2>
-          <div className="flex items-center gap-2">
-            <PublishAllLessonsButton
-              studyId={study.id}
-              lessonCount={studyLessons.length}
-              unpublishedCount={studyLessons.filter((l) => !l.published).length}
-            />
-            <NewLessonButton studyId={study.id} />
-          </div>
+          <PublishAllLessonsButton
+            studyId={study.id}
+            lessonCount={studyLessons.length}
+            unpublishedCount={studyLessons.filter((l) => !l.published).length}
+          />
         </div>
 
-        <div className="divide-y border rounded-lg">
-          {studyLessons.map((lesson) => (
-            <Link
-              key={lesson.id}
-              href={`/admin/studies/${study.id}/lessons/${lesson.id}`}
-              className="flex flex-wrap justify-between items-center gap-2 p-4 hover:bg-moss/5"
-            >
-              <span>{lesson.title}</span>
-              <span className="text-sm text-moss">{!lesson.published && "draft"}</span>
-            </Link>
-          ))}
-          {studyLessons.length === 0 && <p className="p-4 text-moss">No lessons yet.</p>}
-        </div>
+        <LessonList
+          studyId={study.id}
+          initialLessons={studyLessons.map((l) => ({
+            id: l.id,
+            title: l.title,
+            published: l.published,
+            isWeek: study.kind === "study" && !!l.studyContent,
+          }))}
+        />
       </div>
     </div>
   );
