@@ -536,7 +536,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
               <img
                 src={values.backImageUrl}
                 alt={values.backImageAlt || "Back cover preview"}
-                className="w-24 h-24 object-cover rounded"
+                className="h-32 w-auto rounded"
               />
             )}
             {values.imageUrl && (
@@ -544,7 +544,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
               <img
                 src={values.imageUrl}
                 alt={values.imageAlt || "Front cover preview"}
-                className="w-24 h-24 object-cover rounded"
+                className="h-32 w-auto rounded"
               />
             )}
           </div>

@@ -1,41 +1,31 @@
 import Image from "next/image";
-
-// A fixed box every tile shares, so a row of differently-shaped covers (real
-// covers vary from ~0.665 to ~0.767 width/height, confirmed against every
-// real product) still lines up into a uniform grid. `object-cover` fills
-// this box edge-to-edge with no visible background -- the explicit choice
-// over `object-contain` (found live 2026-11-09, even later: letterboxing
-// instead kept every cover fully uncropped, but exposed this box's own
-// background color as visible padding around whichever covers didn't
-// exactly match the ratio, which read as "images sitting on a background"
-// and was rejected in favor of this tradeoff: a uniform, edge-to-edge grid
-// with no background, accepting that a cover whose own shape doesn't match
-// this box gets a small amount cropped off its outer edges). Each cover's
-// own border is already centered with equal margins on every side (see
-// lib/images/bookCover.ts), so a crop here only ever trims a bit of that
-// margin -- it was specifically fixed to never again cut into real content
-// or the spine itself, so this crop can't reintroduce that older bug.
-const TILE_ASPECT_RATIO = "3 / 4";
+import { coverAspectRatio } from "@/lib/images/coverAspectRatio";
 
 /**
- * Renders a product's cover inside a uniform-sized tile. Used by both the
- * homepage's Featured content grid and the /books listing grid, which
- * previously had two independent, identically broken copies of this same
- * cropped-box markup.
+ * Renders a product's cover in a tile shaped to that cover's own stored
+ * dimensions, so the whole double-line border box and its margin always
+ * show -- a 6x9 cover (~0.667) and an 8.5x11 cover (~0.765) each get a tile
+ * of their own shape rather than one shared box that would crop one of them
+ * (an explicit decision, 2026-11-10: tiles in a row may differ in height).
+ * Used by both the homepage's Featured content grid and the /books grid.
  */
 export function CoverThumbnail({
   imageUrl,
   imageAlt,
+  imageWidth,
+  imageHeight,
   sizes,
 }: {
   imageUrl: string | null;
   imageAlt: string | null;
+  imageWidth: number | null;
+  imageHeight: number | null;
   sizes: string;
 }) {
   return (
     <div
       className="bg-dusk rounded-xl overflow-hidden shadow-lg relative"
-      style={{ aspectRatio: TILE_ASPECT_RATIO }}
+      style={{ aspectRatio: coverAspectRatio(imageWidth, imageHeight) }}
     >
       {imageUrl ? (
         <Image

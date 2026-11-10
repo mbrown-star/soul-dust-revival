@@ -35,9 +35,10 @@ export default async function AdminStudiesPage() {
               <Image
                 src={s.coverImageUrl}
                 alt=""
-                width={48}
-                height={48}
-                className="w-12 h-12 object-cover rounded"
+                width={0}
+                height={0}
+                sizes="48px"
+                className="h-12 w-auto rounded"
               />
             ) : (
               <div className="w-12 h-12 bg-moss/10 rounded" />

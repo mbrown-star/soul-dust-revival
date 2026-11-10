@@ -88,6 +88,47 @@ const BORDER_SCAN_LINE_COUNT = 30;
 // fraction of that axis's own length clear of both its ends to avoid them.
 const BORDER_SCAN_MARGIN_FRACTION = 0.08;
 
+// The KDP trim sizes this project's covers are built on, with each one's
+// exact gap from the trim line to the border's OUTER gold line, per the
+// design-system cover build (confirmed 2026-11-10). The box isn't centered
+// left-to-right in the source -- the spine-side gap is wider by exactly the
+// bleed, a quirk of that build script -- which doesn't matter here, since
+// the crop is drawn around the box itself, not around the trim panel.
+type TrimSpec = {
+  name: "6x9" | "8.5x11";
+  trimWidthIn: number;
+  trimHeightIn: number;
+  foreEdgeGapIn: number;
+  spineGapIn: number;
+  topGapIn: number;
+  bottomGapIn: number;
+};
+
+export const KNOWN_TRIMS: readonly TrimSpec[] = [
+  { name: "6x9", trimWidthIn: 6, trimHeightIn: 9, foreEdgeGapIn: 0.3, spineGapIn: 0.43, topGapIn: 0.475, bottomGapIn: 0.475 },
+  { name: "8.5x11", trimWidthIn: 8.5, trimHeightIn: 11, foreEdgeGapIn: 0.475, spineGapIn: 0.6, topGapIn: 0.605, bottomGapIn: 0.605 },
+];
+
+// KDP's full-wrap cover template adds this bleed on every outer edge (not
+// the spine), so a cover page is (trim height + 2 x bleed) tall.
+const KDP_BLEED_IN = 0.125;
+// The fixed margin kept outside the border's outer line on all four sides,
+// identical on every cover. Smaller than the narrowest real gap (0.30in,
+// 6x9 fore-edge), so it can never reach the spine or past the trim.
+export const DISPLAY_MARGIN_IN = 0.15;
+const PAGE_HEIGHT_MATCH_TOLERANCE_IN = 0.02;
+// The embedded image must span the whole page for page inches to map onto
+// image pixels -- checked by requiring the same pixels-per-inch on both axes.
+const SCALE_MATCH_TOLERANCE = 0.005;
+// How far a detected border line may sit from where the trim geometry says
+// it should be and still be trusted over the geometry.
+const EDGE_SNAP_TOLERANCE_IN = 0.08;
+// Columns/rows this far inside the box are sampled when looking for its
+// top/bottom lines, clear of the box's own vertical double lines.
+const HORIZONTAL_SCAN_INSET_IN = 0.25;
+
+export type CoverSplitMethod = "trim-geometry" | "border-detection" | "midpoint-fallback";
+
 type BorderCluster = { start: number; end: number };
 
 /**
@@ -280,24 +321,156 @@ function equalizeHalfBorder(
   };
 }
 
+/** The known trim whose page height (trim + bleed) matches this page, or null. */
+function matchKnownTrim(pageWidthIn: number, pageHeightIn: number): TrimSpec | null {
+  return (
+    KNOWN_TRIMS.find(
+      (t) =>
+        Math.abs(pageHeightIn - (t.trimHeightIn + 2 * KDP_BLEED_IN)) <= PAGE_HEIGHT_MATCH_TOLERANCE_IN &&
+        pageWidthIn >= 2 * t.trimWidthIn + 2 * KDP_BLEED_IN
+    ) ?? null
+  );
+}
+
+/** The cluster edge nearest `expected` within `tolerance`, else `expected` itself. */
+function snapEdge(expected: number, clusters: BorderCluster[], side: "start" | "end", tolerance: number): number {
+  let best = expected;
+  let bestDistance = Infinity;
+  for (const c of clusters) {
+    const distance = Math.abs(c[side] - expected);
+    if (distance <= tolerance && distance < bestDistance) {
+      best = c[side];
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+type SplitBounds = { back: CropBounds; front: CropBounds };
+
+/**
+ * The primary path, for a cover built on one of KNOWN_TRIMS: the page size
+ * identifies the trim, the image's pixels-per-inch maps the known border
+ * positions onto exact pixels, each edge is snapped onto the real line found
+ * in the art when one sits close enough (guarding against rounding in the
+ * spec figures), and the crop is the border's outer line plus exactly
+ * DISPLAY_MARGIN_IN on every side. Every cover of a given trim therefore
+ * comes out the same shape with the same margin. Returns null when the page
+ * isn't a known trim or the image doesn't span the page, so the caller falls
+ * back to pure border detection.
+ */
+function trimGeometryBounds(
+  rawPixels: Uint8Array,
+  width: number,
+  height: number,
+  pageWidthIn: number,
+  pageHeightIn: number,
+  verticalClusters: BorderCluster[]
+): (SplitBounds & { trim: TrimSpec["name"] }) | null {
+  const trim = matchKnownTrim(pageWidthIn, pageHeightIn);
+  if (!trim) return null;
+
+  const ppiX = width / pageWidthIn;
+  const ppiY = height / pageHeightIn;
+  if (Math.abs(ppiX - ppiY) / ppiY > SCALE_MATCH_TOLERANCE) return null;
+
+  const toX = (inches: number) => Math.round(inches * ppiX);
+  const toY = (inches: number) => Math.round(inches * ppiY);
+  const snapX = EDGE_SNAP_TOLERANCE_IN * ppiX;
+  const snapY = EDGE_SNAP_TOLERANCE_IN * ppiY;
+  const marginX = toX(DISPLAY_MARGIN_IN);
+  const marginY = toY(DISPLAY_MARGIN_IN);
+
+  const expectedTop = toY(KDP_BLEED_IN + trim.topGapIn);
+  const expectedBottom = toY(KDP_BLEED_IN + trim.trimHeightIn - trim.bottomGapIn) - 1;
+
+  const panel = (expectedLeft: number, expectedRight: number): CropBounds => {
+    const left = snapEdge(expectedLeft, verticalClusters, "start", snapX);
+    const right = snapEdge(expectedRight, verticalClusters, "end", snapX);
+    const inset = toX(HORIZONTAL_SCAN_INSET_IN);
+    const horizontal = findHorizontalBorderClusters(rawPixels, width, height, left + inset, right - inset);
+    const top = snapEdge(expectedTop, horizontal, "start", snapY);
+    const bottom = snapEdge(expectedBottom, horizontal, "end", snapY);
+    return {
+      x0: Math.max(0, left - marginX),
+      y0: Math.max(0, top - marginY),
+      x1: Math.min(width, right + marginX + 1),
+      y1: Math.min(height, bottom + marginY + 1),
+    };
+  };
+
+  // Back cover: fore-edge on its left, spine on its right. Front cover: the
+  // mirror image, measured in from the page's right edge so the (unknown,
+  // page-count-dependent) spine width never enters the calculation.
+  const back = panel(
+    toX(KDP_BLEED_IN + trim.foreEdgeGapIn),
+    toX(KDP_BLEED_IN + trim.trimWidthIn - trim.spineGapIn) - 1
+  );
+  const front = panel(
+    toX(pageWidthIn - KDP_BLEED_IN - trim.trimWidthIn + trim.spineGapIn),
+    toX(pageWidthIn - KDP_BLEED_IN - trim.foreEdgeGapIn) - 1
+  );
+  return { back, front, trim: trim.name };
+}
+
+/**
+ * The fallback path, for a cover on an unrecognized page size: finds each
+ * half's double-line border purely from the art and equalizes its margin
+ * (equalizeHalfBorder), or falls back further to a plain spine-margin split
+ * when a half's border can't be found at all.
+ */
+function detectedBorderBounds(
+  rawPixels: Uint8Array,
+  width: number,
+  height: number,
+  verticalClusters: BorderCluster[]
+): SplitBounds & { method: CoverSplitMethod } {
+  const { back: backBorder, front: frontBorder } = findHalfBorders(verticalClusters, width);
+
+  const midpoint = Math.floor(width / 2);
+  const fallbackMargin = Math.round(width * SPINE_MARGIN_FRACTION);
+
+  // The spine-facing side's margin budget: the small, fixed cushion
+  // (INNER_BORDER_CUSHION_FRACTION) is the PREFERRED value here, not half
+  // the real spine gap -- there's no way to know where the spine's own
+  // content (e.g. a rotated title) actually sits within that gap, so using
+  // up to half of it as a target (rather than just a safety ceiling) risks
+  // bleeding it into the crop (found live against "Revive Me", 2026-11-09).
+  const innerCushion = Math.round(width * INNER_BORDER_CUSHION_FRACTION);
+  const spineGap = backBorder && frontBorder ? frontBorder.left.start - backBorder.right.end : null;
+  const backInnerBudget = spineGap != null ? Math.min(innerCushion, Math.floor(spineGap / 2)) : innerCushion;
+  const frontInnerBudget = spineGap != null ? Math.min(innerCushion, Math.ceil(spineGap / 2)) : innerCushion;
+
+  const backHorizontal = backBorder
+    ? toTopBottom(findHorizontalBorderClusters(rawPixels, width, height, backBorder.left.end + 1, backBorder.right.start))
+    : null;
+  const frontHorizontal = frontBorder
+    ? toTopBottom(findHorizontalBorderClusters(rawPixels, width, height, frontBorder.left.end + 1, frontBorder.right.start))
+    : null;
+
+  return {
+    back: backBorder
+      ? equalizeHalfBorder(backBorder, backHorizontal, width, height, false, backInnerBudget)
+      : { x0: 0, y0: 0, x1: Math.max(1, midpoint - fallbackMargin), y1: height },
+    front: frontBorder
+      ? equalizeHalfBorder(frontBorder, frontHorizontal, width, height, true, frontInnerBudget)
+      : { x0: Math.min(width - 1, midpoint + fallbackMargin), y0: 0, x1: width, y1: height },
+    method: backBorder && frontBorder ? "border-detection" : "midpoint-fallback",
+  };
+}
+
 /**
  * Splits a full-wrap book cover PDF (back cover + spine + front cover, all
  * on one page, as KDP's print-cover template produces) into two JPEG
- * images: the back cover and the front cover. Each half genuinely has its
- * own complete double-line border in the source art (confirmed directly
- * against several real covers, 2026-11-09) -- so each crop is drawn right at
- * that half's own real border (found via findVerticalBorderClusters/
- * findHalfBorders, and findHorizontalBorderClusters for its top/bottom
- * edges), with an EQUAL margin outside the border on all four sides
- * (equalizeHalfBorder) so the border rectangle always reads as genuinely
- * centered in the final image, per the user's explicit requirement
- * (2026-11-09, latest) -- not just a margin wide enough to avoid bleeding
- * into the spine (the 2026-11-09, later fix this supersedes). Falls back to
- * a plain midpoint split (SPINE_MARGIN_FRACTION) only when a half's
- * vertical border can't be reliably found at all, or to the prior fix's
- * fixed spine-side cushion when only its horizontal (top/bottom) border
- * can't be found. Defensively clamped so the two crops can never overlap
- * even on an unusually narrow spine.
+ * images: the back cover and the front cover, each showing its double-line
+ * border box with an equal margin all the way around.
+ *
+ * A cover on one of KNOWN_TRIMS (identified from the page size) is cropped
+ * from that trim's exact border geometry (trimGeometryBounds) -- same shape
+ * and same physical margin for every cover of that trim. Anything else falls
+ * back to detecting the border from the art alone (detectedBorderBounds).
+ * Either way the two crops are defensively clamped so they can never
+ * overlap, even on an unusually narrow spine.
  *
  * Security note: a malicious PDF could in principle declare an embedded
  * image's pixel dimensions far larger than its physical page size (the
@@ -326,13 +499,17 @@ export async function splitBookCoverPdf(
   backHeight: number;
   frontWidth: number;
   frontHeight: number;
+  method: CoverSplitMethod;
+  trim: TrimSpec["name"] | null;
 }> {
   const pdf = await getDocumentProxy(pdfBytes);
   const page = await pdf.getPage(1);
   // page.view is always a 4-element [x1,y1,x2,y2] tuple per pdf.js's own
   // contract; TS just types it as number[] since it comes from a JS lib.
   const [x1, y1, x2, y2] = page.view as [number, number, number, number];
-  if (Math.abs(x2 - x1) > MAX_PAGE_POINTS_PER_SIDE || Math.abs(y2 - y1) > MAX_PAGE_POINTS_PER_SIDE) {
+  const pageWidthPoints = Math.abs(x2 - x1);
+  const pageHeightPoints = Math.abs(y2 - y1);
+  if (pageWidthPoints > MAX_PAGE_POINTS_PER_SIDE || pageHeightPoints > MAX_PAGE_POINTS_PER_SIDE) {
     throw new CoverTooLargeError("This PDF's page size is implausibly large for a book cover.");
   }
 
@@ -359,40 +536,13 @@ export async function splitBookCoverPdf(
   try {
     const fullRaw = photonImage.get_raw_pixels();
     const clusters = findVerticalBorderClusters(fullRaw, image.width, image.height);
-    const { back: backBorder, front: frontBorder } = findHalfBorders(clusters, image.width);
 
-    const midpoint = Math.floor(image.width / 2);
-    const fallbackMargin = Math.round(image.width * SPINE_MARGIN_FRACTION);
-
-    // The spine-facing side's margin budget: the small, fixed cushion
-    // (INNER_BORDER_CUSHION_FRACTION) is the PREFERRED value here, not half
-    // the real spine gap -- there's no way to know where the spine's own
-    // content (e.g. a rotated title) actually sits within that gap, so
-    // using up to half of it as a target (rather than just a safety
-    // ceiling) risks reaching deep enough to bleed it into the crop, found
-    // live against a real cover whose spine title text sits centered in the
-    // gap (2026-11-09, latest). The real spine gap is only consulted as a
-    // hard ceiling, for the rare pathological case where the spine itself
-    // is narrower than the fixed cushion -- never as the thing being
-    // equalized toward.
-    const innerCushion = Math.round(image.width * INNER_BORDER_CUSHION_FRACTION);
-    const spineGap = backBorder && frontBorder ? frontBorder.left.start - backBorder.right.end : null;
-    const backInnerBudget = spineGap != null ? Math.min(innerCushion, Math.floor(spineGap / 2)) : innerCushion;
-    const frontInnerBudget = spineGap != null ? Math.min(innerCushion, Math.ceil(spineGap / 2)) : innerCushion;
-
-    const backHorizontal = backBorder
-      ? toTopBottom(findHorizontalBorderClusters(fullRaw, image.width, image.height, backBorder.left.end + 1, backBorder.right.start))
-      : null;
-    const frontHorizontal = frontBorder
-      ? toTopBottom(findHorizontalBorderClusters(fullRaw, image.width, image.height, frontBorder.left.end + 1, frontBorder.right.start))
-      : null;
-
-    const backBounds: CropBounds = backBorder
-      ? equalizeHalfBorder(backBorder, backHorizontal, image.width, image.height, false, backInnerBudget)
-      : { x0: 0, y0: 0, x1: Math.max(1, midpoint - fallbackMargin), y1: image.height };
-    const frontBounds: CropBounds = frontBorder
-      ? equalizeHalfBorder(frontBorder, frontHorizontal, image.width, image.height, true, frontInnerBudget)
-      : { x0: Math.min(image.width - 1, midpoint + fallbackMargin), y0: 0, x1: image.width, y1: image.height };
+    const pageWidthIn = pageWidthPoints / 72;
+    const pageHeightIn = pageHeightPoints / 72;
+    const geometry = trimGeometryBounds(fullRaw, image.width, image.height, pageWidthIn, pageHeightIn, clusters);
+    const { back: backBounds, front: frontBounds, method, trim } = geometry
+      ? { ...geometry, method: "trim-geometry" as const }
+      : { ...detectedBorderBounds(fullRaw, image.width, image.height, clusters), trim: null };
 
     // Defensive: the two crops must never overlap (or touch) along the x
     // axis, regardless of how narrow a real spine turns out to be relative
@@ -418,6 +568,8 @@ export async function splitBookCoverPdf(
         backHeight: backImage.get_height(),
         frontWidth: frontImage.get_width(),
         frontHeight: frontImage.get_height(),
+        method,
+        trim,
       };
     } finally {
       backImage.free();

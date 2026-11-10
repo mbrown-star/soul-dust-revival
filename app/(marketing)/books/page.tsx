@@ -35,7 +35,7 @@ export default async function BooksPage() {
       {allProducts.length === 0 ? (
         <p className="font-serif text-moss">New studies and books are on the way.</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
           {allProducts.map((p) => (
             <Link
               key={p.id}
@@ -46,6 +46,8 @@ export default async function BooksPage() {
                 <CoverThumbnail
                   imageUrl={p.imageUrl}
                   imageAlt={p.imageAlt}
+                  imageWidth={p.imageWidth}
+                  imageHeight={p.imageHeight}
                   sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                 />
               </div>

@@ -57,7 +57,7 @@ export default async function HomePage() {
             // hugging the left edge with empty space on the right -- a grid
             // column's 1fr tracks stay full-width even with fewer items than
             // columns, which is what looked left-indented and awkward.
-            <div className="flex flex-wrap justify-center gap-6">
+            <div className="flex flex-wrap justify-center items-start gap-6">
               {featuredProducts.map((p) => (
                 <Link
                   key={p.id}
@@ -68,6 +68,8 @@ export default async function HomePage() {
                     <CoverThumbnail
                       imageUrl={p.imageUrl}
                       imageAlt={p.imageAlt}
+                      imageWidth={p.imageWidth}
+                      imageHeight={p.imageHeight}
                       sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
                     />
                   </div>

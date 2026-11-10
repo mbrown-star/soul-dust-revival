@@ -7,6 +7,7 @@ import Image from "next/image";
 import { AddToCartButton } from "@/components/commerce/AddToCartButton";
 import { AmazonBuyButton } from "@/components/commerce/AmazonBuyButton";
 import { CoverGallery } from "@/components/commerce/CoverGallery";
+import { coverAspectRatio } from "@/lib/images/coverAspectRatio";
 import { productEyebrowLabel } from "@/lib/commerce/productEyebrow";
 import type { Metadata } from "next";
 
@@ -59,6 +60,8 @@ export default async function BookDetailPage({
             digitalPriceCents: products.digitalPriceCents,
             imageUrl: products.imageUrl,
             imageAlt: products.imageAlt,
+            imageWidth: products.imageWidth,
+            imageHeight: products.imageHeight,
             amazonUrl: products.amazonUrl,
             sellOnStripe: products.sellOnStripe,
           })
@@ -72,8 +75,21 @@ export default async function BookDetailPage({
     <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
         <CoverGallery
-          front={product.imageUrl ? { url: product.imageUrl, alt: product.imageAlt ?? "" } : null}
-          back={product.backImageUrl ? { url: product.backImageUrl, alt: product.backImageAlt ?? "" } : null}
+          front={
+            product.imageUrl
+              ? { url: product.imageUrl, alt: product.imageAlt ?? "", width: product.imageWidth, height: product.imageHeight }
+              : null
+          }
+          back={
+            product.backImageUrl
+              ? {
+                  url: product.backImageUrl,
+                  alt: product.backImageAlt ?? "",
+                  width: product.backImageWidth,
+                  height: product.backImageHeight,
+                }
+              : null
+          }
         />
 
         <div>
@@ -178,13 +194,12 @@ export default async function BookDetailPage({
             {components.map((component) => (
               <div key={component.id} className="flex items-center gap-4 py-5">
                 {component.imageUrl ? (
-                  <Image
-                    src={component.imageUrl}
-                    alt={component.imageAlt ?? ""}
-                    width={56}
-                    height={56}
-                    className="w-14 h-14 object-cover rounded"
-                  />
+                  <div
+                    className="relative h-16 flex-shrink-0 rounded overflow-hidden"
+                    style={{ aspectRatio: coverAspectRatio(component.imageWidth, component.imageHeight) }}
+                  >
+                    <Image src={component.imageUrl} alt={component.imageAlt ?? ""} fill sizes="64px" className="object-cover" />
+                  </div>
                 ) : (
                   <div className="w-14 h-14 bg-moss/10 rounded flex-shrink-0" />
                 )}

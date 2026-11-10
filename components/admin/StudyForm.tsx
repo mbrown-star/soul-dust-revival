@@ -258,7 +258,7 @@ export function StudyForm({
           <img
             src={values.coverImageUrl}
             alt={values.coverImageAlt || "Untitled cover image — add alt text below"}
-            className="w-32 h-32 object-cover rounded mb-2"
+            className="h-32 w-auto rounded mb-2"
           />
         )}
         <input

@@ -2,14 +2,17 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
+import { coverAspectRatio } from "@/lib/images/coverAspectRatio";
 
-type Cover = { url: string; alt: string };
+type Cover = { url: string; alt: string; width: number | null; height: number | null };
 
 /**
  * Horizontally scrollable front/back cover gallery for a book's detail
  * page. Falls back to a single static front-cover image (or the plain
  * text placeholder) when there's no back cover — most non-book products
- * only ever have one image.
+ * only ever have one image. The box takes the first cover's own shape, so
+ * the full border box shows; a back cover is split from the same trim, so
+ * it shares that shape.
  */
 export function CoverGallery({
   front,
@@ -25,11 +28,16 @@ export function CoverGallery({
 
   if (covers.length === 0) {
     return (
-      <div className="aspect-[3/4] bg-dusk rounded-lg overflow-hidden relative flex items-center justify-center text-parchment/70 font-display">
+      <div
+        className="bg-dusk rounded-lg overflow-hidden relative flex items-center justify-center text-parchment/70 font-display"
+        style={{ aspectRatio: coverAspectRatio(null, null) }}
+      >
         Soul Dust Revival
       </div>
     );
   }
+
+  const aspectRatio = coverAspectRatio(covers[0]!.width, covers[0]!.height);
 
   function scrollToIndex(index: number) {
     const container = scrollRef.current;
@@ -51,8 +59,8 @@ export function CoverGallery({
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="no-scrollbar aspect-[3/4] bg-dusk rounded-lg overflow-x-auto relative flex snap-x snap-mandatory scroll-smooth motion-reduce:scroll-auto"
-        style={{ scrollbarWidth: "none" }}
+        className="no-scrollbar bg-dusk rounded-lg overflow-x-auto relative flex snap-x snap-mandatory scroll-smooth motion-reduce:scroll-auto"
+        style={{ scrollbarWidth: "none", aspectRatio }}
         role="group"
         aria-label={covers.length > 1 ? "Front and back cover" : "Cover image"}
       >

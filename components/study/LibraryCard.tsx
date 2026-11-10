@@ -28,7 +28,9 @@ export function LibraryCard({
 }) {
   return (
     <div className="bg-white border border-dusk/10 rounded-xl overflow-hidden hover:border-dusk/30 transition-colors flex flex-col sm:flex-row">
-      <Link href={resumeHref} className="sm:w-32 shrink-0 block bg-dusk/5">
+      {/* The cover shows at its own natural shape (height: auto), never
+          cropped to a square, so its whole border box stays visible. */}
+      <Link href={resumeHref} className="shrink-0 flex justify-center bg-dusk/5 p-4 sm:p-0 sm:w-32 sm:self-start">
         {study.coverImageUrl ? (
           <Image
             src={study.coverImageUrl}
@@ -36,11 +38,10 @@ export function LibraryCard({
             width={0}
             height={0}
             sizes="128px"
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            className="aspect-square sm:aspect-auto sm:h-full"
+            className="w-32 sm:w-full h-auto rounded sm:rounded-none"
           />
         ) : (
-          <div className="aspect-square sm:aspect-auto sm:h-full flex items-center justify-center text-moss/40 font-display text-3xl">
+          <div className="w-32 sm:w-full aspect-[2/3] flex items-center justify-center text-moss/40 font-display text-3xl">
             {study.title.charAt(0)}
           </div>
         )}

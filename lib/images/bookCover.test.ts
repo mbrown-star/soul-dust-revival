@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { PhotonImage } from "@cf-wasm/photon";
-import { CoverTooLargeError, NoCoverImageFoundError, splitBookCoverPdf } from "./bookCover";
+import {
+  CoverTooLargeError,
+  DISPLAY_MARGIN_IN,
+  KNOWN_TRIMS,
+  NoCoverImageFoundError,
+  splitBookCoverPdf,
+} from "./bookCover";
 
 /**
  * Builds a minimal, valid single-page PDF with one embedded, uncompressed
@@ -84,6 +90,114 @@ function solidColorRgb(width: number, height: number, leftColor: [number, number
 
 function jpegHeaderOf(bytes: Uint8Array) {
   return bytes[0] === 0xff && bytes[1] === 0xd8;
+}
+
+const COVER_BG: [number, number, number] = [40, 30, 20];
+const COVER_GOLD: [number, number, number] = [255, 220, 140];
+
+/**
+ * A synthetic KDP full-wrap cover at a real trim's page size: dark art, a
+ * double-line gold box on each panel at that trim's real gaps, and a bright
+ * spine title bar. `ppi` is chosen per test so every inch figure lands on a
+ * whole pixel. `borderOffsetPx` shifts both boxes to mimic art that's a
+ * pixel or two off spec; `drawBorder: false` leaves the boxes out entirely.
+ */
+function buildTrimCover(opts: {
+  trim: (typeof KNOWN_TRIMS)[number];
+  ppi: number;
+  spineIn: number;
+  borderOffsetPx?: number;
+  drawBorder?: boolean;
+}) {
+  const { trim, ppi, spineIn, borderOffsetPx = 0, drawBorder = true } = opts;
+  const bleed = 0.125;
+  const pageWidthIn = 2 * trim.trimWidthIn + spineIn + 2 * bleed;
+  const pageHeightIn = trim.trimHeightIn + 2 * bleed;
+  const width = Math.round(pageWidthIn * ppi);
+  const height = Math.round(pageHeightIn * ppi);
+  const px = (inches: number) => Math.round(inches * ppi);
+
+  const rgb = new Uint8Array(width * height * 3);
+  const set = (x: number, y: number, [r, g, b]: [number, number, number]) => {
+    if (x < 0 || y < 0 || x >= width || y >= height) return;
+    const i = (y * width + x) * 3;
+    rgb[i] = r;
+    rgb[i + 1] = g;
+    rgb[i + 2] = b;
+  };
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) set(x, y, COVER_BG);
+
+  // 2px strokes drawn inward from each edge, so the outer line's outer edge
+  // sits exactly at the box edge.
+  const drawRect = (x0: number, y0: number, x1: number, y1: number) => {
+    for (let t = 0; t < 2; t++) {
+      for (let x = x0; x <= x1; x++) {
+        set(x, y0 + t, COVER_GOLD);
+        set(x, y1 - t, COVER_GOLD);
+      }
+      for (let y = y0; y <= y1; y++) {
+        set(x0 + t, y, COVER_GOLD);
+        set(x1 - t, y, COVER_GOLD);
+      }
+    }
+  };
+  const drawBox = (left: number, right: number) => {
+    const top = px(bleed + trim.topGapIn) + borderOffsetPx;
+    const bottom = px(bleed + trim.trimHeightIn - trim.bottomGapIn) - 1 + borderOffsetPx;
+    const l = left + borderOffsetPx;
+    const r = right + borderOffsetPx;
+    const inner = Math.max(3, px(0.07));
+    drawRect(l, top, r, bottom);
+    drawRect(l + inner, top + inner, r - inner, bottom - inner);
+  };
+  if (drawBorder) {
+    drawBox(px(bleed + trim.foreEdgeGapIn), px(bleed + trim.trimWidthIn - trim.spineGapIn) - 1);
+    drawBox(px(pageWidthIn - bleed - trim.trimWidthIn + trim.spineGapIn), px(pageWidthIn - bleed - trim.foreEdgeGapIn) - 1);
+  }
+
+  // A bright spine title down the middle of the spine, 60% of the height --
+  // tall enough to be a real bleed risk, short of border-line consensus.
+  const spineCenter = Math.round(width / 2);
+  for (let y = Math.round(height * 0.2); y < Math.round(height * 0.8); y++) {
+    for (let dx = -2; dx <= 2; dx++) set(spineCenter + dx, y, [255, 255, 255]);
+  }
+
+  const pdf = buildTestCoverPdf(width, height, rgb, { width: pageWidthIn * 72, height: pageHeightIn * 72 });
+  return { pdf, width, height, pageWidthIn, pageHeightIn, rgb };
+}
+
+/** First/last bright (border) pixel along the middle row (axis "x") or middle column (axis "y") of a JPEG crop. */
+function brightSpan(img: PhotonImage, axis: "x" | "y") {
+  const w = img.get_width();
+  const h = img.get_height();
+  const pixels = img.get_raw_pixels();
+  const bgBrightness = COVER_BG[0] + COVER_BG[1] + COVER_BG[2];
+  const length = axis === "x" ? w : h;
+  const mid = axis === "x" ? Math.floor(h / 2) : Math.floor(w / 2);
+  let first = -1;
+  let last = -1;
+  for (let pos = 0; pos < length; pos++) {
+    const x = axis === "x" ? pos : mid;
+    const y = axis === "x" ? mid : pos;
+    const i = (y * w + x) * 4;
+    if (pixels[i]! + pixels[i + 1]! + pixels[i + 2]! > bgBrightness + 120) {
+      if (first === -1) first = pos;
+      last = pos;
+    }
+  }
+  return { first, last, length };
+}
+
+/** The four margins outside the border's outer line in a JPEG crop: [left, right, top, bottom]. */
+function borderMargins(jpeg: Uint8Array) {
+  const img = PhotonImage.new_from_byteslice(jpeg);
+  try {
+    const x = brightSpan(img, "x");
+    const y = brightSpan(img, "y");
+    return [x.first, x.length - 1 - x.last, y.first, y.length - 1 - y.last];
+  } finally {
+    img.free();
+  }
 }
 
 describe("splitBookCoverPdf", () => {
@@ -463,7 +577,11 @@ describe("splitBookCoverPdf", () => {
     drawHLine(270, 360, 560);
 
     const pdf = buildTestCoverPdf(width, height, rgb);
-    const { back, front } = await splitBookCoverPdf(pdf);
+    const { back, front, method, trim } = await splitBookCoverPdf(pdf);
+    // A 600x300pt page isn't a known KDP trim, so this exercises the
+    // detection fallback, not the trim-geometry path.
+    expect(method).toBe("border-detection");
+    expect(trim).toBeNull();
 
     const backImage = PhotonImage.new_from_byteslice(back);
     const frontImage = PhotonImage.new_from_byteslice(front);
@@ -562,5 +680,97 @@ describe("splitBookCoverPdf", () => {
   it("throws a generic error (not an unhandled crash) for a non-parseable file", async () => {
     const garbage = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     await expect(splitBookCoverPdf(garbage)).rejects.toThrow();
+  });
+});
+
+describe("splitBookCoverPdf -- known KDP trim sizes", () => {
+  // 40ppi keeps every test buffer small while landing each trim's inch
+  // figures on whole pixels for these page sizes.
+  const PPI = 40;
+  const marginPx = Math.round(DISPLAY_MARGIN_IN * PPI);
+
+  for (const trim of KNOWN_TRIMS) {
+    const boxWidthIn = trim.trimWidthIn - trim.foreEdgeGapIn - trim.spineGapIn;
+    const boxHeightIn = trim.trimHeightIn - trim.topGapIn - trim.bottomGapIn;
+    const expectedRatio = (boxWidthIn + 2 * DISPLAY_MARGIN_IN) / (boxHeightIn + 2 * DISPLAY_MARGIN_IN);
+
+    it(`${trim.name}: crops each panel to the border box plus the same fixed margin on all four sides`, async () => {
+      const { pdf } = buildTrimCover({ trim, ppi: PPI, spineIn: 0.5 });
+      const result = await splitBookCoverPdf(pdf);
+
+      expect(result.method).toBe("trim-geometry");
+      expect(result.trim).toBe(trim.name);
+
+      for (const jpeg of [result.back, result.front]) {
+        for (const margin of borderMargins(jpeg)) {
+          expect(Math.abs(margin - marginPx)).toBeLessThanOrEqual(1);
+        }
+      }
+      expect(result.backWidth / result.backHeight).toBeCloseTo(expectedRatio, 2);
+      expect(result.frontWidth / result.frontHeight).toBeCloseTo(expectedRatio, 2);
+      expect(result.backWidth).toBe(result.frontWidth);
+      expect(result.backHeight).toBe(result.frontHeight);
+    });
+
+    it(`${trim.name}: snaps onto the real border when the art sits a couple of pixels off spec`, async () => {
+      const { pdf } = buildTrimCover({ trim, ppi: PPI, spineIn: 0.5, borderOffsetPx: 2 });
+      const result = await splitBookCoverPdf(pdf);
+
+      expect(result.method).toBe("trim-geometry");
+      // Without snapping these would come out as 4px/8px pairs, not equal.
+      for (const jpeg of [result.back, result.front]) {
+        for (const margin of borderMargins(jpeg)) {
+          expect(Math.abs(margin - marginPx)).toBeLessThanOrEqual(1);
+        }
+      }
+    });
+  }
+
+  it("crops a known trim to the same exact shape even when its border can't be detected at all", async () => {
+    const trim = KNOWN_TRIMS[0]!;
+    const withBorder = await splitBookCoverPdf(buildTrimCover({ trim, ppi: PPI, spineIn: 0.5 }).pdf);
+    const withoutBorder = await splitBookCoverPdf(buildTrimCover({ trim, ppi: PPI, spineIn: 0.5, drawBorder: false }).pdf);
+
+    expect(withoutBorder.method).toBe("trim-geometry");
+    expect([withoutBorder.frontWidth, withoutBorder.frontHeight]).toEqual([withBorder.frontWidth, withBorder.frontHeight]);
+    expect([withoutBorder.backWidth, withoutBorder.backHeight]).toEqual([withBorder.backWidth, withBorder.backHeight]);
+  });
+
+  it("never includes any of the spine in either crop, whatever the spine width", async () => {
+    const trim = KNOWN_TRIMS[0]!;
+    for (const spineIn of [0.1, 0.5, 1.5]) {
+      const { pdf } = buildTrimCover({ trim, ppi: PPI, spineIn });
+      const { back, front } = await splitBookCoverPdf(pdf);
+      for (const jpeg of [back, front]) {
+        const img = PhotonImage.new_from_byteslice(jpeg);
+        try {
+          const pixels = img.get_raw_pixels();
+          // The spine title is pure white; the gold border never reaches 700
+          // in summed brightness, so anything that bright is spine bleed.
+          for (let i = 0; i < pixels.length; i += 4) {
+            expect(pixels[i]! + pixels[i + 1]! + pixels[i + 2]!).toBeLessThan(700);
+          }
+        } finally {
+          img.free();
+        }
+      }
+    }
+  });
+
+  it("falls back to border detection when the embedded image doesn't span the whole page", async () => {
+    const trim = KNOWN_TRIMS[0]!;
+    const { width, height, pageWidthIn, pageHeightIn, rgb } = buildTrimCover({ trim, ppi: PPI, spineIn: 0.5 });
+    // Same page size, but the image only covers 90% of its width -- page
+    // inches no longer map onto image pixels, so the geometry can't be used.
+    const narrowImageWidth = Math.round(width * 0.9);
+    const narrowRgb = new Uint8Array(narrowImageWidth * height * 3);
+    for (let y = 0; y < height; y++) {
+      narrowRgb.set(rgb.subarray(y * width * 3, (y * width + narrowImageWidth) * 3), y * narrowImageWidth * 3);
+    }
+    const pdf = buildTestCoverPdf(narrowImageWidth, height, narrowRgb, { width: pageWidthIn * 72, height: pageHeightIn * 72 });
+
+    const result = await splitBookCoverPdf(pdf);
+    expect(result.method).not.toBe("trim-geometry");
+    expect(result.trim).toBeNull();
   });
 });
