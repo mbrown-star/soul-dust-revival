@@ -68,6 +68,23 @@ export function isHttpsUrl(value: string): boolean {
   }
 }
 
+/** An uploaded captions file's name, as created by /api/admin/captions-upload-url. */
+export const CAPTIONS_FILE_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.vtt$/;
+
+/**
+ * The URL a <track> should load captions from. An uploaded captions file on
+ * the R2 bucket is rewritten to the app's own /api/captions route, because a
+ * cross-origin text track is blocked unless the bucket sends CORS headers;
+ * anything else is returned unchanged.
+ */
+export function trackUrlForCaptions(captionsUrl: string, r2PublicBaseUrl: string | undefined): string {
+  if (!r2PublicBaseUrl) return captionsUrl;
+  const prefix = `${r2PublicBaseUrl.replace(/\/+$/, "")}/captions/`;
+  if (!captionsUrl.startsWith(prefix)) return captionsUrl;
+  const file = captionsUrl.slice(prefix.length);
+  return CAPTIONS_FILE_PATTERN.test(file) ? `/api/captions/${file}` : captionsUrl;
+}
+
 // True when `url` is served from the app's own R2 bucket, so the reader can
 // use next/image for it (only the R2 host is in images.remotePatterns) and
 // fall back to a plain <img> for any other pasted URL.

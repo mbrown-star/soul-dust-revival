@@ -31,7 +31,7 @@ export function MediaSourceField({
   hasUpload: boolean;
   /** Shown in place of a preview for an uploaded video/audio. */
   uploadDescription?: string;
-  onUpload: (file: File) => Promise<void>;
+  onUpload: (file: File, onProgress: (percent: number) => void) => Promise<void>;
   onUrl: (url: string) => void;
   onClear: () => void;
 }) {
@@ -41,15 +41,17 @@ export function MediaSourceField({
   const [draftUrl, setDraftUrl] = useState(currentUrl ?? "");
   const [urlError, setUrlError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const label = KIND_LABEL[kind];
   const hasSource = hasUpload || !!currentUrl;
 
   async function handleFile(file: File) {
     setUploading(true);
+    setProgress(0);
     setUploadError(null);
     try {
-      await onUpload(file);
+      await onUpload(file, setProgress);
       setDraftUrl("");
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed.");
@@ -152,9 +154,7 @@ export function MediaSourceField({
         </div>
       )}
 
-      <p role="status" aria-live="polite" className="text-sm text-moss min-h-[1.25rem]">
-        {uploading ? `Uploading ${label}…` : ""}
-      </p>
+      <UploadProgressBar active={uploading} percent={progress} label={label} />
       {uploadError && (
         <p role="alert" className="text-sm text-error">
           {uploadError}
@@ -178,5 +178,35 @@ export function MediaSourceField({
         </div>
       )}
     </fieldset>
+  );
+}
+
+/**
+ * Upload progress: a native <progress> (announced by screen readers) plus a
+ * live text percentage. Big videos take minutes, so "Uploading..." alone
+ * looked frozen.
+ */
+export function UploadProgressBar({ active, percent, label }: { active: boolean; percent: number; label: string }) {
+  return (
+    <div className="min-h-[1.25rem]">
+      {active && (
+        <div className="flex items-center gap-3">
+          <progress
+            value={percent}
+            max={100}
+            aria-label={`Uploading ${label}`}
+            className="h-2 flex-1 max-w-xs overflow-hidden rounded-full [&::-webkit-progress-bar]:bg-moss/15 [&::-webkit-progress-value]:bg-ink [&::-moz-progress-bar]:bg-ink"
+          />
+          <span aria-hidden="true" className="text-sm text-moss tabular-nums">
+            {percent < 100 ? `${percent}%` : "Processing…"}
+          </span>
+          {/* Announced only at the start and once the bytes are sent, not on
+              every percent (the progress bar itself reports the percentage). */}
+          <span role="status" aria-live="polite" className="sr-only">
+            {percent < 100 ? `Uploading ${label}` : `Processing ${label}`}
+          </span>
+        </div>
+      )}
+    </div>
   );
 }

@@ -4,7 +4,13 @@ import { VideoBlock } from "./VideoBlock";
 import { AudioBlock } from "./AudioBlock";
 import { QuestionBlock } from "./QuestionBlock";
 import type { StreamSignRequest } from "./streamSign";
-import { DEFAULT_CALLOUT_COLOR, hasMediaSource, isR2Url, type ContentBlockData } from "@/lib/content/blocks";
+import {
+  DEFAULT_CALLOUT_COLOR,
+  hasMediaSource,
+  isR2Url,
+  trackUrlForCaptions,
+  type ContentBlockData,
+} from "@/lib/content/blocks";
 
 /**
  * Renders a single content block based on its type.
@@ -72,7 +78,7 @@ export function LessonBlock({
         <VideoBlock
           sign={sign}
           mediaUrl={block.mediaUrl}
-          captionsUrl={block.captionsUrl}
+          captionsUrl={block.captionsUrl ? trackUrlForCaptions(block.captionsUrl, process.env.R2_PUBLIC_BASE_URL) : null}
           transcript={block.transcript}
         />
       );

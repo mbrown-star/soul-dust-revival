@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import type { StreamSignRequest } from "./streamSign";
+import { useSignedMediaUrl } from "./useSignedMediaUrl";
 
 export function VideoBlock({
   sign,
@@ -16,27 +16,7 @@ export function VideoBlock({
   captionsUrl: string | null;
   transcript: string | null;
 }) {
-  const [signedUrl, setSignedUrl] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
-  // A string, so the effect re-runs only when the request actually changes
-  // (callers pass a fresh object on every render).
-  const signKey = JSON.stringify(sign);
-  const url = mediaUrl ?? signedUrl;
-
-  useEffect(() => {
-    if (mediaUrl) return;
-    fetch("/api/stream/sign-url", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: signKey,
-    })
-      .then(async (r) => {
-        const data = (await r.json().catch(() => ({}))) as { url?: string };
-        if (!r.ok || !data.url) throw new Error("sign failed");
-        setSignedUrl(data.url);
-      })
-      .catch(() => setFailed(true));
-  }, [signKey, mediaUrl]);
+  const { containerRef, url, failed, onPlaybackError } = useSignedMediaUrl(sign, mediaUrl);
 
   if (!url && failed) {
     return (
@@ -45,15 +25,21 @@ export function VideoBlock({
       </p>
     );
   }
-  if (!url) return <div className="aspect-video bg-moss/10 animate-pulse rounded-lg" aria-hidden="true" />;
+  if (!url) return <div ref={containerRef} className="aspect-video bg-moss/10 animate-pulse rounded-lg" aria-hidden="true" />;
 
   return (
     <div>
       <div className="aspect-video w-full">
-        <video controls className="w-full h-full rounded-lg bg-black">
+        {/* Keyed on the URL so a re-signed URL (after the old one expired)
+            actually reloads the player. */}
+        <video key={url} controls className="w-full h-full rounded-lg bg-black">
           {/* An uploaded video is an HLS stream; a linked one is whatever file
               the admin pointed at, so the browser sniffs its type itself. */}
-          {mediaUrl ? <source src={url} /> : <source src={url} type="application/x-mpegURL" />}
+          {mediaUrl ? (
+            <source src={url} />
+          ) : (
+            <source src={url} type="application/x-mpegURL" onError={onPlaybackError} />
+          )}
           {/* Captions track (WCAG 1.2.2) — required in the admin UI whenever a
               video is uploaded; falls back gracefully if genuinely absent. */}
           {captionsUrl && <track kind="captions" src={captionsUrl} srcLang="en" label="English" default />}

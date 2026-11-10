@@ -5,7 +5,7 @@ import { RichTextEditor, type RichTextSnippet } from "../RichTextEditor";
 import { ColorPicker } from "../ColorPicker";
 import { DEFAULT_CALLOUT_COLOR, hasMediaSource, isR2Url, type ContentBlockData } from "@/lib/content/blocks";
 import type { studies } from "@/lib/db/schema";
-import { MediaSourceField } from "./MediaSourceField";
+import { MediaSourceField, UploadProgressBar } from "./MediaSourceField";
 import { TextField } from "./fields";
 import { uploadCaptions, uploadImage, uploadToStream } from "./uploads";
 
@@ -60,7 +60,7 @@ export function ImageBlockEditor({ block, update }: BlockEditorProps) {
         kind="image"
         currentUrl={uploaded ? null : block.imageUrl}
         hasUpload={uploaded}
-        onUpload={async (file) => update({ imageUrl: await uploadImage(file) })}
+        onUpload={async (file, onProgress) => update({ imageUrl: await uploadImage(file, onProgress) })}
         onUrl={(url) => update({ imageUrl: url })}
         onClear={() => update({ imageUrl: null })}
       />
@@ -82,6 +82,7 @@ function CaptionsField({ block, update }: BlockEditorProps) {
   const missing = hasMediaSource(block) && !block.captionsUrl;
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
   return (
     <div className="space-y-1">
       <label className="block text-xs font-medium text-moss uppercase tracking-wide">
@@ -98,8 +99,9 @@ function CaptionsField({ block, update }: BlockEditorProps) {
             if (!file) return;
             setUploadError(null);
             setUploading(true);
+            setProgress(0);
             try {
-              update({ captionsUrl: await uploadCaptions(file) });
+              update({ captionsUrl: await uploadCaptions(file, setProgress) });
             } catch (err) {
               setUploadError(err instanceof Error ? err.message : "Captions upload failed.");
             } finally {
@@ -108,9 +110,7 @@ function CaptionsField({ block, update }: BlockEditorProps) {
           }}
         />
       </label>
-      <p role="status" aria-live="polite" className="text-xs text-moss">
-        {uploading ? "Uploading captions…" : ""}
-      </p>
+      <UploadProgressBar active={uploading} percent={progress} label="captions" />
       {uploadError && (
         <p role="alert" className="text-xs text-error">
           {uploadError}
@@ -145,7 +145,7 @@ function MediaBlockEditor({ block, update, kind }: BlockEditorProps & { kind: "v
         currentUrl={block.mediaUrl}
         hasUpload={!!block.mediaId}
         uploadDescription="Uploaded to the video host (plays for readers with access)."
-        onUpload={async (file) => update({ mediaId: await uploadToStream(file), mediaUrl: null })}
+        onUpload={async (file, onProgress) => update({ mediaId: await uploadToStream(file, onProgress), mediaUrl: null })}
         onUrl={(url) => update({ mediaUrl: url, mediaId: null })}
         onClear={() => update({ mediaId: null, mediaUrl: null })}
       />

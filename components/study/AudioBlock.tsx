@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import type { StreamSignRequest } from "./streamSign";
+import { useSignedMediaUrl } from "./useSignedMediaUrl";
 
 export function AudioBlock({
   sign,
@@ -14,27 +14,7 @@ export function AudioBlock({
   mediaUrl: string | null;
   transcript: string | null;
 }) {
-  const [signedUrl, setSignedUrl] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
-  // A string, so the effect re-runs only when the request actually changes
-  // (callers pass a fresh object on every render).
-  const signKey = JSON.stringify(sign);
-  const url = mediaUrl ?? signedUrl;
-
-  useEffect(() => {
-    if (mediaUrl) return;
-    fetch("/api/stream/sign-url", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: signKey,
-    })
-      .then(async (r) => {
-        const data = (await r.json().catch(() => ({}))) as { url?: string };
-        if (!r.ok || !data.url) throw new Error("sign failed");
-        setSignedUrl(data.url);
-      })
-      .catch(() => setFailed(true));
-  }, [signKey, mediaUrl]);
+  const { containerRef, url, failed, onPlaybackError } = useSignedMediaUrl(sign, mediaUrl);
 
   if (!url && failed) {
     return (
@@ -43,11 +23,11 @@ export function AudioBlock({
       </p>
     );
   }
-  if (!url) return <div className="h-12 bg-moss/10 animate-pulse rounded-lg" aria-hidden="true" />;
+  if (!url) return <div ref={containerRef} className="h-12 bg-moss/10 animate-pulse rounded-lg" aria-hidden="true" />;
 
   return (
     <div>
-      <audio controls className="w-full" src={url} />
+      <audio key={url} controls className="w-full" src={url} onError={mediaUrl ? undefined : onPlaybackError} />
       {/* Audio has no visual captions track, so a transcript is the primary
           accessible alternative (WCAG 1.2.1) — required in the admin UI. */}
       {transcript ? (
