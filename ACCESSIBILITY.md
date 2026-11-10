@@ -103,6 +103,9 @@ are outside what code can determine.
     required fields still empty.
   - Per-block save state is a live region, so a "Saved" or "Not saved" result is
     announced, not just shown.
+  - Media lists inside a Study week are labelled groups (`role="group"` +
+    `aria-labelledby`), so a screen reader announces which list a "+ Image" button belongs
+    to. A builder tab can hold many of these lists.
   - `qa/e2e/specs/accessibility.spec.ts` runs axe on the block builder and on every tab of
     the week builder. `admin-studies.spec.ts` exercises a real keyboard drag (Space, arrow,
     Space) and a real pointer drag from the palette.

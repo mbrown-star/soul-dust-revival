@@ -58,6 +58,11 @@ export function SortableList<T>({
   errorCount,
   canDuplicate = false,
   emptyText,
+  addOptions,
+  itemIcon,
+  itemTypeLabel,
+  itemStatus,
+  duplicateItem = (item) => structuredClone(item),
 }: {
   items: T[];
   onChange: (next: T[]) => void;
@@ -73,6 +78,15 @@ export function SortableList<T>({
   errorCount?: (index: number) => number;
   canDuplicate?: boolean;
   emptyText?: string;
+  /** Several "add" buttons (e.g. one per media type) instead of one newItem. */
+  addOptions?: { label: string; newItem: () => T }[];
+  /** Per-item icon/type label, for lists that mix item kinds. */
+  itemIcon?: (item: T) => BlockIconName;
+  itemTypeLabel?: (item: T) => string;
+  /** Replaces the default "N to fix" pill on a card. */
+  itemStatus?: (item: T, index: number) => React.ReactNode;
+  /** How Duplicate copies an item (e.g. to give copies fresh ids). */
+  duplicateItem?: (item: T) => T;
 }) {
   const listId = useId();
   const counter = useRef(0);
@@ -181,14 +195,16 @@ export function SortableList<T>({
                 >
                   {variant === "card" ? (
                     <BlockCard
-                      icon={icon}
-                      typeLabel={typeLabel ?? label}
+                      icon={itemIcon?.(item) ?? icon}
+                      typeLabel={itemTypeLabel?.(item) ?? typeLabel ?? label}
                       summary={summary ? summary(item, index) : label}
                       expanded={expanded.has(key)}
                       onToggle={() => toggle(key)}
-                      onDuplicate={canDuplicate && !atMax ? () => insertAt(index + 1, structuredClone(item)) : undefined}
+                      onDuplicate={canDuplicate && !atMax ? () => insertAt(index + 1, duplicateItem(item)) : undefined}
                       onRemove={() => remove(index)}
-                      status={errors > 0 ? <StatusPill tone="error">{errors} to fix</StatusPill> : undefined}
+                      status={
+                        itemStatus ? itemStatus(item, index) : errors > 0 ? <StatusPill tone="error">{errors} to fix</StatusPill> : undefined
+                      }
                     >
                       {renderItem(item, update, index)}
                     </BlockCard>
@@ -230,19 +246,22 @@ export function SortableList<T>({
         )}
       </div>
 
-      {newItem && (
-        <div className="flex items-center gap-3">
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={atMax}
-            onClick={() => {
-              const key = insertAt(items.length, newItem());
-              requestAnimationFrame(() => document.getElementById(dragHandleId(key))?.scrollIntoView({ block: "nearest" }));
-            }}
-          >
-            {addLabel ?? "+ Add"}
-          </Button>
+      {(newItem || addOptions) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {(addOptions ?? [{ label: addLabel ?? "+ Add", newItem: newItem! }]).map((option) => (
+            <Button
+              key={option.label}
+              variant="secondary"
+              size="sm"
+              disabled={atMax}
+              onClick={() => {
+                const key = insertAt(items.length, option.newItem());
+                requestAnimationFrame(() => document.getElementById(dragHandleId(key))?.scrollIntoView({ block: "nearest" }));
+              }}
+            >
+              {option.label}
+            </Button>
+          ))}
           {atMax && <span className="text-xs text-moss">Limit of {max} reached.</span>}
         </div>
       )}

@@ -1,20 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { StreamSignRequest } from "./streamSign";
 
 export function VideoBlock({
-  contentBlockId,
+  sign,
   mediaUrl,
   captionsUrl,
   transcript,
 }: {
-  contentBlockId: string;
+  /** What to ask /api/stream/sign-url for, when the source is an upload. */
+  sign: StreamSignRequest;
   /** A linked (not uploaded) source -- played directly, no signed URL needed. */
   mediaUrl: string | null;
   captionsUrl: string | null;
   transcript: string | null;
 }) {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  // A string, so the effect re-runs only when the request actually changes
+  // (callers pass a fresh object on every render).
+  const signKey = JSON.stringify(sign);
   const url = mediaUrl ?? signedUrl;
 
   useEffect(() => {
@@ -22,12 +28,23 @@ export function VideoBlock({
     fetch("/api/stream/sign-url", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contentBlockId }),
+      body: signKey,
     })
-      .then((r) => r.json())
-      .then((data) => setSignedUrl((data as { url: string }).url));
-  }, [contentBlockId, mediaUrl]);
+      .then(async (r) => {
+        const data = (await r.json().catch(() => ({}))) as { url?: string };
+        if (!r.ok || !data.url) throw new Error("sign failed");
+        setSignedUrl(data.url);
+      })
+      .catch(() => setFailed(true));
+  }, [signKey, mediaUrl]);
 
+  if (!url && failed) {
+    return (
+      <p role="status" className="rounded-lg bg-moss/10 p-4 text-sm text-moss">
+        This video couldn&apos;t load. Reload the page to try again.
+      </p>
+    );
+  }
   if (!url) return <div className="aspect-video bg-moss/10 animate-pulse rounded-lg" aria-hidden="true" />;
 
   return (

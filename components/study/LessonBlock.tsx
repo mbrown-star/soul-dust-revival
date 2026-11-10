@@ -3,6 +3,7 @@ import Image from "next/image";
 import { VideoBlock } from "./VideoBlock";
 import { AudioBlock } from "./AudioBlock";
 import { QuestionBlock } from "./QuestionBlock";
+import type { StreamSignRequest } from "./streamSign";
 import { DEFAULT_CALLOUT_COLOR, hasMediaSource, isR2Url, type ContentBlockData } from "@/lib/content/blocks";
 
 /**
@@ -10,7 +11,16 @@ import { DEFAULT_CALLOUT_COLOR, hasMediaSource, isR2Url, type ContentBlockData }
  * This is the core of the flexible lesson model — a lesson is just an
  * ordered list of these, mixing text/image/video/audio/questions/callouts freely.
  */
-export function LessonBlock({ block, initialAnswer }: { block: ContentBlockData; initialAnswer?: string }) {
+export function LessonBlock({
+  block,
+  initialAnswer,
+  sign = { contentBlockId: block.id },
+}: {
+  block: ContentBlockData;
+  initialAnswer?: string;
+  /** How an uploaded video/audio gets its signed URL (week media isn't a content block). */
+  sign?: StreamSignRequest;
+}) {
   switch (block.type) {
     case "text":
       return (
@@ -60,7 +70,7 @@ export function LessonBlock({ block, initialAnswer }: { block: ContentBlockData;
       if (!hasMediaSource(block)) return null;
       return (
         <VideoBlock
-          contentBlockId={block.id}
+          sign={sign}
           mediaUrl={block.mediaUrl}
           captionsUrl={block.captionsUrl}
           transcript={block.transcript}
@@ -68,7 +78,7 @@ export function LessonBlock({ block, initialAnswer }: { block: ContentBlockData;
       );
     case "audio":
       if (!hasMediaSource(block)) return null;
-      return <AudioBlock contentBlockId={block.id} mediaUrl={block.mediaUrl} transcript={block.transcript} />;
+      return <AudioBlock sign={sign} mediaUrl={block.mediaUrl} transcript={block.transcript} />;
     case "question":
       return (
         <QuestionBlock contentBlockId={block.id} prompt={block.questionPrompt ?? ""} initialAnswer={initialAnswer} />

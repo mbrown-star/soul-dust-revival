@@ -12,7 +12,7 @@ export type StudyTabId = (typeof STUDY_TABS)[number]["id"];
 
 // Which reader tab each top-level field renders in -- the builder groups
 // fields the same way, so an admin edits a field where readers will see it.
-const TAB_OF_FIELD: Record<keyof StudyWeekContent, StudyTabId> = {
+const TAB_OF_FIELD: Record<Exclude<keyof StudyWeekContent, "tabMedia">, StudyTabId> = {
   subtitle: "study",
   keyVerse: "study",
   keyRef: "study",
@@ -83,7 +83,11 @@ export function studyContentIssues(content: StudyWeekContent): StudyContentIssue
     const path = issue.path.join(".");
     const message = issue.code === "too_small" && issue.origin === "string" ? "Required" : issue.message;
     if (!byPath.has(path)) byPath.set(path, message);
-    const tab = TAB_OF_FIELD[issue.path[0] as keyof StudyWeekContent];
+    // tabMedia problems belong to the tab named in their path ("tabMedia.live.0.imageUrl").
+    const tab =
+      issue.path[0] === "tabMedia"
+        ? (issue.path[1] as StudyTabId)
+        : TAB_OF_FIELD[issue.path[0] as Exclude<keyof StudyWeekContent, "tabMedia">];
     if (tab) countByTab[tab] += 1;
   }
   return { valid: false, byPath, countByTab };

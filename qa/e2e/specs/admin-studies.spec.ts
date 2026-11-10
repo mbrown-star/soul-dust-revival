@@ -91,6 +91,31 @@ test.describe("admin studies list and editor, as qa-admin", () => {
     await expect(page.getByRole("status").filter({ hasText: "All changes saved" })).toBeVisible();
   });
 
+  test("an image added inside a week section saves and shows in the reader right after that section", async ({ page }) => {
+    await openLesson(page, /QA Colossians-Shaped Study/i, /Week 1: Grace and Truth/i);
+    const lessonId = page.url().split("/lessons/")[1]!;
+
+    await page.getByRole("button", { name: /Section Where We Are/ }).click();
+    await page.getByRole("button", { name: "+ Image" }).first().click();
+    await page.getByText("Use a link").click();
+    const link = page.getByLabel("image link");
+    await link.fill("https://example.com/qa-week-media.png");
+    await link.press("Enter");
+    await page.getByLabel(/Alt text/).fill("QA week media image");
+    await expect(page.getByRole("status").filter({ hasText: "All changes saved" })).toBeVisible();
+
+    // Admin preview of the reader: the image sits in the Study tab after the section.
+    await page.goto(`/studies/qa-study-not-started/${lessonId}`);
+    const section = page.getByRole("heading", { name: "Where We Are" }).locator("..");
+    await expect(section.getByRole("img", { name: "QA week media image" })).toBeAttached();
+
+    // Clean up: remove it again and let it save.
+    await page.goBack();
+    await page.getByRole("button", { name: /Section Where We Are/ }).click();
+    await page.getByRole("button", { name: "Remove this image" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "All changes saved" })).toBeVisible();
+  });
+
   test("the plain fallback lesson (no studyContent) offers to start a week, and keeps its block canvas", async ({ page }) => {
     await openLesson(page, /QA Colossians-Shaped Study/i, /^Introduction$/i);
     await expect(page.getByRole("button", { name: "Start building this week" })).toBeVisible();
@@ -197,8 +222,10 @@ test.describe("admin studies list and editor, as qa-admin", () => {
     await expect(cardToggles.first()).toContainText("Question");
 
     // Restore the fixture order.
+    const restored = page.waitForResponse((r) => r.url().endsWith("/api/admin/content-blocks") && r.request().method() === "PATCH");
     await page.getByRole("button", { name: "Move Question block down" }).click();
     await expect(cardToggles.first()).toContainText("Text");
+    expect((await restored).ok()).toBe(true);
   });
 
   test("a draft lesson can be added and then deleted; published lessons have no Delete", async ({ page }) => {
@@ -223,15 +250,25 @@ test.describe("admin studies list and editor, as qa-admin", () => {
   test("lessons reorder on the study page, and the order persists", async ({ page }) => {
     await page.goto("/admin/studies");
     await page.getByRole("link", { name: /QA Colossians-Shaped Study/i }).click();
+    await expect(page).toHaveURL(/\/admin\/studies\/[0-9a-f-]+$/);
+    // Wait for hydration: a click on the server-rendered button before React
+    // attaches its handler does nothing (seen on the slower mobile project).
+    await page.waitForLoadState("networkidle");
     const items = page.getByRole("listitem");
     await expect(items.first()).toContainText("Week 1: Grace and Truth");
 
+    const saveDown = page.waitForResponse((r) => r.url().endsWith("/api/admin/lessons") && r.request().method() === "PATCH");
     await page.getByRole("button", { name: "Move Week 1: Grace and Truth down" }).click();
     await expect(items.first()).toContainText("Introduction");
+    expect((await saveDown).ok()).toBe(true);
     await page.reload();
+    await page.waitForLoadState("networkidle");
     await expect(page.getByRole("listitem").first()).toContainText("Introduction");
 
+    // Wait for the restore to save, or the next run starts from the wrong order.
+    const saveUp = page.waitForResponse((r) => r.url().endsWith("/api/admin/lessons") && r.request().method() === "PATCH");
     await page.getByRole("button", { name: "Move Week 1: Grace and Truth up" }).click();
     await expect(page.getByRole("listitem").first()).toContainText("Week 1: Grace and Truth");
+    expect((await saveUp).ok()).toBe(true);
   });
 });

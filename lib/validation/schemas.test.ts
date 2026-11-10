@@ -22,6 +22,7 @@ import {
   socialPostTargetInputSchema,
   socialSuggestSchema,
   studySchema,
+  studyWeekContentSchema,
   uploadUrlSchema,
 } from "./schemas";
 
@@ -746,5 +747,60 @@ describe("content block media schemas", () => {
     const parsed = contentBlockCreateSchema.safeParse({ lessonId: id, type: "text", insertAt: 2, initial: { body: "<p>x</p>" } });
     expect(parsed.success).toBe(true);
     expect(contentBlockCreateSchema.safeParse({ lessonId: id, type: "text", insertAt: -1 }).success).toBe(false);
+  });
+});
+
+describe("Study week media", () => {
+  const base = {
+    subtitle: "",
+    keyVerse: "v",
+    keyRef: "r",
+    study: { sections: [], parts: [] },
+    passageRef: "p",
+    passage: [],
+    stationsLabel: "",
+    stationsIntro: "",
+    stations: [],
+    lifeTitle: "",
+    lifeIntro: "",
+    practices: [],
+    prayerLead: "",
+    prayerBeats: [],
+    prayerClose: "",
+    bottomLine: [],
+    benediction: [],
+    closingVerse: "",
+    closingRef: "",
+    carry: "",
+  };
+  const id = "11111111-1111-4111-8111-111111111111";
+  const withSectionMedia = (media: unknown) => ({ ...base, study: { sections: [{ heading: "H", paras: [], media: [media] }], parts: [] } });
+
+  it("accepts an https image, a linked or uploaded video, and a callout", () => {
+    for (const media of [
+      { id, type: "image", imageUrl: "https://example.com/a.png", imageAlt: "A" },
+      { id, type: "video", mediaUrl: "https://example.com/v.mp4" },
+      { id, type: "video", mediaId: "stream-uid" },
+      { id, type: "callout", calloutTitle: "Note", calloutColor: "#fef3c7", body: "<p>x</p>" },
+    ]) {
+      expect(studyWeekContentSchema.safeParse(withSectionMedia(media)).success).toBe(true);
+    }
+  });
+
+  it("rejects http URLs, fields from another type, and a video with both sources", () => {
+    expect(studyWeekContentSchema.safeParse(withSectionMedia({ id, type: "image", imageUrl: "http://example.com/a.png" })).success).toBe(false);
+    expect(studyWeekContentSchema.safeParse(withSectionMedia({ id, type: "image", calloutColor: "#ffffff" })).success).toBe(false);
+    expect(
+      studyWeekContentSchema.safeParse(withSectionMedia({ id, type: "video", mediaId: "uid", mediaUrl: "https://example.com/v.mp4" })).success
+    ).toBe(false);
+  });
+
+  it("rejects two media items sharing one id anywhere in the week", () => {
+    const media = { id, type: "image", imageUrl: "https://example.com/a.png" };
+    expect(studyWeekContentSchema.safeParse({ ...withSectionMedia(media), tabMedia: { lift: [media] } }).success).toBe(false);
+  });
+
+  it("accepts media at the end of a tab", () => {
+    expect(studyWeekContentSchema.safeParse({ ...base, tabMedia: { lift: [{ id, type: "audio", mediaUrl: "https://example.com/a.mp3" }] } }).success).toBe(true);
   });
 });

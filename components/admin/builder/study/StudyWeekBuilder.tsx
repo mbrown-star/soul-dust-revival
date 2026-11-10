@@ -2,12 +2,26 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { StudyWeekContent } from "@/lib/study/studyContent";
+import type { StudyWeekContent, WeekMedia } from "@/lib/study/studyContent";
+import { mapWeekMedia } from "@/lib/study/weekMedia";
+import { BuilderConfigContext } from "../blockEditors";
+import { WeekMediaPatchContext } from "./WeekMediaEditor";
 import { useAutosave } from "@/lib/hooks/useAutosave";
-import { STUDY_TABS, studyContentIssues, type StudyTabId } from "@/lib/study/studyContentIssues";
+import {
+  STUDY_TABS,
+  studyContentIssues,
+  type StudyTabId,
+} from "@/lib/study/studyContentIssues";
 import { ScrollFadeTabs } from "@/components/ui/ScrollFadeTabs";
 import { StatusPill } from "../BlockCard";
-import { LiftUpPanel, LiveItPanel, PassagePanel, StudyPanel, WorkTheWordPanel, type PanelProps } from "./panels";
+import {
+  LiftUpPanel,
+  LiveItPanel,
+  PassagePanel,
+  StudyPanel,
+  WorkTheWordPanel,
+  type PanelProps,
+} from "./panels";
 
 type SavePatch = { studyContent: StudyWeekContent };
 
@@ -22,9 +36,11 @@ export function StudyWeekBuilder({
   lessonId,
   initialContent,
   alreadySaved,
+  r2PublicBaseUrl,
 }: {
   lessonId: string;
   initialContent: StudyWeekContent;
+  r2PublicBaseUrl?: string;
   /** False for a week that has never been saved yet (started from empty). */
   alreadySaved: boolean;
 }) {
@@ -34,12 +50,15 @@ export function StudyWeekBuilder({
   // creates the block under the id the builder already holds.
   const [content, setContent] = useState(() => ({
     ...initialContent,
-    stations: initialContent.stations.map((s) => (s.questionBlockId ? s : { ...s, questionBlockId: crypto.randomUUID() })),
+    stations: initialContent.stations.map((s) =>
+      s.questionBlockId ? s : { ...s, questionBlockId: crypto.randomUUID() },
+    ),
   }));
   const [tab, setTab] = useState<StudyTabId>("study");
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const savedOnce = useRef(alreadySaved);
   const issues = useMemo(() => studyContentIssues(content), [content]);
+  const latestContent = useRef(content);
 
   const autosave = useAutosave<SavePatch>(async (patch, { keepalive }) => {
     const res = await fetch("/api/admin/lessons", {
@@ -50,10 +69,15 @@ export function StudyWeekBuilder({
     });
     if (!res.ok) {
       const data = (await res.json().catch(() => ({}))) as {
-        details?: { fieldErrors?: Record<string, string[]>; formErrors?: string[] };
+        details?: {
+          fieldErrors?: Record<string, string[]>;
+          formErrors?: string[];
+        };
       };
       throw new Error(
-        data.details?.formErrors?.[0] ?? Object.values(data.details?.fieldErrors ?? {})[0]?.[0] ?? "Check your connection and retry."
+        data.details?.formErrors?.[0] ??
+          Object.values(data.details?.fieldErrors ?? {})[0]?.[0] ??
+          "Check your connection and retry.",
       );
     }
     if (!savedOnce.current) {
@@ -65,8 +89,18 @@ export function StudyWeekBuilder({
   });
 
   function change(next: StudyWeekContent) {
+    latestContent.current = next;
     setContent(next);
-    if (studyContentIssues(next).valid) autosave.schedule({ studyContent: next });
+    if (studyContentIssues(next).valid)
+      autosave.schedule({ studyContent: next });
+  }
+
+  function patchMedia(id: string, patch: Partial<WeekMedia>) {
+    change(
+      mapWeekMedia(latestContent.current, (m) =>
+        m.id === id ? { ...m, ...patch } : m,
+      ),
+    );
   }
 
   const panelProps: PanelProps = { content, change, issues };
@@ -76,77 +110,111 @@ export function StudyWeekBuilder({
     const delta = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
     if (!delta) return;
     e.preventDefault();
-    const next = STUDY_TABS[(index + delta + STUDY_TABS.length) % STUDY_TABS.length]!;
+    const next =
+      STUDY_TABS[(index + delta + STUDY_TABS.length) % STUDY_TABS.length]!;
     setTab(next.id);
     tabRefs.current[next.id]?.focus();
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-moss">Laid out like the reader&apos;s five tabs. Changes save automatically.</p>
-        <div role="status" aria-live="polite" className="flex items-center gap-2">
-          {!issues.valid ? (
-            <StatusPill tone="error">
-              Not saved yet -- {totalIssues} {totalIssues === 1 ? "field needs" : "fields need"} filling in
-            </StatusPill>
-          ) : autosave.status === "saving" || autosave.status === "pending" ? (
-            <StatusPill tone="muted">Saving…</StatusPill>
-          ) : autosave.status === "saved" ? (
-            <StatusPill tone="success">All changes saved</StatusPill>
-          ) : autosave.status === "error" ? (
-            <>
-              <StatusPill tone="error">Not saved: {autosave.error}</StatusPill>
-              <button type="button" className="text-xs underline text-ink" onClick={() => void autosave.retry()}>
-                Retry
-              </button>
-            </>
-          ) : null}
-        </div>
-      </div>
-
-      <ScrollFadeTabs ariaLabel="Week sections">
-        {STUDY_TABS.map((t, index) => {
-          const count = issues.countByTab[t.id];
-          const selected = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              ref={(el) => {
-                tabRefs.current[t.id] = el;
-              }}
-              type="button"
-              role="tab"
-              id={`week-tab-${t.id}`}
-              aria-selected={selected}
-              aria-controls={`week-panel-${t.id}`}
-              tabIndex={selected ? 0 : -1}
-              onClick={() => setTab(t.id)}
-              onKeyDown={(e) => onTabKeyDown(e, index)}
-              className={`shrink-0 flex items-center gap-2 px-4 py-2.5 text-sm border-b-2 -mb-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink ${
-                selected ? "border-ink text-ink font-medium" : "border-transparent text-moss hover:text-ink"
-              }`}
+    <BuilderConfigContext.Provider
+      value={{ r2PublicBaseUrl, studyKind: "study" }}
+    >
+      <WeekMediaPatchContext.Provider value={patchMedia}>
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-moss">
+              Laid out like the reader&apos;s five tabs. Changes save
+              automatically.
+            </p>
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex items-center gap-2"
             >
-              {t.label}
-              {count > 0 && (
-                <span className="text-xs rounded-full bg-error/10 text-error px-1.5" aria-label={`${count} to fix`}>
-                  {count}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </ScrollFadeTabs>
+              {!issues.valid ? (
+                <StatusPill tone="error">
+                  Not saved yet -- {totalIssues}{" "}
+                  {totalIssues === 1 ? "field needs" : "fields need"} filling in
+                </StatusPill>
+              ) : autosave.status === "saving" ||
+                autosave.status === "pending" ? (
+                <StatusPill tone="muted">Saving…</StatusPill>
+              ) : autosave.status === "saved" ? (
+                <StatusPill tone="success">All changes saved</StatusPill>
+              ) : autosave.status === "error" ? (
+                <>
+                  <StatusPill tone="error">
+                    Not saved: {autosave.error}
+                  </StatusPill>
+                  <button
+                    type="button"
+                    className="text-xs underline text-ink"
+                    onClick={() => void autosave.retry()}
+                  >
+                    Retry
+                  </button>
+                </>
+              ) : null}
+            </div>
+          </div>
 
-      {STUDY_TABS.map((t) => (
-        <div key={t.id} role="tabpanel" id={`week-panel-${t.id}`} aria-labelledby={`week-tab-${t.id}`} hidden={tab !== t.id} className="space-y-6">
-          {t.id === "study" && <StudyPanel {...panelProps} />}
-          {t.id === "passage" && <PassagePanel {...panelProps} />}
-          {t.id === "work" && <WorkTheWordPanel {...panelProps} />}
-          {t.id === "live" && <LiveItPanel {...panelProps} />}
-          {t.id === "lift" && <LiftUpPanel {...panelProps} />}
+          <ScrollFadeTabs ariaLabel="Week sections">
+            {STUDY_TABS.map((t, index) => {
+              const count = issues.countByTab[t.id];
+              const selected = tab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  ref={(el) => {
+                    tabRefs.current[t.id] = el;
+                  }}
+                  type="button"
+                  role="tab"
+                  id={`week-tab-${t.id}`}
+                  aria-selected={selected}
+                  aria-controls={`week-panel-${t.id}`}
+                  tabIndex={selected ? 0 : -1}
+                  onClick={() => setTab(t.id)}
+                  onKeyDown={(e) => onTabKeyDown(e, index)}
+                  className={`shrink-0 flex items-center gap-2 px-4 py-2.5 text-sm border-b-2 -mb-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink ${
+                    selected
+                      ? "border-ink text-ink font-medium"
+                      : "border-transparent text-moss hover:text-ink"
+                  }`}
+                >
+                  {t.label}
+                  {count > 0 && (
+                    <span
+                      className="text-xs rounded-full bg-error/10 text-error px-1.5"
+                      aria-label={`${count} to fix`}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </ScrollFadeTabs>
+
+          {STUDY_TABS.map((t) => (
+            <div
+              key={t.id}
+              role="tabpanel"
+              id={`week-panel-${t.id}`}
+              aria-labelledby={`week-tab-${t.id}`}
+              hidden={tab !== t.id}
+              className="space-y-6"
+            >
+              {t.id === "study" && <StudyPanel {...panelProps} />}
+              {t.id === "passage" && <PassagePanel {...panelProps} />}
+              {t.id === "work" && <WorkTheWordPanel {...panelProps} />}
+              {t.id === "live" && <LiveItPanel {...panelProps} />}
+              {t.id === "lift" && <LiftUpPanel {...panelProps} />}
+            </div>
+          ))}
         </div>
-      ))}
-    </div>
+      </WeekMediaPatchContext.Provider>
+    </BuilderConfigContext.Provider>
   );
 }

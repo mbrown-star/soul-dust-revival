@@ -3,6 +3,7 @@
 import type { StudyWeekContent } from "@/lib/study/studyContent";
 import { ReadAloudButton } from "@/components/devotional/ReadAloudButton";
 import { HideWordsSlider } from "@/components/devotional/HideWordsSlider";
+import { WeekMediaSlot } from "../WeekMediaSlot";
 
 /**
  * The full WEB passage for the week, verse by verse. Where a station's Greek
@@ -94,6 +95,8 @@ export function PassageTab({
         </p>
         <HideWordsSlider verse={content.keyVerse} />
       </div>
+
+      <WeekMediaSlot slot="tab:passage" />
 
       <button
         type="button"

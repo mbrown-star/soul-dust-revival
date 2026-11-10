@@ -8,6 +8,8 @@ import { parsePassageText } from "@/lib/study/parsePassageText";
 import { BlockIcon, type BlockIconName } from "../BlockIcon";
 import { NumberField, SelectField, TextField, inputClass } from "../fields";
 import { SortableList } from "../SortableList";
+import { WeekMediaEditor, withFreshMediaIds } from "./WeekMediaEditor";
+import type { WeekTabId } from "@/lib/study/studyContent";
 
 export type PanelProps = {
   content: StudyWeekContent;
@@ -143,7 +145,34 @@ function TextSectionFields({
         issues={issues}
         addLabel="+ Add pull quote"
       />
+      <WeekMediaEditor
+        label="Images, video, audio & callouts"
+        description="Shown after this text, in this order."
+        items={item.media ?? []}
+        onChange={(media) => update({ ...item, media: media.length ? media : undefined })}
+        pathPrefix={`${path}.media`}
+        issues={issues}
+      />
     </>
+  );
+}
+
+/** "More for this tab": media shown at the end of a reader tab. */
+function TabMediaEditor({ tab, content, change, issues }: PanelProps & { tab: WeekTabId }) {
+  return (
+    <section className="border border-dashed border-moss/30 rounded-lg p-4 bg-white/50">
+      <WeekMediaEditor
+        label="More for this tab"
+        description="Images, video, audio, or callouts shown at the end of this tab, before its done button."
+        items={content.tabMedia?.[tab] ?? []}
+        onChange={(media) =>
+          change({ ...content, tabMedia: { ...content.tabMedia, [tab]: media.length ? media : undefined } })
+        }
+        pathPrefix={`tabMedia.${tab}`}
+        issues={issues}
+        max={20}
+      />
+    </section>
   );
 }
 
@@ -168,6 +197,7 @@ export function StudyPanel({ content, change, issues }: PanelProps) {
         typeLabel="Section"
         max={MAX.sections}
         canDuplicate
+        duplicateItem={withFreshMediaIds}
         itemLabel={(s, i) => `section ${i + 1}${s.heading ? ` (${s.heading})` : ""}`}
         summary={(s) => s.heading || preview(s.paras[0] ?? "")}
         errorCount={(i) => issuesUnder(issues, `study.sections.${i}.`)}
@@ -187,6 +217,7 @@ export function StudyPanel({ content, change, issues }: PanelProps) {
         typeLabel="Part"
         max={MAX.parts}
         canDuplicate
+        duplicateItem={withFreshMediaIds}
         itemLabel={(p, i) => `${p.label || `part ${i + 1}`}`}
         summary={(p) => [p.label, p.heading].filter(Boolean).join(" — ")}
         errorCount={(i) => issuesUnder(issues, `study.parts.${i}.`)}
@@ -197,6 +228,7 @@ export function StudyPanel({ content, change, issues }: PanelProps) {
           <TextSectionFields item={item} update={(next) => update(next as Part)} path={`study.parts.${i}`} issues={issues} withLabel />
         )}
       />
+      <TabMediaEditor tab="study" content={content} change={change} issues={issues} />
     </>
   );
 }
@@ -270,6 +302,7 @@ export function PassagePanel({ content, change, issues }: PanelProps) {
           </div>
         )}
       />
+      <TabMediaEditor tab="passage" content={content} change={change} issues={issues} />
     </>
   );
 }
@@ -337,6 +370,14 @@ function StationFields({ station, update, path, issues }: { station: StudyStatio
           />
         </div>
       )}
+      <WeekMediaEditor
+        label="Images, video, audio & callouts"
+        description="Shown with this station, after its Greek study."
+        items={station.media ?? []}
+        onChange={(media) => update({ ...station, media: media.length ? media : undefined })}
+        pathPrefix={`${path}.media`}
+        issues={issues}
+      />
     </>
   );
 }
@@ -380,6 +421,7 @@ export function WorkTheWordPanel({ content, change, issues }: PanelProps) {
         emptyText="No stations yet."
         renderItem={(station, update, i) => <StationFields station={station} update={update} path={`stations.${i}`} issues={issues} />}
       />
+      <TabMediaEditor tab="work" content={content} change={change} issues={issues} />
     </>
   );
 }
@@ -404,16 +446,25 @@ export function LiveItPanel({ content, change, issues }: PanelProps) {
         typeLabel="Practice"
         max={MAX.practices}
         canDuplicate
+        duplicateItem={withFreshMediaIds}
         itemLabel={(p, i) => `practice ${i + 1}${p.title ? ` (${p.title})` : ""}`}
         summary={(p, i) => `${i + 1}. ${p.title || preview(p.body)}`}
         errorCount={(i) => issuesUnder(issues, `practices.${i}.`)}
         newItem={() => ({ n: content.practices.length + 1, title: "", body: "" })}
         addLabel="+ Add practice"
         emptyText="No practices yet."
-        renderItem={(practice, update) => (
+        renderItem={(practice, update, i) => (
           <>
             <TextField label="Title" value={practice.title} onChange={(title) => update({ ...practice, title })} />
             <TextField label="Body" multiline value={practice.body} onChange={(body) => update({ ...practice, body })} />
+            <WeekMediaEditor
+              label="Images, video, audio & callouts"
+              description="Shown after this practice."
+              items={practice.media ?? []}
+              onChange={(media) => update({ ...practice, media: media.length ? media : undefined })}
+              pathPrefix={`practices.${i}.media`}
+              issues={issues}
+            />
           </>
         )}
       />
@@ -451,6 +502,7 @@ export function LiveItPanel({ content, change, issues }: PanelProps) {
           addLabel="+ Add line"
         />
       </PinnedCard>
+      <TabMediaEditor tab="live" content={content} change={change} issues={issues} />
     </>
   );
 }
@@ -480,6 +532,7 @@ export function LiftUpPanel({ content, change, issues }: PanelProps) {
       <PinnedCard icon="question" title="Quiet question to carry" description="Shown on its own card at the end of the week.">
         <TextField label="Question" multiline rows={2} value={content.carry} onChange={(carry) => change({ ...content, carry })} />
       </PinnedCard>
+      <TabMediaEditor tab="lift" content={content} change={change} issues={issues} />
     </>
   );
 }

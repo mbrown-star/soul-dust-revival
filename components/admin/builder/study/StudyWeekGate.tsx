@@ -12,7 +12,15 @@ import { StudyWeekBuilder } from "./StudyWeekBuilder";
  * itself -- the week saves once its required fields are filled in, and until
  * then readers keep seeing this lesson's plain blocks.
  */
-export function StudyWeekGate({ lessonId, initialContent }: { lessonId: string; initialContent: StudyWeekContent | null }) {
+export function StudyWeekGate({
+  lessonId,
+  initialContent,
+  r2PublicBaseUrl,
+}: {
+  lessonId: string;
+  initialContent: StudyWeekContent | null;
+  r2PublicBaseUrl?: string;
+}) {
   const [content, setContent] = useState(initialContent);
 
   if (!content) {
@@ -29,5 +37,12 @@ export function StudyWeekGate({ lessonId, initialContent }: { lessonId: string; 
     );
   }
 
-  return <StudyWeekBuilder lessonId={lessonId} initialContent={content} alreadySaved={initialContent !== null} />;
+  return (
+    <StudyWeekBuilder
+      lessonId={lessonId}
+      initialContent={content}
+      alreadySaved={initialContent !== null}
+      r2PublicBaseUrl={r2PublicBaseUrl}
+    />
+  );
 }

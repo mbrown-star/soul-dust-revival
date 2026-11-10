@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { StudyWeekContent } from "@/lib/study/studyContent";
 import { type LessonStatus, postLessonProgress, pendingLessonProgressPings } from "@/lib/study/lessonProgress";
+import { WeekMediaSlot } from "../WeekMediaSlot";
 
 /**
  * The week's closing tab -- and, per the recommendation discussed directly
@@ -93,6 +94,8 @@ export function LiftUpTab({
         <p className="font-sans text-xs font-semibold uppercase tracking-wide text-gold mb-2">Quiet Question to Carry</p>
         <p className="font-serif italic text-lg">{content.carry}</p>
       </div>
+
+      <WeekMediaSlot slot="tab:lift" />
 
       <button
         type="button"

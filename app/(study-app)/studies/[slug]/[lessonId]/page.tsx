@@ -6,6 +6,8 @@ import { getSession } from "@/lib/auth/session";
 import { LessonBlock } from "@/components/study/LessonBlock";
 import { LessonNavigation } from "@/components/study/LessonNavigation";
 import { StudyLessonView } from "@/components/study/StudyLessonView";
+import { WeekMediaList } from "@/components/study/WeekMediaList";
+import { weekMediaBySlot } from "@/lib/study/weekMedia";
 import { DevotionalAppView } from "@/components/devotional/DevotionalAppView";
 import { parseDayLabel, todaysDateLabel } from "@/lib/devotional/parseDayLabel";
 import { getDisplayStudyTitle } from "@/lib/study/displayTitle";
@@ -13,6 +15,9 @@ import type { YearDay } from "@/components/devotional/YearView";
 import type { JournalEntry } from "@/components/devotional/JournalView";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { z } from "zod";
+
+const isUuid = (value: string) => z.string().uuid().safeParse(value).success;
 
 // Mirrors the page's own entitlement check rather than just looking the
 // lesson up directly -- metadata generation runs independently of the page
@@ -36,6 +41,7 @@ export async function generateMetadata({
   const access = await getStudyAccess(session, study.productId);
   if (!access.allowed) return { title: "Studies" };
 
+  if (!isUuid(lessonId)) return { title: "Studies" };
   const lesson = await db.query.lessons.findFirst({ where: and(eq(lessons.id, lessonId), eq(lessons.studyId, study.id)) });
   if (!lesson || (!access.isAdminPreview && (!lesson.published || !study.published))) return { title: "Studies" };
   return { title: lesson.title };
@@ -69,6 +75,8 @@ export default async function LessonPage({
   // product, so a lesson id from a different study must not load here.
   // Drafts (an unpublished lesson or study) are visible only to an admin
   // previewing them.
+  // A malformed id in the URL is "no such lesson", not a database error.
+  if (!isUuid(lessonId)) redirect(`/studies/${slug}`);
   const lesson = await db.query.lessons.findFirst({ where: and(eq(lessons.id, lessonId), eq(lessons.studyId, study.id)) });
   if (!lesson) redirect(`/studies/${slug}`);
   if (!access.isAdminPreview && (!lesson.published || !study.published)) redirect(`/studies/${slug}`);
@@ -304,6 +312,12 @@ export default async function LessonPage({
           weeks={studyLessons.map((l) => ({ id: l.id, title: l.title, href: `${studyHref}/${l.id}`, isCurrent: l.id === lesson.id }))}
           studyHref={studyHref}
           initialStatus={progressRow?.status ?? "not_started"}
+          media={Object.fromEntries(
+            [...weekMediaBySlot(lesson.studyContent).entries()].map(([slot, items]) => [
+              slot,
+              <WeekMediaList key={slot} lessonId={lesson.id} items={items} />,
+            ])
+          )}
         />
       ) : (
         <>

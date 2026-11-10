@@ -5,6 +5,7 @@ import type { StudyWeekContent } from "@/lib/study/studyContent";
 import { HideWordsSlider } from "@/components/devotional/HideWordsSlider";
 import { ReadAloudButton } from "@/components/devotional/ReadAloudButton";
 import { useLocalProgress } from "../useLocalProgress";
+import { WeekMediaSlot } from "../WeekMediaSlot";
 
 /**
  * The week opener: key verse, the two SCRIPTURE STUDY · DIVE sections shown
@@ -72,6 +73,7 @@ export function StudyTab({
               <p key={j}>{p}</p>
             ))}
           </div>
+          <WeekMediaSlot slot={`section:${i}`} className="pt-2" />
         </div>
       ))}
 
@@ -115,6 +117,7 @@ export function StudyTab({
                       <p key={j}>{p}</p>
                     ))}
                   </div>
+                  <WeekMediaSlot slot={`part:${i}`} className="pt-2" />
                 </div>
               )}
             </div>
@@ -124,6 +127,8 @@ export function StudyTab({
           {readParts.size} of {content.study.parts.length} parts read
         </p>
       </div>
+
+      <WeekMediaSlot slot="tab:study" />
 
       <button
         type="button"

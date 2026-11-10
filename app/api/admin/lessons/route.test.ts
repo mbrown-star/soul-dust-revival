@@ -412,6 +412,25 @@ describe("admin lessons route", () => {
       expect(unchanged!.questionPrompt).toBeNull();
     });
 
+    it("saves media placed in a week, sanitizing callout HTML", async () => {
+      await signInAsAdmin();
+      const lessonId = await makeLesson();
+      const mediaId = randomUUID();
+      const res = await PATCH(
+        patchRequest({
+          id: lessonId,
+          studyContent: week({
+            stations: [station({ questionBlockId: randomUUID(), media: [{ id: mediaId, type: "callout", body: "<p>ok</p><script>alert(1)</script>" }] })],
+            tabMedia: { lift: [{ id: randomUUID(), type: "image", imageUrl: "https://example.com/a.png", imageAlt: "A" }] },
+          }),
+        })
+      );
+      expect(res.status).toBe(200);
+      const [lesson] = await db.select().from(lessons).where(eq(lessons.id, lessonId));
+      expect(lesson!.studyContent!.stations[0]!.media![0]!.body).toBe("<p>ok</p>");
+      expect(lesson!.studyContent!.tabMedia!.lift![0]!.imageAlt).toBe("A");
+    });
+
     it("deletes a removed station's question block, but keeps one readers have answered", async () => {
       await signInAsAdmin();
       const lessonId = await makeLesson();

@@ -5,6 +5,8 @@ import { lessons, contentBlocks, lessonProgress, responses } from "@/lib/db/sche
 import { eq, and, asc, inArray, max, ne } from "drizzle-orm";
 import type { StudyWeekContent, StudyStation } from "@/lib/study/studyContent";
 import { writeOrderIndexes } from "@/lib/db/order";
+import { mapWeekMedia } from "@/lib/study/weekMedia";
+import { sanitizeHtml } from "@/lib/sanitize/html";
 import {
   lessonCreateSchema,
   lessonUpdateSchema,
@@ -209,13 +211,18 @@ export async function PATCH(req: NextRequest) {
           }
         }
 
-        const studyContent: StudyWeekContent = {
-          ...parsed.data.studyContent,
-          stations,
-          // The reader numbers practices from `n`, so it follows list order
-          // rather than trusting a hand-maintained number.
-          practices: parsed.data.studyContent.practices.map((p, i) => ({ ...p, n: i + 1 })),
-        };
+        // Callout text inside week media is rich HTML: sanitized on write,
+        // same as content blocks (and again on render).
+        const studyContent: StudyWeekContent = mapWeekMedia(
+          {
+            ...parsed.data.studyContent,
+            stations,
+            // The reader numbers practices from `n`, so it follows list order
+            // rather than trusting a hand-maintained number.
+            practices: parsed.data.studyContent.practices.map((p, i) => ({ ...p, n: i + 1 })),
+          },
+          (media) => (media.body != null ? { ...media, body: sanitizeHtml(media.body) } : media)
+        );
 
         const [row] = await tx.update(lessons).set({ studyContent }).where(eq(lessons.id, lessonId)).returning();
         return row;

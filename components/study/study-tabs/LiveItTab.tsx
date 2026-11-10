@@ -3,6 +3,7 @@
 import type { StudyWeekContent } from "@/lib/study/studyContent";
 import { useLocalProgress } from "../useLocalProgress";
 import { PrayerTimer } from "../PrayerTimer";
+import { WeekMediaSlot } from "../WeekMediaSlot";
 
 export function LiveItTab({
   lessonId,
@@ -48,6 +49,7 @@ export function LiveItTab({
                   <span className="font-serif text-ink block mt-1">{practice.body}</span>
                 </span>
               </label>
+              <WeekMediaSlot slot={`practice:${i}`} className="mt-4" />
             </li>
           );
         })}
@@ -70,6 +72,8 @@ export function LiveItTab({
           ))}
         </div>
       )}
+
+      <WeekMediaSlot slot="tab:live" />
 
       <button
         type="button"

@@ -49,7 +49,13 @@ export default async function LessonEditorPage({
         />
       </div>
 
-      {isStudyKind && <StudyWeekGate lessonId={lesson.id} initialContent={lesson.studyContent} />}
+      {isStudyKind && (
+        <StudyWeekGate
+          lessonId={lesson.id}
+          initialContent={lesson.studyContent}
+          r2PublicBaseUrl={process.env.R2_PUBLIC_BASE_URL}
+        />
+      )}
 
       {!usesWeekBuilder && (
         <LessonBuilder

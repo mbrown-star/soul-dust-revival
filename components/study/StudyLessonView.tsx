@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import type { StudyWeekContent } from "@/lib/study/studyContent";
 import { StudyTab } from "./study-tabs/StudyTab";
@@ -13,6 +13,8 @@ import { WeekPickerSheet, type WeekPickerItem } from "./WeekPickerSheet";
 import { useTabProgress } from "./useStudyProgress";
 import type { LessonStatus } from "@/lib/study/lessonProgress";
 import { ScrollFadeTabs } from "@/components/ui/ScrollFadeTabs";
+import { WeekMediaContext } from "./WeekMediaSlot";
+import type { WeekMediaSlot as WeekMediaSlotKey } from "@/lib/study/weekMedia";
 
 const TABS = [
   { key: "study", label: "Study" },
@@ -70,6 +72,7 @@ export function StudyLessonView({
   weeks,
   studyHref,
   initialStatus,
+  media = {},
 }: {
   lessonId: string;
   lessonTitle: string;
@@ -81,6 +84,8 @@ export function StudyLessonView({
   weeks: WeekPickerItem[];
   studyHref: string;
   initialStatus: LessonStatus;
+  /** Server-rendered media placed inside the week, keyed by where it goes. */
+  media?: Partial<Record<WeekMediaSlotKey, ReactNode>>;
 }) {
   const [tab, setTab] = useState<TabKey>("study");
   const [greekStationRef, setGreekStationRef] = useState<string | null>(null);
@@ -103,6 +108,7 @@ export function StudyLessonView({
   }
 
   return (
+    <WeekMediaContext.Provider value={media}>
     <div className="space-y-6">
       <Link href={studyHref} className="inline-block text-sm text-moss hover:text-ink underline underline-offset-2">
         ← Back to table of contents
@@ -253,5 +259,6 @@ export function StudyLessonView({
         <WeekPickerSheet bookLabel={shortBookLabel} weeks={weeks} onClose={() => setPickerOpen(false)} />
       )}
     </div>
+    </WeekMediaContext.Provider>
   );
 }

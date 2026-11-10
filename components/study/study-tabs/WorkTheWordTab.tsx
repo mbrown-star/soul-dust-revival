@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { StudyWeekContent } from "@/lib/study/studyContent";
 import { QuestionBlock } from "../QuestionBlock";
+import { WeekMediaSlot } from "../WeekMediaSlot";
 
 /**
  * The five verse stations, one at a time (a numbered stepper, not a stacked
@@ -146,6 +147,8 @@ export function WorkTheWordTab({
         )}
       </div>
 
+      <WeekMediaSlot slot={`station:${current}`} />
+
       <div className="flex justify-between gap-3 pt-2">
         <button
           type="button"
@@ -163,6 +166,8 @@ export function WorkTheWordTab({
           {isLast ? "Go to Live It →" : "Next →"}
         </button>
       </div>
+
+      <WeekMediaSlot slot="tab:work" />
     </div>
   );
 }

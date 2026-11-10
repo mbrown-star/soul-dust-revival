@@ -1,5 +1,13 @@
 import { z } from "zod";
-import { CONTENT_BLOCK_TYPES, isHttpsUrl } from "@/lib/content/blocks";
+import { CONTENT_BLOCK_TYPES, fieldsOutsideType, isHttpsUrl } from "@/lib/content/blocks";
+
+// Media URLs end up in <img>/<video>/<audio>/<track> src attributes on the
+// reader, so only https is accepted -- z.string().url() alone would also
+// accept javascript:, data:, and plain http: URLs.
+const httpsUrlSchema = z
+  .string()
+  .max(2_000)
+  .refine(isHttpsUrl, "Must be an https:// URL");
 
 // ISO 3166-1 alpha-2 country code, or the "OTHER" sentinel for a buyer/user
 // whose country isn't in the shorter selector lists (checkout, admin user
@@ -53,9 +61,12 @@ export const responseSchema = z.object({
 });
 
 // ---------- Stream ----------
-export const streamSignUrlSchema = z.object({
-  contentBlockId: z.string().uuid(),
-});
+// Either a content block's own video/audio, or an uploaded video/audio placed
+// inside a Study week (identified by its lesson and Stream id).
+export const streamSignUrlSchema = z.union([
+  z.object({ contentBlockId: z.string().uuid() }),
+  z.object({ lessonId: z.string().uuid(), mediaId: z.string().min(1).max(200) }),
+]);
 
 // ---------- Progress ----------
 export const progressSchema = z.object({
@@ -290,6 +301,28 @@ export const lessonBulkPublishSchema = z.object({
 // for a brand-new station it doesn't have a real content_blocks id for yet,
 // and the API route creates one and fills it in (see
 // app/api/admin/lessons/route.ts's studyContent branch).
+// An image/video/audio/callout placed inside a week (lib/study/studyContent.ts
+// WeekMedia). Same field rules as the matching content block type, enforced
+// with the same FIELDS_BY_TYPE check.
+const weekMediaSchema = z
+  .object({
+    id: z.string().uuid(),
+    type: z.enum(["image", "video", "audio", "callout"]),
+    imageUrl: httpsUrlSchema.optional().nullable(),
+    imageAlt: z.string().max(300).optional().nullable(),
+    mediaId: z.string().max(200).optional().nullable(),
+    mediaUrl: httpsUrlSchema.optional().nullable(),
+    captionsUrl: httpsUrlSchema.optional().nullable(),
+    transcript: z.string().max(50_000).optional().nullable(),
+    calloutTitle: z.string().max(200).optional().nullable(),
+    calloutColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a hex color like #fef3c7").optional().nullable(),
+    body: z.string().max(200_000).optional().nullable(),
+  })
+  .refine(({ id: _id, type, ...fields }) => fieldsOutsideType(type, fields).length === 0, "Field not used by this media type")
+  .refine((m) => !(m.mediaId && m.mediaUrl), "Use an uploaded file or a link, not both");
+
+const weekMediaListSchema = z.array(weekMediaSchema).max(10).optional();
+
 const studyStationSchema = z.object({
   ref: z.string().min(1).max(100),
   verse: z.string().min(1).max(2000),
@@ -303,6 +336,7 @@ const studyStationSchema = z.object({
   live: z.string().max(2000),
   verseNums: z.array(z.string().max(50)).max(50),
   anchor: z.object({ v: z.string().max(50), word: z.string().max(100) }).nullable(),
+  media: weekMediaListSchema,
 });
 
 export const studyWeekContentSchema = z.object({
@@ -316,6 +350,7 @@ export const studyWeekContentSchema = z.object({
           heading: z.string().min(1).max(300),
           paras: z.array(z.string().max(5000)).max(50),
           pulls: z.array(z.string().max(2000)).max(20).optional(),
+          media: weekMediaListSchema,
         })
       )
       .max(20),
@@ -326,6 +361,7 @@ export const studyWeekContentSchema = z.object({
           heading: z.string().min(1).max(300),
           paras: z.array(z.string().max(5000)).max(50),
           pulls: z.array(z.string().max(2000)).max(20).optional(),
+          media: weekMediaListSchema,
         })
       )
       .max(20),
@@ -339,7 +375,9 @@ export const studyWeekContentSchema = z.object({
   stations: z.array(studyStationSchema).max(20),
   lifeTitle: z.string().max(300),
   lifeIntro: z.string().max(2000),
-  practices: z.array(z.object({ n: z.number().int().min(1), title: z.string().max(300), body: z.string().max(2000) })).max(20),
+  practices: z
+    .array(z.object({ n: z.number().int().min(1), title: z.string().max(300), body: z.string().max(2000), media: weekMediaListSchema }))
+    .max(20),
   prayerLead: z.string().max(1000),
   prayerBeats: z
     .array(z.object({ person: z.enum(["Father", "Son", "Spirit"]), verb: z.string().max(100), words: z.string().max(1000) }))
@@ -350,7 +388,27 @@ export const studyWeekContentSchema = z.object({
   closingVerse: z.string().max(2000),
   closingRef: z.string().max(200),
   carry: z.string().max(2000),
-});
+  tabMedia: z
+    .object({
+      study: z.array(weekMediaSchema).max(20).optional(),
+      passage: z.array(weekMediaSchema).max(20).optional(),
+      work: z.array(weekMediaSchema).max(20).optional(),
+      live: z.array(weekMediaSchema).max(20).optional(),
+      lift: z.array(weekMediaSchema).max(20).optional(),
+    })
+    .optional(),
+}).refine((week) => {
+  // Media ids must be unique across the week: the builder patches media by id,
+  // and the reader keys them by id.
+  const ids = [
+    ...week.study.sections.flatMap((s) => s.media ?? []),
+    ...week.study.parts.flatMap((p) => p.media ?? []),
+    ...week.stations.flatMap((s) => s.media ?? []),
+    ...week.practices.flatMap((p) => p.media ?? []),
+    ...Object.values(week.tabMedia ?? {}).flatMap((list) => list ?? []),
+  ].map((m) => m.id);
+  return new Set(ids).size === ids.length;
+}, "Two media items in this week share an id -- reload and try again.");
 
 export const lessonStudyContentUpdateSchema = z.object({
   id: z.string().uuid(),
@@ -359,14 +417,6 @@ export const lessonStudyContentUpdateSchema = z.object({
 
 // ---------- Admin: content blocks ----------
 export const contentBlockTypeSchema = z.enum(CONTENT_BLOCK_TYPES);
-
-// Media URLs end up in <img>/<video>/<audio>/<track> src attributes on the
-// reader, so only https is accepted -- z.string().url() alone would also
-// accept javascript:, data:, and plain http: URLs.
-const httpsUrlSchema = z
-  .string()
-  .max(2_000)
-  .refine(isHttpsUrl, "Must be an https:// URL");
 
 // The editable columns of a block, all optional. Which of these a given block
 // may actually use depends on its type -- see FIELDS_BY_TYPE in

@@ -207,6 +207,12 @@ builder's "Use a link" option):
   anyone with the lesson can copy, unlike an uploaded file's expiring signed Stream URL. Use
   uploads for anything that should stay behind the purchase. Loading a linked file also sends
   the reader's IP address to that host (see PRIVACY.md).
+- **Media inside a Study week** (`studyContent` `media`/`tabMedia`, same field rules via
+  `weekMediaSchema`): callout HTML is sanitized on save in `app/api/admin/lessons/route.ts`
+  and again on render. An uploaded video/audio there is signed by `{lessonId, mediaId}`.
+  `/api/stream/sign-url` signs it only if that id is actually in the lesson's week, and
+  for both signing paths refuses an unpublished lesson or study unless the viewer is an
+  admin previewing, the same rule as the reader page.
 - Caption files now upload through their own `/api/admin/captions-upload-url` (`text/vtt`
   only, and the **server** picks the R2 key, so a caller can't aim the upload at an existing
   object). They previously went through the image-only `/api/admin/upload-url`, whose

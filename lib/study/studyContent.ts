@@ -15,8 +15,8 @@ export type StudyWeekContent = {
   keyVerse: string;
   keyRef: string;
   study: {
-    sections: { heading: string; paras: string[]; pulls?: string[] }[];
-    parts: { label: string; heading: string; paras: string[]; pulls?: string[] }[];
+    sections: { heading: string; paras: string[]; pulls?: string[]; media?: WeekMedia[] }[];
+    parts: { label: string; heading: string; paras: string[]; pulls?: string[]; media?: WeekMedia[] }[];
   };
   passageRef: string;
   // Verse-by-verse WEB text for the week's whole passage range, embedded at
@@ -27,7 +27,7 @@ export type StudyWeekContent = {
   stations: StudyStation[];
   lifeTitle: string;
   lifeIntro: string;
-  practices: { n: number; title: string; body: string }[];
+  practices: { n: number; title: string; body: string; media?: WeekMedia[] }[];
   // The prayer's lead-in sentence, its three Father/Son/Spirit beats, and
   // its closing sentence -- pre-split at backfill time (see PRAYER regex in
   // soul-dust-interactive/tools/study/build_study.py) rather than
@@ -40,6 +40,33 @@ export type StudyWeekContent = {
   closingVerse: string;
   closingRef: string;
   carry: string;
+  // Free-form media at the end of each reader tab (before its "done"
+  // button), for anything that doesn't belong to one section/part/station.
+  tabMedia?: Partial<Record<WeekTabId, WeekMedia[]>>;
+};
+
+export type WeekTabId = "study" | "passage" | "work" | "live" | "lift";
+
+/**
+ * An image, video, audio, or callout placed inside a week -- after a
+ * section's, part's, station's, or practice's own text, or at the end of a
+ * tab. Same fields as the matching content block type (lib/content/blocks.ts),
+ * so the builder reuses the block editors; `id` is a builder-assigned uuid.
+ * An uploaded video/audio (`mediaId`) is played through the same signed
+ * Stream URL as a content block, keyed by lesson + mediaId.
+ */
+export type WeekMedia = {
+  id: string;
+  type: "image" | "video" | "audio" | "callout";
+  imageUrl?: string | null;
+  imageAlt?: string | null;
+  mediaId?: string | null;
+  mediaUrl?: string | null;
+  captionsUrl?: string | null;
+  transcript?: string | null;
+  calloutTitle?: string | null;
+  calloutColor?: string | null;
+  body?: string | null;
 };
 
 export type StudyStation = {
@@ -58,4 +85,5 @@ export type StudyStation = {
   live: string;
   verseNums: string[];
   anchor: { v: string; word: string } | null;
+  media?: WeekMedia[];
 };
