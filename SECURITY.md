@@ -117,6 +117,16 @@ The checkout route also rejects any product with `sellOnStripe: false` — an ad
 mark a physical product Amazon-exclusive, and that's enforced server-side, not just by
 hiding the "Buy Now" button in the UI.
 
+## Sneak-peek launch mode
+A build with `NEXT_PUBLIC_LAUNCH_MODE=sneak_peek` (`lib/launchMode.ts`) has no store. That
+is enforced server-side, not just by removing links: `/books*` and `/checkout*` (including
+`/checkout/success`) redirect home from their layouts, `/api/checkout` returns 404 before
+reading the request, and `/signup` redirects to `/sneak-peek`. The Stripe webhook is
+unchanged. The mode is baked in at build time, so no request can switch it. The sample
+signup form creates an account for a new email and signs in an existing one with the same
+response, so it doesn't add an account-enumeration channel beyond the `/login` trade-off
+below.
+
 ## Amazon purchase links
 Physical products can carry an `amazonUrl` the storefront renders as an outbound
 "Buy on Amazon" link (`components/commerce/AmazonBuyButton.tsx`). Because this becomes

@@ -4,7 +4,10 @@ import { useState, useId, useRef, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
-type Mode = "login" | "signup";
+// "sneak_peek": embedded on /sneak-peek under that page's own h1 -- creates
+// an account for a new email and simply signs in an existing one, since
+// either way the visitor just wants the sample.
+type Mode = "login" | "signup" | "sneak_peek";
 
 export function AuthForm({
   mode,
@@ -31,18 +34,27 @@ export function AuthForm({
   // stale already-sent magic-link email (from before this change shipped,
   // or any leftover /auth/callback fallback) still shows a clear message
   // instead of a silent failure -- not the primary path anymore.
-  initialError?: "link_expired";
+  // "account_setup": signed in, but the email already belongs to a different
+  // `users` row (see lib/auth/recordLogin.ts) -- needs a person to fix, so
+  // the message asks them to get in touch rather than to retry.
+  initialError?: "link_expired" | "account_setup";
 }) {
   const [email, setEmail] = useState("");
   const [step, setStep] = useState<"email" | "code">("email");
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(initialError ?? null);
   const [loading, setLoading] = useState(false);
+  const [verified, setVerified] = useState(false);
+  const [setupBlocked, setSetupBlocked] = useState(false);
   const emailId = useId();
   const codeId = useId();
   const codeHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const isSignup = mode === "signup";
+  const isSneakPeek = mode === "sneak_peek";
+  const canCreateAccount = mode !== "login";
+  const Heading = isSneakPeek ? "h2" : "h1";
+  const formClass = isSneakPeek ? "max-w-sm space-y-4" : "max-w-sm mx-auto px-4 py-16 sm:py-20 space-y-4";
 
   async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,7 +68,7 @@ export function AuthForm({
         // This is what actually distinguishes signup from login functionally,
         // not just the page copy: signup may create a brand-new account,
         // while login only ever signs in an account that already exists.
-        shouldCreateUser: isSignup,
+        shouldCreateUser: canCreateAccount,
       },
     });
 
@@ -75,7 +87,7 @@ export function AuthForm({
       // need to sign up again. Now only the specific "no account" error
       // code gets that message; anything else (rate limit included) shows
       // Supabase's own real message instead.
-      if (!isSignup && authError.code === "otp_disabled") {
+      if (!canCreateAccount && authError.code === "otp_disabled") {
         setError("no_account");
       } else {
         setError(authError.message);
@@ -90,18 +102,44 @@ export function AuthForm({
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const supabase = createSupabaseBrowserClient();
 
-    const { error: authError } = await supabase.auth.verifyOtp({
-      email,
-      token: code,
-      type: "email",
-    });
+    // A code is single-use: once it has verified, a retry (after the
+    // recording step below failed) must skip straight to recording again.
+    if (!verified) {
+      const supabase = createSupabaseBrowserClient();
+      const { error: authError } = await supabase.auth.verifyOtp({
+        email,
+        token: code,
+        type: "email",
+      });
 
-    setLoading(false);
+      if (authError) {
+        setLoading(false);
+        setError(authError.message);
+        return;
+      }
+      setVerified(true);
+    }
 
-    if (authError) {
-      setError(authError.message);
+    // verifyOtp runs in the browser, so /auth/callback never sees this
+    // sign-in -- this is what creates the account's own `users` row (and its
+    // login event). Without it a new account can sign in but can't save
+    // progress or answers.
+    try {
+      const res = await fetch("/api/auth/login-recorded", { method: "POST" });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        setLoading(false);
+        // 409: the email belongs to a different `users` row -- retrying can't
+        // fix that, so the retry button goes away and the message (from the
+        // route) asks them to get in touch.
+        if (res.status === 409) setSetupBlocked(true);
+        setError(body?.error ?? "Signed in, but we couldn't finish setting up your account. Please try again.");
+        return;
+      }
+    } catch {
+      setLoading(false);
+      setError("Signed in, but we couldn't reach the server. Check your connection and try again.");
       return;
     }
 
@@ -124,12 +162,12 @@ export function AuthForm({
     return (
       <form
         onSubmit={handleCodeSubmit}
-        className="max-w-sm mx-auto px-4 py-16 sm:py-20 space-y-4"
+        className={formClass}
         aria-label="Enter your code"
       >
-        <h1 ref={codeHeadingRef} tabIndex={-1} className="font-display font-bold text-2xl text-ink">
+        <Heading ref={codeHeadingRef} tabIndex={-1} className="font-display font-bold text-2xl text-ink">
           Enter your code
-        </h1>
+        </Heading>
         <p className="text-sm text-moss">
           We sent a code to <span className="font-medium">{email}</span>.
         </p>
@@ -169,13 +207,15 @@ export function AuthForm({
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={loading || code.length === 0}
-          className="w-full bg-ink text-white rounded-lg p-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink"
-        >
-          {loading ? "Verifying..." : "Verify"}
-        </button>
+        {!setupBlocked && (
+          <button
+            type="submit"
+            disabled={loading || code.length === 0}
+            className="w-full bg-ink text-white rounded-lg p-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink"
+          >
+            {loading ? "Verifying..." : verified ? "Try again" : "Verify"}
+          </button>
+        )}
 
         <p className="text-sm text-moss text-center">
           <button
@@ -184,6 +224,8 @@ export function AuthForm({
             onClick={() => {
               setStep("email");
               setCode("");
+              setVerified(false);
+              setSetupBlocked(false);
               setError(null);
             }}
           >
@@ -197,13 +239,21 @@ export function AuthForm({
   return (
     <form
       onSubmit={handleEmailSubmit}
-      className="max-w-sm mx-auto px-4 py-16 sm:py-20 space-y-4"
-      aria-label={isSignup ? "Sign up" : "Log in"}
+      className={formClass}
+      aria-label={isSneakPeek ? "Get your free sample" : isSignup ? "Sign up" : "Log in"}
     >
-      <h1 className="font-display font-bold text-2xl text-ink">{isSignup ? "Create your account" : "Log in"}</h1>
+      <Heading className="font-display font-bold text-2xl text-ink">
+        {isSneakPeek ? "Get your free sample" : isSignup ? "Create your account" : "Log in"}
+      </Heading>
       {isSignup && (
         <p className="text-sm text-moss">
           First time buying a study or book? Start here — we&apos;ll send a code to confirm your email.
+        </p>
+      )}
+      {isSneakPeek && (
+        <p className="text-sm text-moss">
+          Enter your email and we&apos;ll send a code to confirm it. Signing up also means we&apos;ll email
+          you when the full launch is live.
         </p>
       )}
 
@@ -237,7 +287,13 @@ export function AuthForm({
           That link expired or was already used. Enter your email below to get a new code.
         </p>
       )}
-      {error && error !== "no_account" && error !== "link_expired" && (
+      {error === "account_setup" && (
+        <p role="alert" className="text-sm text-error">
+          You&apos;re signed in, but we couldn&apos;t finish setting up your account. Please contact us so we can
+          fix it.
+        </p>
+      )}
+      {error && error !== "no_account" && error !== "link_expired" && error !== "account_setup" && (
         <p role="alert" className="text-sm text-error">
           {error}
         </p>
@@ -248,10 +304,12 @@ export function AuthForm({
         disabled={loading}
         className="w-full bg-ink text-white rounded-lg p-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink"
       >
-        {loading ? "Sending..." : isSignup ? "Sign up" : "Send code"}
+        {loading ? "Sending..." : isSneakPeek ? "Send my code" : isSignup ? "Sign up" : "Send code"}
       </button>
 
-      <p className="text-sm text-moss text-center">
+      {/* No login/signup cross-link on the sneak-peek form: it already works
+          for both new and existing emails. */}
+      {!isSneakPeek && <p className="text-sm text-moss text-center">
         {isSignup ? (
           <>
             Already have an account?{" "}
@@ -267,7 +325,7 @@ export function AuthForm({
             </Link>
           </>
         )}
-      </p>
+      </p>}
     </form>
   );
 }

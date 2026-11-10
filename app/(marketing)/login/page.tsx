@@ -44,5 +44,6 @@ export default async function LoginPage({
   const session = await getSession();
   if (session && !next) redirect(nextHref);
 
-  return <AuthForm mode="login" next={nextHref} initialError={error === "link_expired" ? "link_expired" : undefined} />;
+  const initialError = error === "link_expired" || error === "account_setup" ? error : undefined;
+  return <AuthForm mode="login" next={nextHref} initialError={initialError} />;
 }

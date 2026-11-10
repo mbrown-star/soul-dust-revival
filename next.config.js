@@ -14,6 +14,15 @@ function getR2Hostname() {
   }
 }
 
+// NEXT_PUBLIC_LAUNCH_MODE is inlined at build time (lib/launchMode.ts), and
+// anything other than "sneak_peek" builds the full site with the store open.
+// lib/env.ts only validates at runtime, after the value is already baked in,
+// so a typo like "sneak-peek" must stop the build here instead.
+const LAUNCH_MODE = process.env.NEXT_PUBLIC_LAUNCH_MODE;
+if (LAUNCH_MODE && !["sneak_peek", "full"].includes(LAUNCH_MODE)) {
+  throw new Error(`NEXT_PUBLIC_LAUNCH_MODE must be "sneak_peek", "full", or unset -- got "${LAUNCH_MODE}".`);
+}
+
 const nextConfig = {
   // pdf-parse (wrapping pdfjs-dist, used by the study-import PDF path) does
   // its own dynamic-import/relative-path resolution to find its worker

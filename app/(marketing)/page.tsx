@@ -5,11 +5,13 @@ import Link from "next/link";
 import { DustHero } from "@/components/marketing/DustHero";
 import { productEyebrowLabel } from "@/lib/commerce/productEyebrow";
 import { CoverThumbnail } from "@/components/commerce/CoverThumbnail";
+import { isSneakPeek } from "@/lib/launchMode";
 
 // The homepage's "Featured content" section -- an admin picks up to this
 // many products as "featured" (enforced in app/api/admin/products/route.ts);
 // the tile grid below is sized to comfortably hold this many.
 const MAX_FEATURED_PRODUCTS = 8;
+const tileClass = "w-full sm:w-[calc(50%-0.75rem)] lg:w-[calc(25%-1.125rem)]";
 
 // Rendered dynamically per-request rather than statically at build time —
 // this reads live product/post data an admin can change anytime, and a
@@ -18,6 +20,7 @@ const MAX_FEATURED_PRODUCTS = 8;
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  const sneakPeek = isSneakPeek();
   const db = await getDb();
   const featuredProducts = await db
     .select()
@@ -58,36 +61,45 @@ export default async function HomePage() {
             // column's 1fr tracks stay full-width even with fewer items than
             // columns, which is what looked left-indented and awkward.
             <div className="flex flex-wrap justify-center items-start gap-6">
-              {featuredProducts.map((p) => (
-                <Link
-                  key={p.id}
-                  href={`/books/${p.slug}`}
-                  className="group focus:outline-none w-full sm:w-[calc(50%-0.75rem)] lg:w-[calc(25%-1.125rem)]"
-                >
-                  <div className="mb-3">
-                    <CoverThumbnail
-                      imageUrl={p.imageUrl}
-                      imageAlt={p.imageAlt}
-                      imageWidth={p.imageWidth}
-                      imageHeight={p.imageHeight}
-                      sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-                    />
+              {featuredProducts.map((p) => {
+                const tile = (
+                  <>
+                    <div className="mb-3">
+                      <CoverThumbnail
+                        imageUrl={p.imageUrl}
+                        imageAlt={p.imageAlt}
+                        imageWidth={p.imageWidth}
+                        imageHeight={p.imageHeight}
+                        sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+                      />
+                    </div>
+                    <p className="font-sans text-xs uppercase tracking-wide text-moss mb-1">
+                      {productEyebrowLabel({
+                        type: p.type,
+                        kind: p.kind,
+                        format: p.format,
+                      })}
+                    </p>
+                    <h3 className="font-display font-semibold text-ink group-hover:text-moss group-focus:text-moss">
+                      {p.title}
+                    </h3>
+                    <p className="font-sans text-sm text-moss mt-1">
+                      {sneakPeek ? "Coming at launch" : `$${(p.priceCents / 100).toFixed(2)}`}
+                    </p>
+                  </>
+                );
+                // The store is closed on the sneak-peek site, so a tile shows
+                // what's coming but doesn't link to a product page.
+                return sneakPeek ? (
+                  <div key={p.id} className={tileClass}>
+                    {tile}
                   </div>
-                  <p className="font-sans text-xs uppercase tracking-wide text-moss mb-1">
-                    {productEyebrowLabel({
-                      type: p.type,
-                      kind: p.kind,
-                      format: p.format,
-                    })}
-                  </p>
-                  <h3 className="font-display font-semibold text-ink group-hover:text-moss group-focus:text-moss">
-                    {p.title}
-                  </h3>
-                  <p className="font-sans text-sm text-moss mt-1">
-                    ${(p.priceCents / 100).toFixed(2)}
-                  </p>
-                </Link>
-              ))}
+                ) : (
+                  <Link key={p.id} href={`/books/${p.slug}`} className={`group focus:outline-none ${tileClass}`}>
+                    {tile}
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>

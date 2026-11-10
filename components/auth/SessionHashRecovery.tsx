@@ -44,6 +44,11 @@ export function SessionHashRecovery() {
         return;
       }
 
+      // Same as every other sign-in path: ensure the account's `users` row
+      // and record the login. Not awaited -- the (study-app) layout's own
+      // backstop covers a failure here before anything is saved.
+      fetch("/api/auth/login-recorded", { method: "POST" }).catch(() => {});
+
       // Re-render server components with the now-set session cookie (e.g.
       // the nav bar's logged-in state) without a full page reload.
       router.refresh();

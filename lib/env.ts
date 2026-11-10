@@ -29,6 +29,13 @@ const envSchema = z.object({
   NEXT_PUBLIC_MARKETING_HOSTNAME: z.string().min(1).optional(),
   NEXT_PUBLIC_APP_HOSTNAME: z.string().min(1).optional(),
   NEXT_PUBLIC_COOKIE_DOMAIN: z.string().min(1).optional(),
+  // Optional: "sneak_peek" builds the limited pre-launch site (see
+  // lib/launchMode.ts); unset (or left blank, as .env.example ships it)
+  // means the full site.
+  NEXT_PUBLIC_LAUNCH_MODE: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.enum(["sneak_peek", "full"]).optional()
+  ),
 }).refine(
   (env) => {
     const configured = [

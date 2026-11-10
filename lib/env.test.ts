@@ -78,3 +78,21 @@ describe("validateEnv -- marketing/app subdomain split vars", () => {
     expect(validateEnv).toThrow();
   });
 });
+
+describe("validateEnv -- NEXT_PUBLIC_LAUNCH_MODE", () => {
+  afterEach(() => {
+    process.env = { ...ORIGINAL_ENV };
+  });
+
+  it.each([undefined, "", "full", "sneak_peek"])("accepts %j", async (mode) => {
+    const validateEnv = await validate({ NEXT_PUBLIC_LAUNCH_MODE: mode });
+    expect(validateEnv).not.toThrow();
+  });
+
+  // The build itself also refuses a bad value (next.config.js), since the
+  // mode is inlined at build time, before this runtime check ever runs.
+  it("rejects a misspelled mode at boot", async () => {
+    const validateEnv = await validate({ NEXT_PUBLIC_LAUNCH_MODE: "sneak-peek" });
+    expect(validateEnv).toThrow();
+  });
+});

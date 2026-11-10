@@ -6,8 +6,13 @@ import { eq, inArray } from "drizzle-orm";
 import { stripe } from "@/lib/stripe/client";
 import { getOrCreateStripePrice, isDigitalVariant, isPhysicalVariant } from "@/lib/stripe/products";
 import { checkoutSchema } from "@/lib/validation/schemas";
+import { isSneakPeek } from "@/lib/launchMode";
 
 export async function POST(req: NextRequest) {
+  // Nothing is for sale on the sneak-peek site; refuse here too, not just by
+  // hiding the pages, so a hand-crafted request can't start a payment.
+  if (isSneakPeek()) return NextResponse.json({ error: "not_found" }, { status: 404 });
+
   const json = await req.json();
   const parsed = checkoutSchema.safeParse(json);
   if (!parsed.success) {

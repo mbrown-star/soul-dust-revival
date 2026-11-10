@@ -5,6 +5,8 @@ import { getSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { LibraryCard } from "@/components/study/LibraryCard";
+import { isSneakPeek } from "@/lib/launchMode";
+import { marketingUrl } from "@/lib/domains";
 import { getDisplayStudyTitles } from "@/lib/study/displayTitle";
 import type { StudyKind } from "@/lib/study/studyKindLabel";
 import type { Metadata } from "next";
@@ -117,11 +119,12 @@ export default async function LibraryPage() {
       {isEmpty ? (
         <div className="bg-dusk/5 border border-dusk/10 rounded-lg p-8 text-center">
           <p className="font-serif text-moss mb-4">You don&apos;t have any studies or devotionals yet.</p>
+          {/* The store is closed on the sneak-peek site (lib/launchMode.ts). */}
           <Link
-            href="/books"
+            href={marketingUrl(isSneakPeek() ? "/sneak-peek" : "/books")}
             className="inline-block bg-ink text-parchment rounded-lg px-5 py-3 font-sans text-sm font-medium min-h-[44px]"
           >
-            Browse studies &amp; books
+            {isSneakPeek() ? "Try a free sample" : "Browse studies & books"}
           </Link>
         </div>
       ) : (

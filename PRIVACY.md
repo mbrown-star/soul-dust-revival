@@ -15,9 +15,13 @@ a codebase can't determine on its own. Get real legal review before treating thi
 | Country | `orders.country`, `users.country` | Determines which data-protection regime applies to that person (see below) |
 | Full name (optional) | `users.fullName` | Convenience display only — never required, never used to gate access |
 
-**Source of `users` rows**: usually the person's own magic-link signup (`app/auth/callback/route.ts`),
-but an admin can also create or edit a `users` row directly from `/admin/users` (e.g. onboarding
-someone who won't self-signup) — same columns, same purpose, same access rules as above.
+**Source of `users` rows**: usually the person's own signup — created on their first sign-in by
+`lib/auth/recordLogin.ts`, called from both the emailed-code login (`/api/auth/login-recorded`)
+and the older magic-link callback (`app/auth/callback/route.ts`). On the pre-launch "sneak peek"
+site the free-sample form (`/sneak-peek`) is the signup, and its copy tells the person they'll
+be emailed when the full launch is live. An admin can also create or edit a `users` row directly
+from `/admin/users` (e.g. onboarding someone who won't self-signup) — same columns, same
+purpose, same access rules as above.
 | Full shipping address | `orders.shipping*` | Only collected for physical orders, only via Stripe's own checkout page — never stored anywhere except what Stripe's Checkout session collects |
 | Login timestamps + user agent | `login_events` | Access/engagement reporting (`/admin/reports/engagement`) |
 | Study and devotional answers | `responses.answerText` | The product's actual function — saving a user's own study responses and devotional "A Question to Sit With" reflections (added 2026-11-06; previously the devotional question was display-only and never persisted) |

@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getDb } from "@/lib/db/client";
-import { users, loginEvents } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { recordLogin } from "@/lib/auth/recordLogin";
 
 /**
  * Handles the redirect from Supabase's magic-link email.
@@ -62,23 +60,20 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    const db = await getDb();
-    const existing = await db.query.users.findFirst({ where: eq(users.id, data.user.id) });
-    if (!existing) {
-      await db.insert(users).values({
-        id: data.user.id, // reuse Supabase's UID as our primary key
-        email: data.user.email ?? "",
-      });
-    }
-
-    // One row per login — the basis for the admin "how often" access
-    // report. lastActiveAt starts equal to loginAt and is nudged forward
-    // by a heartbeat while the user has an authenticated page open
-    // (see components/study/ActivityHeartbeat.tsx).
-    await db.insert(loginEvents).values({
+    const recorded = await recordLogin({
       userId: data.user.id,
+      email: data.user.email ?? "",
       userAgent: req.headers.get("user-agent"),
     });
+    // The email already belongs to a different `users` row -- same case
+    // /api/auth/login-recorded answers with a 409. Say so rather than
+    // redirecting into a reader that can't save anything for this account.
+    if (!recorded) {
+      const loginUrl = new URL("/login", origin);
+      loginUrl.searchParams.set("next", next);
+      loginUrl.searchParams.set("error", "account_setup");
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
   return NextResponse.redirect(`${origin}${next}`);

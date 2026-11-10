@@ -13,8 +13,12 @@ vi.mock("@/lib/stripe/products", async () => {
   const actual = await vi.importActual<typeof import("@/lib/stripe/products")>("@/lib/stripe/products");
   return { ...actual, getOrCreateStripePrice: vi.fn().mockResolvedValue("price_fake") };
 });
+// The launch mode is baked in at build time; mocked so one case can run as
+// the sneak-peek build. Everything else runs as the full site.
+vi.mock("@/lib/launchMode", () => ({ isSneakPeek: vi.fn().mockReturnValue(false) }));
 
 const { POST } = await import("./route");
+const { isSneakPeek } = await import("@/lib/launchMode");
 const { getSession } = await import("@/lib/auth/session");
 const { stripe } = await import("@/lib/stripe/client");
 
@@ -92,6 +96,19 @@ describe("POST /api/checkout", () => {
     const [order] = await db.select().from(orders).where(eq(orders.userId, userId));
     expect(order).toBeDefined();
     expect(order!.totalCents).toBe(2900);
+  });
+
+  it("refuses every checkout on the sneak-peek site, before creating an order or a Stripe session", async () => {
+    vi.mocked(isSneakPeek).mockReturnValueOnce(true);
+    vi.mocked(getSession).mockResolvedValue({ userId, email: "buyer@example.com" });
+
+    const res = await POST(
+      checkoutRequest({ items: [{ productId: digitalProductId, quantity: 1 }], country: "US" })
+    );
+
+    expect(res.status).toBe(404);
+    expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
+    expect(await db.select().from(orders).where(eq(orders.userId, userId))).toHaveLength(0);
   });
 
   it("requires login for a cart containing digital content", async () => {

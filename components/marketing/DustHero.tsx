@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { isSneakPeek } from "@/lib/launchMode";
 
 export function DustHero() {
   return (
@@ -39,20 +40,34 @@ export function DustHero() {
           Studies, devotionals, and a discipleship path for men willing to be honest about
           the dust — and willing to be revived.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link
-            href="/books"
-            className="font-sans font-semibold bg-ink text-parchment rounded-lg px-6 py-3 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gold focus:ring-ink"
-          >
-            Explore studies &amp; books
-          </Link>
-          <Link
-            href="/blog"
-            className="font-sans font-semibold bg-parchment/90 text-ink rounded-lg px-6 py-3 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gold focus:ring-ink"
-          >
-            Read the blog
-          </Link>
-        </div>
+        {isSneakPeek() ? (
+          <div className="flex flex-col items-center gap-3">
+            <Link
+              href="/sneak-peek"
+              className="font-sans font-semibold bg-ink text-parchment rounded-lg px-7 py-3.5 text-base sm:text-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gold focus:ring-ink"
+            >
+              Experience a sample
+            </Link>
+            <p className="font-sans text-sm text-parchment/80">
+              Free: the first weeks of the Colossians study and the first days of the Psalms devotional.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link
+              href="/books"
+              className="font-sans font-semibold bg-ink text-parchment rounded-lg px-6 py-3 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gold focus:ring-ink"
+            >
+              Explore studies &amp; books
+            </Link>
+            <Link
+              href="/blog"
+              className="font-sans font-semibold bg-parchment/90 text-ink rounded-lg px-6 py-3 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gold focus:ring-ink"
+            >
+              Read the blog
+            </Link>
+          </div>
+        )}
       </div>
     </section>
   );

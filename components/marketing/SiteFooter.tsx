@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isSneakPeek } from "@/lib/launchMode";
 
 export function SiteFooter() {
   return (
@@ -13,8 +14,12 @@ export function SiteFooter() {
         </p>
 
         <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2 font-sans text-sm">
-          <Link href="/books" className="hover:text-gold focus:outline-none focus:ring-2 focus:ring-gold rounded p-1 -m-1">
-            Books &amp; Studies
+          {/* The store is closed on the sneak-peek site (lib/launchMode.ts). */}
+          <Link
+            href={isSneakPeek() ? "/sneak-peek" : "/books"}
+            className="hover:text-gold focus:outline-none focus:ring-2 focus:ring-gold rounded p-1 -m-1"
+          >
+            {isSneakPeek() ? "Try a sample" : "Books & Studies"}
           </Link>
           <Link href="/blog" className="hover:text-gold focus:outline-none focus:ring-2 focus:ring-gold rounded p-1 -m-1">
             Blog

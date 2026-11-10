@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { CartLink } from "./CartLink";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { marketingUrl, appUrl } from "@/lib/domains";
+import { isSneakPeek } from "@/lib/launchMode";
 
 type NavItem = { label: string; href: string };
 
@@ -82,8 +83,13 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
   // split (lib/domains.ts) is configured, so these resolve directly instead
   // of bouncing through a middleware redirect; plain relative paths
   // otherwise (unchanged single-domain behavior).
+  // The sneak-peek site has no store (lib/launchMode.ts): its place in the
+  // nav goes to the free sample instead, and the cart is hidden below.
+  const sneakPeek = isSneakPeek();
   const publicItems: NavItem[] = [
-    { label: "Store", href: marketingUrl("/books") },
+    sneakPeek
+      ? { label: "Try a sample", href: marketingUrl("/sneak-peek") }
+      : { label: "Store", href: marketingUrl("/books") },
     { label: "Blog", href: marketingUrl("/blog") },
   ];
   // "App" (was "My Library") -- the one link into the gated reading app
@@ -107,7 +113,7 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
               {item.label}
             </Link>
           ))}
-          <CartLink />
+          {!sneakPeek && <CartLink />}
           {!loggedIn && (
             <Link href="/login" className={linkClass}>
               Log in
@@ -234,9 +240,11 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
                 {item.label}
               </Link>
             ))}
-            <div role="menuitem" onClick={() => setMobileMenuOpen(false)} className={menuItemClass}>
-              <CartLink />
-            </div>
+            {!sneakPeek && (
+              <div role="menuitem" onClick={() => setMobileMenuOpen(false)} className={menuItemClass}>
+                <CartLink />
+              </div>
+            )}
 
             <div aria-hidden="true" className="h-px bg-parchment/15 my-1" />
 

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { safeRedirectPath } from "@/lib/auth/safeRedirect";
 import { AuthForm } from "@/components/auth/AuthForm";
+import { isSneakPeek } from "@/lib/launchMode";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,10 @@ export default async function SignupPage({
 }: {
   searchParams: Promise<{ next?: string }>;
 }) {
+  // On the sneak-peek site the sample page is the only way to sign up (its
+  // form creates the account), so login's "Sign up" links land there.
+  if (isSneakPeek()) redirect("/sneak-peek");
+
   const { next } = await searchParams;
   // safeRedirectPath -- see login/page.tsx's matching comment on the
   // open-redirect this guards against and the separate infinite-loop fix.

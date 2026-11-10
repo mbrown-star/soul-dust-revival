@@ -116,16 +116,35 @@ describe("GET /auth/callback", () => {
     expect(exchangeCodeForSession).not.toHaveBeenCalled();
   });
 
+  it("when the email already belongs to a different users row, sends the visitor to /login with a reason", async () => {
+    const email = `taken-${randomUUID()}@example.com`;
+    const [existing] = await db.insert(users).values({ email }).returning();
+    createdUserId = existing!.id;
+    const newId = randomUUID();
+    exchangeCodeForSession.mockResolvedValue({ data: { user: { id: newId, email } }, error: null });
+
+    const res = await GET(callbackRequest({ code: "good-code", next: "/library" }));
+
+    const location = new URL(res.headers.get("location")!);
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.get("error")).toBe("account_setup");
+    expect(await db.select().from(loginEvents).where(eq(loginEvents.userId, newId))).toHaveLength(0);
+  });
+
+  // Scoped to one user id rather than comparing the whole login_events
+  // table's size, which other test files write to in parallel. An error
+  // alongside a user object must still write nothing for that user.
   it("does not write any user/login-event rows when the exchange fails", async () => {
+    const userId = randomUUID();
+    createdUserId = userId;
     exchangeCodeForSession.mockResolvedValue({
-      data: { user: null },
+      data: { user: { id: userId, email: "stale@example.com" } },
       error: { message: "Token has expired or is invalid" },
     });
 
-    const before = await db.select().from(loginEvents);
     await GET(callbackRequest({ code: "stale-code", next: "/library" }));
-    const after = await db.select().from(loginEvents);
 
-    expect(after).toHaveLength(before.length);
+    expect(await db.query.users.findFirst({ where: eq(users.id, userId) })).toBeUndefined();
+    expect(await db.select().from(loginEvents).where(eq(loginEvents.userId, userId))).toHaveLength(0);
   });
 });
