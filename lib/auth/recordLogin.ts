@@ -21,8 +21,8 @@ export async function ensureUserRow({ userId, email }: { userId: string; email: 
 
 /**
  * A completed sign-in: ensures the `users` row and records one `login_events`
- * row. Called by both sign-in paths -- the magic-link `/auth/callback` route
- * and the emailed-code login's `/api/auth/login-recorded`.
+ * row. Called by the emailed-code login's `/api/auth/login-recorded` (the
+ * only sign-in path; the old magic-link `/auth/callback` route was removed).
  */
 export async function recordLogin({
   userId,

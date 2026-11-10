@@ -13,9 +13,9 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string }>;
+  searchParams: Promise<{ next?: string }>;
 }) {
-  const { next, error } = await searchParams;
+  const { next } = await searchParams;
   // safeRedirectPath (not a plain `next ?? "/library"`) rejects an absolute
   // or protocol-relative value before it can ever reach redirect() below --
   // see lib/auth/safeRedirect.ts for the open-redirect this guards against.
@@ -44,6 +44,5 @@ export default async function LoginPage({
   const session = await getSession();
   if (session && !next) redirect(nextHref);
 
-  const initialError = error === "link_expired" || error === "account_setup" ? error : undefined;
-  return <AuthForm mode="login" next={nextHref} initialError={initialError} />;
+  return <AuthForm mode="login" next={nextHref} />;
 }

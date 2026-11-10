@@ -53,7 +53,7 @@ build would otherwise freeze that content until the next deploy.
 ## Stack
 - **Hosting:** Cloudflare Workers via the OpenNext adapter
 - **DB:** Supabase Postgres via Drizzle ORM
-- **Auth:** Supabase Auth (magic link), wired in `lib/auth/session.ts`, `lib/supabase/`, `app/auth/callback`
+- **Auth:** Supabase Auth (emailed sign-in code), wired in `lib/auth/session.ts`, `lib/supabase/`, `components/auth/AuthForm.tsx`
 - **Payments:** Stripe, webhook-driven entitlements
 - **Video/audio:** Cloudflare Stream, signed URLs generated per-request
 - **Images/files:** Cloudflare R2
@@ -82,7 +82,7 @@ One Supabase project covers both Auth and the database — no separate DB vendor
   which a direct Postgres connection isn't built to handle at scale.
 - **`users` table:** this app keeps its own `users` table (in `lib/db/schema.ts`) alongside
   Supabase's built-in `auth.users` table, reusing the same UID as the primary key
-  (see `app/auth/callback/route.ts`). This is intentional — `auth.users` is managed by
+  (see `lib/auth/recordLogin.ts`). This is intentional — `auth.users` is managed by
   Supabase internally and isn't meant to be extended directly with app-specific columns
   like `role`.
 
@@ -116,7 +116,7 @@ login prompt; digital/mixed orders get the summary plus a "log in to access your
 button linking back to the app.
 
 ## Auth notes
-Using Supabase's magic-link (passwordless) flow, with `/login` and `/signup` as
+Using Supabase's emailed one-time code (passwordless) flow, with `/login` and `/signup` as
 **distinct pages** (`components/auth/AuthForm.tsx`), not just different copy on the same
 form:
 - `/signup` can create a new account (`shouldCreateUser: true`) — the entry point for
@@ -124,9 +124,13 @@ form:
 - `/login` only signs in an existing account (`shouldCreateUser: false`) — submitting an
   unrecognized email returns an error pointing to `/signup` instead of silently creating
   an account.
-- `/auth/callback` exchanges the magic-link code for a session and creates a matching
-  row in our own `users` table, reusing the Supabase auth UID as the primary key so no
-  separate mapping table is needed.
+- The person types the code from the email; `verifyOtp` runs in the browser, then
+  `POST /api/auth/login-recorded` creates a matching row in our own `users` table,
+  reusing the Supabase auth UID as the primary key so no separate mapping table is needed.
+- No clickable sign-in links anywhere: email security scanners (e.g. Google Workspace)
+  open links before the person does and use them up. Supabase's Magic Link and Confirm
+  signup email templates must show `{{ .Token }}`, never `{{ .ConfirmationURL }}`, and
+  admin-created users (`/admin/users`) are made with `createUser`, not an invite link.
 - See `SECURITY.md` for the account-enumeration trade-off this distinction introduces.
 
 ## Checkout & cart notes

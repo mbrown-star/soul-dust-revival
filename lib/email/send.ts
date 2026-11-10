@@ -62,6 +62,35 @@ export async function sendOrderConfirmationEmail(params: OrderConfirmationParams
   });
 }
 
+/**
+ * Tells someone an admin just created an account for them. Deliberately has
+ * no sign-in link or token in it: sign-in is code-only (a clickable sign-in
+ * link gets consumed by mail security scanners before the person clicks),
+ * so this just points them at the login page, where they request a code
+ * like everyone else.
+ */
+export async function sendAccountCreatedEmail(params: { to: string; loginUrl: string }) {
+  const html = `
+    <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;">
+      <h2>You've been added to Soul Dust Revival</h2>
+      <p style="color:#666;">An account has been created for ${escapeHtml(params.to)}.</p>
+      <p style="color:#666;">To sign in, go to the login page and enter this email address. We'll email you a code to type in -- there's no password to set.</p>
+      <p style="margin-top:24px;">
+        <a href="${params.loginUrl}" style="background:#1a120c;color:#fefdfa;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block;">
+          Go to the login page
+        </a>
+      </p>
+    </div>
+  `;
+
+  await resend.emails.send({
+    from: `Soul Dust Revival <${process.env.RESEND_FROM_EMAIL}>`,
+    to: params.to,
+    subject: "Your Soul Dust Revival account is ready",
+    html,
+  });
+}
+
 const FOUNDER_EMAIL = "brad.bird@souldustrevival.com";
 
 type BundleShipmentNotificationParams = {

@@ -10,12 +10,15 @@ vi.mock("@/lib/admin/guard", () => ({ requireAdmin: vi.fn() }));
 // Supabase Auth is a genuine external service — mocked per this project's
 // testing convention. The users-table logic underneath is exercised against
 // the real local Postgres.
-const inviteUserByEmail = vi.fn();
+const createUser = vi.fn();
 const updateUserById = vi.fn();
 const deleteUser = vi.fn();
+// Resend is a genuine external service too.
+const sendAccountCreatedEmail = vi.fn();
+vi.mock("@/lib/email/send", () => ({ sendAccountCreatedEmail: (...args: unknown[]) => sendAccountCreatedEmail(...args) }));
 vi.mock("@/lib/supabase/admin", () => ({
   createSupabaseServiceRoleClient: () => ({
-    auth: { admin: { inviteUserByEmail, updateUserById, deleteUser } },
+    auth: { admin: { createUser, updateUserById, deleteUser } },
   }),
 }));
 
@@ -38,9 +41,11 @@ describe("/api/admin/users", () => {
   beforeEach(async () => {
     db = await getDb();
     vi.mocked(requireAdmin).mockResolvedValue(adminSession);
-    inviteUserByEmail.mockReset();
+    createUser.mockReset();
     updateUserById.mockReset();
     deleteUser.mockReset();
+    sendAccountCreatedEmail.mockReset();
+    sendAccountCreatedEmail.mockResolvedValue(undefined);
   });
 
   afterEach(async () => {
@@ -64,19 +69,19 @@ describe("/api/admin/users", () => {
       vi.mocked(requireAdmin).mockResolvedValue(null);
       const res = await POST(req("POST", { email: "x@example.com", role: "user" }));
       expect(res.status).toBe(403);
-      expect(inviteUserByEmail).not.toHaveBeenCalled();
+      expect(createUser).not.toHaveBeenCalled();
     });
 
     it("rejects invalid input", async () => {
       const res = await POST(req("POST", { email: "not-an-email", role: "user" }));
       expect(res.status).toBe(400);
-      expect(inviteUserByEmail).not.toHaveBeenCalled();
+      expect(createUser).not.toHaveBeenCalled();
     });
 
     it("creates the auth user and the app-side row", async () => {
       const authId = randomUUID();
       const email = `new-${authId}@example.com`;
-      inviteUserByEmail.mockResolvedValue({ data: { user: { id: authId } }, error: null });
+      createUser.mockResolvedValue({ data: { user: { id: authId } }, error: null });
 
       const res = await POST(req("POST", { email, role: "leader", fullName: "Jamie Rivera", country: "US" }));
       expect(res.status).toBe(201);
@@ -84,13 +89,33 @@ describe("/api/admin/users", () => {
       createdIds.push(json.id);
 
       expect(json).toMatchObject({ id: authId, email, role: "leader", fullName: "Jamie Rivera", country: "US" });
-      expect(inviteUserByEmail).toHaveBeenCalledWith(email, expect.objectContaining({ redirectTo: expect.any(String) }));
+      // Created already confirmed, with no invite link: they sign in with a code.
+      expect(createUser).toHaveBeenCalledWith({ email, email_confirm: true });
+      expect(sendAccountCreatedEmail).toHaveBeenCalledWith({ to: email, loginUrl: "https://example.com/login" });
+      expect(json).toMatchObject({ welcomeEmailSent: true });
     });
 
-    it("surfaces a duplicate-email invite as a 409 rather than a 500", async () => {
-      inviteUserByEmail.mockResolvedValue({
+    it("keeps the new user and reports it when the welcome email fails", async () => {
+      const authId = randomUUID();
+      const email = `nomail-${authId}@example.com`;
+      createUser.mockResolvedValue({ data: { user: { id: authId } }, error: null });
+      sendAccountCreatedEmail.mockRejectedValue(new Error("resend down"));
+
+      const res = await POST(req("POST", { email, role: "user" }));
+      expect(res.status).toBe(201);
+      const json = (await res.json()) as { id: string; welcomeEmailSent: boolean };
+      createdIds.push(json.id);
+
+      expect(json.welcomeEmailSent).toBe(false);
+      expect(deleteUser).not.toHaveBeenCalled();
+      const rows = await db.select().from(users).where(eq(users.id, authId));
+      expect(rows).toHaveLength(1);
+    });
+
+    it("surfaces a duplicate email as a 409 rather than a 500", async () => {
+      createUser.mockResolvedValue({
         data: { user: null },
-        error: { status: 422, message: "User already registered" },
+        error: { status: 422, message: "A user with this email address has already been registered" },
       });
 
       const res = await POST(req("POST", { email: "dup@example.com", role: "user" }));
@@ -104,11 +129,12 @@ describe("/api/admin/users", () => {
       const [existing] = await db.insert(users).values({ email, role: "user" }).returning();
       createdIds.push(existing!.id);
 
-      inviteUserByEmail.mockResolvedValue({ data: { user: { id: authId } }, error: null });
+      createUser.mockResolvedValue({ data: { user: { id: authId } }, error: null });
 
       const res = await POST(req("POST", { email, role: "user" }));
       expect(res.status).toBe(409);
       expect(deleteUser).toHaveBeenCalledWith(authId);
+      expect(sendAccountCreatedEmail).not.toHaveBeenCalled();
     });
   });
 

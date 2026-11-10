@@ -12,37 +12,14 @@ type Mode = "login" | "signup" | "sneak_peek";
 export function AuthForm({
   mode,
   next,
-  initialError,
 }: {
   mode: Mode;
   next: string;
-  // Set when /auth/callback redirected back here because a magic-link code
-  // failed to exchange (expired, or already consumed -- commonly by an email
-  // client's own link-prefetching/security scanner, not the person's own
-  // click). Shown once; typing in the email field below clears it like any
-  // other error, since at that point the visitor is requesting a fresh link.
-  //
-  // REAL BUG FOUND (2026-11-08, reported live, traced against a real email):
-  // this entire class of failure -- a clickable magic-link URL silently
-  // consumed by Google Workspace's own link-prefetching/security scanning
-  // before the person's real click -- turned out to be unfixable from the
-  // callback route alone, since *every* fresh link came back already
-  // `otp_expired`, confirmed on souldustrevival.com's real Google Workspace
-  // mail hosting. The actual fix is this file: stop sending a clickable
-  // link at all and send a numeric code instead, which has no URL for
-  // anything to prefetch. `initialError`/`link_expired` is kept only so a
-  // stale already-sent magic-link email (from before this change shipped,
-  // or any leftover /auth/callback fallback) still shows a clear message
-  // instead of a silent failure -- not the primary path anymore.
-  // "account_setup": signed in, but the email already belongs to a different
-  // `users` row (see lib/auth/recordLogin.ts) -- needs a person to fix, so
-  // the message asks them to get in touch rather than to retry.
-  initialError?: "link_expired" | "account_setup";
 }) {
   const [email, setEmail] = useState("");
   const [step, setStep] = useState<"email" | "code">("email");
   const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(initialError ?? null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [verified, setVerified] = useState(false);
   const [setupBlocked, setSetupBlocked] = useState(false);
@@ -121,9 +98,9 @@ export function AuthForm({
       setVerified(true);
     }
 
-    // verifyOtp runs in the browser, so /auth/callback never sees this
-    // sign-in -- this is what creates the account's own `users` row (and its
-    // login event). Without it a new account can sign in but can't save
+    // verifyOtp runs in the browser, so the server never sees this sign-in
+    // on its own -- this is what creates the account's own `users` row (and
+    // its login event). Without it a new account can sign in but can't save
     // progress or answers.
     try {
       const res = await fetch("/api/auth/login-recorded", { method: "POST" });
@@ -144,8 +121,7 @@ export function AuthForm({
     }
 
     // A full browser navigation (not router.push) so this goes through
-    // proxy.ts's own marketing/app subdomain redirect the same way
-    // /auth/callback's server-side redirect already does -- `next` can be
+    // proxy.ts's own marketing/app subdomain redirect -- `next` can be
     // an app-domain path (e.g. /library) while this page is served from the
     // marketing domain.
     window.location.href = next;
@@ -282,18 +258,7 @@ export function AuthForm({
           .
         </p>
       )}
-      {error === "link_expired" && (
-        <p role="alert" className="text-sm text-error">
-          That link expired or was already used. Enter your email below to get a new code.
-        </p>
-      )}
-      {error === "account_setup" && (
-        <p role="alert" className="text-sm text-error">
-          You&apos;re signed in, but we couldn&apos;t finish setting up your account. Please contact us so we can
-          fix it.
-        </p>
-      )}
-      {error && error !== "no_account" && error !== "link_expired" && error !== "account_setup" && (
+      {error && error !== "no_account" && (
         <p role="alert" className="text-sm text-error">
           {error}
         </p>

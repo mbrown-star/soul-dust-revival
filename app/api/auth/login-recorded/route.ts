@@ -4,8 +4,8 @@ import { recordLogin } from "@/lib/auth/recordLogin";
 
 /**
  * Called by AuthForm right after a sign-in code is verified. The code-based
- * login runs verifyOtp in the browser and never passes through
- * /auth/callback, so without this a brand-new account had a Supabase auth
+ * login runs verifyOtp in the browser, so the server never sees the sign-in
+ * on its own; without this a brand-new account had a Supabase auth
  * user but no `users` row (and every progress/answer save failed its foreign
  * key). Identity comes only from the verified session cookie -- the request
  * body is ignored.

@@ -62,9 +62,11 @@ anything that doesn't match — rather than trusting client-shaped JSON directly
   a single misclick locking the only admin account out of the admin section with no one
   left able to restore it.
 - **Creating and editing users is also admin-only** (`/admin/users`, `POST`/`PUT
-  /api/admin/users`). `POST` invites a new user through Supabase Auth's admin API
-  (`inviteUserByEmail` — this app only supports magic-link auth, so there's no password
-  to set) and only then inserts the corresponding `users` row, rolling back the just-created
+  /api/admin/users`). `POST` creates a new user through Supabase Auth's admin API
+  (`createUser` with the email already confirmed — sign-in is emailed-code only, so
+  there's no password to set and no invite link is sent; the person signs in at `/login`
+  like anyone else, and gets a plain "your account is ready" email with no link or code
+  in it) and only then inserts the corresponding `users` row, rolling back the just-created
   auth account if the insert fails (e.g. a concurrent duplicate-email race), so a failed
   create never leaves an orphaned login with no app-side row. `PUT` edits an existing
   user's email/full name/country; an email change is pushed to Supabase Auth first via

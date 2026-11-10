@@ -19,8 +19,15 @@ confirmed every fresh magic link came back `otp_expired` before the real click �
 link-prefetching/security scanning was consuming the single-use link first. The fix was to stop
 sending a link at all and send a numeric code instead (no URL for anything to prefetch); see
 `components/auth/AuthForm.tsx` and the 2026-11-08 CLAUDE.md entries. The walkthrough below
-reflects the new flow; `/auth/callback`'s `link_expired` handling is kept only as a fallback for
-a leftover pre-change email, not the primary path anymore.
+reflects the new flow. The old link handling (`/auth/callback`, `SessionHashRecovery`) was
+removed 2026-11-10; admin-created users now sign in with a code too (see the next step).
+
+- [ ] **Admin-created user:** as an admin, add a user on `/admin/users` with an email you
+      control. Confirm a "your account is ready" email arrives with a link to the login page
+      only (no sign-in link, no code), then sign in at `/login` with that email and the code
+      you're sent. The admin page should say the welcome email was sent.
+- [ ] **Signup email:** sign up with a brand-new email. The "Confirm signup" email must show
+      an 8-digit code and no link.
 
 **Note:** the code length isn't hardcoded in the UI -- it's a Supabase project setting
 (Authentication → Providers → Email), confirmed live to currently be 8 digits, not the more

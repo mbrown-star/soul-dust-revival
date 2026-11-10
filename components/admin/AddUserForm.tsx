@@ -27,30 +27,48 @@ export function AddUserForm({ onCreated }: { onCreated: (user: NewUserRow) => vo
   const [role, setRole] = useState<Role>("user");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Shown after the form closes, so the admin knows whether the new user
+  // was told about their account.
+  const [notice, setNotice] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setNotice(null);
 
-    const res = await fetch("/api/admin/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        role,
-        fullName: fullName.trim() || undefined,
-        country: country || undefined,
-      }),
-    });
-    const data = (await res.json()) as NewUserRow & { message?: string };
+    let data: NewUserRow & { message?: string; welcomeEmailSent?: boolean };
+    let ok: boolean;
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          role,
+          fullName: fullName.trim() || undefined,
+          country: country || undefined,
+        }),
+      });
+      ok = res.ok;
+      data = (await res.json()) as typeof data;
+    } catch {
+      setError("Couldn't reach the server. Check your connection and try again.");
+      setLoading(false);
+      return;
+    }
 
-    if (!res.ok) {
+    if (!ok) {
       setError(data.message ?? "Couldn't create that user.");
       setLoading(false);
       return;
     }
 
+    setNotice(
+      data.welcomeEmailSent === false
+        ? `Created ${data.email}, but the welcome email didn't send. Let them know to sign in at the login page with this email address.`
+        : `Created ${data.email} and emailed them how to sign in.`
+    );
     onCreated(data);
     setEmail("");
     setFullName("");
@@ -62,12 +80,20 @@ export function AddUserForm({ onCreated }: { onCreated: (user: NewUserRow) => vo
 
   if (!open) {
     return (
-      <button
-        onClick={() => setOpen(true)}
-        className="font-sans text-sm font-medium bg-ink text-parchment rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink"
-      >
-        Add user
-      </button>
+      <div className="space-y-2">
+        <button
+          onClick={() => {
+            setNotice(null);
+            setOpen(true);
+          }}
+          className="font-sans text-sm font-medium bg-ink text-parchment rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink"
+        >
+          Add user
+        </button>
+        <p role="status" aria-live="polite" className="font-sans text-sm text-ink">
+          {notice}
+        </p>
+      </div>
     );
   }
 
@@ -151,7 +177,7 @@ export function AddUserForm({ onCreated }: { onCreated: (user: NewUserRow) => vo
       </div>
 
       <p className="font-sans text-xs text-moss">
-        We&apos;ll email this address a sign-in link — there&apos;s no password to set.
+        We&apos;ll email this address to say their account is ready. They sign in at the login page with a code we email them — there&apos;s no password to set.
       </p>
 
       <div className="flex gap-3">

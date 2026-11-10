@@ -6,6 +6,8 @@ import { eq } from "drizzle-orm";
 import { adminUserCreateSchema, adminUserUpdateSchema, roleUpdateSchema } from "@/lib/validation/schemas";
 import { listUsersForAdmin } from "@/lib/admin/listUsers";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/admin";
+import { sendAccountCreatedEmail } from "@/lib/email/send";
+import { appOrigin } from "@/lib/domains";
 
 export async function GET() {
   const session = await requireAdmin();
@@ -27,34 +29,37 @@ export async function POST(req: NextRequest) {
   }
   const { email, role, fullName, country } = parsed.data;
 
-  // This app only supports magic-link auth, so there's no password to set
-  // here — inviteUserByEmail creates the Supabase Auth account and emails
-  // the new user a sign-in link. Our own users.id always mirrors the
-  // Supabase auth UID (see app/auth/callback/route.ts), so this is also
-  // where that id is minted.
+  // Sign-in is code-only (AuthForm + verifyOtp), so there's no password to
+  // set and no invite link to send. createUser makes the Supabase Auth
+  // account already confirmed, and the new user signs in at /login with an
+  // emailed code. (inviteUserByEmail was used before; its emailed link
+  // needed a link-handling sign-in path that no longer exists.) Our own
+  // users.id always mirrors the Supabase auth UID (see lib/auth/recordLogin.ts),
+  // so this is also where that id is minted.
   const serviceClient = createSupabaseServiceRoleClient();
-  const { data, error: inviteError } = await serviceClient.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${req.nextUrl.origin}/auth/callback`,
+  const { data, error: createError } = await serviceClient.auth.admin.createUser({
+    email,
+    email_confirm: true,
   });
-  if (inviteError || !data.user) {
-    // Supabase returns a 422/"already registered" for a duplicate email;
-    // surface that as a clean conflict rather than a generic 500.
-    const status = inviteError?.status === 422 ? 409 : 500;
+  if (createError || !data.user) {
+    // Supabase returns a 422 ("email_exists") for a duplicate email; surface
+    // that as a clean conflict rather than a generic 500.
+    const status = createError?.status === 422 ? 409 : 500;
     return NextResponse.json(
-      { error: "invite_failed", message: inviteError?.message ?? "Could not invite that user." },
+      { error: "create_failed", message: createError?.message ?? "Could not create that user." },
       { status }
     );
   }
 
+  let created: typeof users.$inferSelect;
   try {
     const db = await getDb();
-    const [created] = await db
+    const [row] = await db
       .insert(users)
       .values({ id: data.user.id, email, role, fullName: fullName ?? null, country: country ?? null })
       .returning();
-    if (!created) throw new Error("insert returned no row");
-
-    return NextResponse.json(created, { status: 201 });
+    if (!row) throw new Error("insert returned no row");
+    created = row;
   } catch {
     // Roll back the just-created auth account rather than leave an
     // orphaned login with no corresponding app-side row — e.g. a race
@@ -65,6 +70,21 @@ export async function POST(req: NextRequest) {
       { status: 409 }
     );
   }
+
+  // The account exists either way; a mail failure shouldn't undo it. Report
+  // it so the admin knows to tell the person themselves.
+  let welcomeEmailSent = true;
+  try {
+    await sendAccountCreatedEmail({
+      to: email,
+      loginUrl: `${appOrigin() ?? req.nextUrl.origin}/login`,
+    });
+  } catch (err) {
+    welcomeEmailSent = false;
+    console.error("Account-created email failed:", err instanceof Error ? err.message : err);
+  }
+
+  return NextResponse.json({ ...created, welcomeEmailSent }, { status: 201 });
 }
 
 export async function PUT(req: NextRequest) {
@@ -83,7 +103,7 @@ export async function PUT(req: NextRequest) {
   if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
   // Keep Supabase Auth's email in sync with our own table — otherwise the
-  // user's magic-link sign-in keeps going to their old address while the
+  // user's sign-in code keeps going to their old address while the
   // admin UI shows the new one.
   if (email !== undefined && email !== existing.email) {
     const serviceClient = createSupabaseServiceRoleClient();
