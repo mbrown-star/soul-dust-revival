@@ -22,13 +22,14 @@ export type ParsedStudyLesson = { title: string; blocks: ParsedBlock[] };
  * Parses an uploaded study document (.docx or .pdf) into lessons, picking
  * the right splitter for the file type and, for a .pdf, the study's own
  * `kind` (a Study document's "QUESTION"/"Going Deeper" sections need
- * `splitStudyPlainTextByHeadings`; a Devotional's plain reading text uses
- * the generic `splitPlainTextByHeadings`). `isDocx`/`isPdf` are the caller's
- * own file-extension check, already validated before this is called.
+ * `splitStudyPlainTextByHeadings`; a Devotional's or Book's plain reading
+ * text uses the generic `splitPlainTextByHeadings`). `isDocx`/`isPdf` are
+ * the caller's own file-extension check, already validated before this is
+ * called.
  */
 export async function parseStudyDocument(
   buffer: Buffer,
-  { isDocx, kind }: { isDocx: boolean; kind: "devotional" | "study" }
+  { isDocx, kind }: { isDocx: boolean; kind: "devotional" | "study" | "book" }
 ): Promise<ParsedStudyLesson[]> {
   if (isDocx) {
     return splitHtmlByHeadings(await parseDocxToHtml(buffer)).map((l) => ({

@@ -13,7 +13,7 @@ export function ImportStudyForm({
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [productId, setProductId] = useState(digitalProducts[0]?.id ?? "");
-  const [kind, setKind] = useState<"devotional" | "study">("devotional");
+  const [kind, setKind] = useState<"devotional" | "study" | "book">("devotional");
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -112,11 +112,20 @@ export function ImportStudyForm({
             />
             <span className="text-sm">Study</span>
           </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="import-kind"
+              checked={kind === "book"}
+              onChange={() => setKind("book")}
+            />
+            <span className="text-sm">Book</span>
+          </label>
         </div>
         <p className="text-xs text-moss mt-1">
           For a .pdf, this changes how the document is split: a Study&apos;s own &quot;QUESTION&quot;
           and &quot;Going Deeper&quot; sections become saved-answer and word-study blocks instead of
-          plain reading text.
+          plain reading text. Book splits the same plain way as Devotional.
         </p>
       </fieldset>
 

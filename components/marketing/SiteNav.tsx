@@ -83,7 +83,7 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
   // of bouncing through a middleware redirect; plain relative paths
   // otherwise (unchanged single-domain behavior).
   const publicItems: NavItem[] = [
-    { label: "Books & Studies", href: marketingUrl("/books") },
+    { label: "Store", href: marketingUrl("/books") },
     { label: "Blog", href: marketingUrl("/blog") },
   ];
   // "App" (was "My Library") -- the one link into the gated reading app

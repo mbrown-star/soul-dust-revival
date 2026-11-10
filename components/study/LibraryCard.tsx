@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ProgressBar } from "./ProgressBar";
 import { RestartStudyButton } from "./RestartStudyButton";
+import { studyKindLabel, type StudyKind } from "@/lib/study/studyKindLabel";
 
 type LibraryCardStudy = {
   id: string;
@@ -10,7 +11,7 @@ type LibraryCardStudy = {
   description: string | null;
   coverImageUrl: string | null;
   coverImageAlt: string | null;
-  kind: "devotional" | "study";
+  kind: StudyKind;
 };
 
 export function LibraryCard({
@@ -50,7 +51,7 @@ export function LibraryCard({
         <div className="flex items-start justify-between gap-3">
           <div>
             <span className="inline-block text-xs font-sans font-medium uppercase tracking-wide text-ember-700 mb-1">
-              {study.kind === "study" ? "Study" : "Devotional"}
+              {studyKindLabel(study.kind)}
             </span>
             <h3 className="font-display font-semibold text-lg text-ink leading-tight">
               <Link href={resumeHref} className="hover:underline">

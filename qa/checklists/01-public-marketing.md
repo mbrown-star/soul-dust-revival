@@ -37,7 +37,7 @@ See `qa/checklists/07-admin-console.md` for leader-resource access control, and
     data categories against what the app actually collects per `PRIVACY.md` (country, study
     answers, login activity, purchase history) — look for a category the app actually stores that
     this page doesn't mention, or vice versa.
-12. As a guest, open the nav bar. → **Expect:** Books & Studies, Blog, Cart, Log in. No My
+12. As a guest, open the nav bar. → **Expect:** Store, Blog, Cart, Log in. No My
     Library, no Profile menu.
 13. Log in as qa-user (or load `/` with the user storageState). → **Expect:** nav gains My
     Library and a Profile menu (Account, Log out — no Admin item).

@@ -56,7 +56,6 @@ export default async function BooksPage() {
                   type: p.type,
                   kind: p.kind,
                   format: p.format,
-                  bookBinding: p.bookBinding,
                 })}
               </p>
               <h2 className="font-display font-semibold text-ink group-hover:text-moss">

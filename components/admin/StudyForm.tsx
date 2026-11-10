@@ -14,7 +14,7 @@ type StudyFormValues = {
   coverImageUrl: string | null;
   coverImageAlt: string;
   productId: string;
-  kind: "devotional" | "study";
+  kind: "devotional" | "study" | "book";
   published: boolean;
 };
 
@@ -197,10 +197,20 @@ export function StudyForm({
             />
             <span className="text-sm">Study (interactive, saves answers)</span>
           </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="kind"
+              checked={values.kind === "book"}
+              onChange={() => setValues((v) => ({ ...v, kind: "book" }))}
+            />
+            <span className="text-sm">Book (no interactions)</span>
+          </label>
         </div>
         <p className="text-xs text-moss mt-1">
           A Devotional is pure reading, no saved input. A Study has written-response questions
-          whose answers are saved per user.
+          whose answers are saved per user. &quot;Book&quot; mirrors the Product Kind field&apos;s own
+          plain-reading option, for a study with no interactive content at all.
         </p>
       </fieldset>
 

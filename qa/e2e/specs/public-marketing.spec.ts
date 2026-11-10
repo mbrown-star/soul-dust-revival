@@ -125,18 +125,18 @@ test.describe("Nav bar", () => {
   // element's implicit role), so it's queried by that role, not "link".
   const isMobile = (testInfo: { project: { name: string } }) => testInfo.project.name === "mobile-chromium";
 
-  test("guest sees Books & Studies, Blog, Cart, Log in -- not App or an account menu", async ({ page }, testInfo) => {
+  test("guest sees Store, Blog, Cart, Log in -- not App or an account menu", async ({ page }, testInfo) => {
     await page.goto("/");
     const nav = page.getByRole("navigation", { name: "Primary" });
 
     if (isMobile(testInfo)) {
       await nav.getByRole("button", { name: "Open menu" }).click();
-      await expect(page.getByRole("menuitem", { name: "Books & Studies" })).toBeVisible();
+      await expect(page.getByRole("menuitem", { name: "Store" })).toBeVisible();
       await expect(page.getByRole("menuitem", { name: "Blog" })).toBeVisible();
       await expect(page.getByRole("menuitem", { name: "Log in" })).toBeVisible();
       await expect(page.getByRole("menuitem", { name: "App" })).toHaveCount(0);
     } else {
-      await expect(nav.getByRole("link", { name: "Books & Studies" })).toBeVisible();
+      await expect(nav.getByRole("link", { name: "Store" })).toBeVisible();
       await expect(nav.getByRole("link", { name: "Blog" })).toBeVisible();
       await expect(nav.getByRole("link", { name: "Log in" })).toBeVisible();
       await expect(nav.getByRole("link", { name: "App" })).toHaveCount(0);

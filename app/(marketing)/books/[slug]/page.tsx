@@ -98,7 +98,6 @@ export default async function BookDetailPage({
               type: product.type,
               kind: product.kind,
               format: product.format,
-              bookBinding: product.bookBinding,
             })}
           </p>
           <h1 className="font-display font-bold text-3xl sm:text-4xl text-ink mb-4">

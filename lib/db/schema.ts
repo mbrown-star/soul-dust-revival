@@ -215,9 +215,12 @@ export const studies = pgTable("studies", {
   // "devotional": read-only reflection content (no saved user input).
   // "study": interactive -- the parser emits 'question' content blocks for
   // written-response sections, and the reader expects answers to be saved.
+  // "book": no interactions, mirroring products.kind's own "book" value --
+  // offered for parity with the Product admin form, even though a Study row
+  // (by definition, interactive-reader content) rarely needs it in practice.
   // Admin-set at creation (see ImportStudyForm/StudyForm), since it can't be
   // reliably inferred from document content alone.
-  kind: text("kind").notNull().default("devotional").$type<"devotional" | "study">(),
+  kind: text("kind").notNull().default("devotional").$type<"devotional" | "study" | "book">(),
   published: boolean("published").notNull().default(false),
   sourceFileUrl: text("source_file_url"), // original .pdf/.docx if this study was imported
   sourceFileName: text("source_file_name"),

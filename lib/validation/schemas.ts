@@ -238,7 +238,7 @@ export const studySchema = z.object({
   description: z.string().max(5_000).optional().nullable(),
   coverImageUrl: z.string().url().optional().nullable(),
   coverImageAlt: z.string().max(300).optional().nullable(),
-  kind: z.enum(["devotional", "study"]).default("devotional"),
+  kind: z.enum(["devotional", "study", "book"]).default("devotional"),
   published: z.boolean(),
 });
 
@@ -459,7 +459,7 @@ export const studyImportFieldsSchema = z.object({
     .max(200)
     .regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers, and hyphens only"),
   productId: z.string().uuid(),
-  kind: z.enum(["devotional", "study"]).default("devotional"),
+  kind: z.enum(["devotional", "study", "book"]).default("devotional"),
 });
 
 // Re-upload replaces an existing study's lessons from a new document -- only

@@ -78,7 +78,6 @@ export default async function HomePage() {
                       type: p.type,
                       kind: p.kind,
                       format: p.format,
-                      bookBinding: p.bookBinding,
                     })}
                   </p>
                   <h3 className="font-display font-semibold text-ink group-hover:text-moss group-focus:text-moss">

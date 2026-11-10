@@ -4,6 +4,7 @@ import { desc } from "drizzle-orm";
 import Link from "next/link";
 import Image from "next/image";
 import { CreateMenu } from "@/components/admin/CreateMenu";
+import { studyKindLabel } from "@/lib/study/studyKindLabel";
 
 export default async function AdminStudiesPage() {
   const db = await getDb();
@@ -58,10 +59,14 @@ export default async function AdminStudiesPage() {
                 <span
                   data-testid="study-kind-badge"
                   className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                    s.kind === "study" ? "bg-ember-700/10 text-ink" : "bg-moss/10 text-moss"
+                    s.kind === "study"
+                      ? "bg-ember-700/10 text-ink"
+                      : s.kind === "book"
+                        ? "bg-dusk/10 text-ink"
+                        : "bg-moss/10 text-moss"
                   }`}
                 >
-                  {s.kind === "study" ? "Study" : "Devotional"}
+                  {studyKindLabel(s.kind)}
                 </span>
               </div>
               <p className="text-sm text-moss">

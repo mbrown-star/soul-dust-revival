@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { LibraryCard } from "@/components/study/LibraryCard";
 import { getDisplayStudyTitles } from "@/lib/study/displayTitle";
+import type { StudyKind } from "@/lib/study/studyKindLabel";
 import type { Metadata } from "next";
 
 // Reads per-user entitlements/progress on every request -- never static.
@@ -23,7 +24,7 @@ type LibraryEntry = {
     description: string | null;
     coverImageUrl: string | null;
     coverImageAlt: string | null;
-    kind: "devotional" | "study";
+    kind: StudyKind;
   };
   total: number;
   completed: number;
