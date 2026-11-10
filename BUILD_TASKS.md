@@ -453,11 +453,16 @@ the mode set.
       `https://soul-dust-revival-prod.matt-brown-8a1.workers.dev` (version `3fdd4cd7`;
       0 secret hits in the build). Deploy with
       `npx opennextjs-cloudflare deploy --env production -- --keep-vars`.
-- [ ] **Production secrets.** The Worker has none yet, so every page returns 500 (env
-      validation). Copy the same 23 secret names staging has (`wrangler secret list
-      --name soul-dust-revival`) with `wrangler secret bulk <file.json> --env production`,
-      deleting the JSON file afterward. Secrets take effect without a rebuild. Stripe can
-      stay on test keys — checkout is closed.
+- [x] **Production secrets.** Copied the same 23 secret names staging has (`wrangler
+      secret list --name soul-dust-revival`), from `.env.local`, with `wrangler secret
+      bulk <file.json> --env production` on the user's go-ahead (2026-11-10); the JSON
+      file was deleted right after. Stripe stays on test keys — checkout is closed.
+      Checked on the `.workers.dev` address: `/`, `/sneak-peek`, `/blog`, `/login`,
+      `/privacy` 200; the hero shows only "Experience a sample", the tiles read "Coming
+      at launch", the nav has "Try a sample" and no Store/Cart; `/books`, a book page and
+      `/checkout` 307 home, `/signup` 307 to `/sneak-peek`, `POST /api/checkout` 404,
+      `/library` 307 to login. Sign-in can't be tested there: the session cookie is
+      scoped to `.souldustrevival.com`, which a browser refuses on `.workers.dev`.
 - [ ] Domains: move `app.souldustrevival.com` from the staging Worker to the production
       Worker; add `souldustrevival.com` (and a `www` redirect). No Cloudflare Access on
       production.
