@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { CartLink } from "./CartLink";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { logOut } from "@/lib/auth/logOut";
 import { marketingUrl, appUrl } from "@/lib/domains";
 import { isSneakPeek } from "@/lib/launchMode";
 
@@ -52,28 +51,20 @@ function useDismissibleMenu(open: boolean, setOpen: (open: boolean) => void) {
 }
 
 export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAdmin?: boolean }) {
-  const router = useRouter();
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const profileRef = useDismissibleMenu(profileOpen, setProfileOpen);
   const mobileMenuRef = useDismissibleMenu(mobileMenuOpen, setMobileMenuOpen);
 
-  // Same sign-out sequence as AccountPageClient.tsx: clear the Supabase
-  // session client-side, then refresh so every server-rendered bit of the
-  // page (this nav included) re-fetches with no session. Closes whichever
+  // Shared logOut() (lib/auth/logOut.ts): clears the session server-side,
+  // then does a full page load of the marketing homepage. Closes whichever
   // menu this was triggered from -- the button renders in both.
   async function handleLogOut() {
     setLoggingOut(true);
     setProfileOpen(false);
     setMobileMenuOpen(false);
-    const supabase = createSupabaseBrowserClient();
-    await supabase.auth.signOut();
-    // marketingUrl, not a bare "/" -- logging out from the app domain should
-    // land on the real marketing homepage directly, not bounce through a
-    // middleware redirect from the app domain's own "/".
-    router.push(marketingUrl("/"));
-    router.refresh();
+    await logOut();
   }
 
   // Public items (visible to every visitor) sit at the left on desktop, and

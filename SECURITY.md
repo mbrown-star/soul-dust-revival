@@ -28,6 +28,13 @@ auth. **This widens the cookie's scope to every current and future subdomain of 
 configured parent domain**, not just the two intended hosts — before setting
 `NEXT_PUBLIC_COOKIE_DOMAIN` in a real environment, confirm no other subdomain (an old
 staging host, a demo Worker subdomain, etc.) should be untrusted with this session cookie.
+
+**Logout clears both cookie forms.** `POST /api/auth/logout` (used by every logout button
+through `lib/auth/logOut.ts`) revokes the session with Supabase and then expires every
+`sb-` cookie twice: host-only, and on the configured parent domain. A browser that signed in
+before `NEXT_PUBLIC_COOKIE_DOMAIN` was set can still hold a host-only copy, which a
+domain-scoped delete doesn't remove, so logging out client-side alone left that visitor
+signed in. Other cookies (e.g. Cloudflare Access's `CF_Authorization`) are never touched.
 Unset (local dev today), the cookie stays host-only, unchanged from before the split
 existed.
 

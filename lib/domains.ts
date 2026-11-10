@@ -92,6 +92,11 @@ export function appOrigin(): string | undefined {
   return APP_HOSTNAME ? `https://${APP_HOSTNAME}` : undefined;
 }
 
+/** The shared parent cookie domain (e.g. ".staging.souldustrevival.com"), if configured. */
+export function cookieDomain(): string | undefined {
+  return COOKIE_DOMAIN || undefined;
+}
+
 /**
  * The single source of truth for the Supabase auth cookie's options, used
  * identically by lib/supabase/server.ts, lib/supabase/client.ts, and
@@ -104,5 +109,5 @@ export function appOrigin(): string | undefined {
  * cookie host-only, unchanged from before the subdomain split existed.
  */
 export function sessionCookieOptions() {
-  return { secure: true as const, sameSite: "lax" as const, domain: COOKIE_DOMAIN || undefined };
+  return { secure: true as const, sameSite: "lax" as const, domain: cookieDomain() };
 }

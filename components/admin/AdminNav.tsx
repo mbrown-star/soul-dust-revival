@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { logOut } from "@/lib/auth/logOut";
 import { pathMatchesPrefix } from "@/lib/domains";
 
 // Same focus/hover treatment as the public SiteNav's linkClass -- no ring,
@@ -27,17 +27,13 @@ const ADMIN_LINKS = [
 ];
 
 export function AdminNav() {
-  const router = useRouter();
   const pathname = usePathname();
   const [loggingOut, setLoggingOut] = useState(false);
 
-  // Same sign-out sequence as SiteNav.tsx / AccountPageClient.tsx.
+  // Same shared logOut() as SiteNav.tsx / AccountPageClient.tsx.
   async function handleLogOut() {
     setLoggingOut(true);
-    const supabase = createSupabaseBrowserClient();
-    await supabase.auth.signOut();
-    router.push("/");
-    router.refresh();
+    await logOut();
   }
 
   return (

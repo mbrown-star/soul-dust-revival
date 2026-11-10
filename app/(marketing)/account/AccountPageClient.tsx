@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useId } from "react";
-import { useRouter } from "next/navigation";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { marketingUrl } from "@/lib/domains";
+import { logOut } from "@/lib/auth/logOut";
 
 export type OrderSummary = {
   id: string;
@@ -26,7 +24,6 @@ export default function AccountPageClient({
   email: string;
   orders: OrderSummary[];
 }) {
-  const router = useRouter();
   const [confirmText, setConfirmText] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -57,14 +54,9 @@ export default function AccountPageClient({
       return;
     }
 
-    const supabase = createSupabaseBrowserClient();
-    await supabase.auth.signOut();
-    // marketingUrl, not a bare "/" -- same reasoning as SiteNav.tsx's logout
-    // handler: /account is an app-domain page, so this lands directly on the
-    // real marketing homepage instead of bouncing through a middleware
-    // redirect from the app domain's own "/".
-    router.push(marketingUrl("/"));
-    router.refresh();
+    // Shared logOut(): clears the session cookies server-side and lands on
+    // the marketing homepage with a full page load.
+    await logOut();
   }
 
   return (
