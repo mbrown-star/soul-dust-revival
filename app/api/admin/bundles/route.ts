@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
       .values({
         type: "bundle",
         format: body.format,
+        kind: body.kind,
         title: body.title,
         slug: body.slug,
         description: body.description,
@@ -136,6 +137,7 @@ export async function PATCH(req: NextRequest) {
       .update(products)
       .set({
         format: body.format,
+        kind: body.kind,
         title: body.title,
         slug: body.slug,
         description: body.description,

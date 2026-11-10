@@ -28,13 +28,16 @@ describe("productEyebrowLabel", () => {
     );
   });
 
-  it("prefixes a bundle with Bundle", () => {
-    expect(productEyebrowLabel({ type: "bundle", kind: "book", format: "physical" })).toBe("Bundle - Book");
+  it("prefixes a bundle with Bundle and pluralizes its kind", () => {
+    expect(productEyebrowLabel({ type: "bundle", kind: "book", format: "physical" })).toBe("Bundle - Books");
     expect(productEyebrowLabel({ type: "bundle", kind: "book", format: "both" })).toBe(
-      "Bundle - Book & Digital"
+      "Bundle - Books & Digital"
     );
-    expect(productEyebrowLabel({ type: "bundle", kind: "study", format: "digital" })).toBe(
-      "Bundle - Study & Digital"
+    expect(productEyebrowLabel({ type: "bundle", kind: "study", format: "both" })).toBe(
+      "Bundle - Studies & Digital"
+    );
+    expect(productEyebrowLabel({ type: "bundle", kind: "devotional", format: "digital" })).toBe(
+      "Bundle - Devotionals & Digital"
     );
   });
 });

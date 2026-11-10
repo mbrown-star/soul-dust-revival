@@ -259,6 +259,26 @@ describe("admin bundles route", () => {
     expect(items.map((i) => i.componentProductId).sort()).toEqual([componentB.id, componentC.id].sort());
   });
 
+  it("defaults kind to book, and persists kind on create and PATCH", async () => {
+    createdProductIds = [];
+    createdBundleIds = [];
+    await signInAsAdmin();
+    const component = await makeComponent(db);
+    createdProductIds.push(component.id);
+
+    const createRes = await POST(request(baseBundle([component.id])));
+    const created = (await createRes.json()) as { id: string; kind: string };
+    createdBundleIds.push(created.id);
+    expect(created.kind).toBe("book");
+
+    const patchRes = await PATCH(
+      request({ ...baseBundle([component.id], { kind: "study" }), id: created.id }, "PATCH")
+    );
+    expect(patchRes.status).toBe(200);
+    const [row] = await db.select().from(products).where(eq(products.id, created.id));
+    expect(row?.kind).toBe("study");
+  });
+
   it("PATCH 404s for an id that isn't a bundle", async () => {
     createdProductIds = [];
     createdBundleIds = [];

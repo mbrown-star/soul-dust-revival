@@ -55,6 +55,7 @@ export default async function EditBundlePage({ params }: { params: Promise<{ id:
           imageWidth: bundle.imageWidth,
           imageHeight: bundle.imageHeight,
           format: bundle.format as "physical" | "digital" | "both",
+          kind: bundle.kind,
           active: bundle.active,
           featured: bundle.featured,
           componentProductIds,

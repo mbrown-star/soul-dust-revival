@@ -8,6 +8,13 @@ const KIND_LABEL: Record<ProductKind, string> = {
   devotional: "Devotional",
 };
 
+// A bundle is several of its kind, so its eyebrow reads plural.
+const BUNDLE_KIND_LABEL: Record<ProductKind, string> = {
+  book: "Books",
+  study: "Studies",
+  devotional: "Devotionals",
+};
+
 /**
  * The storefront eyebrow label for a product, shared by the public /books
  * listing, the homepage's featured grid, and a product's own detail page so
@@ -15,8 +22,8 @@ const KIND_LABEL: Record<ProductKind, string> = {
  *
  * Always the product's `kind` as a plain word (Book / Study / Devotional),
  * with " & Digital" appended whenever it's available digitally (format
- * "digital" or "both"). A bundle keeps a "Bundle - " prefix in front of the
- * same label, e.g. "Bundle - Book & Digital".
+ * "digital" or "both"). A bundle gets a "Bundle - " prefix and the plural
+ * kind word, e.g. "Bundle - Studies & Digital".
  */
 export function productEyebrowLabel({
   type,
@@ -27,6 +34,8 @@ export function productEyebrowLabel({
   kind: ProductKind;
   format: ProductFormat;
 }): string {
-  const label = format === "physical" ? KIND_LABEL[kind] : `${KIND_LABEL[kind]} & Digital`;
-  return type === "bundle" ? `Bundle - ${label}` : label;
+  const isBundle = type === "bundle";
+  const kindWord = isBundle ? BUNDLE_KIND_LABEL[kind] : KIND_LABEL[kind];
+  const label = format === "physical" ? kindWord : `${kindWord} & Digital`;
+  return isBundle ? `Bundle - ${label}` : label;
 }

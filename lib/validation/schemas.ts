@@ -207,6 +207,10 @@ export const bundleSchema = z
     // fields at all) and triggers the founder email; the digital half grants
     // the entitlement cascade.
     format: z.enum(["physical", "digital", "both"]),
+    // What the bundle's parts are, for its storefront eyebrow (pluralized
+    // there, e.g. "Bundle - Studies & Digital") -- same values as
+    // productSchema's own kind, admin-set rather than derived from components.
+    kind: z.enum(["study", "devotional", "book"]).default("book"),
     active: z.boolean(),
     featured: z.boolean().default(false),
     // The bundle's own membership list, replaced wholesale on every save (see

@@ -40,6 +40,7 @@ type BundleFormValues = {
   imageWidth: number | null;
   imageHeight: number | null;
   format: "physical" | "digital" | "both";
+  kind: "study" | "devotional" | "book";
   active: boolean;
   featured: boolean;
   componentProductIds: string[];
@@ -71,6 +72,7 @@ export function BundleForm({
     imageWidth: initial?.imageWidth ?? null,
     imageHeight: initial?.imageHeight ?? null,
     format: initial?.format ?? "digital",
+    kind: initial?.kind ?? "book",
     active: initial?.active ?? true,
     featured: initial?.featured ?? false,
     componentProductIds: initial?.componentProductIds ?? [],
@@ -310,6 +312,43 @@ export function BundleForm({
             "Always sold through Stripe (never Amazon). Collects a shipping address at checkout and emails the founder to pack and ship it — there's no automated fulfillment behind a bundle."}
           {values.format === "both" &&
             "Two independent purchases at their own prices below, same as a \"both\"-format product — buying the physical copy ships it (Stripe only, never Amazon) and emails the founder; buying digital access grants the entitlement cascade. A customer can buy either or both."}
+        </p>
+      </fieldset>
+
+      <fieldset>
+        <legend className="block text-sm font-medium mb-1">Kind</legend>
+        <div className="flex flex-wrap gap-4">
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="kind"
+              checked={values.kind === "book"}
+              onChange={() => setValues((v) => ({ ...v, kind: "book" }))}
+            />
+            <span className="text-sm">Books</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="kind"
+              checked={values.kind === "devotional"}
+              onChange={() => setValues((v) => ({ ...v, kind: "devotional" }))}
+            />
+            <span className="text-sm">Devotionals</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="kind"
+              checked={values.kind === "study"}
+              onChange={() => setValues((v) => ({ ...v, kind: "study" }))}
+            />
+            <span className="text-sm">Studies</span>
+          </label>
+        </div>
+        <p className="text-xs text-moss mt-1">
+          What the bundle&apos;s parts are, shown in its storefront eyebrow — e.g. &quot;Bundle -
+          Studies &amp; Digital&quot;.
         </p>
       </fieldset>
 
