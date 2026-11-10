@@ -141,6 +141,18 @@ signup form creates an account for a new email and signs in an existing one with
 response, so it doesn't add an account-enumeration channel beyond the `/login` trade-off
 below.
 
+## Free-sample lessons
+A lesson marked `lessons.isSample` can be opened by any signed-in reader, without
+owning the study, as long as the lesson and its study are both published. This is
+decided per lesson by `getLessonAccess` in `lib/entitlements/check.ts`, and every reader
+path that acts on a lesson asks about that specific lesson, never the whole study: the
+lesson page, `/api/progress`, `/api/responses` (via the answer's content block), and
+`/api/stream/sign-url` (via the video's content block). So sample access can't be
+stretched to a study's other lessons by changing an id. `/api/progress/reset` lets a
+sample reader clear only their own progress on sample lessons. Which lessons are samples
+is admin data (set by `scripts/mark-sample-lessons.ts`), not something a request can
+influence.
+
 ## Amazon purchase links
 Physical products can carry an `amazonUrl` the storefront renders as an outbound
 "Buy on Amazon" link (`components/commerce/AmazonBuyButton.tsx`). Because this becomes

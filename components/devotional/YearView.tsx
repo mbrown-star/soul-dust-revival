@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { MONTH_NAMES } from "@/lib/devotional/parseDayLabel";
+import { lockedLessonNote } from "@/lib/launchMode";
 
 export type YearDay = {
   lessonId: string;
@@ -17,6 +18,8 @@ export type YearDay = {
   walked: boolean;
   answered: boolean;
   isToday: boolean;
+  /** Past the free sample for a reader who hasn't bought the devotional. */
+  locked?: boolean;
 };
 
 /**
@@ -31,6 +34,7 @@ export type YearDay = {
 export function YearView({ days }: { days: YearDay[] }) {
   const [query, setQuery] = useState("");
 
+  const anyLocked = days.some((d) => d.locked);
   const daysWalked = days.filter((d) => d.walked).length;
   const answersWritten = days.filter((d) => d.answered).length;
   const psalmsCovered = new Set(
@@ -88,21 +92,36 @@ export function YearView({ days }: { days: YearDay[] }) {
       {normalizedQuery ? (
         <div className="flex flex-col divide-y divide-dusk/10">
           {results.length ? (
-            results.map((d) => (
-              <Link
-                key={d.lessonId}
-                href={d.href}
-                className="flex gap-3 py-3 min-h-[44px] items-center hover:bg-white/60"
-              >
-                <span className="font-sans text-xs font-bold text-ember-700 shrink-0 w-16">DAY {d.day}</span>
-                <span className="min-w-0">
-                  <span className="block font-sans font-semibold text-ink truncate">{d.title}</span>
-                  <span className="block font-sans text-xs text-moss">
-                    {d.date} · {d.psalmRef}
+            results.map((d) => {
+              const content = (
+                <>
+                  <span className={`font-sans text-xs font-bold shrink-0 w-16 ${d.locked ? "text-moss" : "text-ember-700"}`}>
+                    DAY {d.day}
                   </span>
-                </span>
-              </Link>
-            ))
+                  <span className="min-w-0">
+                    <span className={`block font-sans font-semibold truncate ${d.locked ? "text-ink/60" : "text-ink"}`}>
+                      {d.title}
+                    </span>
+                    <span className="block font-sans text-xs text-moss">
+                      {d.locked ? lockedLessonNote() : `${d.date} · ${d.psalmRef}`}
+                    </span>
+                  </span>
+                </>
+              );
+              return d.locked ? (
+                <div key={d.lessonId} className="flex gap-3 py-3 min-h-[44px] items-center">
+                  {content}
+                </div>
+              ) : (
+                <Link
+                  key={d.lessonId}
+                  href={d.href}
+                  className="flex gap-3 py-3 min-h-[44px] items-center hover:bg-white/60"
+                >
+                  {content}
+                </Link>
+              );
+            })
           ) : (
             <p className="font-sans text-sm text-moss py-3">No days match &ldquo;{query}&rdquo;.</p>
           )}
@@ -122,6 +141,11 @@ export function YearView({ days }: { days: YearDay[] }) {
               </span>
               Answer written
             </span>
+            {anyLocked && (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="inline-block w-3 h-3 rounded-sm bg-dusk/10" aria-hidden="true" /> {lockedLessonNote()}
+              </span>
+            )}
           </div>
 
           <div className="space-y-6">
@@ -139,7 +163,18 @@ export function YearView({ days }: { days: YearDay[] }) {
                     </span>
                   </div>
                   <div className="grid grid-cols-7 gap-1.5">
-                    {monthDays.map((d) => (
+                    {monthDays.map((d) =>
+                      d.locked ? (
+                        // Shown so the reader sees the whole year, but not a link.
+                        <div
+                          key={d.lessonId}
+                          title={`${d.date} · ${lockedLessonNote()}`}
+                          className="aspect-square flex items-center justify-center rounded-lg bg-dusk/10 font-sans text-xs tabular-nums text-moss/70 min-h-[32px]"
+                        >
+                          <span aria-hidden="true">{d.dateNum}</span>
+                          <span className="sr-only">{`Day ${d.day}, ${d.date}: locked`}</span>
+                        </div>
+                      ) : (
                       <Link
                         key={d.lessonId}
                         href={d.href}
@@ -161,7 +196,8 @@ export function YearView({ days }: { days: YearDay[] }) {
                           />
                         )}
                       </Link>
-                    ))}
+                      )
+                    )}
                   </div>
                 </div>
               );

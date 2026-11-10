@@ -39,7 +39,10 @@ test.describe("My Library / entitlements", () => {
       // now legitimately contains the substring "Start" too, since the
       // title/product-title fix (#2) above, so a loose match would also hit
       // the card's title link.
-      await expect(notStartedSection.getByRole("link", { name: "Start", exact: true })).toBeVisible();
+      // Scoped to the card -- the seeded free-sample devotional (owned by
+      // nobody) also sits under "Not started" with its own Start button.
+      const notStartedCard = notStartedSection.locator("div.rounded-xl", { hasText: "QA Digital Study — Not Started" });
+      await expect(notStartedCard.getByRole("link", { name: "Start", exact: true })).toBeVisible();
       await expect(continueSection.getByRole("link", { name: "Continue" })).toBeVisible();
       await expect(completedSection.getByRole("link", { name: "Review" })).toBeVisible();
 
@@ -61,9 +64,12 @@ test.describe("My Library / entitlements", () => {
   test.describe("as qa-leader (no entitlements seeded)", () => {
     test.use({ storageState: "qa/.auth/leader.json" });
 
-    test("My Library is empty -- role alone grants no study access", async ({ page }) => {
+    test("My Library has only the free sample -- role alone grants no study access", async ({ page }) => {
       await page.goto("/library");
-      await expect(page.getByText("You don't have any studies or devotionals yet.")).toBeVisible();
+      // The seeded free-sample devotional shows for every account that
+      // doesn't own it; nothing they'd have to buy does.
+      await expect(page.getByText("QA Sample Devotional")).toBeVisible();
+      await expect(page.getByText(/Sneak peek/)).toBeVisible();
       await expect(page.getByText("QA Digital Study — Not Started")).toHaveCount(0);
       await expect(page.getByText("QA Devotional — In Progress")).toHaveCount(0);
       await expect(page.getByText("QA Study — Completed")).toHaveCount(0);
@@ -76,8 +82,8 @@ test.describe("My Library / entitlements", () => {
     });
 
     test("visiting an entitled-only lesson directly also redirects to the purchase page", async ({ page }) => {
-      // Any lessonId works for this check -- the entitlement gate runs before
-      // the lesson is even looked up, per app/(study-app)/studies/[slug]/[lessonId]/page.tsx.
+      // A lesson id that doesn't exist goes back to the study's page, which
+      // (no entitlement, no free sample) sends the visitor on to the product.
       const res = await page.goto("/studies/qa-study-not-started/00000000-0000-0000-0000-000000000000");
       expect(res?.status()).toBeLessThan(400);
       await expect(page).toHaveURL(/\/books\/qa-digital-study-not-started/);

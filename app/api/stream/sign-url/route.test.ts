@@ -5,6 +5,7 @@ import { getDb, type Db } from "@/lib/db/client";
 import { contentBlocks, entitlements, lessons, products, studies, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import type { StudyWeekContent } from "@/lib/study/studyContent";
+import { createSampleStudyFixture } from "@/lib/testing/sampleStudyFixture";
 
 vi.mock("@/lib/auth/session", () => ({ getSession: vi.fn() }));
 // Signing needs the real Stream private key; what's under test is who gets a URL.
@@ -117,5 +118,36 @@ describe("POST /api/stream/sign-url", () => {
   it("requires a session", async () => {
     vi.mocked(getSession).mockResolvedValue(null);
     expect((await POST(signRequest({ contentBlockId: randomUUID() }))).status).toBe(401);
+  });
+});
+
+describe("POST /api/stream/sign-url -- free-sample reader", () => {
+  let fixture: Awaited<ReturnType<typeof createSampleStudyFixture>>;
+
+  afterEach(async () => {
+    await fixture?.cleanup();
+    vi.mocked(getSession).mockReset();
+  });
+
+  it("signs a sample lesson's block video, and refuses a locked lesson's", async () => {
+    fixture = await createSampleStudyFixture();
+    vi.mocked(getSession).mockResolvedValue(fixture.session);
+
+    const ok = await POST(signRequest({ contentBlockId: fixture.sampleBlockId }));
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ url: "https://stream.example/stream-sample" });
+    expect((await POST(signRequest({ contentBlockId: fixture.lockedBlockId }))).status).toBe(403);
+  });
+
+  it("signs media inside a sample week, and refuses media inside a locked week", async () => {
+    fixture = await createSampleStudyFixture();
+    vi.mocked(getSession).mockResolvedValue(fixture.session);
+    const db = await getDb();
+    await db.update(lessons).set({ studyContent: weekWithVideo("week-sample") }).where(eq(lessons.id, fixture.sampleLessonId));
+    await db.update(lessons).set({ studyContent: weekWithVideo("week-locked") }).where(eq(lessons.id, fixture.lockedLessonId));
+
+    const ok = await POST(signRequest({ lessonId: fixture.sampleLessonId, mediaId: "week-sample" }));
+    expect(ok.status).toBe(200);
+    expect((await POST(signRequest({ lessonId: fixture.lockedLessonId, mediaId: "week-locked" }))).status).toBe(403);
   });
 });

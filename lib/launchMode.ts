@@ -18,6 +18,18 @@ export function isSneakPeek(): boolean {
 }
 
 /**
+ * What a reader sees on a lesson they can't open yet (anything past the free
+ * sample, for someone who hasn't bought the study), e.g. "Week 4 unlocks at
+ * launch and purchase". Without a label: "Unlocks at launch and purchase".
+ * `plural` for a label naming several ("10 more days unlock ...").
+ */
+export function lockedLessonNote(label?: string, { plural = false }: { plural?: boolean } = {}): string {
+  const when = SNEAK_PEEK ? "at launch and purchase" : "with purchase";
+  if (!label) return `Unlocks ${when}`;
+  return `${label} ${plural ? "unlock" : "unlocks"} ${when}`;
+}
+
+/**
  * For a page or layout that doesn't exist on the sneak-peek site: sends the
  * visitor home. Server-side, so a closed page can't be reached by typing its
  * URL even though nothing links to it.

@@ -31,6 +31,10 @@ type LibraryEntry = {
   total: number;
   completed: number;
   resumeHref: string;
+  /** Read as a free sample -- the reader doesn't own this study. */
+  sampleOnly: boolean;
+  /** Lessons past the free sample (0 for a study the reader owns). */
+  lockedCount: number;
 };
 
 export default async function LibraryPage() {
@@ -44,7 +48,7 @@ export default async function LibraryPage() {
     .where(eq(entitlements.userId, session.userId));
   const productIds = entitledRows.map((e) => e.productId);
 
-  const myStudies =
+  const ownedStudies =
     productIds.length === 0
       ? []
       : await db
@@ -52,12 +56,33 @@ export default async function LibraryPage() {
           .from(studies)
           .where(and(inArray(studies.productId, productIds), eq(studies.published, true)));
 
+  // Studies with a free sample the reader doesn't own show up too, as
+  // "Sneak peek" cards counting only their sample lessons.
+  const ownedIds = new Set(ownedStudies.map((s) => s.id));
+  const sampleStudyIds = (
+    await db
+      .selectDistinct({ studyId: lessons.studyId })
+      .from(lessons)
+      .where(and(eq(lessons.isSample, true), eq(lessons.published, true)))
+  )
+    .map((r) => r.studyId)
+    .filter((id) => !ownedIds.has(id));
+  const sampleStudies =
+    sampleStudyIds.length === 0
+      ? []
+      : await db
+          .select()
+          .from(studies)
+          .where(and(inArray(studies.id, sampleStudyIds), eq(studies.published, true)));
+  const sampleOnlyIds = new Set(sampleStudies.map((s) => s.id));
+  const myStudies = [...ownedStudies, ...sampleStudies];
+
   const studyIds = myStudies.map((s) => s.id);
   const allLessons =
     studyIds.length === 0
       ? []
       : await db
-          .select({ id: lessons.id, studyId: lessons.studyId, orderIndex: lessons.orderIndex })
+          .select({ id: lessons.id, studyId: lessons.studyId, orderIndex: lessons.orderIndex, isSample: lessons.isSample })
           .from(lessons)
           .where(and(inArray(lessons.studyId, studyIds), eq(lessons.published, true)))
           .orderBy(asc(lessons.orderIndex));
@@ -85,7 +110,11 @@ export default async function LibraryPage() {
 
   for (const rawStudy of myStudies) {
     const study = { ...rawStudy, title: displayTitleByStudyId.get(rawStudy.id) ?? rawStudy.title };
-    const studyLessons = allLessons.filter((l) => l.studyId === study.id);
+    const allStudyLessons = allLessons.filter((l) => l.studyId === study.id);
+    // For a sample, everything below counts only the lessons they can open.
+    const sampleOnly = sampleOnlyIds.has(study.id);
+    const studyLessons = sampleOnly ? allStudyLessons.filter((l) => l.isSample) : allStudyLessons;
+    const lockedCount = allStudyLessons.length - studyLessons.length;
     const total = studyLessons.length;
     const completed = studyLessons.filter((l) => statusByLessonId.get(l.id) === "completed").length;
     const anyStarted = studyLessons.some((l) => statusByLessonId.get(l.id) !== undefined);
@@ -96,7 +125,7 @@ export default async function LibraryPage() {
     const nextLesson = studyLessons.find((l) => statusByLessonId.get(l.id) !== "completed") ?? studyLessons[0];
     const resumeHref = nextLesson ? `/studies/${study.slug}/${nextLesson.id}` : `/studies/${study.slug}`;
 
-    const entry: LibraryEntry = { study, total, completed, resumeHref };
+    const entry: LibraryEntry = { study, total, completed, resumeHref, sampleOnly, lockedCount };
 
     if (total > 0 && completed === total) {
       completedList.push(entry);
@@ -161,6 +190,8 @@ function LibrarySection({
             total={entry.total}
             resumeHref={entry.resumeHref}
             showRestart={showRestart}
+            sampleOnly={entry.sampleOnly}
+            lockedCount={entry.lockedCount}
           />
         ))}
       </div>

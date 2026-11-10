@@ -11,6 +11,8 @@ vi.mock("@/lib/auth/session", () => ({ getSession: vi.fn() }));
 // genuine external dependency is in this project's tests.
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
+import { createSampleStudyFixture } from "@/lib/testing/sampleStudyFixture";
+
 const { POST } = await import("./route");
 const { getSession } = await import("@/lib/auth/session");
 
@@ -131,5 +133,35 @@ describe("POST /api/progress/reset", () => {
     const stillThere = await db.select().from(responses).where(eq(responses.contentBlockId, block!.id));
     expect(stillThere).toHaveLength(1);
     expect(stillThere[0]!.answerText).toBe("My real answer");
+  });
+});
+
+describe("POST /api/progress/reset -- free-sample reader", () => {
+  let fixture: Awaited<ReturnType<typeof createSampleStudyFixture>>;
+
+  afterEach(async () => {
+    await fixture?.cleanup();
+    vi.mocked(getSession).mockReset();
+  });
+
+  it("restarts a sample reader's sample lessons", async () => {
+    fixture = await createSampleStudyFixture();
+    vi.mocked(getSession).mockResolvedValue(fixture.session);
+    const db = await getDb();
+    await db.insert(lessonProgress).values({ userId: fixture.userId, lessonId: fixture.sampleLessonId, status: "completed" });
+
+    const res = await POST(resetRequest(fixture.studyId));
+
+    expect(res.status).toBe(200);
+    expect(await db.select().from(lessonProgress).where(eq(lessonProgress.lessonId, fixture.sampleLessonId))).toHaveLength(0);
+  });
+
+  it("refuses a reader who neither owns the study nor has a sample of it", async () => {
+    fixture = await createSampleStudyFixture();
+    vi.mocked(getSession).mockResolvedValue(fixture.session);
+    const db = await getDb();
+    await db.update(lessons).set({ isSample: false }).where(eq(lessons.id, fixture.sampleLessonId));
+
+    expect((await POST(resetRequest(fixture.studyId))).status).toBe(403);
   });
 });

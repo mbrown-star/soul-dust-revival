@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/client";
 import { contentBlocks, lessons, studies } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { getStudyAccess } from "@/lib/entitlements/check";
+import { getLessonAccess } from "@/lib/entitlements/check";
 import { generateSignedStreamUrl } from "@/lib/stream/signing";
 import { streamSignUrlSchema } from "@/lib/validation/schemas";
 import { weekHasStreamMedia } from "@/lib/study/weekMedia";
@@ -45,7 +45,9 @@ export async function POST(req: NextRequest) {
   const study = await db.query.studies.findFirst({ where: eq(studies.id, lesson.studyId) });
   if (!study) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const access = await getStudyAccess(session, study.productId);
+  // Both request shapes resolve to one lesson, so one lesson-level check
+  // covers both -- a free-sample reader can sign media only in a sample lesson.
+  const access = await getLessonAccess(session, study, lesson);
   if (!access.allowed || ((!lesson.published || !study.published) && !access.isAdminPreview)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

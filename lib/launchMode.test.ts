@@ -32,6 +32,19 @@ describe("launch mode", () => {
     expect(isSneakPeek()).toBe(false);
   });
 
+  it("locked-lesson wording says 'at launch and purchase' on the sneak-peek site", async () => {
+    const { lockedLessonNote } = await load("sneak_peek");
+    expect(lockedLessonNote("Week 4")).toBe("Week 4 unlocks at launch and purchase");
+    expect(lockedLessonNote()).toBe("Unlocks at launch and purchase");
+    expect(lockedLessonNote("362 more days", { plural: true })).toBe("362 more days unlock at launch and purchase");
+  });
+
+  it("locked-lesson wording says 'with purchase' on the full site", async () => {
+    const { lockedLessonNote } = await load(undefined);
+    expect(lockedLessonNote("Day 4")).toBe("Day 4 unlocks with purchase");
+    expect(lockedLessonNote()).toBe("Unlocks with purchase");
+  });
+
   it("sneak_peek closes store pages by sending the visitor home", async () => {
     const { isSneakPeek, closedInSneakPeek } = await load("sneak_peek");
     expect(isSneakPeek()).toBe(true);

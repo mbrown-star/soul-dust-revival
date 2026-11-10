@@ -71,6 +71,7 @@ has run.
 | QA Study — Completed | `qa-study-completed` (product + study, same slug) | qa-user entitled, single lesson already `completed` → My Library "Completed" bucket, "Start over" should appear. |
 | QA Physical Book — Amazon + Stripe | `qa-physical-amazon-and-stripe` | `format: physical`, both `amazonUrl` and `sellOnStripe: true` set — both buy buttons should render. |
 | QA Physical Book — Amazon Only | `qa-physical-amazon-only` | `sellOnStripe: false` — only the Amazon button should render; must not be addable to the Stripe cart. |
+| QA Sample Devotional | `qa-sample-devotional` (product, **inactive**), study `qa-sample-devotional` | kind=`devotional`, 5 days (Jan 1–5), owned by nobody. Days 1–3 are the free sample (`lessons.isSample`), Days 4–5 locked — so every QA account sees it as a "Sneak peek" in My Library. `sneak-peek.spec.ts` reads it as qa-leader. |
 | QA Bundle — Both Formats | `qa-bundle-both-formats` | `format: both`. Physical price + digital price are independent; qa-user is **not** entitled yet — this is the fixture the checkout spec purchases fresh. Its digital side links study `qa-bundle-study`. |
 | QA Inactive Product | `qa-inactive-product` | `active: false` — must never appear on `/books`, `/`, or be purchasable by slug. |
 | QA Fixture: Published Post / Draft Post | `qa-fixture-published-post` / `qa-fixture-draft-post` | Draft must 404/redirect for every role except admin's editor. |

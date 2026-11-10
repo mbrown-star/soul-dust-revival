@@ -510,6 +510,54 @@ async function main() {
   });
 
   // ---------- Blog ----------
+  // ---------- Study S5: a devotional with a free sample, owned by nobody ----------
+  // Days 1-3 are the free sample (lessons.isSample) and Days 4-5 are locked,
+  // so every QA account sees it as a "Sneak peek" -- qa-leader is the one the
+  // sneak-peek spec reads it as. Its product is inactive so it stays off the
+  // storefront and out of every other spec's product counts.
+  console.log("Seeding QA free-sample devotional...");
+  const [pSample] = await db
+    .insert(schema.products)
+    .values({
+      type: "study_access",
+      format: "digital",
+      kind: "devotional",
+      title: "QA Sample Devotional",
+      slug: "qa-sample-devotional",
+      priceCents: 1500,
+      active: false,
+    })
+    .returning();
+  if (!pSample) throw new Error("QA seed: product insert returned no row.");
+  const [s5] = await db
+    .insert(schema.studies)
+    .values({
+      productId: pSample.id,
+      title: "QA Sample Devotional",
+      slug: "qa-sample-devotional",
+      kind: "devotional",
+      published: true,
+    })
+    .returning();
+  if (!s5) throw new Error("QA seed: study insert returned no row.");
+  for (const d of devotionalDays) {
+    const title = `DAY ${d.day} · ${d.month} ${d.date} · PSALM ${d.psalm}`;
+    const [lesson] = await db
+      .insert(schema.lessons)
+      .values({ studyId: s5.id, orderIndex: d.day, title, published: true, isSample: d.day <= 3 })
+      .returning();
+    if (!lesson) throw new Error("QA seed: sample devotional lesson insert returned no row.");
+    await db.insert(schema.contentBlocks).values([
+      {
+        lessonId: lesson.id,
+        orderIndex: 1,
+        type: "text",
+        body: `<p><strong>${title}</strong></p>\n<p>A QA sample reading for day ${d.day}.</p>`,
+      },
+      { lessonId: lesson.id, orderIndex: 2, type: "question", questionPrompt: d.question },
+    ]);
+  }
+
   console.log("Seeding QA blog posts...");
   await db.insert(schema.posts).values([
     {

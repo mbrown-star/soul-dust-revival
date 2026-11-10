@@ -11,6 +11,8 @@ vi.mock("@/lib/auth/session", () => ({ getSession: vi.fn() }));
 // genuine external dependency is in this project's tests.
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
+import { createSampleStudyFixture } from "@/lib/testing/sampleStudyFixture";
+
 const { POST } = await import("./route");
 const { getSession } = await import("@/lib/auth/session");
 const { revalidatePath } = await import("next/cache");
@@ -148,5 +150,26 @@ describe("POST /api/progress", () => {
 
     const res = await POST(progressRequest({ lessonId, status: "completed" }));
     expect(res.status).toBe(403);
+  });
+});
+
+describe("POST /api/progress -- free-sample reader", () => {
+  let fixture: Awaited<ReturnType<typeof createSampleStudyFixture>>;
+
+  afterEach(async () => {
+    await fixture?.cleanup();
+    vi.mocked(getSession).mockReset();
+  });
+
+  it("saves progress on a sample lesson, and refuses a locked lesson of the same study", async () => {
+    fixture = await createSampleStudyFixture();
+    vi.mocked(getSession).mockResolvedValue(fixture.session);
+
+    expect((await POST(progressRequest({ lessonId: fixture.sampleLessonId, status: "completed" }))).status).toBe(200);
+    expect((await POST(progressRequest({ lessonId: fixture.lockedLessonId, status: "completed" }))).status).toBe(403);
+
+    const db = await getDb();
+    const locked = await db.select().from(lessonProgress).where(eq(lessonProgress.lessonId, fixture.lockedLessonId));
+    expect(locked).toHaveLength(0);
   });
 });

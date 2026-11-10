@@ -1,7 +1,11 @@
 import { getDb } from "@/lib/db/client";
 import { studies, lessons, contentBlocks, products, lessonProgress, responses } from "@/lib/db/schema";
 import { eq, asc, and, inArray } from "drizzle-orm";
-import { getStudyAccess } from "@/lib/entitlements/check";
+import { getLessonAccess, studyHasOpenSample } from "@/lib/entitlements/check";
+import { isSneakPeek } from "@/lib/launchMode";
+import { shortLessonLabel } from "@/lib/study/shortLessonLabel";
+import { studyKindLabel } from "@/lib/study/studyKindLabel";
+import { LockedNextLesson } from "@/components/study/LockedNextLesson";
 import { getSession } from "@/lib/auth/session";
 import { LessonBlock } from "@/components/study/LessonBlock";
 import { LessonNavigation } from "@/components/study/LessonNavigation";
@@ -38,12 +42,12 @@ export async function generateMetadata({
   const session = await getSession();
   if (!session) return { title: "Studies" };
 
-  const access = await getStudyAccess(session, study.productId);
-  if (!access.allowed) return { title: "Studies" };
-
   if (!isUuid(lessonId)) return { title: "Studies" };
   const lesson = await db.query.lessons.findFirst({ where: and(eq(lessons.id, lessonId), eq(lessons.studyId, study.id)) });
-  if (!lesson || (!access.isAdminPreview && (!lesson.published || !study.published))) return { title: "Studies" };
+  if (!lesson) return { title: "Studies" };
+
+  const access = await getLessonAccess(session, study, lesson);
+  if (!access.allowed || (!access.isAdminPreview && (!lesson.published || !study.published))) return { title: "Studies" };
   return { title: lesson.title };
 }
 
@@ -61,24 +65,27 @@ export default async function LessonPage({
   const session = await getSession();
   if (!session) redirect(`/login?next=/studies/${slug}/${lessonId}`);
 
-  const access = await getStudyAccess(session, study.productId);
+  // A malformed id in the URL is "no such lesson", not a database error.
+  if (!isUuid(lessonId)) redirect(`/studies/${slug}`);
+  // Scoped to this study: access is checked against *this* study's product,
+  // so a lesson id from a different study must not load here.
+  const lesson = await db.query.lessons.findFirst({ where: and(eq(lessons.id, lessonId), eq(lessons.studyId, study.id)) });
+  if (!lesson) redirect(`/studies/${slug}`);
+
+  const access = await getLessonAccess(session, study, lesson);
   if (!access.allowed) {
-    // Look up the linked product's own slug — a study's slug and its linked
-    // product's slug are two different fields on two different rows and are
-    // never guaranteed to match, so reusing the study's slug here would send
-    // people to the wrong (or a nonexistent) product page.
+    // A study with a free sample: back to its lesson list, which shows which
+    // lessons are open and which are locked.
+    if (await studyHasOpenSample(study)) redirect(`/studies/${slug}`);
+    // Otherwise the linked product's page. Look up the product's own slug --
+    // a study's slug and its linked product's slug are two different fields
+    // on two different rows and are never guaranteed to match.
     const product = await db.query.products.findFirst({ where: eq(products.id, study.productId) });
     redirect(product ? `/books/${product.slug}` : "/books");
   }
 
-  // Scoped to this study: access was just checked against *this* study's
-  // product, so a lesson id from a different study must not load here.
   // Drafts (an unpublished lesson or study) are visible only to an admin
   // previewing them.
-  // A malformed id in the URL is "no such lesson", not a database error.
-  if (!isUuid(lessonId)) redirect(`/studies/${slug}`);
-  const lesson = await db.query.lessons.findFirst({ where: and(eq(lessons.id, lessonId), eq(lessons.studyId, study.id)) });
-  if (!lesson) redirect(`/studies/${slug}`);
   if (!access.isAdminPreview && (!lesson.published || !study.published)) redirect(`/studies/${slug}`);
   const isDraftPreview = !lesson.published || !study.published;
 
@@ -94,13 +101,26 @@ export default async function LessonPage({
   // Needed for previous/next navigation and the "back to contents" link --
   // same published-only ordering the study's own listing page uses.
   const studyLessons = await db
-    .select({ id: lessons.id, title: lessons.title, orderIndex: lessons.orderIndex })
+    .select({ id: lessons.id, title: lessons.title, orderIndex: lessons.orderIndex, isSample: lessons.isSample })
     .from(lessons)
     .where(and(eq(lessons.studyId, study.id), eq(lessons.published, true)))
     .orderBy(asc(lessons.orderIndex));
+  // A free-sample reader sees the whole study's lesson list, but only its
+  // sample lessons are links; navigation never leads into a locked one.
+  const isLocked = (l: { isSample: boolean }) => access.sampleOnly && !l.isSample;
   const currentIndex = studyLessons.findIndex((l) => l.id === lesson.id);
   const previousLesson = currentIndex > 0 ? studyLessons[currentIndex - 1] : undefined;
   const nextLesson = currentIndex >= 0 && currentIndex < studyLessons.length - 1 ? studyLessons[currentIndex + 1] : undefined;
+  const lockedNextLesson = nextLesson && isLocked(nextLesson) ? nextLesson : undefined;
+  // Sample lessons needn't be consecutive: only call this the end of the
+  // sample when no later lesson is still open.
+  const laterOpenLesson = studyLessons.slice(currentIndex + 1).some((l) => !isLocked(l));
+  const productHrefForLocked =
+    lockedNextLesson && !isSneakPeek()
+      ? await db.query.products
+          .findFirst({ where: eq(products.id, study.productId), columns: { slug: true, active: true } })
+          .then((p) => (p?.active ? `/books/${p.slug}` : null))
+      : null;
 
   const blocks = await db
     .select()
@@ -127,8 +147,8 @@ export default async function LessonPage({
   const answerByBlockId = new Map(savedAnswers.map((r) => [r.contentBlockId, r.answerText ?? ""]));
 
   const studyHref = `/studies/${slug}`;
-  const previousHref = previousLesson ? `${studyHref}/${previousLesson.id}` : null;
-  const nextHref = nextLesson ? `${studyHref}/${nextLesson.id}` : null;
+  const previousHref = previousLesson && !isLocked(previousLesson) ? `${studyHref}/${previousLesson.id}` : null;
+  const nextHref = nextLesson && !isLocked(nextLesson) ? `${studyHref}/${nextLesson.id}` : null;
   const isDevotional = study.kind === "devotional";
   // A Study-kind lesson without studyContent (the "Introduction" lesson, or
   // any lesson imported before the interactive Study reader existed) falls
@@ -197,7 +217,8 @@ export default async function LessonPage({
     for (const l of studyLessons) {
       const parsed = parseDayLabel(l.title);
       if (!parsed) continue; // the "Introduction" lesson, or a hand-edited title
-      if (parsed.date === todayLabel) todayLessonId = l.id;
+      const locked = isLocked(l);
+      if (parsed.date === todayLabel && !locked) todayLessonId = l.id;
 
       const questionBlock = questionBlockByLessonId.get(l.id);
       const answer = questionBlock ? answerByQuestionBlockId.get(questionBlock.id) : undefined;
@@ -217,6 +238,7 @@ export default async function LessonPage({
         walked: statusByLessonId.get(l.id) === "completed",
         answered,
         isToday: parsed.date === todayLabel,
+        locked,
       });
 
       if (answered && questionBlock) {
@@ -235,8 +257,9 @@ export default async function LessonPage({
     const currentQuestionBlock = questionBlockByLessonId.get(lesson.id) ?? null;
 
     devotionalProps = {
-      totalDays: yearDays.length,
-      daysWalked: yearDays.filter((d) => d.walked).length,
+      // A sample reader's ring counts only the days they can open.
+      totalDays: yearDays.filter((d) => !d.locked).length,
+      daysWalked: yearDays.filter((d) => d.walked && !d.locked).length,
       yearDays,
       journalEntries,
       questionBlockId: currentQuestionBlock?.id ?? null,
@@ -309,7 +332,13 @@ export default async function LessonPage({
           previousHref={previousHref}
           nextHref={nextHref}
           bookLabel={study.title}
-          weeks={studyLessons.map((l) => ({ id: l.id, title: l.title, href: `${studyHref}/${l.id}`, isCurrent: l.id === lesson.id }))}
+          weeks={studyLessons.map((l) => ({
+            id: l.id,
+            title: l.title,
+            href: `${studyHref}/${l.id}`,
+            isCurrent: l.id === lesson.id,
+            locked: isLocked(l),
+          }))}
           studyHref={studyHref}
           initialStatus={progressRow?.status ?? "not_started"}
           media={Object.fromEntries(
@@ -326,6 +355,14 @@ export default async function LessonPage({
             <LessonBlock key={block.id} block={block} initialAnswer={answerByBlockId.get(block.id)} />
           ))}
         </>
+      )}
+      {lockedNextLesson && (
+        <LockedNextLesson
+          label={shortLessonLabel(lockedNextLesson.title)}
+          productHref={productHrefForLocked}
+          kindLabel={studyKindLabel(study.kind).toLowerCase()}
+          endOfSample={!laterOpenLesson}
+        />
       )}
       {/* Only rendered by print CSS — invisible on screen (see globals.css). */}
       <p className="print-only-notice">

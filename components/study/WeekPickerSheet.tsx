@@ -3,12 +3,16 @@
 import Link from "next/link";
 import { readTabProgressPercent } from "./useStudyProgress";
 import { Sheet } from "./Sheet";
+import { LockIcon } from "./LockIcon";
+import { lockedLessonNote } from "@/lib/launchMode";
 
 export type WeekPickerItem = {
   id: string;
   title: string;
   href: string;
   isCurrent: boolean;
+  /** Past the free sample for a reader who hasn't bought the study. */
+  locked?: boolean;
 };
 
 /**
@@ -32,6 +36,21 @@ export function WeekPickerSheet({
       </h2>
       <div className="divide-y divide-dusk/10">
         {weeks.map((week, i) => {
+          if (week.locked) {
+            // Past the free sample: listed so the reader sees what's coming,
+            // but not a link.
+            return (
+              <div key={week.id} className="flex items-center gap-4 py-3 min-h-[44px] text-moss">
+                <span className="shrink-0 w-9 h-9 rounded-full border border-dusk/15 flex items-center justify-center">
+                  <LockIcon />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block font-sans font-semibold text-ink/60 truncate">{week.title}</span>
+                  <span className="block font-sans text-xs">{lockedLessonNote()}</span>
+                </span>
+              </div>
+            );
+          }
           const percent = readTabProgressPercent(week.id);
           return (
             <Link

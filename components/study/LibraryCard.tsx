@@ -3,6 +3,8 @@ import Image from "next/image";
 import { ProgressBar } from "./ProgressBar";
 import { RestartStudyButton } from "./RestartStudyButton";
 import { studyKindLabel, type StudyKind } from "@/lib/study/studyKindLabel";
+import { LockIcon } from "./LockIcon";
+import { lockedLessonNote } from "@/lib/launchMode";
 
 type LibraryCardStudy = {
   id: string;
@@ -20,13 +22,23 @@ export function LibraryCard({
   total,
   resumeHref,
   showRestart,
+  sampleOnly = false,
+  lockedCount = 0,
 }: {
   study: LibraryCardStudy;
   completed: number;
   total: number;
   resumeHref: string;
   showRestart: boolean;
+  /**
+   * Read as a free sample -- the reader hasn't bought this study, and
+   * `total` counts only the sample lessons they can open.
+   */
+  sampleOnly?: boolean;
+  /** Lessons past the free sample. */
+  lockedCount?: number;
 }) {
+  const lessonNoun = study.kind === "devotional" ? (lockedCount === 1 ? "day" : "days") : lockedCount === 1 ? "lesson" : "lessons";
   return (
     <div className="bg-white border border-dusk/10 rounded-xl overflow-hidden hover:border-dusk/30 transition-colors flex flex-col sm:flex-row">
       {/* The cover shows at its own natural shape (height: auto), never
@@ -52,6 +64,7 @@ export function LibraryCard({
           <div>
             <span className="inline-block text-xs font-sans font-medium uppercase tracking-wide text-ember-700 mb-1">
               {studyKindLabel(study.kind)}
+              {sampleOnly && " · Sneak peek"}
             </span>
             <h3 className="font-display font-semibold text-lg text-ink leading-tight">
               <Link href={resumeHref} className="hover:underline">
@@ -71,6 +84,12 @@ export function LibraryCard({
               {completed}/{total}
             </span>
           </div>
+        )}
+        {sampleOnly && lockedCount > 0 && (
+          <p className="flex items-center gap-1.5 font-sans text-xs text-moss">
+            <LockIcon className="w-3.5 h-3.5 shrink-0" />
+            {lockedLessonNote(`${lockedCount} more ${lessonNoun}`, { plural: lockedCount !== 1 })}
+          </p>
         )}
 
         <div className="flex items-center justify-between gap-3 mt-auto pt-2">

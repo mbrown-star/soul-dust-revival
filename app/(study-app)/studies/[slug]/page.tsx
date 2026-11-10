@@ -1,7 +1,9 @@
 import { getDb } from "@/lib/db/client";
 import { studies, lessons, products, lessonProgress } from "@/lib/db/schema";
 import { eq, asc, and, inArray } from "drizzle-orm";
-import { getStudyAccess } from "@/lib/entitlements/check";
+import { getStudyAccess, isOpenSampleLesson, studyHasOpenSample } from "@/lib/entitlements/check";
+import { lockedLessonNote } from "@/lib/launchMode";
+import { LockIcon } from "@/components/study/LockIcon";
 import { getSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -31,7 +33,8 @@ export async function generateMetadata({
   if (!session) return { title: "Studies" };
 
   const access = await getStudyAccess(session, study.productId);
-  if (!access.allowed || (!study.published && !access.isAdminPreview)) return { title: "Studies" };
+  if (!study.published && !access.isAdminPreview) return { title: "Studies" };
+  if (!access.allowed && !(await studyHasOpenSample(study))) return { title: "Studies" };
   // REAL FIX (qa/findings/FINDINGS_2026-11-07.md #2's broader root cause):
   // study.title isn't always customer-facing -- see lib/study/displayTitle.ts.
   return { title: await getDisplayStudyTitle(db, study) };
@@ -57,14 +60,6 @@ export default async function StudyPage({
 
   const access = await getStudyAccess(session, study.productId);
   if (!study.published && !access.isAdminPreview) redirect("/studies");
-  if (!access.allowed) {
-    // The study's slug and its linked product's slug are two different
-    // fields on two different rows and are never guaranteed to match, so
-    // reusing the study's slug here would send people to the wrong (or a
-    // nonexistent) product page -- same reasoning as [lessonId]/page.tsx.
-    const product = await db.query.products.findFirst({ where: eq(products.id, study.productId) });
-    redirect(product ? `/books/${product.slug}` : "/books");
-  }
 
   const studyLessons = await db
     .select()
@@ -72,7 +67,21 @@ export default async function StudyPage({
     .where(and(eq(lessons.studyId, study.id), eq(lessons.published, true)))
     .orderBy(asc(lessons.orderIndex));
 
-  const lessonIds = studyLessons.map((l) => l.id);
+  // Not owned, but the study has a free sample: show every lesson, with only
+  // the sample ones open.
+  const sampleOnly = !access.allowed && studyLessons.some((l) => isOpenSampleLesson(study, l));
+  if (!access.allowed && !sampleOnly) {
+    // The study's slug and its linked product's slug are two different
+    // fields on two different rows and are never guaranteed to match, so
+    // reusing the study's slug here would send people to the wrong (or a
+    // nonexistent) product page -- same reasoning as [lessonId]/page.tsx.
+    const product = await db.query.products.findFirst({ where: eq(products.id, study.productId) });
+    redirect(product ? `/books/${product.slug}` : "/books");
+  }
+  const isLocked = (l: { isSample: boolean }) => sampleOnly && !l.isSample;
+  const openLessons = studyLessons.filter((l) => !isLocked(l));
+
+  const lessonIds = openLessons.map((l) => l.id);
   const progressRows =
     lessonIds.length === 0
       ? []
@@ -83,24 +92,30 @@ export default async function StudyPage({
             and(eq(lessonProgress.userId, session.userId), inArray(lessonProgress.lessonId, lessonIds))
           );
   const progressByLesson = new Map(progressRows.map((p) => [p.lessonId, p.status]));
-  const completed = studyLessons.filter((l) => progressByLesson.get(l.id) === "completed").length;
+  const completed = openLessons.filter((l) => progressByLesson.get(l.id) === "completed").length;
   const displayTitle = await getDisplayStudyTitle(db, study);
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16">
       <span className="inline-block text-xs font-sans font-medium uppercase tracking-wide text-ember-700 mb-2">
         {studyKindLabel(study.kind)}
+        {sampleOnly && " · Sneak peek"}
       </span>
       <h1 className="font-display font-bold text-3xl text-ink mb-2">{displayTitle}</h1>
       {study.description && <p className="font-serif text-moss mb-6">{study.description}</p>}
+      {sampleOnly && (
+        <p className="font-serif text-moss mb-6">
+          You&apos;re reading the free sample. {lockedLessonNote("The rest")}.
+        </p>
+      )}
 
-      {studyLessons.length > 0 && (
+      {openLessons.length > 0 && (
         <div className="flex items-center gap-3 mb-8">
           <div className="flex-1">
-            <ProgressBar completed={completed} total={studyLessons.length} />
+            <ProgressBar completed={completed} total={openLessons.length} />
           </div>
           <span className="font-sans text-xs text-moss whitespace-nowrap">
-            {completed}/{studyLessons.length} lessons
+            {completed}/{openLessons.length} {sampleOnly ? "sample lessons" : "lessons"}
           </span>
         </div>
       )}
@@ -110,6 +125,23 @@ export default async function StudyPage({
       ) : (
         <ol className="space-y-2">
           {studyLessons.map((lesson, i) => {
+            if (isLocked(lesson)) {
+              return (
+                <li key={lesson.id}>
+                  <div className="flex items-center justify-between gap-4 bg-dusk/5 border border-dusk/10 rounded-lg px-4 py-3 min-h-[44px]">
+                    <span className="font-sans text-ink/60">
+                      <span className="text-moss mr-2">{i + 1}.</span>
+                      {lesson.title}
+                    </span>
+                    <span className="flex items-center gap-1.5 font-sans text-xs text-moss whitespace-nowrap">
+                      <LockIcon className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">{lockedLessonNote()}</span>
+                      <span className="sm:hidden">Locked</span>
+                    </span>
+                  </div>
+                </li>
+              );
+            }
             const status = progressByLesson.get(lesson.id) ?? "not_started";
             return (
               <li key={lesson.id}>

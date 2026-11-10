@@ -234,6 +234,10 @@ export const lessons = pgTable("lessons", {
   orderIndex: integer("order_index").notNull(),
   title: text("title").notNull(),
   published: boolean("published").notNull().default(false),
+  // Part of the study's free sample: any signed-in reader may open it (if it
+  // and its study are published), without having bought the study. See
+  // getLessonAccess in lib/entitlements/check.ts.
+  isSample: boolean("is_sample").notNull().default(false),
   // Structured week content for the 5-tab interactive Study reader (see
   // lib/study/studyContent.ts) -- null for every lesson except the 12 real
   // Colossians weeks backfilled so far. A study lesson with no studyContent

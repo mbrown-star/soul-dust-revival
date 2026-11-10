@@ -5,7 +5,7 @@ import { getDb } from "@/lib/db/client";
 import { lessons, lessonProgress, studies } from "@/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { progressResetSchema } from "@/lib/validation/schemas";
-import { hasEntitlement } from "@/lib/entitlements/check";
+import { getStudyAccess, isOpenSampleLesson } from "@/lib/entitlements/check";
 
 /**
  * "Start over" on a completed study/devotional from My Library: clears this
@@ -28,12 +28,20 @@ export async function POST(req: NextRequest) {
 
   const study = await db.query.studies.findFirst({ where: eq(studies.id, studyId) });
   if (!study) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (!(await hasEntitlement(session.userId, study.productId))) {
+
+  const studyLessons = await db
+    .select({ id: lessons.id, isSample: lessons.isSample, published: lessons.published })
+    .from(lessons)
+    .where(eq(lessons.studyId, studyId));
+
+  // A reader who owns the study restarts all of it; a free-sample reader
+  // restarts just the sample lessons they can open.
+  const { allowed } = await getStudyAccess(session, study.productId);
+  const resettable = allowed ? studyLessons : studyLessons.filter((l) => isOpenSampleLesson(study, l));
+  if (!allowed && resettable.length === 0) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-
-  const studyLessons = await db.select({ id: lessons.id }).from(lessons).where(eq(lessons.studyId, studyId));
-  const lessonIds = studyLessons.map((l) => l.id);
+  const lessonIds = resettable.map((l) => l.id);
 
   if (lessonIds.length > 0) {
     await db
