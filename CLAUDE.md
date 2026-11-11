@@ -80,7 +80,7 @@ webhook/entitlement changes done.
 
   - **Checked live on staging:** each part is in `/store` with its cover (200) and "Coming soon", with no buy buttons; a visitor can't open the studies; production's homepage doesn't mention them.
   - Nothing was deployed (only the import script changed, which doesn't ship in the Worker).
-  - **Remaining 12:** In Christ, The Ten Commandments, Sermon on the Mount, Dusty and Holy (Hebrews), Dusty but Hopeful (Romans), Genesis Parts 1 and 2, Prayer, The Gospel, The Holy Spirit, Benedictions (176-page study), and A 365-Day Journey Through the Bible (devotional). (The earlier count of 13 included the John parts; 16 titles are imported today in total, and 12 remain.)
+  - **Remaining 12:** In Christ, The Ten Commandments, Sermon on the Mount, Dusty and Holy (Hebrews), Dusty but Hopeful (Romans), Genesis Parts 1 and 2, Prayer, The Gospel, The Holy Spirit, Benedictions (176-page study), and A 365-Day Journey Through the Bible (devotional). (The second batch's note said 13 remained; it was 16 counting the four John parts. 12 titles were imported today, and 12 remain.)
   - The Journey session acknowledged the Journey parts' word-study issue and will put the repair to the user after its own build.
 - **2026-11-11 (newer still) — second catalog batch imported as hidden drafts: 1 Timothy, James, Ecclesiastes, Law and Gospel.** Requested as "import the next four". The three remaining 6x9 Book Studies other than the John parts (kept together for their own batch), plus Law and Gospel, the first Topical Study, to try that family early.
   - Same script, dry-run first. No parser changes were needed.
@@ -99,7 +99,7 @@ webhook/entitlement changes done.
     Each is a Coming soon product with an unpublished study of 13 draft lessons.
   - **Checked live on staging:** all four are in `/store` with their covers (200) and "Coming soon", with no buy buttons; a visitor can't open the studies; production's homepage doesn't mention them.
   - No code changed, so nothing was deployed.
-  - **Still to import (13):**
+  - **Still to import (16):**
     - The four John parts (next).
     - The other Topical Studies: In Christ, The Ten Commandments, Sermon on the Mount, Dusty and Holy (Hebrews), Dusty but Hopeful (Romans), Genesis Parts 1 and 2, Prayer, The Gospel, The Holy Spirit, Benedictions (the 176-page study, not the superseded 14-page catalog).
     - A 365-Day Journey Through the Bible (a devotional, so `--kind devotional` and its own parser path).
