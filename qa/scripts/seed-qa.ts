@@ -412,7 +412,9 @@ async function main() {
     lessonId: s1lesson2.id,
     orderIndex: 1,
     type: "text",
-    body: "<p>A QA fixture lesson with no structured studyContent, to exercise the plain reading fallback.</p>",
+    // Two sections, so the reader shows it as Foreword / Preface tabs.
+    body:
+      "<h2>Foreword</h2>\n<p>A QA fixture lesson with no structured studyContent, to exercise the plain reading fallback.</p>\n<h2>Preface</h2>\n<p>The QA study's preface.</p>",
   });
 
   // qa-user: entitled, zero lesson_progress -> "Not started" bucket in My Library.

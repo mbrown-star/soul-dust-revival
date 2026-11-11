@@ -4,8 +4,8 @@ import { useId, useState, type ReactNode } from "react";
 import { ScrollFadeTabs } from "@/components/ui/ScrollFadeTabs";
 
 /**
- * A threshold's introduction, one tab per section (Foreword, Preface, …;
- * see lib/journey/introSections.ts). Every panel stays mounted and is only
+ * An introduction (a study's, a devotional's, or a Journey threshold's), one
+ * tab per section (Foreword, Preface, …; see lib/study/introSections.ts). Every panel stays mounted and is only
  * hidden, like the Study reader's tabs.
  */
 export function IntroTabs({ sections }: { sections: { title: string; content: ReactNode }[] }) {

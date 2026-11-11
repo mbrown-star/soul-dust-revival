@@ -54,6 +54,8 @@ export function DevotionalAppView({
   today: {
     dayLabel: string;
     bodyHtml: string;
+    // Shown instead of the day's printed parts (the Introduction's tabs).
+    content?: React.ReactNode;
     previousHref: string | null;
     nextHref: string | null;
     lessonId: string;
@@ -128,6 +130,7 @@ export function DevotionalAppView({
         <DevotionalDayView
           dayLabel={today.dayLabel}
           bodyHtml={today.bodyHtml}
+          content={today.content}
           previousHref={today.previousHref}
           nextHref={today.nextHref}
           lessonId={today.lessonId}

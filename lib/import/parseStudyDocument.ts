@@ -1,6 +1,7 @@
 import { parseDocxToHtml } from "./parseDocx";
 import { parsePdfToText } from "./parsePdf";
 import { splitHtmlByHeadings, splitPlainTextByHeadings, splitStudyPlainTextByHeadings } from "./splitIntoLessons";
+import { repairIntroHtml } from "./introHeadings";
 import { sanitizeHtml } from "@/lib/sanitize/html";
 
 // Shared by both the create-path importer (app/api/admin/studies/import)
@@ -28,6 +29,30 @@ export type ParsedStudyLesson = { title: string; blocks: ParsedBlock[] };
  * called.
  */
 export async function parseStudyDocument(
+  buffer: Buffer,
+  options: { isDocx: boolean; kind: "devotional" | "study" | "book" }
+): Promise<ParsedStudyLesson[]> {
+  return (await splitDocument(buffer, options)).map(withSectionedIntroduction);
+}
+
+/**
+ * Gives an imported Introduction real section headings (Foreword, Preface,
+ * …) so the reader shows it as tabs; see lib/import/introHeadings.ts. A
+ * heading the repair doesn't know is left as the importer wrote it.
+ */
+export function withSectionedIntroduction(lesson: ParsedStudyLesson): ParsedStudyLesson {
+  if (lesson.title !== "Introduction") return lesson;
+  return {
+    ...lesson,
+    blocks: lesson.blocks.map((block) => {
+      if (block.type !== "text") return block;
+      const repair = repairIntroHtml(block.body);
+      return repair ? { ...block, body: repair.html } : block;
+    }),
+  };
+}
+
+async function splitDocument(
   buffer: Buffer,
   { isDocx, kind }: { isDocx: boolean; kind: "devotional" | "study" | "book" }
 ): Promise<ParsedStudyLesson[]> {

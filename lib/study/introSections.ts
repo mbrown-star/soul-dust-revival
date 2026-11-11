@@ -1,7 +1,7 @@
 /**
  * Splits an introduction's HTML into its sections at each top-level `<h2>`
- * (Foreword, Preface, …), so a Journey threshold can show one tab per
- * section. The heading itself becomes the tab's label and is left out of the
+ * (Foreword, Preface, …), so the reader can show a study's, a devotional's
+ * or a Journey threshold's introduction as one tab per section. The heading itself becomes the tab's label and is left out of the
  * section's HTML. Anything before the first heading stays with the first
  * section. Fewer than two headings means there's nothing to tab between, so
  * it returns an empty list and the caller shows the introduction as it is.

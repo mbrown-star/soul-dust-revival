@@ -26,8 +26,8 @@ import { loadLookBack } from "@/lib/journey/lookBack";
 import { CompleteStopButton } from "@/components/journey/CompleteStopButton";
 import { LookBackList } from "@/components/journey/LookBackList";
 import { JourneyNextStopNote } from "@/components/journey/JourneyNextStopNote";
-import { IntroTabs } from "@/components/journey/IntroTabs";
-import { splitIntroSections } from "@/lib/journey/introSections";
+import { IntroTabs } from "@/components/study/IntroTabs";
+import { splitIntroSections } from "@/lib/study/introSections";
 import { sanitizeHtml } from "@/lib/sanitize/html";
 import type { Metadata } from "next";
 import { z } from "zod";
@@ -332,10 +332,26 @@ export default async function LessonPage({
     };
   }
 
-  // A threshold's introduction reads as tabs, one per section (Foreword,
-  // Preface, …), when its first text block has more than one.
-  const introBlock = journeyNav?.stop.isThreshold ? blocks.find((b) => b.type === "text") : undefined;
+  // An introduction (a study's or devotional's, or a Journey threshold) reads
+  // as tabs, one per section (Foreword, Preface, …), when its first text
+  // block has more than one. See lib/import/introHeadings.ts for how
+  // imported introductions get their sections.
+  const isIntroduction = journeyNav?.stop.isThreshold || lesson.title.trim().toLowerCase() === "introduction";
+  const introBlock = isIntroduction ? blocks.find((b) => b.type === "text") : undefined;
   const introSections = introBlock ? splitIntroSections(sanitizeHtml(introBlock.body ?? "")) : [];
+  const introTabs =
+    introSections.length > 0 ? (
+      <IntroTabs
+        sections={introSections.map((section) => ({
+          title: section.title,
+          // Sanitized again after the split, so each section's HTML stands
+          // on its own (balanced tags) as well as being safe.
+          content: <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(section.html) }} />,
+        }))}
+      />
+    ) : null;
+  // The lesson's other blocks, without the one the tabs already show.
+  const blocksBesideIntro = introTabs ? blocks.filter((block) => block.id !== introBlock?.id) : blocks;
 
   // A devotional day's printed parts come from its first text block (and its
   // "question to sit with" answer block); anything else the admin added is
@@ -377,6 +393,7 @@ export default async function LessonPage({
           today={{
             dayLabel: lesson.title,
             bodyHtml: dayTextBlock?.body ?? "",
+            content: introTabs,
             previousHref,
             nextHref,
             lessonId: lesson.id,
@@ -447,21 +464,10 @@ export default async function LessonPage({
             </p>
             <h1 className="font-display font-bold text-3xl sm:text-4xl text-ink">{journeyNav.part.label}</h1>
           </div>
-          {introSections.length > 0 && (
-            <IntroTabs
-              sections={introSections.map((section) => ({
-                title: section.title,
-                // Sanitized again after the split, so each section's HTML
-                // stands on its own (balanced tags) as well as being safe.
-                content: <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(section.html) }} />,
-              }))}
-            />
-          )}
-          {blocks
-            .filter((block) => introSections.length === 0 || block.id !== introBlock?.id)
-            .map((block) => (
-              <LessonBlock key={block.id} block={block} initialAnswer={answerByBlockId.get(block.id)} />
-            ))}
+          {introTabs}
+          {blocksBesideIntro.map((block) => (
+            <LessonBlock key={block.id} block={block} initialAnswer={answerByBlockId.get(block.id)} />
+          ))}
           {lookBack && <LookBackList lookBack={lookBack} heading={`Before you cross into ${journeyNav.part.shortLabel}`} />}
           <CompleteStopButton
             lessonId={lesson.id}
@@ -475,7 +481,8 @@ export default async function LessonPage({
       ) : (
         <>
           <h1 className="font-display font-bold text-2xl sm:text-3xl text-ink">{lesson.title}</h1>
-          {blocks.map((block) => (
+          {introTabs}
+          {blocksBesideIntro.map((block) => (
             <LessonBlock key={block.id} block={block} initialAnswer={answerByBlockId.get(block.id)} />
           ))}
         </>

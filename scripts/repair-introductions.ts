@@ -13,11 +13,11 @@
  * Usage:
  *   npx tsx --env-file=.env.local scripts/repair-journey-introductions.ts [--apply]
  */
-import { and, asc, eq, isNull, like } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { getDb } from "../lib/db/client";
 import { contentBlocks, lessons, studies } from "../lib/db/schema";
 import { ensureSnapshot, publishChanges } from "../lib/lessons/publishedContent";
-import { repairJourneyIntroHtml } from "../lib/import/journeyIntroHeadings";
+import { repairIntroHtml } from "../lib/import/introHeadings";
 import { sanitizeHtml } from "../lib/sanitize/html";
 
 async function main() {
@@ -27,7 +27,7 @@ async function main() {
     .select({ lessonId: lessons.id, slug: studies.slug, published: lessons.published })
     .from(lessons)
     .innerJoin(studies, eq(studies.id, lessons.studyId))
-    .where(and(like(studies.slug, "soul-dust-revival-part-%"), eq(lessons.orderIndex, 0)))
+    .where(and(eq(lessons.orderIndex, 0), eq(lessons.title, "Introduction")))
     .orderBy(asc(studies.slug));
 
   const plan: { lessonId: string; blockId: string; html: string; published: boolean }[] = [];
@@ -41,7 +41,7 @@ async function main() {
       console.log(`  ${intro.slug}: expected one text block, found ${textBlocks.length}; skipping`);
       continue;
     }
-    const repair = repairJourneyIntroHtml(textBlocks[0]!.body ?? "");
+    const repair = repairIntroHtml(textBlocks[0]!.body ?? "");
     if (!repair) {
       console.log(`  ${intro.slug}: already repaired (or not the imported shape); skipping`);
       continue;
@@ -51,12 +51,15 @@ async function main() {
       console.log(`  ${intro.slug}: UNKNOWN headings ${repair.unknown.join(", ")}`);
       continue;
     }
-    const outline = [...repair.html.matchAll(/<(h[234])>(.*?)<\/\1>/g)].map((m) => `${m[1]} ${m[2]}`);
+    // Each heading, plus the subtitle (if any) split off the line after it.
+    const outline = [...repair.html.matchAll(/<(h[234])>(.*?)<\/\1>(?:\n<p><em>(.*?)<\/em><\/p>)?/g)].map(
+      (m) => `${m[1]} ${m[2]}${m[3] ? `  /  subtitle: ${m[3]}` : ""}`
+    );
     console.log(`  ${intro.slug}:\n      ${outline.join("\n      ")}`);
     plan.push({ lessonId: intro.lessonId, blockId: textBlocks[0]!.id, html: repair.html, published: intro.published });
   }
 
-  if (refused) throw new Error("Unknown headings: nothing written. Add them to lib/import/journeyIntroHeadings.ts first.");
+  if (refused) throw new Error("Unknown headings: nothing written. Add them to lib/import/introHeadings.ts first.");
   console.log(`\n${plan.length} introductions to repair.`);
   if (!apply) return console.log("Dry run: nothing written. Pass --apply to repair.");
 

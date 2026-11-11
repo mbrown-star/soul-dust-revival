@@ -148,5 +148,12 @@ test.describe("Interactive Study reader", () => {
     await expect(
       page.getByText("A QA fixture lesson with no structured studyContent, to exercise the plain reading fallback.")
     ).toBeVisible();
+
+    // Its Foreword and Preface read as tabs, like a Journey threshold's.
+    await expect(page.getByRole("tab", { name: "Foreword" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByText("The QA study's preface.")).toBeHidden();
+    await page.getByRole("button", { name: "Next: Preface →" }).click();
+    await expect(page.getByRole("tab", { name: "Preface" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByText("The QA study's preface.")).toBeVisible();
   });
 });
