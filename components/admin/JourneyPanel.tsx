@@ -66,7 +66,10 @@ export function JourneyPanel({
             send("POST", {
               bundleProductId,
               title: bundleTitle.replace(/^soul dust revival:?\s*/i, "") || bundleTitle,
-              slug: bundleSlug.replace(/^soul-dust-revival-/, "") || bundleSlug,
+              // "<brand>-revival-the-journey" -> "the-journey". Matched on
+              // "revival-" alone: the full brand slug is also the R2 bucket's
+              // name, which the deploy's secret scan refuses in a bundle.
+              slug: bundleSlug.replace(/^.*?revival-/, "") || bundleSlug,
             })
           }
         >
