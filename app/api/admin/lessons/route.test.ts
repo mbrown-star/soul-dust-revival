@@ -162,6 +162,33 @@ describe("admin lessons route", () => {
     expect(json.published).toBe(false);
   });
 
+  it("marks and unmarks a lesson as the free sample, and leaves the mark alone when it isn't sent", async () => {
+    await signInAsAdmin();
+    const [lesson] = await db
+      .insert(lessons)
+      .values({ studyId, title: "Week 1", orderIndex: 0, published: true })
+      .returning();
+    const isSample = async () =>
+      (await db.query.lessons.findFirst({ where: eq(lessons.id, lesson!.id), columns: { isSample: true } }))!.isSample;
+
+    expect((await PATCH(patchRequest({ id: lesson!.id, title: "Week 1", published: true, isSample: true }))).status).toBe(200);
+    expect(await isSample()).toBe(true);
+
+    // The lesson list's publish toggle and title edits don't send isSample.
+    expect((await PATCH(patchRequest({ id: lesson!.id, title: "Week 1 renamed", published: false }))).status).toBe(200);
+    expect(await isSample()).toBe(true);
+
+    expect((await PATCH(patchRequest({ id: lesson!.id, title: "Week 1", published: true, isSample: false }))).status).toBe(200);
+    expect(await isSample()).toBe(false);
+  });
+
+  it("rejects a non-boolean free-sample value", async () => {
+    await signInAsAdmin();
+    const [lesson] = await db.insert(lessons).values({ studyId, title: "Week 1", orderIndex: 0 }).returning();
+    const res = await PATCH(patchRequest({ id: lesson!.id, title: "Week 1", published: false, isSample: "yes" }));
+    expect(res.status).toBe(400);
+  });
+
   it("still supports the existing bulk reorder action unaffected by the new bulk-publish branch", async () => {
     await signInAsAdmin();
 

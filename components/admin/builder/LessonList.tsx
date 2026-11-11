@@ -10,7 +10,7 @@ import { inputClass } from "./fields";
 import { useBuilderSensors } from "./SortableList";
 import { SortableRow, dragAnnouncements, focusDragHandle, useReorderAnnouncer } from "./SortableRow";
 
-export type LessonListItem = { id: string; title: string; published: boolean; isWeek: boolean };
+export type LessonListItem = { id: string; title: string; published: boolean; isSample: boolean; isWeek: boolean };
 
 async function readError(res: Response, fallback: string) {
   try {
@@ -173,6 +173,7 @@ export function LessonList({ studyId, initialLessons }: { studyId: string; initi
                         {lesson.title}
                       </Link>
                       {lesson.isWeek && <span className="text-xs text-ember-700 bg-ember-700/10 rounded-full px-2 py-0.5">Week builder</span>}
+                      {lesson.isSample && <span className="text-xs text-ink bg-gold/30 rounded-full px-2 py-0.5">Free sample</span>}
                       <label className="flex items-center gap-2 text-sm text-moss">
                         <input type="checkbox" checked={lesson.published} onChange={() => void togglePublished(lesson)} />
                         <span>{lesson.published ? "Published" : "Draft"}</span>

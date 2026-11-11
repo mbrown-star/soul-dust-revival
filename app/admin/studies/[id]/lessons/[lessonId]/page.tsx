@@ -39,6 +39,7 @@ export default async function LessonEditorPage({
           lessonId={lesson.id}
           initialTitle={lesson.title}
           initialPublished={lesson.published}
+          initialIsSample={lesson.isSample}
           previewHref={appUrl(`/studies/${study.slug}/${lesson.id}`)}
         />
       </div>

@@ -243,7 +243,11 @@ export async function PATCH(req: NextRequest) {
 
   const [updated] = await db
     .update(lessons)
-    .set({ title: parsed.data.title, published: parsed.data.published })
+    .set({
+      title: parsed.data.title,
+      published: parsed.data.published,
+      ...(parsed.data.isSample === undefined ? {} : { isSample: parsed.data.isSample }),
+    })
     .where(eq(lessons.id, parsed.data.id))
     .returning();
 

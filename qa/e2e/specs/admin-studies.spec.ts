@@ -250,6 +250,36 @@ test.describe("admin studies list and editor, as qa-admin", () => {
     await expect(page.getByRole("link", { name: "QA Draft To Delete" })).toHaveCount(0);
   });
 
+  test("a lesson can be marked as the free sample in the builder, and the study page shows it", async ({ page }) => {
+    await page.goto("/admin/studies");
+    await page.getByRole("link", { name: /QA Colossians-Shaped Study/i }).click();
+    await expect(page).toHaveURL(/\/admin\/studies\/[0-9a-f-]+$/);
+    const studyUrl = page.url();
+
+    await page.getByLabel("New lesson title").fill("QA Sample Toggle");
+    await page.getByRole("button", { name: "+ Add lesson" }).click();
+    await expect(page).toHaveURL(/\/lessons\/[0-9a-f-]+$/);
+    await page.waitForLoadState("networkidle");
+
+    const sample = page.getByRole("checkbox", { name: "Free sample" });
+    await expect(sample).not.toBeChecked();
+    const saved = page.waitForResponse((r) => r.url().endsWith("/api/admin/lessons") && r.request().method() === "PATCH");
+    await sample.check();
+    expect((await saved).status()).toBe(200);
+    await expect(page.getByText(/any signed-in reader can open this lesson/)).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByRole("checkbox", { name: "Free sample" })).toBeChecked();
+
+    await page.goto(studyUrl);
+    const row = page.getByRole("listitem").filter({ has: page.getByRole("link", { name: "QA Sample Toggle" }) });
+    await expect(row.getByText("Free sample")).toBeVisible();
+
+    page.once("dialog", (dialog) => void dialog.accept());
+    await page.getByRole("button", { name: "Delete draft lesson QA Sample Toggle" }).click();
+    await expect(page.getByRole("link", { name: "QA Sample Toggle" })).toHaveCount(0);
+  });
+
   // Regression: the Study reader crashed (500) on a week saved before it had
   // any stations -- the Work the Word tab assumed at least one.
   test("a brand-new week with only its required fields opens in the reader", async ({ page }) => {

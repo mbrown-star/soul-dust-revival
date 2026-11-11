@@ -4,22 +4,25 @@ import { useId, useState } from "react";
 import { useAutosave } from "@/lib/hooks/useAutosave";
 import { StatusPill } from "./BlockCard";
 
-type LessonMeta = { title: string; published: boolean };
+type LessonMeta = { title: string; published: boolean; isSample: boolean };
 
-/** Lesson title (edited in place), Published toggle, and a reader preview link. */
+/** Lesson title (edited in place), Published and Free sample toggles, and a reader preview link. */
 export function LessonHeader({
   lessonId,
   initialTitle,
   initialPublished,
+  initialIsSample,
   previewHref,
 }: {
   lessonId: string;
   initialTitle: string;
   initialPublished: boolean;
+  initialIsSample: boolean;
   previewHref: string;
 }) {
   const titleId = useId();
-  const [meta, setMeta] = useState<LessonMeta>({ title: initialTitle, published: initialPublished });
+  const sampleHintId = useId();
+  const [meta, setMeta] = useState<LessonMeta>({ title: initialTitle, published: initialPublished, isSample: initialIsSample });
   const autosave = useAutosave<LessonMeta>(async (patch, { keepalive }) => {
     const res = await fetch("/api/admin/lessons", {
       method: "PATCH",
@@ -27,7 +30,7 @@ export function LessonHeader({
       body: JSON.stringify({ id: lessonId, ...patch }),
       keepalive,
     });
-    if (!res.ok) throw new Error("Couldn't save the lesson title or status.");
+    if (!res.ok) throw new Error("Couldn't save the lesson title or settings.");
   });
 
   function update(patch: Partial<LessonMeta>) {
@@ -51,6 +54,12 @@ export function LessonHeader({
           className="w-full font-display text-2xl text-ink bg-transparent border-b border-moss/20 focus:border-ink focus:outline-none py-1"
         />
         {!meta.title.trim() && <p className="text-xs text-error mt-1">A lesson needs a title.</p>}
+        {meta.isSample && (
+          <p id={sampleHintId} className="text-xs text-moss mt-1">
+            Free sample: any signed-in reader can open this lesson without buying the study, once both this lesson and
+            the study are published.
+          </p>
+        )}
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <span role="status" aria-live="polite">
@@ -63,6 +72,15 @@ export function LessonHeader({
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={meta.published} onChange={(e) => update({ published: e.target.checked })} />
           Published
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={meta.isSample}
+            aria-describedby={meta.isSample ? sampleHintId : undefined}
+            onChange={(e) => update({ isSample: e.target.checked })}
+          />
+          Free sample
         </label>
         <a
           href={previewHref}

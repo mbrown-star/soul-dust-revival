@@ -273,6 +273,9 @@ export const lessonUpdateSchema = z.object({
   id: z.string().uuid(),
   title: z.string().min(1).max(200),
   published: z.boolean(),
+  // The free sample (lib/entitlements/check.ts isOpenSampleLesson). Optional
+  // so callers that only change the title or published state leave it alone.
+  isSample: z.boolean().optional(),
 });
 
 // Every lesson in one study, in its new order -- same full-list rule as
