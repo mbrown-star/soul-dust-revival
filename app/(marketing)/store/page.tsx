@@ -40,6 +40,7 @@ export default async function BooksPage({ searchParams }: { searchParams: Promis
       ) : (
         <CatalogBrowser
           initial={initialFilters}
+          showSort
           noun="titles"
           searchPlaceholder="Search books, studies and devotionals"
           gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 items-start"
@@ -48,6 +49,8 @@ export default async function BooksPage({ searchParams }: { searchParams: Promis
             return {
               id: p.id,
               kind: p.kind,
+              createdAt: p.createdAt?.getTime(),
+              comingSoon: p.comingSoon,
               searchText: normalizeSearchText(`${p.title} ${p.description ?? ""} ${eyebrow}`),
               node: (
                 <Link

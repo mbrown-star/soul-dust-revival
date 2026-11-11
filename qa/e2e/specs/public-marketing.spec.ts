@@ -73,6 +73,28 @@ test.describe("/store listing", () => {
     await expect(page.getByText("QA Physical Book — Amazon + Stripe")).toBeVisible();
   });
 
+  test("Sort brings Coming Soon or Available Now titles to the top and stays in the URL", async ({ page }) => {
+    await page.goto("/store");
+    const sort = page.getByRole("group", { name: "Sort" });
+    const titles = page.locator("main h2");
+    await expect(sort.getByRole("button", { name: "New" })).toHaveAttribute("aria-pressed", "true");
+
+    await sort.getByRole("button", { name: "Coming Soon" }).click();
+    await expect(titles.first()).toHaveText("QA Coming Soon Book");
+    await expect(page).toHaveURL(/sort=coming_soon/);
+    // Sorting reorders; it doesn't hide anything or count as a filter.
+    await expect(page.getByText("QA Physical Book — Amazon Only")).toBeVisible();
+    await expect(page.getByText(/Showing \d+ of/)).toHaveCount(0);
+
+    await page.reload();
+    await expect(sort.getByRole("button", { name: "Coming Soon" })).toHaveAttribute("aria-pressed", "true");
+    await expect(titles.first()).toHaveText("QA Coming Soon Book");
+
+    await sort.getByRole("button", { name: "Available Now" }).click();
+    await expect(titles.last()).toHaveText("QA Coming Soon Book");
+    await expect(page).toHaveURL(/sort=available/);
+  });
+
   test("the inactive product's own page 404s even if visited directly by slug", async ({ page }) => {
     const res = await page.goto("/store/qa-inactive-product");
     expect(res?.status()).toBe(404);

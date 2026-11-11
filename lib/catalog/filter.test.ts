@@ -5,10 +5,11 @@ import {
   matchesCatalogFilter,
   normalizeSearchText,
   parseCatalogFilters,
+  sortCatalogItems,
   type CatalogItem,
 } from "./filter";
 
-const ALL = { kind: "all", status: "all", query: "" } as const;
+const ALL = { kind: "all", status: "all", query: "", sort: "new" } as const;
 
 const psalms: CatalogItem = {
   kind: "devotional",
@@ -31,6 +32,7 @@ describe("parseCatalogFilters", () => {
       kind: "study",
       status: "completed",
       query: "psalm",
+      sort: "new",
     });
   });
 
@@ -51,9 +53,9 @@ describe("catalogFilterQueryString", () => {
   });
 
   it("round-trips through parseCatalogFilters", () => {
-    const state = { kind: "devotional", status: "not_started", query: "dust & grace" } as const;
+    const state = { kind: "devotional", status: "not_started", query: "dust & grace", sort: "coming_soon" } as const;
     const qs = catalogFilterQueryString(state);
-    expect(qs).toBe("?type=devotional&status=not_started&q=dust+%26+grace");
+    expect(qs).toBe("?type=devotional&status=not_started&q=dust+%26+grace&sort=coming_soon");
     expect(parseCatalogFilters(Object.fromEntries(new URLSearchParams(qs)))).toEqual(state);
   });
 });
@@ -85,7 +87,49 @@ describe("matchesCatalogFilter", () => {
   });
 
   it("combines filters", () => {
-    expect(matchesCatalogFilter(colossians, { kind: "study", status: "completed", query: "rooted" })).toBe(true);
-    expect(matchesCatalogFilter(colossians, { kind: "study", status: "in_progress", query: "rooted" })).toBe(false);
+    expect(matchesCatalogFilter(colossians, { ...ALL, kind: "study", status: "completed", query: "rooted" })).toBe(true);
+    expect(matchesCatalogFilter(colossians, { ...ALL, kind: "study", status: "in_progress", query: "rooted" })).toBe(false);
+  });
+});
+
+describe("sort", () => {
+  it("reads a known sort and falls back to new", () => {
+    expect(parseCatalogFilters({ sort: "available" }).sort).toBe("available");
+    expect(parseCatalogFilters({ sort: "price" }).sort).toBe("new");
+    expect(catalogFilterQueryString({ ...ALL, sort: "new" })).toBe("");
+  });
+
+  const item = (name: string, createdAt: number, comingSoon = false) => ({
+    name,
+    kind: "book" as const,
+    searchText: name,
+    createdAt,
+    comingSoon,
+  });
+  const oldOnSale = item("old on sale", 1);
+  const newOnSale = item("new on sale", 3);
+  const oldSoon = item("old soon", 2, true);
+  const newSoon = item("new soon", 4, true);
+  const items = [oldOnSale, oldSoon, newOnSale, newSoon];
+  const names = (sorted: { name: string }[]) => sorted.map((i) => i.name);
+
+  it("new: newest first", () => {
+    expect(names(sortCatalogItems(items, "new"))).toEqual(["new soon", "new on sale", "old soon", "old on sale"]);
+  });
+
+  it("coming_soon: coming-soon titles first, newest first within each group", () => {
+    expect(names(sortCatalogItems(items, "coming_soon"))).toEqual(["new soon", "old soon", "new on sale", "old on sale"]);
+  });
+
+  it("available: titles on sale first, newest first within each group", () => {
+    expect(names(sortCatalogItems(items, "available"))).toEqual(["new on sale", "old on sale", "new soon", "old soon"]);
+  });
+
+  it("keeps the original order for ties and doesn't change the input", () => {
+    const a = item("a", 5);
+    const b = item("b", 5);
+    const input = [a, b];
+    expect(names(sortCatalogItems(input, "new"))).toEqual(["a", "b"]);
+    expect(sortCatalogItems(input, "new")).not.toBe(input);
   });
 });

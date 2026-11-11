@@ -5,10 +5,13 @@ import {
   KIND_FILTERS,
   KIND_FILTER_LABEL,
   MAX_QUERY_LENGTH,
+  SORT_LABEL,
+  SORT_OPTIONS,
   STATUS_FILTERS,
   STATUS_FILTER_LABEL,
   catalogFilterQueryString,
   matchesCatalogFilter,
+  sortCatalogItems,
   type CatalogFilterState,
   type CatalogItem,
   type CatalogStatus,
@@ -35,6 +38,7 @@ export function CatalogBrowser({
   items,
   initial,
   showStatus = false,
+  showSort = false,
   groups,
   gridClassName,
   searchPlaceholder,
@@ -43,6 +47,8 @@ export function CatalogBrowser({
   items: CatalogBrowserItem[];
   initial: CatalogFilterState;
   showStatus?: boolean;
+  /** Offer the New / Coming Soon / Available Now sort (Store only). */
+  showSort?: boolean;
   /** Render matching items in titled sections by status, in this order. */
   groups?: { status: CatalogStatus; title: string }[];
   gridClassName: string;
@@ -71,7 +77,10 @@ export function CatalogBrowser({
     return () => window.clearTimeout(timer);
   }, [state]);
 
-  const visible = useMemo(() => items.filter((item) => matchesCatalogFilter(item, state)), [items, state]);
+  const visible = useMemo(() => {
+    const matching = items.filter((item) => matchesCatalogFilter(item, state));
+    return showSort ? sortCatalogItems(matching, state.sort) : matching;
+  }, [items, state, showSort]);
 
   // Each Type option's count reflects the other active filters, so a visitor
   // can see where their search would land before choosing a type.
@@ -92,7 +101,8 @@ export function CatalogBrowser({
   }, [items, state]);
 
   const isFiltered = state.kind !== "all" || state.status !== "all" || state.query.trim() !== "";
-  const clear = () => setState({ kind: "all", status: "all", query: "" });
+  // Sorting isn't a filter: clearing filters keeps the chosen order.
+  const clear = () => setState((s) => ({ ...s, kind: "all", status: "all", query: "" }));
 
   return (
     <div>
@@ -134,6 +144,15 @@ export function CatalogBrowser({
             }))}
             selected={state.status}
             onSelect={(status) => setState((s) => ({ ...s, status }))}
+          />
+        )}
+
+        {showSort && (
+          <FilterGroup
+            label="Sort"
+            options={SORT_OPTIONS.map((sort) => ({ value: sort, label: SORT_LABEL[sort] }))}
+            selected={state.sort}
+            onSelect={(sort) => setState((s) => ({ ...s, sort }))}
           />
         )}
 
@@ -199,7 +218,8 @@ function FilterGroup<T extends string>({
   onSelect,
 }: {
   label: string;
-  options: { value: T; label: string; count: number }[];
+  /** Leave out `count` for options that don't narrow the list (sorting). */
+  options: { value: T; label: string; count?: number }[];
   selected: T;
   onSelect: (value: T) => void;
 }) {
@@ -223,7 +243,9 @@ function FilterGroup<T extends string>({
             }`}
           >
             {option.label}
-            <span className={isSelected ? "text-parchment/80" : "text-moss"}>{option.count}</span>
+            {option.count !== undefined && (
+              <span className={isSelected ? "text-parchment/80" : "text-moss"}>{option.count}</span>
+            )}
           </button>
         );
       })}
