@@ -82,7 +82,30 @@ webhook/entitlement changes done.
   - **Committed oddity:** the code landed in `d30b09c` ("Add npm run deploy"), because another session committed everything in the shared working tree while this build was still uncommitted. Content is exactly what was tested; not rewritten since it was already pushed.
   - **Shipped per step 8** with `npm run deploy -- both --yes` from `39fe929`: **staging `034a2664`** and **production `754c5d0e`** (sneak-peek gates unchanged, covers load). Every preview and live check passed. `/store?type=devotional` on staging renders with Devotionals already selected.
   - **Note:** the Store is closed on the sneak-peek production site, so the Store filters show only on staging for now; My Library's filters are live on both.
-- **2026-11-11 (newest) — fourth batch imported (In Christ, The Ten Commandments, Sermon on the Mount, Dusty and Holy); four more parser fixes; 11 earlier drafts rebuilt; my commits had swept another session's work onto main.** Requested as "Yes, next four".
+- **2026-11-11 (newest of all) — fifth batch imported (Dusty but Hopeful, Genesis Parts 1 and 2, Prayer); three more parser fixes; 15 earlier drafts rebuilt again.** Requested as "Yes, next four".
+  - **Parser fixes** (3 regression tests that fail on the committed parser; 60 in the file):
+    1. **A word study ends after its "LIVE IT:" paragraph.** That paragraph closes every word study in this series. Before, a pull-quote after it ("Abraham stopped at ten…") stayed inside the box until its citation line. Re-parsing showed this in several earlier titles too: the largest boxes shrank, e.g. Law and Gospel 1,136 → 703 characters, Dusty and Holy 1,070 → 875, Ecclesiastes 799 → 738. Genesis Part 1's word studies have no LIVE IT lines, so the rule doesn't apply there, and its boxes still end correctly at the next station.
+    2. A passage reference with a comma list ("GENESIS 18:27, 32") starts a new station; Genesis Part 2's previous word study had been swallowing that passage.
+    3. A Foreword or Preface heading seen a second time is a contents listing and doesn't restart the Introduction (Genesis Part 1 repeats them in a second list).
+  - Re-parsed all 23 study manuscripts after the fixes: every week's question and word-study counts are unchanged.
+  - **Rebuilt all 15 earlier drafts** with `--replace-lessons`. Galatians was skipped: its word studies are unchanged, and it has the admin's own preview progress row.
+  - **New titles:**
+
+    | Title | Product | Study | Questions a week |
+    |---|---|---|---|
+    | Dusty but Hopeful | `6c93505c` | `ec26773b` | 9–12 |
+    | Dust, Breath, Fall, Promise | `09474dc9` | `ef842d63` | 5 |
+    | Promise, Struggle, Exile, Providence | `3aa02e4d` | `76d78cd1` | 5 |
+    | Prayer | `49fa8ca0` | `50b2fb2e` | 5 |
+
+    Each has 5 word studies a week and an 8.5x11 cover. The Genesis parts are named from their metadata titles, without "Genesis Part 1/2"; rename in the admin if wanted.
+  - **Checked live on staging:** in `/store` with covers and "Coming soon", no buy buttons, studies hidden from visitors; production unchanged.
+  - Still not deploying: the Journey session's migration `0015` must be applied before `main` ships. It said it would message when that's done.
+  - **Remaining 4:**
+    - The Gospel and The Holy Spirit (both parse cleanly).
+    - **Benedictions** (176-page study): parses as a single lesson with no week headings, so it needs its own look.
+    - A 365-Day Journey Through the Bible (devotional).
+- **2026-11-11 (newer) — fourth batch imported (In Christ, The Ten Commandments, Sermon on the Mount, Dusty and Holy); four more parser fixes; 11 earlier drafts rebuilt; my commits had swept another session's work onto main.** Requested as "Yes, next four".
   - **Parser fixes** (`lib/import/splitIntoLessons.ts`, 4 regression tests that fail on the old parser, 57 in the file):
     1. A word study's first citation (a list, or a single verse like "JAMES 1:11") never ends it. A single-verse source looked exactly like the next station's passage heading and cut the word study off after its gloss, leaving the explanation outside the box. This affected some weeks of Ephesians, James, 1 Timothy, the John parts and The Ten Commandments.
     2. A passage heading must be in capitals, so a word study's ordinary-case source ("Hebrews 1:3", Dusty and Holy) stays inside it.

@@ -300,11 +300,17 @@ const TOC_DOT_LEADER_SUFFIX = /(?:[.\s]+|\t+)\d+\s*$/;
 function narrowToForewordAndPreface(lines: string[]): string[] {
   const kept: string[] = [];
   let keeping = false;
+  // A Foreword or Preface heading seen a second time is a contents listing
+  // (Genesis Part 1 repeats "FOREWORD ... PREFACE ..." in a second list after
+  // the real sections), not the section starting again.
+  const keptHeadings = new Set<string>();
   for (const line of lines) {
     const trimmed = line.trim();
     const headingShaped = looksLikeHeadingLine(trimmed);
-    if (headingShaped && FRONT_MATTER_KEEP_HEADING.test(trimmed) && !TOC_DOT_LEADER_SUFFIX.test(trimmed)) {
-      keeping = true;
+    const keepHeading = headingShaped && FRONT_MATTER_KEEP_HEADING.exec(trimmed)?.[1]?.toUpperCase();
+    if (keepHeading && !TOC_DOT_LEADER_SUFFIX.test(trimmed)) {
+      keeping = !keptHeadings.has(keepHeading);
+      keptHeadings.add(keepHeading);
     } else if (headingShaped && (FRONT_MATTER_END_HEADING.test(trimmed) || FRONT_MATTER_END_CAPS_HEADING.test(trimmed))) {
       keeping = false;
     }
@@ -440,8 +446,15 @@ const QUESTION_INLINE = /^QUESTION\b[:\s]*/;
 // a word study's own source line in ordinary case ("Hebrews 1:3", in Dusty
 // and Holy) used to match too, cutting that word study off after its first
 // line.
+// A comma list of verses counts too ("GENESIS 18:27, 32").
 const VERSE_REF_HEADING =
-  /^(?:[123]\s+)?[A-Z][A-Z]+(?:\s+[A-Z]+)*\s+\d+(?:\s*:\s*\d+)?(?:\s*[–-]\s*\d+(?:\s*:\s*\d+)?)?\s*$/;
+  /^(?:[123]\s+)?[A-Z][A-Z]+(?:\s+[A-Z]+)*\s+\d+(?:\s*:\s*\d+)?(?:\s*[–-]\s*\d+(?:\s*:\s*\d+)?)?(?:\s*,\s*\d+(?:\s*[–-]\s*\d+)?)*\s*$/;
+
+// A word study ends with its "LIVE IT:" paragraph in every manuscript in
+// this series. Ending the callout there keeps what follows (a pull-quote
+// with its citation, the next passage) out of the word-study box.
+const LIVE_IT_LINE = /^LIVE IT\b/;
+const ENDS_SENTENCE = /[.!?”"’)]\s*$/;
 
 // A line that starts with a scripture reference in any case, alone or as a
 // list: "JAMES 1:11", "Hebrews 1:4; 7:19, 22", "ROMANS 3:19; HEBREWS 11:33".
@@ -518,13 +531,18 @@ function splitWeekIntoBlocks(lines: string[]): StudyImportedBlock[] {
       // before this, a single-verse source looked exactly like the next
       // station's passage heading and cut the word study off after its gloss.
       let citedSource = false;
+      let inLiveIt = false;
+      let liveItDone = false;
       while (i < lines.length) {
         const current = lines[i]!;
+        if (liveItDone && current !== "") break;
         if (!citedSource && CITATION_LINE.test(current)) {
           citedSource = true;
         } else if (isStudySectionBoundary(current)) {
           break;
         }
+        if (LIVE_IT_LINE.test(current)) inLiveIt = true;
+        if (inLiveIt && ENDS_SENTENCE.test(current)) liveItDone = true;
         if (current !== "") calloutLines.push(current);
         i++;
       }

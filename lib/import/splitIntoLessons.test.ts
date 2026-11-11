@@ -594,10 +594,10 @@ describe("splitStudyPlainTextByHeadings", () => {
   });
 
   it("doesn't end a word study at an ordinary sentence starting 'Life application'", () => {
-    const text = [
-      ...buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις"),
-      "Life application begins with naming what you trust.",
-    ].join("\n");
+    // The sentence sits inside the word study, before its closing LIVE IT line.
+    const text = buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις")
+      .flatMap((line) => (line.startsWith("LIVE IT:") ? ["Life application begins with naming what you trust.", line] : [line]))
+      .join("\n");
     const callout = splitStudyPlainTextByHeadings(text)[0]!.blocks.find((b) => b.type === "callout");
     expect(callout && callout.type === "callout" ? callout.bodyHtml : "").toContain("Life application begins");
   });
@@ -699,6 +699,71 @@ describe("splitStudyPlainTextByHeadings", () => {
     expect(body).toContain("Name what is fading.");
     expect(body).not.toContain("Every good gift");
     expect(blocks.filter((b) => b.type === "question")).toHaveLength(2);
+  });
+
+  it("ends a word study after its LIVE IT paragraph, so a following pull-quote isn't inside the box", () => {
+    const text = [
+      "IWEEK 1",
+      "First Week Title",
+      "QUESTION",
+      "Does your smallness make you bold?",
+      "GOING DEEPER · THE HEBREW",
+      "‘āphār wā’ēpher",
+      "— dust and ashes",
+      "GENESIS 18:27; JOB 42:6",
+      "The phrase pairs the dust of creation with the ashes of mourning.",
+      "LIVE IT: Ask God this week for something you have felt too",
+      "insignificant to request.",
+      "“Abraham stopped at ten. God never said that was the limit.”",
+      "GENESIS 18:32",
+    ].join("\n");
+
+    const blocks = splitStudyPlainTextByHeadings(text)[0]!.blocks;
+    const callout = blocks.find((b) => b.type === "callout");
+    const body = callout && callout.type === "callout" ? callout.bodyHtml : "";
+    expect(body).toContain("insignificant to request.");
+    expect(body).not.toContain("Abraham stopped at ten");
+    const last = blocks.at(-1)!;
+    expect(last.type === "text" ? last.bodyHtml : "").toContain("Abraham stopped at ten");
+  });
+
+  it("starts a new station at a passage reference with a comma list ('GENESIS 18:27, 32')", () => {
+    const text = [
+      ...buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις"),
+      "GENESIS 18:27, 32",
+      "Abraham answered, “See now, I am dust and ashes.”",
+      "QUESTION",
+      "Does my smallness make me bold?",
+    ].join("\n");
+
+    const blocks = splitStudyPlainTextByHeadings(text)[0]!.blocks;
+    const callout = blocks.find((b) => b.type === "callout");
+    expect(callout && callout.type === "callout" ? callout.bodyHtml : "").not.toContain("dust and ashes");
+    expect(blocks.filter((b) => b.type === "question")).toHaveLength(2);
+  });
+
+  it("doesn't restart the Introduction at a second, contents-style FOREWORD / PREFACE listing", () => {
+    const text = [
+      "FOREWORD",
+      "A word from the author.",
+      "PREFACE",
+      "How to use this study.",
+      "BEFOREYOUBEGIN",
+      "The Six Faces of the Dust essay.",
+      "Contents",
+      "A Word Before the First Page",
+      "FOREWORD",
+      "The Four Beats of Genesis",
+      "PREFACE",
+      "Dust, Breath, Fall, Promise",
+      "BEFORE YOU BEGIN",
+      ...buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις"),
+    ].join("\n");
+
+    const introText = splitStudyPlainTextByHeadings(text)[0]!.blocks.map((b) => (b.type === "text" ? b.bodyHtml : "")).join("\n");
+    expect(introText).toContain("How to use this study.");
+    expect(introText).not.toContain("Four Beats");
+    expect(introText).not.toContain("Dust, Breath, Fall, Promise");
   });
 
   it("joins a week title that wraps onto a second line before its 'from dust' subtitle", () => {
