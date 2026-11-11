@@ -66,7 +66,36 @@ webhook/entitlement changes done.
   - **Committed oddity:** the code landed in `d30b09c` ("Add npm run deploy"), because another session committed everything in the shared working tree while this build was still uncommitted. Content is exactly what was tested; not rewritten since it was already pushed.
   - **Shipped per step 8** with `npm run deploy -- both --yes` from `39fe929`: **staging `034a2664`** and **production `754c5d0e`** (sneak-peek gates unchanged, covers load). Every preview and live check passed. `/store?type=devotional` on staging renders with Devotionals already selected.
   - **Note:** the Store is closed on the sneak-peek production site, so the Store filters show only on staging for now; My Library's filters are live on both.
-- **2026-11-11 (latest) — "Coming soon" products, and Amazon chosen before its link exists.** Requested while planning the next catalog import ("I do not have prices yet or amazon links yet ... I need a Coming Soon option/checkbox ... and display option if I do not have the physical books amazon URL").
+- **2026-11-11 (newest) — first catalog batch imported as hidden drafts (Galatians, Philippians, Ephesians, 1 Peter); four study-parser fixes; found the live Journey parts' Life Application sections sitting inside their last word-study box.** Requested as "Yes, import a batch". The author's folder `/Users/matthewbrown/Documents/Soul Dust Revival` holds 25 titles not yet in the catalog, each with a final cover PDF, a web-version manuscript, and a metadata `.json` (back-cover copy).
+  - **`scripts/import-catalog-title.ts`** (`--covers <title folder> --manuscript <pdf> [--kind] [--apply]`, dry run by default):
+    - Reads the metadata (both layouts: `title_fields`, or `front`/`back` for the John parts), turning `--` into an em dash and decoding entities.
+    - Parses the manuscript with the same code as the admin's Import study, then splits the cover with the Node splitter. Manuscript first: the cover splitter's pdf.js and the manuscript parser's pdf.js are different versions sharing one global worker, and pdf-parse refuses to run after unpdf's has registered.
+    - Prints every lesson's question and callout counts plus an Introduction preview, and refuses a slug already used by a product or study.
+    - `--apply` uploads the cover PDF, both crops and the manuscript to fresh R2 keys, then writes in one transaction:
+      - a product: "Soul Dust Revival: <Title>", format both, softback, kind study, `comingSoon`, prices 0, Amazon chosen without a link, Stripe off, active, not featured, back-cover copy as its description;
+      - an unpublished study with the same title, description and front cover, every lesson a draft.
+  - **Parser fixes** (`lib/import/splitIntoLessons.ts`), each with a regression test that fails on the old parser (6 new tests, 53 in the file):
+    1. A week title page extracted as "IW EEK 1" (1 Peter sets the first letter as its own text run) is now a week heading. Before this, 1 Peter's twelve weeks collapsed into one.
+    2. "BEFORE YOU BEGIN" (also "BEFOREYOUBEGIN") and a "TWELVE WEEKS IN <BOOK>" contents heading now end the Preface. They're matched case-sensitively, so a Foreword sentence starting "Before you begin..." doesn't.
+    3. A contents entry with a bare page number ("Preface 4") no longer restarts the Preface. Galatians' Introduction had been keeping its whole contents page.
+    4. **A "LIFE APPLICATION" heading now ends the week's last word study.** Before, nothing ended the fifth station's Greek callout, so the Life Application, Daily Prayer, Bottom Line and Benediction were all imported inside it (5,322 characters in Galatians Week 1, against about 1,000 for the others). Also, verse references extracted with spaced punctuation ("1 PETER 1 : 18 – 19") now start a new station.
+  - **Result:** each title is an Introduction (Foreword and Preface only; 1 Peter has no Preface) plus 12 weeks, every week with 5 questions, 5 word studies and its Life Application as reading text.
+    - Galatians: product `e0a37e7e`, study `a8c13db5`.
+    - Philippians: `c16db60f` / `9658a30e`.
+    - Ephesians: `bdd16168` / `43af1ef6`. Its cover says "Devotional Study", but it has the same questions and word studies, so it's kind study.
+    - 1 Peter: `2a75503e` / `19f01e31`.
+    - Covers split by trim geometry (6x9, 1670x2505).
+  - **Checked live on staging:**
+    - `/store` lists all four with their covers and "Coming soon" (cover through `/_next/image` 200), and each product page has no price or buy buttons.
+    - A visitor can't open the hidden studies.
+    - Signed in as the user, Galatians Week 1 in the reader shows the draft banner, 5 answer boxes, and the Life Application as its own section.
+    - Production is unchanged: store closed, nothing on its homepage.
+  - **Found, not fixed (needs a go-ahead):** the live Journey studies were imported before fix 4, so in the reader their final word-study box often holds the whole Life Application section. Counted read-only:
+    - Part One: 11 of 12 weeks; Part Two: 9; Part Three: 1; Part Four: 2. The largest box is 16,236 characters.
+    - Colossians' stored blocks have it too (12), but readers don't see them, because its weeks render from structured `studyContent`.
+    - A safe repair splits each affected callout at its Life Application heading and inserts the rest as a text block right after it, keeping every block id so saved answers stay attached. The Journey lessons have no published snapshots, so the edit is visible to readers immediately.
+  - **The remaining 21 titles** can go through the same script: run it without `--apply` and review its output first, since each new manuscript family has needed parser fixes.
+- **2026-11-11 (later) — "Coming soon" products, and Amazon chosen before its link exists.** Requested while planning the next catalog import ("I do not have prices yet or amazon links yet ... I need a Coming Soon option/checkbox ... and display option if I do not have the physical books amazon URL").
   - **Schema:** migration `0014_fuzzy_paper_doll.sql` adds `products.coming_soon` and `products.sell_on_amazon` (both boolean, default false) and sets `sell_on_amazon = true` wherever `amazon_url` is already set.
   - **Coming soon** (checkbox on the product form, next to Featured):
     - The store tile, the homepage tile on the full site, and a bundle's "What's included" row read "Coming soon" instead of a price.

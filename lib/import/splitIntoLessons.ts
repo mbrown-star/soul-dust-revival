@@ -266,12 +266,23 @@ const FRONT_MATTER_KEEP_HEADING = /^(FOREWORD|PREFACE)\b/i;
 const FRONT_MATTER_END_HEADING =
   /^(ACKNOWLEDG(E)?MENTS?|DEDICATION|COPYRIGHT|CONTENTS|TABLE OF CONTENTS|INTRODUCTION|BEFORE WE BEGIN)\b/i;
 
+// Two more front-matter headings the later manuscripts print in full caps
+// after the Preface: the "Before You Begin" essay (Galatians, 1 Peter; it
+// extracts as "BEFOREYOUBEGIN" when the letter spacing collapses) and a
+// Contents page headed "TWELVE WEEKS IN <BOOK>". Matched case-sensitively,
+// unlike the list above, so a Foreword line that happens to start with
+// "Before you begin..." or "Twelve weeks in..." can't cut the section short.
+const FRONT_MATTER_END_CAPS_HEADING = /^(BEFORE ?YOU ?BEGIN|TWELVE ?WEEKS ?IN)\b/;
+
 // A Table-of-Contents entry for "Foreword"/"Preface" itself ("Foreword
 // .......... 3", "Preface 5") matches FRONT_MATTER_KEEP_HEADING's prefix
 // check too, but it's a page reference, not the section's real start --
 // recognized by the trailing dot-leader/page-number shape, the same way
 // extractTableOfContents above tells a TOC entry apart from a real heading.
-const TOC_DOT_LEADER_SUFFIX = /(?:[.\s]{3,}|\t+)\d+\s*$/;
+// Any spacing counts, not just dot leaders: Galatians lists "Preface 4",
+// and requiring three dots or spaces let that entry restart the Preface,
+// keeping the rest of the contents page in the Introduction.
+const TOC_DOT_LEADER_SUFFIX = /(?:[.\s]+|\t+)\d+\s*$/;
 
 /**
  * Narrows a document's front matter (everything before its first real
@@ -294,7 +305,7 @@ function narrowToForewordAndPreface(lines: string[]): string[] {
     const headingShaped = looksLikeHeadingLine(trimmed);
     if (headingShaped && FRONT_MATTER_KEEP_HEADING.test(trimmed) && !TOC_DOT_LEADER_SUFFIX.test(trimmed)) {
       keeping = true;
-    } else if (headingShaped && FRONT_MATTER_END_HEADING.test(trimmed)) {
+    } else if (headingShaped && (FRONT_MATTER_END_HEADING.test(trimmed) || FRONT_MATTER_END_CAPS_HEADING.test(trimmed))) {
       keeping = false;
     }
     if (keeping) kept.push(line);
@@ -389,8 +400,10 @@ export type StudyImportedLesson = {
 // case ("Week N ..."). A recap paragraph that happens to start a wrapped
 // line with "Week 4 let the mask fall..." must not be mistaken for a real
 // heading -- case is what tells the two apart, since a plain prefix match
-// (ignoring case) can't.
-const WEEK_HEADING = /^[IVXLCDM]*\s*WEEK\s+\d+\b/;
+// (ignoring case) can't. Some manuscripts (1 Peter) set the title page's
+// first letter as its own larger text run, which extracts with a space
+// after it ("IIW EEK 2"), so one space is allowed there.
+const WEEK_HEADING = /^[IVXLCDM]*\s*W ?EEK\s+\d+\b/;
 
 /**
  * Strips every non-alphanumeric character and uppercases, so a label can be
@@ -421,12 +434,23 @@ const QUESTION_INLINE = /^QUESTION\b[:\s]*/;
 // Deliberately excludes a multi-reference citation LIST ("COLOSSIANS 1:2;
 // EPHESIANS 2:8; ..."), which belongs inside a callout's body, not acting as
 // a new section boundary -- the semicolon is what tells the two apart.
+// Some manuscripts (1 Peter) extract with spaces around the punctuation
+// ("1 PETER 1 : 18 – 19"), so those spaces are allowed too.
 const VERSE_REF_HEADING =
-  /^(?:[123]\s+)?[A-Z][A-Za-z]+(?:\s+[A-Za-z]+)*\s+\d+(?::\d+)?(?:[–-]\d+(?::\d+)?)?\s*$/;
+  /^(?:[123]\s+)?[A-Z][A-Za-z]+(?:\s+[A-Za-z]+)*\s+\d+(?:\s*:\s*\d+)?(?:\s*[–-]\s*\d+(?:\s*:\s*\d+)?)?\s*$/;
+
+// The week's Life Application section follows its last station. Without
+// this, nothing ended that station's word-study callout, so the Life
+// Application, Daily Prayer, Bottom Line and Benediction were all imported
+// inside the final Greek word box. Caps only (also "LIFEAPPLICATION" when
+// the letter spacing collapses), so a sentence starting "Life application..."
+// can't end a section.
+const LIFE_APPLICATION_HEADING = /^LIFE ?APPLICATION\b/;
 
 function isStudySectionBoundary(line: string): boolean {
   if (line === "") return false;
   if (QUESTION_INLINE.test(line)) return true;
+  if (LIFE_APPLICATION_HEADING.test(line)) return true;
   const norm = normalizeMarker(line);
   if (norm.startsWith(GOING_DEEPER_PREFIX)) return true;
   if (!line.includes(";") && VERSE_REF_HEADING.test(line)) return true;

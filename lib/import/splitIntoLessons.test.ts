@@ -523,6 +523,133 @@ describe("splitStudyPlainTextByHeadings", () => {
     expect(lessons[1]!.title).toBe("Week 1: First Week Title");
   });
 
+  it("finds a week title page whose first letter extracted as its own run ('IW EEK 1', from 1 Peter)", () => {
+    const week = (n: number, title: string) =>
+      buildWeek(n, title, `BOOK ${n}:1-8`, `Question ${n}?`, "λόγος").map((line, i) =>
+        i === 0 ? `${"I".repeat(n)}W EEK ${n}` : line
+      );
+    const text = [
+      "Foreword",
+      "A word from the author.",
+      "TWELVEWEEKSIN BOOK",
+      "WEEK 1 · BOOK 1:1–9 · from dust to somewhere 8",
+      "WEEK 2 · BOOK 1:10–21 · from dust to somewhere else 24",
+      ...week(1, "First Week Title"),
+      ...week(2, "Second Week Title"),
+    ].join("\n");
+
+    const lessons = splitStudyPlainTextByHeadings(text);
+
+    expect(lessons.map((l) => l.title)).toEqual(["Introduction", "Week 1: First Week Title", "Week 2: Second Week Title"]);
+    for (const lesson of lessons.slice(1)) {
+      expect(lesson.blocks.filter((b) => b.type === "question")).toHaveLength(1);
+      expect(lesson.blocks.filter((b) => b.type === "callout")).toHaveLength(1);
+    }
+  });
+
+  it("ends the Preface at a 'BEFORE YOU BEGIN' essay or a 'TWELVE WEEKS IN' contents page, spaced or collapsed", () => {
+    for (const [beforeYouBegin, contents] of [
+      ["BEFORE YOU BEGIN", "TWELVE WEEKS IN GALATIANS"],
+      ["BEFOREYOUBEGIN", "TWELVEWEEKSIN 1 PETER"],
+    ]) {
+      const text = [
+        "Foreword",
+        "A word from the author.",
+        "Preface",
+        "How to use this study.",
+        contents,
+        "WEEK 1 · BOOK 1:1–9 · from dust to somewhere 8",
+        beforeYouBegin,
+        "The Six Faces of the Dust",
+        "A reflective essay that is not part of the Preface.",
+        ...buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις"),
+      ].join("\n");
+
+      const introText = splitStudyPlainTextByHeadings(text)[0]!.blocks.map((b) => (b.type === "text" ? b.bodyHtml : "")).join("\n");
+      expect(introText).toContain("How to use this study.");
+      expect(introText).not.toContain("Six Faces");
+      expect(introText).not.toContain("from dust to somewhere");
+    }
+  });
+
+  it("ends the last word study at the week's Life Application, so what follows is reading text, not part of the Greek box", () => {
+    for (const label of ["LIFE APPLICATION · WEEK 1", "LIFEAPPLICATION · WEEK 1"]) {
+      const text = [
+        ...buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις"),
+        label,
+        "Where This Meets Real Life",
+        "1. Name the one place you are still striving.",
+        "DAILY PRAYER",
+        "Father, I come in the dust.",
+      ].join("\n");
+
+      const blocks = splitStudyPlainTextByHeadings(text)[0]!.blocks;
+      const callout = blocks.find((b) => b.type === "callout");
+      expect(callout && callout.type === "callout" ? callout.bodyHtml : "").not.toContain("Real Life");
+      const last = blocks.at(-1)!;
+      expect(last.type).toBe("text");
+      expect(last.type === "text" ? last.bodyHtml : "").toContain("Name the one place you are still striving.");
+      expect(last.type === "text" ? last.bodyHtml : "").toContain("Father, I come in the dust.");
+    }
+  });
+
+  it("doesn't end a word study at an ordinary sentence starting 'Life application'", () => {
+    const text = [
+      ...buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις"),
+      "Life application begins with naming what you trust.",
+    ].join("\n");
+    const callout = splitStudyPlainTextByHeadings(text)[0]!.blocks.find((b) => b.type === "callout");
+    expect(callout && callout.type === "callout" ? callout.bodyHtml : "").toContain("Life application begins");
+  });
+
+  it("starts a new station at a verse reference extracted with spaces around its punctuation ('1 PETER 1 : 18 – 19')", () => {
+    const text = [
+      ...buildWeek(1, "First Week Title", "1 PETER 1 : 3 – 5", "Where is my hope?", "ἐλπίς"),
+      "1 PETER 1 : 18 – 19",
+      "“You were redeemed, not with corruptible things.”",
+      "QUESTION",
+      "What did it cost?",
+    ].join("\n");
+
+    const blocks = splitStudyPlainTextByHeadings(text)[0]!.blocks;
+    const callout = blocks.find((b) => b.type === "callout");
+    expect(callout && callout.type === "callout" ? callout.bodyHtml : "").not.toContain("redeemed");
+    expect(blocks.filter((b) => b.type === "question")).toHaveLength(2);
+  });
+
+  it("doesn't let a contents entry with a bare page number ('Preface 4') restart the Preface", () => {
+    const text = [
+      "Foreword",
+      "A word from the author.",
+      "Preface",
+      "How to use this study.",
+      "TWELVE WEEKS IN GALATIANS",
+      "Contents",
+      "A Word Before the First Page 3",
+      "Preface 4",
+      "The Six Faces of the Dust 7",
+      "First Week Title 10",
+      ...buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις"),
+    ].join("\n");
+
+    const introText = splitStudyPlainTextByHeadings(text)[0]!.blocks.map((b) => (b.type === "text" ? b.bodyHtml : "")).join("\n");
+    expect(introText).toContain("How to use this study.");
+    expect(introText).not.toContain("Six Faces");
+    expect(introText).not.toContain("First Week Title");
+  });
+
+  it("keeps a Foreword line that merely starts with 'Before you begin' in ordinary case", () => {
+    const text = [
+      "Foreword",
+      "Before you begin each week",
+      "read the passage slowly and pray it back.",
+      ...buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις"),
+    ].join("\n");
+
+    const introText = splitStudyPlainTextByHeadings(text)[0]!.blocks.map((b) => (b.type === "text" ? b.bodyHtml : "")).join("\n");
+    expect(introText).toContain("read the passage slowly and pray it back.");
+  });
+
   it("drops a Study document's Introduction lesson entirely when its front matter has no Foreword or Preface at all", () => {
     const text = [
       "Marketlife Ministries",
