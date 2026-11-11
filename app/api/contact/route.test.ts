@@ -71,8 +71,8 @@ describe("POST /api/contact", () => {
     expect(res.status).toBe(200);
     const { attachments } = sendMock.mock.calls[0]![0];
     expect(attachments).toEqual([
-      { filename: "screenshot-1.png", content: Buffer.from(PNG_BYTES).toString("base64") },
-      { filename: "screenshot-2.jpg", content: Buffer.from(JPEG_BYTES).toString("base64") },
+      { filename: "screenshot-1.png", content: Buffer.from(PNG_BYTES).toString("base64"), contentType: "image/png" },
+      { filename: "screenshot-2.jpg", content: Buffer.from(JPEG_BYTES).toString("base64"), contentType: "image/jpeg" },
     ]);
   });
 

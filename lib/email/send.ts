@@ -158,7 +158,7 @@ type ContactMessageParams = {
   /** The signed-in account that sent it, which may differ from the email typed in. */
   accountEmail: string;
   pageUrl: string | null;
-  screenshots: { filename: string; content: string /* base64 */ }[];
+  screenshots: { filename: string; content: string /* base64 */; contentType: string }[];
 };
 
 /**

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { contactMessageSchema } from "@/lib/validation/schemas";
-import { detectScreenshotType, screenshotLimitsMessage } from "@/lib/contact/screenshots";
+import { detectScreenshotType, screenshotLimitsMessage, screenshotMimeType } from "@/lib/contact/screenshots";
 import { CONTACT_SCREENSHOTS_TOTAL_MAX_BYTES, formatMegabytes } from "@/lib/uploads/limits";
 import { sendContactMessageEmail } from "@/lib/email/send";
 
@@ -59,7 +59,10 @@ export async function POST(req: NextRequest) {
 
   // Attachment names are ours (screenshot-1.png, ...), from the bytes' real
   // type: the sender's filename and Content-Type aren't trusted.
-  const screenshots: { filename: string; content: string }[] = [];
+  // contentType is set explicitly: Resend's own guess from the filename came
+  // out as application/octet-stream in the live test, which some mail apps
+  // show only as a download instead of an image.
+  const screenshots: { filename: string; content: string; contentType: string }[] = [];
   for (const [i, file] of screenshotFiles.entries()) {
     const bytes = new Uint8Array(await file.arrayBuffer());
     const type = detectScreenshotType(bytes);
@@ -72,6 +75,7 @@ export async function POST(req: NextRequest) {
     screenshots.push({
       filename: `screenshot-${i + 1}.${type === "jpeg" ? "jpg" : type}`,
       content: Buffer.from(bytes).toString("base64"),
+      contentType: screenshotMimeType(type),
     });
   }
 
