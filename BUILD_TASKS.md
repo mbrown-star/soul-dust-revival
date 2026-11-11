@@ -426,11 +426,15 @@ A second Worker, separate from staging, built with `NEXT_PUBLIC_LAUNCH_MODE=snea
 (see SECURITY.md "Sneak-peek launch mode"). Same database and Supabase project as
 staging. Staging keeps the full site; the full launch is a rebuild of production without
 the mode set.
-- [ ] **Supabase Auth custom SMTP (blocking).** Supabase's built-in email sender only
+- [x] **Supabase Auth custom SMTP (blocking).** Supabase's built-in email sender only
       allows a handful of emails per hour for the whole project — a public signup form
       would stop sending codes almost immediately. Authentication → Emails → SMTP
-      settings, pointed at Resend (the domain order emails already send from). Send one
-      code to a fresh address to confirm before launch.
+      settings, pointed at Resend (the domain order emails already send from). **Already
+      on when checked 2026-11-10:** host `smtp.resend.com`, port 465, sender
+      `noreply@souldustrevival.com`; Resend's log shows Supabase's sign-in emails
+      delivered through it. The user confirmed the email rate limit had already been
+      raised (Authentication → Rate Limits). Optional copy fix still open: the Magic
+      Link / Confirm signup subjects say "sign-in link" though the email holds a code.
 - [x] **R2 bucket CORS rule** (2026-11-10). `GET`/`PUT` from both staging hosts and
       `souldustrevival.com`, `www.`, `app.`; headers `content-type`, `cache-control`.
       If production keeps this same bucket, nothing more is needed; a separate
@@ -463,10 +467,20 @@ the mode set.
       `/checkout` 307 home, `/signup` 307 to `/sneak-peek`, `POST /api/checkout` 404,
       `/library` 307 to login. Sign-in can't be tested there: the session cookie is
       scoped to `.souldustrevival.com`, which a browser refuses on `.workers.dev`.
-- [ ] Domains: move `app.souldustrevival.com` from the staging Worker to the production
-      Worker; add `souldustrevival.com` (and a `www` redirect). No Cloudflare Access on
-      production.
-- [ ] Build with `NEXT_PUBLIC_LAUNCH_MODE=sneak_peek`,
+- [x] Domains (2026-11-10, done by the user in the dashboard): `app.souldustrevival.com`
+      removed from the staging Worker (it had been serving the full staging site
+      publicly, ungated), then `souldustrevival.com`, `www.souldustrevival.com` and
+      `app.souldustrevival.com` added to `soul-dust-revival-prod` as custom domains,
+      after deleting only the four Squarespace apex `A` records and the `www` CNAME to
+      `ext-sq.squarespace.com` (MX `smtp.google.com` and the SPF/verification TXT
+      records left alone). No Access on production — confirmed: every host answers
+      without an Access redirect. `www` serves the same site rather than redirecting
+      (fine for now; a redirect rule to the apex is optional). Resolvers that had cached
+      the old answer (Squarespace, or "no such host" for `app.`) caught up within the
+      SOA negative-cache window (1800s).
+- [x] (Live version as of 2026-11-10: `032be409`, built from `main` `887ffa8`, which
+      adds the Log out fix and the `/books` → `/store` move to the first build. 0 secret
+      hits in 2,154 output files; `.env.local` hash unchanged.) Build with `NEXT_PUBLIC_LAUNCH_MODE=sneak_peek`,
       `NEXT_PUBLIC_MARKETING_HOSTNAME=souldustrevival.com`,
       `NEXT_PUBLIC_APP_HOSTNAME=app.souldustrevival.com`,
       `NEXT_PUBLIC_COOKIE_DOMAIN=.souldustrevival.com`, plus the usual real
@@ -476,7 +490,13 @@ the mode set.
 - [ ] Cloudflare rate-limiting rule on `/api/auth/*` and `/sneak-peek`.
 - [ ] After deploy: one real signup from a fresh email end to end (code arrives, a
       `users` row exists, the sample opens, a locked lesson stays locked), and confirm
-      `/books`, `/checkout` redirect home and `/api/checkout` returns 404.
+      `/books`, `/checkout` redirect home and `/api/checkout` returns 404. **Mostly done
+      2026-11-10:** the user signed up on `souldustrevival.com` with a fresh address;
+      the code arrived, a `users` row and its first `login_events` row exist, and the
+      site shows them signed in. Store routes confirmed closed against Cloudflare
+      directly. Still to confirm: My Library on `app.souldustrevival.com` (the user's
+      home router was still holding a cached "no such host" for it) — both samples as
+      "Sneak peek", Week 1/Day 1 open, Week 4/Day 4 locked.
 
 ## 5. Platform-specific approval steps (these take real calendar time — start early)
 - [ ] Submit Meta App Review for `pages_manage_posts` and `instagram_content_publish`
