@@ -1,3 +1,4 @@
+import { browserTusTransport, forgetUpload, rememberUpload, savedUpload, tusUpload, TusUploadError } from "./tusUpload";
 import { IMMUTABLE_CACHE_CONTROL } from "@/lib/r2/cacheControl";
 
 // Client-side upload helpers for the builder. Each checks every response and
@@ -89,25 +90,43 @@ export async function uploadCaptions(file: File, onProgress?: UploadProgress): P
   return presignedPut("/api/admin/captions-upload-url", null, file, "text/vtt", onProgress);
 }
 
-// Cloudflare Stream's one-request upload (what /api/admin/stream-upload-url
-// issues) accepts files up to 200 MB; larger ones need its resumable (tus)
-// upload, which isn't built yet.
-export const STREAM_BASIC_UPLOAD_MAX_BYTES = 200 * 1024 * 1024;
+// Video and audio go to Cloudflare Stream as resumable (tus) uploads: any
+// size up to Stream's own 30 GB limit, sent in chunks, and continued rather
+// than restarted after a dropped connection -- or after a reload, when the
+// same file is chosen again.
+export const STREAM_UPLOAD_MAX_BYTES = 30 * 1024 * 1024 * 1024;
 
 /** Uploads a video or audio file to Cloudflare Stream; resolves to its Stream UID. */
 export async function uploadToStream(file: File, onProgress?: UploadProgress): Promise<string> {
-  if (file.size > STREAM_BASIC_UPLOAD_MAX_BYTES) {
-    throw new Error(
-      `This file is ${Math.round(file.size / 1024 / 1024)} MB; uploads are limited to 200 MB for now. Compress it, or host it elsewhere and use a link.`
-    );
+  if (file.size > STREAM_UPLOAD_MAX_BYTES) {
+    throw new Error(`This file is ${Math.round(file.size / 1024 / 1024 / 1024)} GB; the video host accepts up to 30 GB.`);
   }
-  const res = await fetch("/api/admin/stream-upload-url", { method: "POST" });
+  if (file.size === 0) throw new Error("This file is empty.");
+
+  const saved = savedUpload(file);
+  if (saved) {
+    try {
+      await tusUpload({ file, uploadUrl: saved.uploadUrl, transport: browserTusTransport, resume: true, onProgress });
+      forgetUpload(file);
+      return saved.uid;
+    } catch (err) {
+      // An expired link means starting a fresh upload; anything else is a
+      // real failure, and the saved link stays so a retry can continue.
+      if (!(err instanceof TusUploadError && err.expired)) throw err;
+      forgetUpload(file);
+    }
+  }
+
+  const res = await fetch("/api/admin/stream-upload-url", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ size: file.size, name: file.name }),
+  });
   if (!res.ok) throw new Error(await errorMessage(res, "Couldn't start the upload."));
   const { uploadUrl, uid } = (await res.json()) as { uploadUrl: string; uid: string };
+  rememberUpload(file, { uploadUrl, uid });
 
-  const formData = new FormData();
-  formData.append("file", file);
-  const status = await sendWithProgress("POST", uploadUrl, formData, {}, onProgress);
-  if (status < 200 || status >= 300) throw new Error("The upload didn't complete. Check your connection and try again.");
+  await tusUpload({ file, uploadUrl, transport: browserTusTransport, onProgress });
+  forgetUpload(file);
   return uid;
 }

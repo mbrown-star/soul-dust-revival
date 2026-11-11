@@ -63,6 +63,19 @@ export const responseSchema = z.object({
 // ---------- Stream ----------
 // Either a content block's own video/audio, or an uploaded video/audio placed
 // inside a Study week (identified by its lesson and Stream id).
+// Reserving a resumable video/audio upload in Cloudflare Stream. `size` sets
+// the tus Upload-Length; 30 GB is Stream's own per-file limit.
+export const STREAM_UPLOAD_MAX_BYTES = 30 * 1024 * 1024 * 1024;
+export const streamUploadSchema = z.object({
+  size: z.number().int().positive().max(STREAM_UPLOAD_MAX_BYTES),
+  // Shown as the video's name in the Stream dashboard; trimmed of anything
+  // that isn't printable so it can't break the tus metadata header.
+  name: z
+    .string()
+    .max(500)
+    .transform((n) => n.replace(/[^\x20-\x7E\u00A0-\uFFFF]/g, "").slice(0, 200) || "upload"),
+});
+
 // `draft`: the player is on an admin's "preview unpublished changes" page, so
 // sign the working copy's media first (honored only for admins).
 export const streamSignUrlSchema = z.union([

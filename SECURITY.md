@@ -266,6 +266,10 @@ builder's "Use a link" option):
   done yet, flagged in CLAUDE.md's 2026-11-03 security-review entry pending a decision.
 - Direct-to-R2 presigned PUT URLs (`lib/r2/upload.ts`) have no enforced upload size cap
   — also a known gap, see the same CLAUDE.md entry.
+- **Video/audio uploads to Cloudflare Stream** (`/api/admin/stream-upload-url`, `lib/stream/upload.ts`): as of 2026-11-11 these use Stream's resumable (tus) direct creator upload.
+  - **The server's part:** the route is admin-only and Zod-validated (`streamUploadSchema`: `size` up to Stream's 30 GB, plus a filename). It reserves one upload of exactly that size, using the Stream API token, which stays server-side. The reservation is private (`requiresignedurls`), capped at 4 hours of media (`maxDurationSeconds`), and expires in 6 hours. The browser gets back only the one-time tus URL and the video's uid.
+  - **The browser's part** (`components/admin/builder/tusUpload.ts`): it sends the bytes straight to Stream, so they never pass through our server.
+  - **Resuming after a reload:** an unfinished upload's one-time URL is remembered in the admin's `localStorage`, keyed by file name, size and modified time, for up to 5 hours. That URL can only ever receive that one reserved file.
 - **Study document imports** (`.docx`/`.pdf`) are capped at 25MB server-side before
   parsing, bounding worst-case parse time from an oversized upload.
 - **Book cover PDF uploads** (`lib/images/uploadBookCover.ts`,
