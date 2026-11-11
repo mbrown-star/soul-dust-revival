@@ -5,6 +5,7 @@ import { responses, contentBlocks, lessons, studies } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { responseSchema } from "@/lib/validation/schemas";
 import { getLessonAccess } from "@/lib/entitlements/check";
+import { snapshotBlockIds } from "@/lib/lessons/publishedContent";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -26,8 +27,15 @@ export async function POST(req: NextRequest) {
 
   const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, block.lessonId) });
   const study = lesson ? await db.query.studies.findFirst({ where: eq(studies.id, lesson.studyId) }) : null;
-  if (!lesson || !study || !(await getLessonAccess(session, study, lesson)).allowed) {
+  const access = lesson && study ? await getLessonAccess(session, study, lesson) : null;
+  if (!lesson || !access?.allowed) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  // A published lesson shows readers its published snapshot; a question that
+  // exists only in unpublished changes isn't theirs to answer (an admin
+  // previewing the draft may).
+  if (lesson.publishedContent && !access.isAdminPreview && !snapshotBlockIds(lesson.publishedContent).has(contentBlockId)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const existing = await db.query.responses.findFirst({

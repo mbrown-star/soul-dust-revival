@@ -10,7 +10,14 @@ import { inputClass } from "./fields";
 import { useBuilderSensors } from "./SortableList";
 import { SortableRow, dragAnnouncements, focusDragHandle, useReorderAnnouncer } from "./SortableRow";
 
-export type LessonListItem = { id: string; title: string; published: boolean; isSample: boolean; isWeek: boolean };
+export type LessonListItem = {
+  id: string;
+  title: string;
+  published: boolean;
+  isSample: boolean;
+  hasDraftChanges: boolean;
+  isWeek: boolean;
+};
 
 async function readError(res: Response, fallback: string) {
   try {
@@ -74,14 +81,16 @@ export function LessonList({ studyId, initialLessons }: { studyId: string; initi
 
   async function togglePublished(lesson: LessonListItem) {
     const published = !lesson.published;
-    setItems((current) => current.map((l) => (l.id === lesson.id ? { ...l, published } : l)));
+    setItems((current) => current.map((l) => (l.id === lesson.id ? { ...l, published, hasDraftChanges: false } : l)));
     const res = await fetch("/api/admin/lessons", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: lesson.id, title: lesson.title, published }),
     }).catch(() => null);
     if (!res || !res.ok) {
-      setItems((current) => current.map((l) => (l.id === lesson.id ? { ...l, published: lesson.published } : l)));
+      setItems((current) =>
+        current.map((l) => (l.id === lesson.id ? { ...l, published: lesson.published, hasDraftChanges: lesson.hasDraftChanges } : l))
+      );
       setError(`Couldn't change whether "${lesson.title}" is published.`);
     } else {
       router.refresh();
@@ -174,6 +183,9 @@ export function LessonList({ studyId, initialLessons }: { studyId: string; initi
                       </Link>
                       {lesson.isWeek && <span className="text-xs text-ember-700 bg-ember-700/10 rounded-full px-2 py-0.5">Week builder</span>}
                       {lesson.isSample && <span className="text-xs text-ink bg-gold/30 rounded-full px-2 py-0.5">Free sample</span>}
+                      {lesson.published && lesson.hasDraftChanges && (
+                        <span className="text-xs text-ink bg-moss/10 rounded-full px-2 py-0.5">Unpublished changes</span>
+                      )}
                       <label className="flex items-center gap-2 text-sm text-moss">
                         <input type="checkbox" checked={lesson.published} onChange={() => void togglePublished(lesson)} />
                         <span>{lesson.published ? "Published" : "Draft"}</span>

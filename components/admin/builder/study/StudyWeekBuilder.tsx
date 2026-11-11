@@ -1,5 +1,6 @@
 "use client";
 
+import { notifyDraftChanged } from "@/lib/builder/draftEvents";
 import { useMemo, useRef, useState } from "react";
 import type { StudyWeekContent, WeekMedia } from "@/lib/study/studyContent";
 import { mapWeekMedia } from "@/lib/study/weekMedia";
@@ -81,6 +82,7 @@ export function StudyWeekBuilder({
           "Check your connection and retry.",
       );
     }
+    notifyDraftChanged();
     if (!savedOnce.current) {
       savedOnce.current = true;
       onFirstSave?.();

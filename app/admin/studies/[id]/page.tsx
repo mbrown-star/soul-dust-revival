@@ -95,6 +95,7 @@ export default async function StudyDetailPage({ params }: { params: Promise<{ id
             title: l.title,
             published: l.published,
             isSample: l.isSample,
+            hasDraftChanges: l.hasDraftChanges,
             isWeek: study.kind === "study" && !!l.studyContent,
           }))}
         />

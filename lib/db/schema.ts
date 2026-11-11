@@ -10,6 +10,7 @@ import {
 } from "drizzle-orm/pg-core";
 import type { StudyWeekContent } from "@/lib/study/studyContent";
 import type { ContentBlockType } from "@/lib/content/blocks";
+import type { PublishedLessonContent } from "@/lib/lessons/publishedContentTypes";
 
 // ---------- USERS ----------
 export const users = pgTable("users", {
@@ -243,6 +244,16 @@ export const lessons = pgTable("lessons", {
   // Colossians weeks backfilled so far. A study lesson with no studyContent
   // falls back to the plain content-block reading view.
   studyContent: jsonb("study_content").$type<StudyWeekContent>(),
+  // What readers see of a published lesson: a frozen copy of its blocks and
+  // week, taken when it's published or on its first edit afterward. The
+  // builder edits the working copy (content_blocks rows + study_content);
+  // "Publish changes" copies that here. Null for drafts and for published
+  // lessons not edited since this existed (readers then use the working
+  // copy, which is still identical). See lib/lessons/publishedContent.ts.
+  publishedContent: jsonb("published_content").$type<PublishedLessonContent>(),
+  // The working copy differs from published_content (drives the
+  // "Unpublished changes" badges).
+  hasDraftChanges: boolean("has_draft_changes").notNull().default(false),
 });
 
 export const contentBlocks = pgTable("content_blocks", {
@@ -260,6 +271,10 @@ export const contentBlocks = pgTable("content_blocks", {
   questionPrompt: text("question_prompt"), // for 'question' blocks
   calloutTitle: text("callout_title"), // for 'callout' blocks, e.g. "Key Verse"
   calloutColor: text("callout_color"), // hex color, free picker, for 'callout' blocks
+  // Removed from a published lesson's working copy while its published
+  // snapshot still shows it: kept (answers reference it, and Discard can
+  // restore it) but hidden from the builder. Purged on publish when unanswered.
+  removedAt: timestamp("removed_at", { withTimezone: true }),
 });
 
 // ---------- USER INTERACTION / PROGRESS ----------

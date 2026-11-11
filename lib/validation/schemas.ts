@@ -63,9 +63,11 @@ export const responseSchema = z.object({
 // ---------- Stream ----------
 // Either a content block's own video/audio, or an uploaded video/audio placed
 // inside a Study week (identified by its lesson and Stream id).
+// `draft`: the player is on an admin's "preview unpublished changes" page, so
+// sign the working copy's media first (honored only for admins).
 export const streamSignUrlSchema = z.union([
-  z.object({ contentBlockId: z.string().uuid() }),
-  z.object({ lessonId: z.string().uuid(), mediaId: z.string().min(1).max(200) }),
+  z.object({ contentBlockId: z.string().uuid(), draft: z.boolean().optional() }),
+  z.object({ lessonId: z.string().uuid(), mediaId: z.string().min(1).max(200), draft: z.boolean().optional() }),
 ]);
 
 // ---------- Progress ----------
@@ -292,6 +294,12 @@ export const lessonDeleteSchema = z.object({
   id: z.string().uuid(),
 });
 
+// Draft and publish for a published lesson (lib/lessons/publishedContent.ts).
+export const lessonPublishActionSchema = z.object({
+  id: z.string().uuid(),
+  action: z.enum(["publishChanges", "discardChanges"]),
+});
+
 export const lessonBulkPublishSchema = z.object({
   studyId: z.string().uuid(),
   published: z.boolean(),
@@ -457,6 +465,12 @@ export const contentBlockUpdateSchema = contentBlockFieldsSchema.extend({
 
 // Every block in one lesson, in its new order. The route rejects a list that
 // mixes lessons or leaves any of the lesson's blocks out.
+// Undo of removing a block the published version still shows.
+export const contentBlockRestoreSchema = z.object({
+  restore: z.string().uuid(),
+  insertAt: z.number().int().min(0).max(10_000),
+});
+
 export const contentBlockReorderSchema = z.object({
   reorder: z.array(z.object({ id: z.string().uuid(), orderIndex: z.number().int().min(0) })).min(1).max(1_000),
 });

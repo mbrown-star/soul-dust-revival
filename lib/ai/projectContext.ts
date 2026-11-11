@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db/client";
 import { posts, studies, lessons, contentBlocks } from "@/lib/db/schema";
-import { desc, eq, and, inArray } from "drizzle-orm";
+import { desc, eq, and, inArray, isNull } from "drizzle-orm";
 
 /**
  * Strips HTML tags from rich-text block content down to plain text for use
@@ -39,7 +39,7 @@ export async function gatherProjectContext(): Promise<string> {
   const relevantLessons =
     studyIds.length > 0
       ? await db
-          .select({ id: lessons.id, studyId: lessons.studyId, title: lessons.title })
+          .select({ id: lessons.id, studyId: lessons.studyId, title: lessons.title, publishedContent: lessons.publishedContent })
           .from(lessons)
           .where(and(inArray(lessons.studyId, studyIds), eq(lessons.published, true)))
       : [];
@@ -51,11 +51,15 @@ export async function gatherProjectContext(): Promise<string> {
       ? await db
           .select({ lessonId: contentBlocks.lessonId, body: contentBlocks.body })
           .from(contentBlocks)
-          .where(and(inArray(contentBlocks.lessonId, lessonIds), eq(contentBlocks.type, "text")))
+          .where(and(inArray(contentBlocks.lessonId, lessonIds), eq(contentBlocks.type, "text"), isNull(contentBlocks.removedAt)))
       : [];
 
   const lessonExcerpts = relevantLessons.slice(0, 6).map((lesson) => {
-    const block = textBlocks.find((b) => b.lessonId === lesson.id);
+    // What readers see: the published snapshot when the lesson has one, so
+    // unpublished draft text never reaches AI-suggested posts.
+    const block = lesson.publishedContent
+      ? lesson.publishedContent.blocks.find((b) => b.type === "text")
+      : textBlocks.find((b) => b.lessonId === lesson.id);
     const excerpt = block?.body ? stripHtml(block.body).slice(0, 250) : "";
     return `  - Lesson "${lesson.title}": ${excerpt}`;
   });

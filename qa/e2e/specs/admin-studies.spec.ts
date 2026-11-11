@@ -47,6 +47,25 @@ test.describe("admin studies list and editor, as qa-admin", () => {
     await page.waitForLoadState("networkidle");
   }
 
+  // Tests that edit a published fixture lesson end by discarding the draft,
+  // so later tests start from the published version (no "Unpublished
+  // changes" panel shifting the layout).
+  async function discardDraft(page: import("@playwright/test").Page) {
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    page.once("dialog", (dialog) => void dialog.accept());
+    await page.getByRole("button", { name: "Discard changes" }).click();
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText("Live", { exact: true })).toBeVisible();
+  }
+
+  // A drag needs both ends on screen; on a short viewport the lesson header
+  // (with a published lesson's Live panel) pushes the blocks below the fold.
+  async function tallViewport(page: import("@playwright/test").Page) {
+    const viewport = page.viewportSize();
+    if (viewport && viewport.height < 1400) await page.setViewportSize({ width: viewport.width, height: 1400 });
+  }
+
   // A Study lesson with structured content opens in the week builder: one
   // tab per reader tab, and no free-form block palette (its question blocks
   // are the stations' answer plumbing, owned by the week).
@@ -74,6 +93,7 @@ test.describe("admin studies list and editor, as qa-admin", () => {
 
     await page.getByLabel("Subtitle").fill("A QA fixture week");
     await expect(page.getByRole("status").filter({ hasText: "All changes saved" })).toBeVisible();
+    await discardDraft(page);
   });
 
   test("stations reorder with Move buttons, and the new order persists", async ({ page }) => {
@@ -92,6 +112,7 @@ test.describe("admin studies list and editor, as qa-admin", () => {
     // Restore the fixture order.
     await page.getByRole("button", { name: /Move station 2 \(1:2\) up/ }).click();
     await expect(page.getByRole("status").filter({ hasText: "All changes saved" })).toBeVisible();
+    await discardDraft(page);
   });
 
   test("an image added inside a week section saves and shows in the reader right after that section", async ({ page }) => {
@@ -107,16 +128,19 @@ test.describe("admin studies list and editor, as qa-admin", () => {
     await page.getByLabel(/Alt text/).fill("QA week media image");
     await expect(page.getByRole("status").filter({ hasText: "All changes saved" })).toBeVisible();
 
-    // Admin preview of the reader: the image sits in the Study tab after the section.
-    await page.goto(`/studies/qa-study-not-started/${lessonId}`);
+    // The week is published, so the image is a draft: the admin's preview of
+    // the unpublished changes shows it in the Study tab after the section.
+    await page.goto(`/studies/qa-study-not-started/${lessonId}?draft=1`);
     const section = page.getByRole("heading", { name: "Where We Are" }).locator("..");
     await expect(section.getByRole("img", { name: "QA week media image" })).toBeAttached();
 
-    // Clean up: remove it again and let it save.
+    // Clean up: discard the draft, back to the published week.
     await page.goBack();
-    await page.getByRole("button", { name: /Section Where We Are/ }).click();
-    await page.getByRole("button", { name: "Remove this image" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "All changes saved" })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    page.once("dialog", (dialog) => void dialog.accept());
+    await page.getByRole("button", { name: "Discard changes" }).click();
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText("Live", { exact: true })).toBeVisible();
   });
 
   test("the plain fallback lesson (no studyContent) offers to start a week, and keeps its block canvas", async ({ page }) => {
@@ -166,6 +190,7 @@ test.describe("admin studies list and editor, as qa-admin", () => {
     await expect(page.getByText("Removed the image block.")).toBeVisible();
     await page.reload();
     await expect(page.getByRole("button", { name: /Image A QA builder test image/ })).toHaveCount(0);
+    await discardDraft(page);
   });
 
   test("a linked image must be https", async ({ page }) => {
@@ -182,6 +207,7 @@ test.describe("admin studies list and editor, as qa-admin", () => {
   });
 
   test("dragging a block type from the palette inserts it where it's dropped", async ({ page }) => {
+    await tallViewport(page);
     await openLesson(page, /QA Devotional Fixture/i, /DAY 1/i);
     await page.getByRole("button", { name: "Collapse all" }).click();
     const cardToggles = page.locator('[aria-controls][aria-expanded]').filter({ hasText: /^(Text|Question|Callout)/ });
@@ -202,9 +228,11 @@ test.describe("admin studies list and editor, as qa-admin", () => {
 
     await page.getByRole("button", { name: "Remove this callout" }).click();
     await expect(page.getByText("Removed the callout block.")).toBeVisible();
+    await discardDraft(page);
   });
 
   test("blocks reorder by keyboard drag (Space, arrow, Space) and the order persists", async ({ page }) => {
+    await tallViewport(page);
     await openLesson(page, /QA Devotional Fixture/i, /DAY 1/i);
     await page.getByRole("button", { name: "Collapse all" }).click();
     const cardToggles = page.locator('[aria-controls][aria-expanded]').filter({ hasText: /^(Text|Question)/ });
@@ -229,6 +257,7 @@ test.describe("admin studies list and editor, as qa-admin", () => {
     await page.getByRole("button", { name: "Move Question block down" }).click();
     await expect(cardToggles.first()).toContainText("Text");
     expect((await restored).ok()).toBe(true);
+    await discardDraft(page);
   });
 
   test("a draft lesson can be added and then deleted; published lessons have no Delete", async ({ page }) => {
@@ -278,6 +307,97 @@ test.describe("admin studies list and editor, as qa-admin", () => {
     page.once("dialog", (dialog) => void dialog.accept());
     await page.getByRole("button", { name: "Delete draft lesson QA Sample Toggle" }).click();
     await expect(page.getByRole("link", { name: "QA Sample Toggle" })).toHaveCount(0);
+  });
+
+  test("edits to a published lesson stay a draft until published, and Discard brings back the live version", async ({ page }) => {
+    await page.goto("/admin/studies");
+    await page.getByRole("link", { name: /QA Colossians-Shaped Study/i }).click();
+    await expect(page).toHaveURL(/\/admin\/studies\/[0-9a-f-]+$/);
+    const studyUrl = page.url();
+    await page.getByLabel("New lesson title").fill("QA Draft And Publish");
+    await page.getByRole("button", { name: "+ Add lesson" }).click();
+    await expect(page).toHaveURL(/\/lessons\/[0-9a-f-]+$/);
+    await page.waitForLoadState("networkidle");
+    const builderUrl = page.url();
+    const lessonId = builderUrl.split("/").pop()!;
+    const readerUrl = `/studies/qa-study-not-started/${lessonId}`;
+    const lessonPatch = () => page.waitForResponse((r) => r.url().endsWith("/api/admin/lessons") && r.request().method() === "PATCH");
+    const prompt = () => page.getByLabel("Question prompt");
+    async function setPrompt(text: string) {
+      await prompt().fill(text);
+      await expect(page.getByRole("status").filter({ hasText: "Saved" }).last()).toBeVisible();
+    }
+
+    // A draft lesson: write it, then publish it.
+    await page.getByRole("button", { name: "Add Question block" }).click();
+    await setPrompt("Published prompt");
+    const published = lessonPatch();
+    await page.getByRole("checkbox", { name: "Published" }).check();
+    expect((await published).status()).toBe(200);
+    await expect(page.getByText("Live", { exact: true })).toBeVisible();
+
+    // An edit now is a draft: readers still see the published wording.
+    await setPrompt("Draft prompt");
+    await expect(page.getByText("Unpublished changes")).toBeVisible();
+    await page.goto(readerUrl);
+    await expect(page.getByText("Published prompt")).toBeVisible();
+    await expect(page.getByText("Draft prompt")).toHaveCount(0);
+
+    // The admin's preview shows the draft, labeled as such.
+    await page.goto(`${readerUrl}?draft=1`);
+    await expect(page.getByText("Draft prompt")).toBeVisible();
+    await expect(page.getByText(/Admin preview: unpublished changes/)).toBeVisible();
+
+    // Publish changes: readers now get the new wording.
+    await page.goto(builderUrl);
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("button", { name: "Publish changes" }).click();
+    await expect(page.getByText("Published. Readers now see these changes.")).toBeVisible();
+    await page.goto(readerUrl);
+    await expect(page.getByText("Draft prompt")).toBeVisible();
+
+    // Another edit, discarded: back to the published wording.
+    await page.goto(builderUrl);
+    await page.waitForLoadState("networkidle");
+    await setPrompt("Discard me");
+    page.once("dialog", (dialog) => void dialog.accept());
+    await page.getByRole("button", { name: "Discard changes" }).click();
+    await page.waitForLoadState("networkidle");
+    await expect(prompt()).toHaveValue("Draft prompt");
+    await expect(page.getByText("Live", { exact: true })).toBeVisible();
+
+    // Clean up: unpublish, then delete the throwaway lesson.
+    const unpublished = lessonPatch();
+    await page.getByRole("checkbox", { name: "Published" }).uncheck();
+    expect((await unpublished).status()).toBe(200);
+    await page.goto(studyUrl);
+    page.once("dialog", (dialog) => void dialog.accept());
+    await page.getByRole("button", { name: "Delete draft lesson QA Draft And Publish" }).click();
+    await expect(page.getByRole("link", { name: "QA Draft And Publish" })).toHaveCount(0);
+  });
+
+  test("a published week's edits stay a draft for readers until published, and can be discarded", async ({ page }) => {
+    await openLesson(page, /QA Colossians-Shaped Study/i, /Week 1: Grace and Truth/i);
+    const builderUrl = page.url();
+    const readerUrl = `/studies/qa-study-not-started/${builderUrl.split("/").pop()}`;
+
+    await page.getByLabel("Subtitle").fill("A drafted subtitle");
+    await expect(page.getByRole("status").filter({ hasText: "All changes saved" })).toBeVisible();
+    await expect(page.getByText("Unpublished changes")).toBeVisible();
+
+    await page.goto(readerUrl);
+    await expect(page.getByText("A QA fixture week")).toBeVisible();
+    await expect(page.getByText("A drafted subtitle")).toHaveCount(0);
+    await page.goto(`${readerUrl}?draft=1`);
+    await expect(page.getByText("A drafted subtitle")).toBeVisible();
+
+    await page.goto(builderUrl);
+    await page.waitForLoadState("networkidle");
+    page.once("dialog", (dialog) => void dialog.accept());
+    await page.getByRole("button", { name: "Discard changes" }).click();
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByLabel("Subtitle")).toHaveValue("A QA fixture week");
+    await expect(page.getByText("Live", { exact: true })).toBeVisible();
   });
 
   // Regression: the Study reader crashed (500) on a week saved before it had

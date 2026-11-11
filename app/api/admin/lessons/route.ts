@@ -8,7 +8,18 @@ import { writeOrderIndexes } from "@/lib/db/order";
 import { mapWeekMedia } from "@/lib/study/weekMedia";
 import { sanitizeHtml } from "@/lib/sanitize/html";
 import {
+  LessonPublishError,
+  applyPublishedChange,
+  discardChanges,
+  ensureSnapshot,
+  publishAllInStudy,
+  publishChanges,
+  removeBlocks,
+  unpublishAllInStudy,
+} from "@/lib/lessons/publishedContent";
+import {
   lessonCreateSchema,
+  lessonPublishActionSchema,
   lessonUpdateSchema,
   lessonReorderSchema,
   lessonBulkPublishSchema,
@@ -35,15 +46,18 @@ export async function POST(req: NextRequest) {
   // rather than fetching every row across the wire.
   const existingCount = await db.$count(lessons, eq(lessons.studyId, body.studyId));
 
-  const [lesson] = await db
-    .insert(lessons)
-    .values({
-      studyId: body.studyId,
-      title: body.title,
-      orderIndex: existingCount, // append to end
-      published: body.published ?? false,
-    })
-    .returning();
+  const lesson = await db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(lessons)
+      .values({ studyId: body.studyId, title: body.title, orderIndex: existingCount }) // append to end
+      .returning();
+    if (!created) throw new Error("Failed to create the lesson.");
+    if (!body.published) return created;
+    // Published from the start: freeze its (empty) content like any publish.
+    await applyPublishedChange(tx, created.id, true);
+    const [published] = await tx.select().from(lessons).where(eq(lessons.id, created.id));
+    return published!;
+  });
 
   return NextResponse.json(lesson);
 }
@@ -90,11 +104,29 @@ export async function PATCH(req: NextRequest) {
     const parsed = lessonBulkPublishSchema.safeParse(json);
     if (!parsed.success) return NextResponse.json({ error: "invalid_input" }, { status: 400 });
 
-    await db
-      .update(lessons)
-      .set({ published: parsed.data.published })
-      .where(eq(lessons.studyId, parsed.data.studyId));
+    // Each lesson goes through the same publish rule as a single toggle, so
+    // newly published lessons get their published snapshot.
+    await db.transaction((tx) =>
+      parsed.data.published ? publishAllInStudy(tx, parsed.data.studyId) : unpublishAllInStudy(tx, parsed.data.studyId)
+    );
     return NextResponse.json({ ok: true });
+  }
+
+  // Draft and publish: { id, action: "publishChanges" | "discardChanges" }.
+  if (typeof json.action === "string") {
+    const parsed = lessonPublishActionSchema.safeParse(json);
+    if (!parsed.success) return NextResponse.json({ error: "invalid_input" }, { status: 400 });
+    const { id, action } = parsed.data;
+    try {
+      await db.transaction((tx) => (action === "publishChanges" ? publishChanges(tx, id) : discardChanges(tx, id, session.userId)));
+    } catch (err) {
+      if (err instanceof LessonPublishError) {
+        return NextResponse.json({ error: "invalid_input", message: err.message }, { status: 400 });
+      }
+      throw err;
+    }
+    const [lesson] = await db.select().from(lessons).where(eq(lessons.id, id));
+    return NextResponse.json(lesson);
   }
 
   // A Study-kind lesson's full structured content (see
@@ -125,6 +157,8 @@ export async function PATCH(req: NextRequest) {
           .where(eq(lessons.id, lessonId))
           .for("update");
         if (!lesson) throw new StudyContentInputError("Lesson not found.");
+        // A published lesson keeps showing readers its published week.
+        await ensureSnapshot(tx, lessonId);
 
         const ids = parsed.data.studyContent.stations.map((s) => s.questionBlockId).filter(Boolean);
         if (new Set(ids).size !== ids.length) {
@@ -147,7 +181,9 @@ export async function PATCH(req: NextRequest) {
             // non-question block of this one.
             const [owned] = await tx
               .update(contentBlocks)
-              .set({ questionPrompt: station.question })
+              // Un-removes it too: a station brought back (Undo) after its
+              // question was set aside while the published week still used it.
+              .set({ questionPrompt: station.question, removedAt: null })
               .where(
                 and(
                   eq(contentBlocks.id, station.questionBlockId),
@@ -190,9 +226,10 @@ export async function PATCH(req: NextRequest) {
           stations.push({ ...station, questionBlockId: block.id });
         }
 
-        // A removed station's question block is deleted too, unless readers
-        // already saved answers to it -- those stay so the answers aren't
-        // orphaned (the block is simply no longer shown).
+        // A removed station's question block goes too, unless readers already
+        // saved answers to it -- those stay so the answers aren't orphaned
+        // (the block is simply no longer shown). One the published week still
+        // shows is only marked removed (removeBlocks), until publish.
         const keptIds = new Set(stations.map((s) => s.questionBlockId));
         const removedIds = (lesson.studyContent?.stations ?? [])
           .map((s) => s.questionBlockId)
@@ -204,11 +241,7 @@ export async function PATCH(req: NextRequest) {
             .where(inArray(responses.contentBlockId, removedIds));
           const answeredIds = new Set(answered.map((r) => r.id));
           const deletable = removedIds.filter((id) => !answeredIds.has(id));
-          if (deletable.length > 0) {
-            await tx
-              .delete(contentBlocks)
-              .where(and(inArray(contentBlocks.id, deletable), eq(contentBlocks.lessonId, lessonId)));
-          }
+          await removeBlocks(tx, lessonId, deletable);
         }
 
         // Callout text inside week media is rich HTML: sanitized on write,
@@ -241,16 +274,22 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const [updated] = await db
-    .update(lessons)
-    .set({
-      title: parsed.data.title,
-      published: parsed.data.published,
-      ...(parsed.data.isSample === undefined ? {} : { isSample: parsed.data.isSample }),
-    })
-    .where(eq(lessons.id, parsed.data.id))
-    .returning();
+  const updated = await db.transaction(async (tx) => {
+    // Publishing freezes the working copy for readers; unpublishing clears it.
+    // A no-op when `published` didn't change (title edits resend it).
+    await applyPublishedChange(tx, parsed.data.id, parsed.data.published);
+    const [row] = await tx
+      .update(lessons)
+      .set({
+        title: parsed.data.title,
+        ...(parsed.data.isSample === undefined ? {} : { isSample: parsed.data.isSample }),
+      })
+      .where(eq(lessons.id, parsed.data.id))
+      .returning();
+    return row;
+  });
 
+  if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(updated);
 }
 

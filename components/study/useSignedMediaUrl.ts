@@ -47,10 +47,13 @@ export function useSignedMediaUrl(sign: StreamSignRequest, mediaUrl: string | nu
   useEffect(() => {
     if (mediaUrl || !visible) return;
     let cancelled = false;
+    // On an admin's "preview unpublished changes" page (?draft=1), ask for
+    // the draft's media; the server ignores this for anyone but an admin.
+    const draft = new URLSearchParams(window.location.search).get("draft") === "1";
     fetch("/api/stream/sign-url", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: signKey,
+      body: draft ? JSON.stringify({ ...(JSON.parse(signKey) as StreamSignRequest), draft: true }) : signKey,
     })
       .then(async (r) => {
         const data = (await r.json().catch(() => ({}))) as { url?: string };

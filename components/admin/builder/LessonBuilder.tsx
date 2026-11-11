@@ -1,5 +1,6 @@
 "use client";
 
+import { notifyDraftChanged } from "@/lib/builder/draftEvents";
 import { useEffect, useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -80,6 +81,7 @@ function BlockItem({
       keepalive,
     });
     if (!res.ok) throw new Error(await readError(res, "Check your connection and retry."));
+    notifyDraftChanged();
   });
 
   // The parent merges `patch` into its current copy of the block, so an
@@ -203,7 +205,9 @@ export function LessonBuilder({
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(initialBlocks.length <= 3 ? initialBlocks.map((b) => b.id) : []));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [removed, setRemoved] = useState<{ block: ContentBlockData; index: number } | null>(null);
+  // `setAside`: the published version still shows the block, so Undo restores
+  // the original rather than creating a copy (readers' answers stay with it).
+  const [removed, setRemoved] = useState<{ block: ContentBlockData; index: number; setAside: boolean } | null>(null);
   const [activeDrag, setActiveDrag] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const { announce, announcer } = useReorderAnnouncer();
@@ -225,6 +229,7 @@ export function LessonBuilder({
         body: JSON.stringify({ lessonId, type, insertAt: index, initial }),
       });
       if (!res.ok) throw new Error(await readError(res, "Couldn't add the block."));
+      notifyDraftChanged();
       const block = (await res.json()) as ContentBlockData;
       setBlocks((current) => {
         const next = [...current];
@@ -252,6 +257,7 @@ export function LessonBuilder({
         body: JSON.stringify({ reorder: next.map((b, i) => ({ id: b.id, orderIndex: i })) }),
       });
       if (!res.ok) throw new Error(await readError(res, "Couldn't save the new order."));
+      notifyDraftChanged();
     } catch (err) {
       // Restore the previous order without dropping a block created while
       // this request was in flight.
@@ -283,15 +289,38 @@ export function LessonBuilder({
       setError(res ? await readError(res, "Couldn't remove the block.") : "Couldn't remove the block. Check your connection.");
       return;
     }
+    const { setAside } = (await res.json().catch(() => ({}))) as { setAside?: boolean };
+    notifyDraftChanged();
     setBlocks((current) => current.filter((b) => b.id !== block.id));
-    setRemoved({ block, index });
+    setRemoved({ block, index, setAside: !!setAside });
   }
 
   async function undoRemove() {
     if (!removed) return;
-    const { block, index } = removed;
+    const { block, index, setAside } = removed;
     setRemoved(null);
-    await createBlock(block.type, index, fieldsOf(block));
+    if (!setAside) {
+      await createBlock(block.type, index, fieldsOf(block));
+      return;
+    }
+    setError(null);
+    const res = await fetch("/api/admin/content-blocks", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ restore: block.id, insertAt: index }),
+    }).catch(() => null);
+    if (!res || !res.ok) {
+      setError(res ? await readError(res, "Couldn't bring the block back.") : "Couldn't bring the block back. Check your connection.");
+      return;
+    }
+    notifyDraftChanged();
+    setBlocks((current) => {
+      const next = current.filter((b) => b.id !== block.id);
+      next.splice(Math.min(index, next.length), 0, block);
+      return next;
+    });
+    announce(`Restored the ${BLOCK_DEFINITION_BY_TYPE[block.type].label} block at position ${index + 1}`);
+    focusDragHandle(block.id);
   }
 
   function handleDragStart({ active }: DragStartEvent) {

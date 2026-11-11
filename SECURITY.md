@@ -114,6 +114,17 @@ so a buyer of one study could read another study's lessons by editing the URL. U
 reader pages, `/api/progress`, `/api/responses`, and `/api/stream/sign-url`. `My Library`'s
 "Start over" (`/api/progress/reset`) stays entitlement-only.
 
+## Draft and publish (unpublished lesson changes)
+
+A published lesson has two versions: the **working copy** the admin builder edits (`content_blocks` rows and `lessons.study_content`), and a frozen **published snapshot** (`lessons.published_content`) that readers see. All the rules are in `lib/lessons/publishedContent.ts`. What keeps unpublished changes away from readers:
+
+- **Reader page** (`app/(study-app)/studies/[slug]/[lessonId]/page.tsx`): renders the snapshot whenever one exists. `?draft=1` shows the working copy **only** when `getLessonAccess` reports an admin preview. The devotional Year/Journal views take each published day's question from its snapshot.
+- **Video/audio signing** (`app/api/stream/sign-url`): readers can sign only media in the snapshot. Media that exists only in the draft returns 404 for them. The request's `draft: true` (sent from the preview page) is honored only for admins.
+- **Answers** (`app/api/responses`): on a published lesson with a snapshot, a reader may answer only a question the snapshot shows (404 otherwise). Admins previewing may answer draft questions.
+- **Writes** are admin-only (`requireAdmin()`, unchanged). Each working-copy write first freezes the pre-edit content if the lesson has no snapshot yet, inside the same transaction, with the lesson row locked.
+- **Removing a block the snapshot shows** sets `content_blocks.removed_at` instead of deleting it, because answers reference it by foreign key. Every working-copy read filters `removed_at is null`.
+- **Not drafted, and live on save:** title, Published, Free sample, lesson order.
+
 ## Signup vs. login trade-off (account enumeration)
 `/login` and `/signup` are functionally distinct, not just different copy on the same
 form: login sets Supabase's `shouldCreateUser: false`, so submitting an email with no

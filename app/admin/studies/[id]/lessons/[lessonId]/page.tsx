@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db/client";
-import { lessons, contentBlocks, studies } from "@/lib/db/schema";
-import { and, eq, asc } from "drizzle-orm";
+import { lessons, studies } from "@/lib/db/schema";
+import { and, eq } from "drizzle-orm";
+import { workingBlockRows } from "@/lib/lessons/publishedContent";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { appUrl } from "@/lib/domains";
@@ -21,11 +22,9 @@ export default async function LessonEditorPage({
   const lesson = await db.query.lessons.findFirst({ where: and(eq(lessons.id, lessonId), eq(lessons.studyId, study.id)) });
   if (!lesson) redirect(`/admin/studies/${id}`);
 
-  const blocks = await db
-    .select()
-    .from(contentBlocks)
-    .where(eq(contentBlocks.lessonId, lesson.id))
-    .orderBy(asc(contentBlocks.orderIndex));
+  // The working copy: what the admin edits (a published lesson's readers see
+  // its published snapshot until changes are published).
+  const blocks = await workingBlockRows(db, lesson.id);
 
   const isStudyKind = study.kind === "study";
 
@@ -40,6 +39,7 @@ export default async function LessonEditorPage({
           initialTitle={lesson.title}
           initialPublished={lesson.published}
           initialIsSample={lesson.isSample}
+          initialHasDraftChanges={lesson.hasDraftChanges}
           previewHref={appUrl(`/studies/${study.slug}/${lesson.id}`)}
         />
       </div>

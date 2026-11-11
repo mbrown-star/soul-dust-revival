@@ -92,6 +92,13 @@
       "when": 1794330211685,
       "tag": "0012_workable_monster_badoon",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794405562466,
+      "tag": "0013_abnormal_ender_wiggin",
+      "breakpoints": true
     }
   ]
 }

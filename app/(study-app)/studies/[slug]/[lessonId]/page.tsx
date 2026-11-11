@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db/client";
 import { studies, lessons, contentBlocks, products, lessonProgress, responses } from "@/lib/db/schema";
-import { eq, asc, and, inArray } from "drizzle-orm";
+import { eq, asc, and, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { readerContent, toBlockData, workingBlockRows } from "@/lib/lessons/publishedContent";
 import { getLessonAccess, studyHasOpenSample } from "@/lib/entitlements/check";
 import { isSneakPeek } from "@/lib/launchMode";
 import { shortLessonLabel } from "@/lib/study/shortLessonLabel";
@@ -53,10 +54,13 @@ export async function generateMetadata({
 
 export default async function LessonPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string; lessonId: string }>;
+  searchParams: Promise<{ draft?: string }>;
 }) {
   const { slug, lessonId } = await params;
+  const { draft } = await searchParams;
   const db = await getDb();
 
   const study = await db.query.studies.findFirst({ where: eq(studies.slug, slug) });
@@ -122,11 +126,16 @@ export default async function LessonPage({
           .then((p) => (p?.active ? `/store/${p.slug}` : null))
       : null;
 
-  const blocks = await db
-    .select()
-    .from(contentBlocks)
-    .where(eq(contentBlocks.lessonId, lesson.id))
-    .orderBy(asc(contentBlocks.orderIndex));
+  // Readers see a published lesson's published snapshot; the builder's
+  // unpublished changes show only to an admin who asks (?draft=1, the
+  // builder's "Preview as reader" link while changes are pending).
+  const content = readerContent(
+    lesson,
+    (await workingBlockRows(db, lesson.id)).map(toBlockData),
+    { draftPreview: access.isAdminPreview && draft === "1" }
+  );
+  const blocks = content.blocks;
+  const studyContent = content.studyContent;
 
   const [progressRow] = await db
     .select({ status: lessonProgress.status })
@@ -153,7 +162,7 @@ export default async function LessonPage({
   // A Study-kind lesson without studyContent (the "Introduction" lesson, or
   // any lesson imported before the interactive Study reader existed) falls
   // back to the plain content-block reading view below.
-  const hasCustomHeader = isDevotional || !!lesson.studyContent;
+  const hasCustomHeader = isDevotional || !!studyContent;
 
   // The devotional's own 4-view app shell (Today / The Year / Journal / Six
   // Faces of the Dust -- see DevotionalAppView) needs every day's own
@@ -189,17 +198,35 @@ export default async function LessonPage({
         : await db
             .select({ id: contentBlocks.id, lessonId: contentBlocks.lessonId, questionPrompt: contentBlocks.questionPrompt })
             .from(contentBlocks)
-            .where(and(inArray(contentBlocks.lessonId, lessonIds), eq(contentBlocks.type, "question")))
+            .where(and(inArray(contentBlocks.lessonId, lessonIds), eq(contentBlocks.type, "question"), isNull(contentBlocks.removedAt)))
             .orderBy(asc(contentBlocks.orderIndex));
     // A day's "Question to Sit With" is its first question block. Any other
     // question an admin added is shown as an extra block after the day, so it
     // must not take over this slot (and the reader's saved answer with it).
-    const questionBlockByLessonId = new Map<string, (typeof questionRows)[number]>();
+    const questionBlockByLessonId = new Map<string, { id: string; questionPrompt: string | null }>();
     for (const row of questionRows) {
       if (!questionBlockByLessonId.has(row.lessonId)) questionBlockByLessonId.set(row.lessonId, row);
     }
+    // A published day an admin has edited shows readers its published
+    // snapshot, so its question (wording and answer slot) comes from there --
+    // never from unpublished changes. Only the first question block is
+    // pulled out of each snapshot, not the whole day.
+    const publishedQuestions =
+      lessonIds.length === 0
+        ? []
+        : await db
+            .select({
+              lessonId: lessons.id,
+              question: sql<{ id: string; questionPrompt: string | null } | null>`jsonb_path_query_first(${lessons.publishedContent}, '$.blocks[*] ? (@.type == "question")')`,
+            })
+            .from(lessons)
+            .where(and(inArray(lessons.id, lessonIds), isNotNull(lessons.publishedContent)));
+    for (const { lessonId: id, question } of publishedQuestions) {
+      if (question) questionBlockByLessonId.set(id, { id: question.id, questionPrompt: question.questionPrompt });
+      else questionBlockByLessonId.delete(id);
+    }
 
-    const questionBlockIds = questionRows.map((r) => r.id);
+    const questionBlockIds = [...questionBlockByLessonId.values()].map((q) => q.id);
     const devotionalAnswerRows =
       questionBlockIds.length === 0
         ? []
@@ -254,7 +281,9 @@ export default async function LessonPage({
       }
     }
 
-    const currentQuestionBlock = questionBlockByLessonId.get(lesson.id) ?? null;
+    // Today's own question comes from the content being shown (published
+    // snapshot or draft preview), not the working rows used for the other days.
+    const currentQuestionBlock = blocks.find((b) => b.type === "question") ?? null;
 
     devotionalProps = {
       // A sample reader's ring counts only the days they can open.
@@ -263,7 +292,7 @@ export default async function LessonPage({
       yearDays,
       journalEntries,
       questionBlockId: currentQuestionBlock?.id ?? null,
-      todayAnswer: currentQuestionBlock ? answerByQuestionBlockId.get(currentQuestionBlock.id) : undefined,
+      todayAnswer: currentQuestionBlock ? answerByBlockId.get(currentQuestionBlock.id) : undefined,
       pickUpWithToday:
         todayLessonId && todayLessonId !== lesson.id ? { href: `${studyHref}/${todayLessonId}` } : null,
     };
@@ -279,11 +308,15 @@ export default async function LessonPage({
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 sm:py-10 space-y-8 study-content-protected">
-      {isDraftPreview && (
+      {isDraftPreview ? (
         <p role="status" className="text-sm rounded-lg bg-gold/20 text-ink px-4 py-2">
           Admin preview: this {study.published ? "lesson" : "study"} is a draft, so readers can&apos;t see it yet.
         </p>
-      )}
+      ) : content.isDraftPreview ? (
+        <p role="status" className="text-sm rounded-lg bg-gold/20 text-ink px-4 py-2">
+          Admin preview: unpublished changes. Readers still see the published version until you publish these changes.
+        </p>
+      ) : null}
       <LessonNavigation
         studyHref={studyHref}
         studyTitle={displayStudyTitle}
@@ -322,12 +355,12 @@ export default async function LessonPage({
               ) : null,
           }}
         />
-      ) : lesson.studyContent ? (
+      ) : studyContent ? (
         <StudyLessonView
           key={lesson.id}
           lessonId={lesson.id}
           lessonTitle={lesson.title}
-          content={lesson.studyContent}
+          content={studyContent}
           initialAnswers={Object.fromEntries(answerByBlockId)}
           previousHref={previousHref}
           nextHref={nextHref}
@@ -342,7 +375,7 @@ export default async function LessonPage({
           studyHref={studyHref}
           initialStatus={progressRow?.status ?? "not_started"}
           media={Object.fromEntries(
-            [...weekMediaBySlot(lesson.studyContent).entries()].map(([slot, items]) => [
+            [...weekMediaBySlot(studyContent).entries()].map(([slot, items]) => [
               slot,
               <WeekMediaList key={slot} lessonId={lesson.id} items={items} />,
             ])
