@@ -1,12 +1,18 @@
 import Link from "next/link";
 import Image from "next/image";
 import { isSneakPeek } from "@/lib/launchMode";
+// Imported (not a "/images/..." string) so Next fingerprints it under
+// /_next/static/media: the image optimizer then marks it immutable and
+// browsers cache it for a year instead of re-downloading it on every
+// visit, and Next generates a tiny blur placeholder shown while it loads.
+import heroSunset from "@/public/images/hero-sunset.jpg";
 
 export function DustHero() {
   return (
     <section className="relative overflow-hidden min-h-[70vh] sm:min-h-[85vh]">
       <Image
-        src="/images/hero-sunset.jpg"
+        src={heroSunset}
+        placeholder="blur"
         alt="Desert sunset with dust haze over a wide plain"
         fill
         priority
