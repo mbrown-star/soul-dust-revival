@@ -446,10 +446,10 @@ the mode set.
       exists. Then `npx tsx --env-file=.env.local scripts/mark-sample-lessons.ts`
       (dry run), then again with `--apply`, to mark the 8 sample lessons. **Done
       2026-11-10:** column applied (13 migrations recorded), 8 lessons marked, confirmed
-      4/13 Colossians and 4/366 Psalms, every other study 0. There's no
-      admin toggle for `isSample` yet, and **re-importing a study's document recreates
-      its lessons without the flag** — re-run this script after re-importing Colossians
-      or the Psalms devotional.
+      4/13 Colossians and 4/366 Psalms, every other study 0. **Re-importing a study's
+      document recreates its lessons without the flag** — re-run this script after
+      re-importing Colossians or the Psalms devotional, or tick **Free sample** on each
+      lesson in the builder (added 2026-11-11).
 - [x] `wrangler.jsonc`: an `env.production` Worker, `soul-dust-revival-prod`, with its
       own Hyperdrive config (`soul-dust-revival-prod-db`, `8279fc0c…`, caching disabled
       from the start, same session-pooler origin as staging's) and the Images binding.
@@ -631,6 +631,7 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- **2026-11-11 — Free sample checkbox in the lesson builder.** The lesson header has a "Free sample" checkbox next to Published (with a short note on what it does once ticked), and the study's lesson list shows a "Free sample" badge. `lessonUpdateSchema` takes an optional `isSample`, so the list's publish toggle and title edits leave the mark alone. No migration (the column already existed). `npm run verify` clean, `npm test` 499/499, and the QA browser suite's builder, accessibility and sneak-peek specs 48/48 (a new e2e ticks the box, reloads, sees the badge, then deletes its throwaway lesson). Committed as `93454ca`, deployed to staging (`848f2ebb`) and production (`a322659d`). **Reminder:** both sites share one database, so ticking the box in either admin changes what production readers can open immediately.
 - **2026-11-10 — staging's intermittent 500s fixed by lowering the Hyperdrive connection limits.** Supabase's session pooler allows 15 clients in total; staging's Hyperdrive allowed 20 and production's 60. Now staging is 5 and production 8, leaving 2 slots for migrations and scripts. Verified straight after: staging 30/30 and production 12/12 requests succeeded. **Before raising either limit, raise Supabase's pool size first** (see CLAUDE.md's same-dated entry).
 - **2026-11-10 — Log out works again on staging.** Reported live: clicking Log out on `staging.souldustrevival.com` left the button on "Logging out..." and the visitor still signed in. Logout now goes through a new `POST /api/auth/logout`, which revokes the session with Supabase and expires every `sb-` cookie both host-only and on `NEXT_PUBLIC_COOKIE_DOMAIN` (a browser can hold an older host-only copy from a build without the subdomain split, which the browser client's `signOut()` couldn't delete). All three logout buttons (site nav, admin nav, account deletion) use the shared `lib/auth/logOut.ts`, which always finishes with a full page load of the marketing homepage, even if the request fails or times out (8s). 5 new route tests. Deployed to staging as Worker `841d87c8` (`b54fac4`); the route was checked live, but Log out hasn't been clicked in a signed-in browser yet.
 - **2026-11-10 — captions, upload progress, media signed when shown, and uploaded video playback fixed.** `259fab4` (captions via `/api/captions/[file]`, a progress bar on every upload, signing when the player comes into view) and `f5847a7` (signed Stream URLs doubled the host, so uploaded video never played) are deployed to staging (Worker `36981a68`). An uploaded video was confirmed playing on staging. The R2 bucket had no CORS rule, so every browser upload to R2 (captions, images, cover PDFs) failed. A rule was added on the user's go-ahead (`GET`/`PUT` from the staging and production origins). After that, a captions upload worked on staging and its captions showed in the reader. See CLAUDE.md's same-dated entry.
