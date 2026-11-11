@@ -4,8 +4,10 @@ import type { Db } from "@/lib/db/client";
 import { findClaimableProduct } from "./digitalEdition";
 
 export type ClaimResult =
-  | { status: "claimed"; productTitle: string }
-  | { status: "already_owned"; productTitle: string }
+  // ready: the study is published, so it's in My Library now; otherwise the
+  // access is kept and it appears there once the study is published.
+  | { status: "claimed"; productTitle: string; ready: boolean }
+  | { status: "already_owned"; productTitle: string; ready: boolean }
   | { status: "not_claimable" }
   | { status: "order_used" }
   | { status: "too_many" };
@@ -43,7 +45,7 @@ export async function claimDigitalEdition(
     .from(entitlements)
     .where(and(eq(entitlements.userId, userId), eq(entitlements.productId, productId)))
     .limit(1);
-  if (owned) return { status: "already_owned", productTitle: product.title };
+  if (owned) return { status: "already_owned", productTitle: product.title, ready: product.ready };
 
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const [recent] = await db
@@ -72,7 +74,7 @@ export async function claimDigitalEdition(
     if (isUniqueViolation(error)) return { status: "order_used" };
     throw error;
   }
-  return { status: "claimed", productTitle: product.title };
+  return { status: "claimed", productTitle: product.title, ready: product.ready };
 }
 
 /**

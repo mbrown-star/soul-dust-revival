@@ -5,7 +5,7 @@ import { AMAZON_ORDER_NUMBER_HINT } from "@/lib/commerce/amazonOrderHint";
 import { appUrl } from "@/lib/domains";
 
 type Title = { id: string; title: string };
-type Done = { kind: "claimed" | "already_owned"; title: string };
+type Done = { kind: "claimed" | "already_owned"; title: string; ready: boolean };
 
 /** /claim for a signed-in reader: choose the book, enter the Amazon order number. */
 export function ClaimForm({
@@ -44,7 +44,7 @@ export function ClaimForm({
         body: JSON.stringify({ productId, orderNumber }),
       });
       const data = (await res.json().catch(() => null)) as
-        | { status?: "claimed" | "already_owned"; productTitle?: string; message?: string }
+        | { status?: "claimed" | "already_owned"; productTitle?: string; ready?: boolean; message?: string }
         | null;
       if (!res.ok || !data?.status) {
         setError(
@@ -54,7 +54,7 @@ export function ClaimForm({
         );
         return;
       }
-      setDone({ kind: data.status, title: data.productTitle ?? "Your book" });
+      setDone({ kind: data.status, title: data.productTitle ?? "Your book", ready: data.ready !== false });
     } catch {
       setError("We couldn't reach the server. Check your connection and try again.");
     } finally {
@@ -70,8 +70,12 @@ export function ClaimForm({
         </h2>
         <p className="font-serif text-ink">
           {done.kind === "claimed"
-            ? `${done.title} is now in your library, signed in as ${email}.`
-            : `${done.title} is already part of your account, so there's nothing more to claim.`}
+            ? done.ready
+              ? `${done.title} is now in your library, signed in as ${email}.`
+              : `${done.title} is yours, on ${email}. Its digital edition is still being prepared for the app; it will appear in your library as soon as it's ready, with nothing more to do.`
+            : done.ready
+            ? `${done.title} is already part of your account, so there's nothing more to claim.`
+            : `${done.title} is already part of your account. It will appear in your library as soon as its digital edition is ready.`}
         </p>
         <a
           href={appUrl("/library")}

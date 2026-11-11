@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { products, studies, bundleItems } from "@/lib/db/schema";
 import type { Db } from "@/lib/db/client";
 
@@ -55,10 +55,22 @@ export async function claimableProducts(db: Db): Promise<ClaimableProduct[]> {
   return rows;
 }
 
-/** One claimable product, or null when this product can't be claimed. */
-export async function findClaimableProduct(db: Db, productId: string): Promise<ClaimableProduct | null> {
+/**
+ * One claimable product, or null when this product can't be claimed.
+ * `ready`: its study is published, so a claim shows in My Library at once
+ * (otherwise access is kept and appears when the study is published).
+ */
+export async function findClaimableProduct(
+  db: Db,
+  productId: string
+): Promise<(ClaimableProduct & { ready: boolean }) | null> {
   const [row] = await db
-    .select({ id: products.id, slug: products.slug, title: products.title })
+    .select({
+      id: products.id,
+      slug: products.slug,
+      title: products.title,
+      ready: sql<boolean>`bool_or(${studies.published})`,
+    })
     .from(products)
     .innerJoin(studies, eq(studies.productId, products.id))
     .where(
@@ -69,6 +81,6 @@ export async function findClaimableProduct(db: Db, productId: string): Promise<C
         isNotNull(products.amazonUrl)
       )
     )
-    .limit(1);
+    .groupBy(products.id, products.slug, products.title);
   return row ?? null;
 }

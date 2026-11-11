@@ -56,9 +56,9 @@ export async function POST(req: NextRequest) {
         { status: 429 }
       );
     case "already_owned":
-      return NextResponse.json({ status: "already_owned", productTitle: result.productTitle });
+      return NextResponse.json({ status: "already_owned", productTitle: result.productTitle, ready: result.ready });
     case "claimed":
       revalidatePath("/library");
-      return NextResponse.json({ status: "claimed", productTitle: result.productTitle });
+      return NextResponse.json({ status: "claimed", productTitle: result.productTitle, ready: result.ready });
   }
 }

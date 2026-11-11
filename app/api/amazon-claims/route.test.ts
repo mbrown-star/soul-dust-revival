@@ -92,12 +92,18 @@ describe("Amazon claims", () => {
   it("unlocks the digital edition and records the claim, normalizing the order number", async () => {
     const res = await POST(request("POST", { productId: bookId, orderNumber: " 112 1234567 1234567 " }));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ status: "claimed", productTitle: "Colossians" });
+    expect(await res.json()).toEqual({ status: "claimed", productTitle: "Colossians", ready: false });
 
     const [grant] = await db.select().from(entitlements).where(eq(entitlements.userId, userId));
     expect(grant).toMatchObject({ productId: bookId, source: "amazon_claim", expiresAt: null });
     const [claim] = await db.select().from(amazonClaims).where(eq(amazonClaims.userId, userId));
     expect(claim).toMatchObject({ productId: bookId, amazonOrderNumber: ORDER, entitlementId: grant!.id, revokedAt: null });
+  });
+
+  it("says the book is ready once its study is published", async () => {
+    await db.update(studies).set({ published: true }).where(eq(studies.productId, bookId));
+    const res = await POST(request("POST", { productId: bookId, orderNumber: ORDER }));
+    expect(await res.json()).toEqual({ status: "claimed", productTitle: "Colossians", ready: true });
   });
 
   it("refuses something that isn't an Amazon order number", async () => {
@@ -127,7 +133,7 @@ describe("Amazon claims", () => {
   it("says so when the reader already owns it, without using up the order number", async () => {
     await db.insert(entitlements).values({ userId, productId: bookId, source: "purchase" });
     const res = await POST(request("POST", { productId: bookId, orderNumber: ORDER }));
-    expect(await res.json()).toEqual({ status: "already_owned", productTitle: "Colossians" });
+    expect(await res.json()).toEqual({ status: "already_owned", productTitle: "Colossians", ready: false });
     expect(await db.select().from(amazonClaims).where(eq(amazonClaims.productId, bookId))).toHaveLength(0);
   });
 
