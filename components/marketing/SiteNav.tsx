@@ -86,7 +86,12 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
   // "App" (was "My Library") -- the one link into the gated reading app
   // (library, studies, devotionals), named generically since it's the same
   // front door regardless of what a given account actually owns.
-  const loggedInItems: NavItem[] = [{ label: "App", href: appUrl("/library") }];
+  // "Contact" -- comments, feedback and issue reports, emailed to the site's
+  // inbox (app/(marketing)/contact). Signed-in only, like the page itself.
+  const loggedInItems: NavItem[] = [
+    { label: "App", href: appUrl("/library") },
+    { label: "Contact", href: marketingUrl("/contact") },
+  ];
 
   return (
     <nav aria-label="Primary" className="flex items-center font-sans text-sm font-medium min-w-0">

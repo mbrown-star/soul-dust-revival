@@ -357,11 +357,36 @@ rather than importing a shared singleton — do not reintroduce a module-level `
 export, since that reintroduces the cross-request I/O error Workers raises for exactly
 this pattern.
 
+## Contact form (`/contact`, `/api/contact`)
+Added 2026-11-11. Signed-in readers send a name, email, message and up to 5 screenshots,
+which the route emails to `admin@souldustrevival.com` (`CONTACT_INBOX` in
+`lib/email/send.ts`) through Resend.
+- **Signed-in only**: the route returns 401 without a session, so an anonymous visitor
+  can't use it to send email or push 20 MB bodies at the Worker.
+- **Fields** go through `contactMessageSchema` (trimmed, bounded; the email must parse).
+  An optional `page` (the referrer, so a bug report says where it happened) is kept only
+  if it starts with `http(s)://`. Every field is HTML-escaped in the email (`escapeHtml`
+  now escapes quotes too); the subject strips line breaks.
+- **Screenshots are never stored.** They're read in memory and attached to the email.
+  Each must be PNG, JPEG, WebP or GIF *by its bytes* (`detectScreenshotType`), not by the
+  browser's Content-Type or filename; attachment names are ours (`screenshot-1.png`).
+  Caps: 5 files, 10 MB each, 20 MB total (`lib/uploads/limits.ts`), so the base64 email
+  stays under Resend's 40 MB. A declared `Content-Length` over the cap is refused (413)
+  before the body is read. A chunked body with no length is read before its size is
+  known; acceptable for a signed-in-only route, but a Cloudflare body-size or rate rule
+  on `/api/contact` would close it.
+- **Reply-To** is the address the person typed, so a reply goes straight to them. If it
+  differs from the signed-in account's email, the email says which account sent it.
+- A Resend refusal is a 502 to the person ("didn't send"), never a false success; the log
+  line carries only Resend's error text, never the message or the person's details.
+- **Not rate-limited in the app**: a signed-in account could send many messages. Add
+  `/api/contact` to the Cloudflare rate-limiting rule below.
+
 ## Rate limiting (not built into the app — configure at the platform level)
 No custom rate limiter is built into the app code, to avoid adding a stateful
 dependency (e.g. Redis) for a concern the hosting platform already handles well:
 - **Cloudflare** (already your host) — set Rate Limiting Rules in the dashboard for
-  `/api/checkout`, `/api/responses`, `/api/progress`, and `/login`. This is free-tier
+  `/api/checkout`, `/api/responses`, `/api/progress`, `/api/contact`, and `/login`. This is free-tier
   available and requires no code changes.
 - **Supabase Auth** already throttles magic-link requests per email address at the
   project level (configurable under Auth settings), which limits email-bombing abuse

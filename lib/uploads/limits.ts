@@ -33,3 +33,14 @@ export function oversizeMessage(size: number, maxBytes: number): string | null {
   if (size <= maxBytes) return null;
   return `This file is ${formatMegabytes(size)}; the limit here is ${formatMegabytes(maxBytes)}.`;
 }
+
+// Contact form screenshots. These aren't stored anywhere: the route attaches
+// them to the email it sends (app/api/contact/route.ts). Resend refuses an
+// email over 40 MB after base64 encoding (which adds a third), so the total
+// stays well under that.
+/** How many screenshots one contact message may carry. */
+export const CONTACT_SCREENSHOTS_MAX_COUNT = 5;
+/** One screenshot. */
+export const CONTACT_SCREENSHOT_MAX_BYTES = 10 * MB;
+/** All of one message's screenshots together. */
+export const CONTACT_SCREENSHOTS_TOTAL_MAX_BYTES = 20 * MB;

@@ -29,6 +29,14 @@ sign-in link or code.
 | Role, purchase history | `users.role`, `orders`/`order_items` | Access control; sales reporting |
 | Journey day and time zone | `journey_enrollments.weekday`, `.timeZone` | The Journey opens one week at a time on the reader's chosen weekday, on his own calendar. The IANA time zone (e.g. `America/Chicago`) comes from his browser when he begins; nothing finer than that is stored. Included in the data export; deleted with the account. |
 
+**Contact page messages** (added 2026-11-11): a signed-in reader's name, the email they type,
+their message, the page they came from, and any screenshots they attach are emailed (via
+Resend) to `admin@souldustrevival.com`. Nothing is saved in this app's database or in R2:
+the message lives in that inbox and in Resend's sending log. Screenshots can show whatever
+was on the person's screen, so the form invites them to attach only what helps; delete
+messages from the inbox per the same retention practice as other correspondence. Not part
+of the account data export or deletion, since the app holds no copy.
+
 **Data minimization in practice**: country is collected as a 2-letter code, not a full
 address, for every order — full street address is only ever collected by Stripe's own
 checkout page, and only for physical orders that need it, never duplicated into this

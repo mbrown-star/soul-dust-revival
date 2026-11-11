@@ -148,6 +148,69 @@ export async function sendBundleShipmentNotificationEmail(params: BundleShipment
   });
 }
 
+/** Where the Contact page's messages go. */
+export const CONTACT_INBOX = "admin@souldustrevival.com";
+
+type ContactMessageParams = {
+  name: string;
+  email: string;
+  message: string;
+  /** The signed-in account that sent it, which may differ from the email typed in. */
+  accountEmail: string;
+  pageUrl: string | null;
+  screenshots: { filename: string; content: string /* base64 */ }[];
+};
+
+/**
+ * Sends a Contact page message to CONTACT_INBOX, with Reply-To set to the
+ * address the person typed so a reply goes straight to them. Screenshots go
+ * as attachments (they're never stored). Throws when Resend refuses, so the
+ * route can tell the person it didn't go through instead of claiming it did.
+ */
+export async function sendContactMessageEmail(params: ContactMessageParams) {
+  const messageHtml = escapeHtml(params.message).replace(/\r?\n/g, "<br/>");
+  const accountLine =
+    params.accountEmail.toLowerCase() === params.email.toLowerCase()
+      ? ""
+      : `<p style="color:#666;font-size:14px;">Signed in as ${escapeHtml(params.accountEmail)}</p>`;
+  const pageLine = params.pageUrl
+    ? `<p style="color:#666;font-size:14px;">Sent from ${escapeHtml(params.pageUrl)}</p>`
+    : "";
+  const screenshotLine = params.screenshots.length
+    ? `<p style="color:#666;font-size:14px;">${params.screenshots.length} screenshot${params.screenshots.length === 1 ? "" : "s"} attached.</p>`
+    : "";
+
+  const html = `
+    <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;">
+      <h2>New message from the Contact page</h2>
+      <p><strong>${escapeHtml(params.name)}</strong> &lt;${escapeHtml(params.email)}&gt;</p>
+      ${accountLine}
+      ${pageLine}
+      <div style="border-top:1px solid #eee;border-bottom:1px solid #eee;padding:12px 0;margin:16px 0;">${messageHtml}</div>
+      ${screenshotLine}
+    </div>
+  `;
+
+  // Name and email are single-line by schema, but strip line breaks from the
+  // subject anyway: it's a header.
+  const subjectName = params.name.replace(/[\r\n]+/g, " ").slice(0, 80);
+
+  const { error } = await resend.emails.send({
+    from: `Soul Dust Revival <${process.env.RESEND_FROM_EMAIL}>`,
+    to: CONTACT_INBOX,
+    replyTo: params.email,
+    subject: `Contact form: ${subjectName}`,
+    html,
+    attachments: params.screenshots,
+  });
+  if (error) throw new Error(`Resend refused the contact email: ${error.message}`);
+}
+
 function escapeHtml(text: string): string {
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }

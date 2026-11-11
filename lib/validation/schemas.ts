@@ -809,3 +809,19 @@ export const adminJourneyUpdateSchema = z
   .strict();
 
 export const adminJourneyDeleteSchema = z.object({ id: z.string().uuid() }).strict();
+
+// The Contact page's text fields (app/api/contact/route.ts). Screenshots
+// arrive as files in the same multipart request and are checked separately
+// (lib/contact/screenshots.ts), since Zod can't usefully describe a File.
+export const contactMessageSchema = z.object({
+  name: z.string().trim().min(1, "Please enter your name").max(100),
+  email: z.string().trim().email("Please enter a valid email address").max(254),
+  message: z.string().trim().min(1, "Please enter a message").max(5_000),
+  // The page they came from (document.referrer), so a bug report says where
+  // it happened. Only an http(s) URL is kept; anything else is dropped.
+  page: z
+    .string()
+    .max(2_000)
+    .optional()
+    .transform((v) => (v && /^https?:\/\//i.test(v) ? v : undefined)),
+});
