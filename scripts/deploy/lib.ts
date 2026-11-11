@@ -103,9 +103,14 @@ export function placeholderEnv(
 }
 
 /** The real values that must never appear in a build: everything but the public ones. */
+// Configuration names, not secrets. The R2 bucket is named "soul-dust-revival",
+// the same string as the brand slug, so scanning for it refused any bundle
+// whose code mentioned the brand (hit by the Journey session, 2026-11-11).
+const NOT_SECRET = new Set(["R2_PUBLIC_BASE_URL", "R2_BUCKET_NAME"]);
+
 export function secretValues(real: Map<string, string>): { key: string; value: string }[] {
   return [...real]
-    .filter(([key]) => !key.startsWith("NEXT_PUBLIC_") && key !== "R2_PUBLIC_BASE_URL")
+    .filter(([key]) => !key.startsWith("NEXT_PUBLIC_") && !NOT_SECRET.has(key))
     .filter(([, value]) => value.length >= 12 && value !== "placeholder")
     .map(([key, value]) => ({ key, value }));
 }

@@ -21,6 +21,7 @@ R2_PUBLIC_BASE_URL=https://pub-123.r2.dev
 R2_SECRET_ACCESS_KEY=r2-secret-value-abcdef
 STRIPE_SECRET_KEY=sk_test_abcdefghijklmnop
 SHORT=abc
+R2_BUCKET_NAME=soul-dust-revival
 CLOUDFLARE_ACCOUNT_ID=0123456789abcdef0123
 `);
 
@@ -71,6 +72,10 @@ describe("placeholderEnv", () => {
 describe("secretValues and findInFiles", () => {
   it("scans for every non-public value long enough to be a secret, digits in the name included", () => {
     expect(secretValues(REAL).map((s) => s.key).sort()).toEqual(["CLOUDFLARE_ACCOUNT_ID", "R2_SECRET_ACCESS_KEY", "STRIPE_SECRET_KEY"]);
+  });
+
+  it("doesn't treat the R2 bucket's name as a secret: it's the brand slug, and app code may contain it", () => {
+    expect(secretValues(REAL).map((s) => s.key)).not.toContain("R2_BUCKET_NAME");
   });
 
   it("finds a secret anywhere in a nested build folder", () => {
