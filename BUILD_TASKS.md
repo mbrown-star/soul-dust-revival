@@ -606,7 +606,7 @@ deployment before treating any of it as launch-ready:
       `/api/progress`, `/login` (see SECURITY.md — not built into the app itself)
 
 ## 7. Known gaps worth deciding on, not yet built
-- [ ] The Journey, before switching it on: publish the four Parts' lessons (all 52 are drafts), fix Week 25 and Week 36's cut-off titles (the word-study repair is done, 2026-11-11), then tick Published on the bundle's Journey panel and walk it on staging as a buyer.
+- [ ] The Journey, before switching it on: publish the four Parts' lessons (all 52 are drafts; the word-study repair and the Week 25/36 titles are done, 2026-11-11), then tick Published on the bundle's Journey panel and walk it on staging as a buyer.
 - [ ] The Journey, Phase 2/3 (not built): a reminder email on each reader's Journey day, the printed record of every answer, the commissioning at the end, crews of men walking it together, and fixed spots for each week's opening video.
 - [ ] Have counsel review `/privacy` for legal sufficiency in your actual jurisdictions
       (the content is real and accurate, just not attorney-reviewed yet)
