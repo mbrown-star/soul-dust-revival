@@ -435,9 +435,20 @@ const QUESTION_INLINE = /^QUESTION\b[:\s]*/;
 // EPHESIANS 2:8; ..."), which belongs inside a callout's body, not acting as
 // a new section boundary -- the semicolon is what tells the two apart.
 // Some manuscripts (1 Peter) extract with spaces around the punctuation
-// ("1 PETER 1 : 18 – 19"), so those spaces are allowed too.
+// ("1 PETER 1 : 18 – 19"), so those spaces are allowed too. The book name
+// must be in capitals, as every station's passage heading in this series is:
+// a word study's own source line in ordinary case ("Hebrews 1:3", in Dusty
+// and Holy) used to match too, cutting that word study off after its first
+// line.
 const VERSE_REF_HEADING =
-  /^(?:[123]\s+)?[A-Z][A-Za-z]+(?:\s+[A-Za-z]+)*\s+\d+(?:\s*:\s*\d+)?(?:\s*[–-]\s*\d+(?:\s*:\s*\d+)?)?\s*$/;
+  /^(?:[123]\s+)?[A-Z][A-Z]+(?:\s+[A-Z]+)*\s+\d+(?:\s*:\s*\d+)?(?:\s*[–-]\s*\d+(?:\s*:\s*\d+)?)?\s*$/;
+
+// A line that starts with a scripture reference in any case, alone or as a
+// list: "JAMES 1:11", "Hebrews 1:4; 7:19, 22", "ROMANS 3:19; HEBREWS 11:33".
+const CITATION_LINE = /^(?:[123]\s+)?[A-Z][A-Za-z]+(?:\s+[A-Za-z]+)*\s+\d+\s*:\s*\d+/;
+
+// The Ten Commandments labels each station "PASSAGE 2 · ROMANS 7 : 7 – 9".
+const PASSAGE_HEADING = /^PASSAGE\s+\d+\b/;
 
 // The week's Life Application section follows its last station. Without
 // this, nothing ended that station's word-study callout, so the Life
@@ -451,6 +462,7 @@ function isStudySectionBoundary(line: string): boolean {
   if (line === "") return false;
   if (QUESTION_INLINE.test(line)) return true;
   if (LIFE_APPLICATION_HEADING.test(line)) return true;
+  if (PASSAGE_HEADING.test(line)) return true;
   const norm = normalizeMarker(line);
   if (norm.startsWith(GOING_DEEPER_PREFIX)) return true;
   if (!line.includes(";") && VERSE_REF_HEADING.test(line)) return true;
@@ -500,8 +512,20 @@ function splitWeekIntoBlocks(lines: string[]): StudyImportedBlock[] {
       flushText();
       i++;
       const calloutLines: string[] = [];
-      while (i < lines.length && !isStudySectionBoundary(lines[i]!)) {
-        if (lines[i] !== "") calloutLines.push(lines[i]!);
+      // Every word study cites its source near the top: a list
+      // ("GALATIANS 1:1; HEBREWS 3:1") or a single verse ("JAMES 1:11"). That
+      // first citation is the word study's own, so it never ends the box;
+      // before this, a single-verse source looked exactly like the next
+      // station's passage heading and cut the word study off after its gloss.
+      let citedSource = false;
+      while (i < lines.length) {
+        const current = lines[i]!;
+        if (!citedSource && CITATION_LINE.test(current)) {
+          citedSource = true;
+        } else if (isStudySectionBoundary(current)) {
+          break;
+        }
+        if (current !== "") calloutLines.push(current);
         i++;
       }
       const title = calloutLines[0] ?? "Going Deeper";
@@ -549,6 +573,9 @@ function splitWeekIntoBlocks(lines: string[]): StudyImportedBlock[] {
  * Introduction lesson. Still a heuristic over unstructured text -- review
  * after import is expected, same as every other import path here.
  */
+// Every week's subtitle in this series starts "from dust to ...".
+const SUBTITLE_START = /^from dust\b/i;
+
 export function splitStudyPlainTextByHeadings(text: string): StudyImportedLesson[] {
   const lines = text.split("\n").map((l) => l.trim());
 
@@ -585,7 +612,16 @@ export function splitStudyPlainTextByHeadings(text: string): StudyImportedLesson
     // marker (its title-page heading, e.g. "The Faith That Bears Fruit").
     let titleIndex = headingIndex + 1;
     while (titleIndex < lines.length && lines[titleIndex] === "") titleIndex++;
-    const title = lines[titleIndex] || `Week ${weekNumber}`;
+    let title = lines[titleIndex] || `Week ${weekNumber}`;
+    // A long title wraps onto a second line ("The Mountain and the
+    // Righteousness That" / "Surpasses"). The week's subtitle always starts
+    // "from dust", so a short line sitting between the title and that
+    // subtitle is the rest of the title.
+    const nextLine = lines[titleIndex + 1] ?? "";
+    if (nextLine && nextLine.length <= 40 && !SUBTITLE_START.test(nextLine) && SUBTITLE_START.test(lines[titleIndex + 2] ?? "")) {
+      title = `${title} ${nextLine}`;
+      titleIndex++;
+    }
 
     const bodyStart = titleIndex + 1;
     const bodyEnd = headingIndexes[w + 1] ?? lines.length;

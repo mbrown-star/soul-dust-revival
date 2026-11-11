@@ -72,7 +72,33 @@ webhook/entitlement changes done.
   - **Committed oddity:** the code landed in `d30b09c` ("Add npm run deploy"), because another session committed everything in the shared working tree while this build was still uncommitted. Content is exactly what was tested; not rewritten since it was already pushed.
   - **Shipped per step 8** with `npm run deploy -- both --yes` from `39fe929`: **staging `034a2664`** and **production `754c5d0e`** (sneak-peek gates unchanged, covers load). Every preview and live check passed. `/store?type=devotional` on staging renders with Devotionals already selected.
   - **Note:** the Store is closed on the sneak-peek production site, so the Store filters show only on staging for now; My Library's filters are live on both.
-- **2026-11-11 (latest of all) — the four John parts imported as hidden drafts.** Requested as "Yes, the John parts".
+- **2026-11-11 (newest) — fourth batch imported (In Christ, The Ten Commandments, Sermon on the Mount, Dusty and Holy); four more parser fixes; 11 earlier drafts rebuilt; my commits had swept another session's work onto main.** Requested as "Yes, next four".
+  - **Parser fixes** (`lib/import/splitIntoLessons.ts`, 4 regression tests that fail on the old parser, 57 in the file):
+    1. A word study's first citation (a list, or a single verse like "JAMES 1:11") never ends it. A single-verse source looked exactly like the next station's passage heading and cut the word study off after its gloss, leaving the explanation outside the box. This affected some weeks of Ephesians, James, 1 Timothy, the John parts and The Ten Commandments.
+    2. A passage heading must be in capitals, so a word study's ordinary-case source ("Hebrews 1:3", Dusty and Holy) stays inside it.
+    3. A "PASSAGE N · ROMANS 7 : 7 – 9" label starts a new station; without it, The Ten Commandments' word studies swallowed the next passage.
+    4. A week title that wraps onto a second line before its "from dust" subtitle is joined. Sermon on the Mount Week 1 had been "The Mountain and the Righteousness That"; Journey Part Three had needed the same thing fixed by hand.
+  - Re-parsed all 16 manuscripts after the fixes: every week's question and word-study counts are unchanged, and every word study is 462–1,312 characters.
+  - **`scripts/import-catalog-title.ts --replace-lessons`** rebuilds an already-imported title's lessons from the current parser, leaving its product and covers alone. It refuses a published study, a published lesson, or any answers or progress.
+    - Rebuilt 11 of the 12 earlier drafts.
+    - Galatians was refused, correctly: one progress row from the admin's own reader preview. It needs no rebuild, since its word studies were already full length (808–1,312 before and after).
+    - The John naming now adds the tagline only for a multi-part series, so James and 1 Timothy keep their imported names.
+  - **New titles:**
+
+    | Title | Product | Study |
+    |---|---|---|
+    | In Christ | `11ccba2a` | `f18df3d0` |
+    | The Ten Commandments | `1babd418` | `83f634d9` |
+    | The Sermon on the Mount | `3b00e669` | `c470a807` |
+    | Dusty and Holy | `fd8dbdb4` | `1f51fd66` |
+
+    All four are 8.5x11 covers. Weeks have 5, 5, 9 and 9–11 questions respectively, with 5 word studies each.
+  - **Checked live on staging:** in `/store` with their covers and "Coming soon", no buy buttons, studies hidden from visitors; production unchanged.
+  - **Process incident (mine):** `git add -A` / `git commit -a` in b2b1405, 38c34ee and b12b4f2 committed another session's unfinished work to `main`: the Journey year-long build with migration `0015`, plus edits to account export/delete, the bundles route and `lib/domains.ts`. Each of those commits broke the build on its own. The Journey session flagged it: a deploy of main would 500 lesson pages and My Library until `0015` is applied, and the deploy checks wouldn't catch it, because they only load pages as a guest. Nothing broke live (both sites stayed on `f3570ee`).
+    - I'm committing only my own files by explicit path from now on (saved as a feedback memory).
+    - **Not deploying until the Journey session says main is clear.** These parser fixes therefore aren't live in the admin's Import study yet. The imports above used the script directly, so they're unaffected.
+  - **Remaining 8:** Dusty but Hopeful (Romans), Genesis Parts 1 and 2, Prayer, The Gospel, The Holy Spirit, Benedictions (176-page study), and A 365-Day Journey Through the Bible (devotional).
+- **2026-11-11 (later still) — the four John parts imported as hidden drafts.** Requested as "Yes, the John parts".
   - Their metadata uses the `front`/`back` layout, so `scripts/import-catalog-title.ts` now names a part "<title>: <tagline> — Part N", matching the author's folder names. The products are "Soul Dust Revival: John: That You May Believe — Part One" and so on. The double colon is the author's naming plus the series prefix; rename in the admin if wanted.
   - No parser changes were needed. Each part is an Introduction (Foreword and Preface) plus 12 weeks of 5 questions and 5 word studies. The 22 MB covers split by 6x9 trim geometry.
   - **Records:**

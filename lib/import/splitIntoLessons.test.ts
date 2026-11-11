@@ -638,6 +638,88 @@ describe("splitStudyPlainTextByHeadings", () => {
     expect(introText).not.toContain("First Week Title");
   });
 
+  it("starts a new station at a 'PASSAGE N ·' label, so the previous word study doesn't swallow it (The Ten Commandments)", () => {
+    const text = [
+      ...buildWeek(1, "First Week Title", "BOOK 1:1-8", "Am I trusting or striving?", "χάρις"),
+      "PASSAGE 2 · ROMANS 7 : 7 – 9",
+      "7 What shall we say then? Is the law sin?",
+      "QUESTION",
+      "What has the Law woken up in you?",
+    ].join("\n");
+
+    const blocks = splitStudyPlainTextByHeadings(text)[0]!.blocks;
+    const callout = blocks.find((b) => b.type === "callout");
+    expect(callout && callout.type === "callout" ? callout.bodyHtml : "").not.toContain("Is the law sin");
+    expect(blocks.filter((b) => b.type === "question")).toHaveLength(2);
+  });
+
+  it("keeps a word study's own source line in ordinary case ('Hebrews 1:3') inside the word study", () => {
+    const text = [
+      "IWEEK 1",
+      "First Week Title",
+      "QUESTION",
+      "What does it do to you?",
+      "GOING DEEPER · THE GREEK",
+      "ἀπαύγασμα apaugasma “radiance”",
+      "Hebrews 1:3",
+      "Apaugasma is the light that streams out from a shining body.",
+      "HEBREWS 4 : 14 – 16",
+      "14 Having then a great high priest.",
+    ].join("\n");
+
+    const blocks = splitStudyPlainTextByHeadings(text)[0]!.blocks;
+    const callout = blocks.find((b) => b.type === "callout");
+    expect(callout && callout.type === "callout" ? callout.bodyHtml : "").toContain("streams out from a shining body");
+    // The capitalised passage heading still starts the next station.
+    expect(callout && callout.type === "callout" ? callout.bodyHtml : "").not.toContain("great high priest");
+  });
+
+  it("keeps a word study's single-verse source ('JAMES 1:11') inside it, and still ends it at the next passage", () => {
+    const text = [
+      "IWEEK 1",
+      "First Week Title",
+      "QUESTION",
+      "Where are you fading?",
+      "GOING DEEPER · THE GREEK",
+      "μαραίνω marainō",
+      "— to wither; to fade away",
+      "JAMES 1:11",
+      "Marainō first meant to quench a fire, and in the passive, of a fire dying down.",
+      "LIVE IT: Name what is fading.",
+      "JAMES 1:17",
+      "Every good gift and every perfect gift is from above.",
+      "QUESTION",
+      "What gift have you overlooked?",
+    ].join("\n");
+
+    const blocks = splitStudyPlainTextByHeadings(text)[0]!.blocks;
+    const callout = blocks.find((b) => b.type === "callout");
+    const body = callout && callout.type === "callout" ? callout.bodyHtml : "";
+    expect(body).toContain("quench a fire");
+    expect(body).toContain("Name what is fading.");
+    expect(body).not.toContain("Every good gift");
+    expect(blocks.filter((b) => b.type === "question")).toHaveLength(2);
+  });
+
+  it("joins a week title that wraps onto a second line before its 'from dust' subtitle", () => {
+    const text = [
+      "IWEEK 1",
+      "The Mountain and the Righteousness That",
+      "Surpasses",
+      "from dust to a borrowed righteousness",
+      "Some essay text.",
+      "IIWEEK 2",
+      "Blessed Are the Bankrupt",
+      "from dust to the kingdom",
+      "More essay text.",
+    ].join("\n");
+
+    expect(splitStudyPlainTextByHeadings(text).map((l) => l.title)).toEqual([
+      "Week 1: The Mountain and the Righteousness That Surpasses",
+      "Week 2: Blessed Are the Bankrupt",
+    ]);
+  });
+
   it("keeps a Foreword line that merely starts with 'Before you begin' in ordinary case", () => {
     const text = [
       "Foreword",

@@ -13,6 +13,11 @@
  * --apply uploads the cover crops, the cover PDF and the manuscript to R2
  * under fresh server-chosen keys and writes everything in one transaction.
  *
+ * --replace-lessons rebuilds an already-imported title's lessons from the
+ * current parser (after a parser fix), leaving its product and covers alone.
+ * It only touches a study that is unpublished, with every lesson a draft and
+ * no reader answers or progress, so nothing anyone has seen or written changes.
+ *
  * The cover folder holds the cover PDF plus a metadata .json (two layouts
  * exist: `title_fields` with back_hook/back_para_*, or `front`/`back` with
  * hook/paragraphs); its back-cover copy becomes the description. Parsing and
@@ -23,9 +28,9 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { getDb } from "../lib/db/client";
-import { contentBlocks, lessons, products, studies } from "../lib/db/schema";
+import { contentBlocks, lessonProgress, lessons, products, responses, studies } from "../lib/db/schema";
 import { defaultCoverAltText } from "../lib/images/coverAltText";
 import { splitBookCoverPdf } from "../lib/images/splitBookCoverPdf";
 import { parseStudyDocument, toContentBlockInserts } from "../lib/import/parseStudyDocument";
@@ -42,6 +47,7 @@ const coversDir = option("--covers");
 const manuscriptPath = option("--manuscript");
 const kindArg = option("--kind") as Kind | undefined;
 const apply = args.includes("--apply");
+const replaceLessons = args.includes("--replace-lessons");
 if (!coversDir || !manuscriptPath) {
   console.error('Usage: scripts/import-catalog-title.ts --covers "<dir>" --manuscript "<pdf>" [--kind study|devotional|book] [--apply]');
   process.exit(1);
@@ -91,7 +97,9 @@ function readMetadata(dir: string): Metadata {
     const partWords = /^(PART \w+)/i.exec(kicker)?.[1];
     const part = partWords?.replace(/\w\S*/g, (w) => w[0]!.toUpperCase() + w.slice(1).toLowerCase());
     const baseTitle = cleanCopy(front.title ?? "");
-    const named = front.tagline ? `${baseTitle}: ${cleanCopy(front.tagline)}` : baseTitle;
+    // Only a multi-part series carries its tagline in the name (the John
+    // parts); a single title is just its name, like every other layout.
+    const named = part && front.tagline ? `${baseTitle}: ${cleanCopy(front.tagline)}` : baseTitle;
     return {
       title: part ? `${named} — ${part}` : named,
       tagline: front.tagline && cleanCopy(front.tagline),
@@ -136,11 +144,31 @@ async function main() {
   console.log(`  description: ${meta.description.slice(0, 140)}…`);
 
   const db = await getDb();
-  const clashes = [
-    ...(await db.select({ id: products.id }).from(products).where(eq(products.slug, slug))).map(() => "a product"),
-    ...(await db.select({ id: studies.id }).from(studies).where(eq(studies.slug, slug))).map(() => "a study"),
-  ];
-  if (clashes.length) throw new Error(`The slug ${slug} is already used by ${clashes.join(" and ")}; not importing it twice.`);
+  let existingStudyId: string | null = null;
+  if (replaceLessons) {
+    const [study] = await db.select().from(studies).where(eq(studies.slug, slug));
+    if (!study) throw new Error(`No study with slug ${slug} to replace lessons in.`);
+    if (study.published) throw new Error(`${title} is published; not replacing its lessons.`);
+    const existing = await db.select({ id: lessons.id, published: lessons.published }).from(lessons).where(eq(lessons.studyId, study.id));
+    if (existing.some((l) => l.published)) throw new Error(`${title} has a published lesson; not replacing its lessons.`);
+    const ids = existing.map((l) => l.id);
+    if (ids.length) {
+      const blockIds = (await db.select({ id: contentBlocks.id }).from(contentBlocks).where(inArray(contentBlocks.lessonId, ids))).map((b) => b.id);
+      const answers = blockIds.length ? await db.select({ id: responses.id }).from(responses).where(inArray(responses.contentBlockId, blockIds)) : [];
+      const progress = await db.select({ id: lessonProgress.id }).from(lessonProgress).where(inArray(lessonProgress.lessonId, ids));
+      if (answers.length || progress.length) {
+        throw new Error(`${title} has ${answers.length} answers and ${progress.length} progress rows; not replacing its lessons.`);
+      }
+    }
+    existingStudyId = study.id;
+    console.log(`  replacing the ${existing.length} draft lessons of study ${study.id} (product and covers unchanged)`);
+  } else {
+    const clashes = [
+      ...(await db.select({ id: products.id }).from(products).where(eq(products.slug, slug))).map(() => "a product"),
+      ...(await db.select({ id: studies.id }).from(studies).where(eq(studies.slug, slug))).map(() => "a study"),
+    ];
+    if (clashes.length) throw new Error(`The slug ${slug} is already used by ${clashes.join(" and ")}; not importing it twice.`);
+  }
 
   const manuscript = readFileSync(manuscriptPath!);
   const parsed = await parseStudyDocument(manuscript, { isDocx: false, kind });
@@ -162,6 +190,27 @@ async function main() {
       .replace(/\s+/g, " ")
       .trim();
     console.log(`  introduction: ${text.length} characters, "${text.slice(0, 60)}…${text.slice(-90)}"`);
+  }
+
+  if (existingStudyId) {
+    if (!apply) return;
+    const studyId = existingStudyId;
+    await db.transaction(async (tx) => {
+      const old = (await tx.select({ id: lessons.id }).from(lessons).where(eq(lessons.studyId, studyId))).map((l) => l.id);
+      if (old.length) {
+        await tx.delete(contentBlocks).where(inArray(contentBlocks.lessonId, old));
+        await tx.delete(lessons).where(inArray(lessons.id, old));
+      }
+      const inserted = await tx
+        .insert(lessons)
+        .values(parsed.map((l, i) => ({ studyId, title: l.title.slice(0, 200), orderIndex: i, published: false })))
+        .returning();
+      const byOrder = new Map(inserted.map((l) => [l.orderIndex, l]));
+      const blocks = parsed.flatMap((l, i) => toContentBlockInserts(byOrder.get(i)!.id, l.blocks));
+      if (blocks.length) await tx.insert(contentBlocks).values(blocks);
+    });
+    console.log(`  ✓ replaced with ${parsed.length} draft lessons`);
+    return;
   }
 
   // After the manuscript: the cover splitter (unpdf) and the manuscript
