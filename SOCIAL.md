@@ -16,6 +16,14 @@ fetching project knowledge programmatically. If you meant something more specifi
 "a Project" (a particular study, a particular campaign), say so and the context
 gathering can be pointed at that instead.
 
+**Model and key.** Every suggestion call goes through `lib/ai/claude.ts`, which names the
+model in one place (`SUGGESTION_MODEL`, currently `claude-sonnet-5-5`, at low effort, with
+the API's server-side fallback on if a request is declined). It uses the admin's own
+Anthropic API key, created in the Claude Console (console.anthropic.com → API Keys; API
+use is billed separately from a claude.ai plan) and pasted into Admin → Settings →
+Connections. Connecting checks the key by listing models, so the check never depends on
+a model that might be retired.
+
 **Blog posts get the same AI-suggestion treatment**, using the same shared context —
 see the blog admin at `/admin/blog`, which has its own "get suggestions → refresh →
 accept" flow (`components/admin/BlogPostForm.tsx`) generating full title+body drafts

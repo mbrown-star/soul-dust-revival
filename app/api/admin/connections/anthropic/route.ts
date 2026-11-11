@@ -13,25 +13,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  // Verify the key actually works before saving it — a single lightweight
-  // call rather than trusting an unvalidated string, so a typo'd key shows
+  // Verify the key actually works before saving it, so a typo'd key shows
   // up as an immediate error here instead of surfacing later as a mysterious
-  // failure the next time a suggestion or scheduled action needs it.
-  const testRes = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": parsed.data.apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "claude-3-5-haiku-20241022",
-      max_tokens: 1,
-      messages: [{ role: "user", content: "hi" }],
-    }),
-  });
+  // failure the next time a suggestion needs it. Listing models is free and
+  // names no model, so this check can't break when a model is retired (the
+  // previous check called a model that was retired on 2026-02-19).
+  let testRes: Response;
+  try {
+    testRes = await fetch("https://api.anthropic.com/v1/models?limit=1", {
+      headers: {
+        "x-api-key": parsed.data.apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+    });
+  } catch {
+    return NextResponse.json(
+      { error: "anthropic_unreachable", message: "Couldn't reach Anthropic to check the key. Try again." },
+      { status: 502 }
+    );
+  }
 
-  if (!testRes.ok && testRes.status === 401) {
+  if (testRes.status === 401 || testRes.status === 403) {
     return NextResponse.json({ error: "invalid_api_key", message: "That API key was rejected." }, { status: 400 });
   }
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/guard";
 import { getConnection } from "@/lib/social/connections";
 import { gatherProjectContext } from "@/lib/ai/projectContext";
+import { requestClaudeText } from "@/lib/ai/claude";
 import { socialSuggestSchema } from "@/lib/validation/schemas";
 import { PLATFORM_LIMITS } from "@/lib/data/socialPlatforms";
 
@@ -48,28 +49,16 @@ Respond with ONLY a JSON array of 3 draft post strings, nothing else — no prea
     .filter(Boolean)
     .join("\n\n");
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": connection.accessToken,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-5",
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-    }),
+  const result = await requestClaudeText({
+    apiKey: connection.accessToken,
+    system: systemPrompt,
+    user: userPrompt,
+    maxTokens: 4096,
   });
-
-  if (!res.ok) {
-    const detail = await res.text();
-    return NextResponse.json({ error: "anthropic_request_failed", message: detail }, { status: 502 });
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error, message: result.message }, { status: 502 });
   }
-
-  const data = (await res.json()) as { content?: { text?: string }[] };
-  const text = data.content?.[0]?.text ?? "[]";
+  const text = result.text;
 
   let drafts: string[];
   try {
