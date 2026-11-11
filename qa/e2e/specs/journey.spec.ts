@@ -64,6 +64,15 @@ test.describe("The Journey, as qa-leader", () => {
     await expect(page.getByText("The Journey · Threshold")).toBeVisible();
     await expect(page.getByRole("heading", { level: 1, name: "Part Two — Formed and Sent" })).toBeVisible();
 
+    // The introduction's sections read as tabs.
+    await expect(page.getByRole("tab", { name: "Foreword" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByText("QA Journey foreword.")).toBeVisible();
+    await expect(page.getByText("QA Journey preface.")).toBeHidden();
+    await page.getByRole("button", { name: "Next: Preface →" }).click();
+    await expect(page.getByRole("tab", { name: "Preface" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("heading", { name: "The Weekly Rhythm" })).toBeVisible();
+    await expect(page.getByText("QA Journey foreword.")).toBeHidden();
+
     const lookBack = page.locator("section", { has: page.getByRole("heading", { name: "Before you cross into Part Two" }) });
     await lookBack.getByText("Week 1: Where Most Men Actually Live").click();
     await expect(lookBack.getByText("QA look-back answer: in the places I keep hidden.")).toBeVisible();

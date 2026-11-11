@@ -672,7 +672,16 @@ async function main() {
     .insert(schema.contentBlocks)
     .values(
       journeyLessons.flatMap((lesson, i) => [
-        { lessonId: lesson.id, orderIndex: 0, type: "text" as const, body: `<p>QA Journey reading for stop ${i + 1}.</p>` },
+        {
+          lessonId: lesson.id,
+          orderIndex: 0,
+          type: "text" as const,
+          // Part Two's introduction has two sections, so its threshold shows tabs.
+          body:
+            i === 3
+              ? "<h2>Foreword</h2>\n<p>QA Journey foreword.</p>\n<h2>Preface</h2>\n<h3>The Weekly Rhythm</h3>\n<p>QA Journey preface.</p>"
+              : `<p>QA Journey reading for stop ${i + 1}.</p>`,
+        },
         ...(i === 1 || i === 2 || i === 4
           ? [{ lessonId: lesson.id, orderIndex: 1, type: "question" as const, questionPrompt: `Where is the dust in your life? (stop ${i + 1})` }]
           : []),

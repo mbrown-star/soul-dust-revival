@@ -26,6 +26,9 @@ import { loadLookBack } from "@/lib/journey/lookBack";
 import { CompleteStopButton } from "@/components/journey/CompleteStopButton";
 import { LookBackList } from "@/components/journey/LookBackList";
 import { JourneyNextStopNote } from "@/components/journey/JourneyNextStopNote";
+import { IntroTabs } from "@/components/journey/IntroTabs";
+import { splitIntroSections } from "@/lib/journey/introSections";
+import { sanitizeHtml } from "@/lib/sanitize/html";
 import type { Metadata } from "next";
 import { z } from "zod";
 
@@ -329,6 +332,11 @@ export default async function LessonPage({
     };
   }
 
+  // A threshold's introduction reads as tabs, one per section (Foreword,
+  // Preface, …), when its first text block has more than one.
+  const introBlock = journeyNav?.stop.isThreshold ? blocks.find((b) => b.type === "text") : undefined;
+  const introSections = introBlock ? splitIntroSections(sanitizeHtml(introBlock.body ?? "")) : [];
+
   // A devotional day's printed parts come from its first text block (and its
   // "question to sit with" answer block); anything else the admin added is
   // shown after them, in the builder's order.
@@ -439,9 +447,21 @@ export default async function LessonPage({
             </p>
             <h1 className="font-display font-bold text-3xl sm:text-4xl text-ink">{journeyNav.part.label}</h1>
           </div>
-          {blocks.map((block) => (
-            <LessonBlock key={block.id} block={block} initialAnswer={answerByBlockId.get(block.id)} />
-          ))}
+          {introSections.length > 0 && (
+            <IntroTabs
+              sections={introSections.map((section) => ({
+                title: section.title,
+                // Sanitized again after the split, so each section's HTML
+                // stands on its own (balanced tags) as well as being safe.
+                content: <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(section.html) }} />,
+              }))}
+            />
+          )}
+          {blocks
+            .filter((block) => introSections.length === 0 || block.id !== introBlock?.id)
+            .map((block) => (
+              <LessonBlock key={block.id} block={block} initialAnswer={answerByBlockId.get(block.id)} />
+            ))}
           {lookBack && <LookBackList lookBack={lookBack} heading={`Before you cross into ${journeyNav.part.shortLabel}`} />}
           <CompleteStopButton
             lessonId={lesson.id}
