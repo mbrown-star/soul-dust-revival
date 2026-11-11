@@ -559,11 +559,17 @@ Every build of Soul Dust Revival must pass both reviews below before it is calle
 5. **Fix.** Resolve all Critical and High findings from both reviews, then re-run `npm run verify`.
 6. **Document.** Update `BUILD_TASKS.md` (and `SECURITY.md`, `PRIVACY.md`, `ACCESSIBILITY.md` when behavior in those areas changes).
 7. **Report.** End every build with: what changed, `verify` result, security review result, code quality review result, scaffold deviations added, and any deferred findings with reason. Do not mark the build done if either review fails.
+8. **Ship (standing instruction from the user, 2026-11-11).** Once a build passes steps 3–5, commit it, push `main` to `origin`, and deploy it to **both** staging and production in the same pass, without waiting to be asked. The user should never have to say "and production too." Details:
+   - **Two builds, one commit.** Build both from the same clean worktree of current `main` HEAD (run `wrangler deployments list` for both Workers first, to see what's live). Staging (`soul-dust-revival`): `NEXT_PUBLIC_LAUNCH_MODE` blank, the `staging.` / `app.staging.` / `.staging.` hostnames. Production (`soul-dust-revival-prod`, `--env production`): `NEXT_PUBLIC_LAUNCH_MODE=sneak_peek`, the `souldustrevival.com` / `app.souldustrevival.com` / `.souldustrevival.com` hostnames. Same placeholder-`.env.local` procedure, secret scan, and `--keep-vars` for each.
+   - **Staging first, then production.** Spot-check staging live; deploy production only if staging is healthy. Then spot-check production (the sneak-peek gates: store closed, `/checkout` and `/signup` redirect, `POST /api/checkout` 404).
+   - **This is the standing approval for routine production deploys** that the "Ask before ... production deploys" rule below otherwise requires. Still announce each production deploy in one line before running it. If this session's sandbox blocks a production deploy, stop and tell the user rather than working around it.
+   - **Still ask first when:** the change needs a database migration or data write (one database serves both sites, so it lands on production the moment it runs); the change is only meant for one side (a staging-only experiment, or a full-store feature that would show up under sneak peek); it touches Stripe, auth, DNS, Hyperdrive limits, or Worker secrets; or staging's check fails.
+   - **Record both** Worker version IDs in the build's CLAUDE.md entry.
 
 ### Rules
 - Never skip a review because the change looks small. If a section does not apply, say so in the report.
 - Never commit secrets or personal data. `.env` stays git-ignored.
 - Ask before adding dependencies, changing the database schema in a destructive way, or deferring any Critical or High finding.
-- Ask before destructive actions (deleting data, force pushes, dropping tables, production deploys).
+- Ask before destructive actions (deleting data, force pushes, dropping tables, production deploys). Routine production deploys of a reviewed build are pre-approved by step 8 above; the exceptions listed there still need a yes.
 - Some work cannot be verified without live credentials (Stripe, R2, Stream, Supabase, Meta, X). State clearly what was and was not verified; never claim an integration works when only the types were checked.
 - When these instructions conflict with a request, flag the conflict and ask.
