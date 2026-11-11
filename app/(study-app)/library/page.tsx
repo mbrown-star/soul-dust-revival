@@ -8,8 +8,15 @@ import { LibraryCard } from "@/components/study/LibraryCard";
 import { isSneakPeek } from "@/lib/launchMode";
 import { marketingUrl } from "@/lib/domains";
 import { getDisplayStudyTitles } from "@/lib/study/displayTitle";
-import type { StudyKind } from "@/lib/study/studyKindLabel";
+import { studyKindLabel, type StudyKind } from "@/lib/study/studyKindLabel";
 import type { Metadata } from "next";
+import { CatalogBrowser } from "@/components/catalog/CatalogBrowser";
+import {
+  normalizeSearchText,
+  parseCatalogFilters,
+  type CatalogSearchParams,
+  type CatalogStatus,
+} from "@/lib/catalog/filter";
 
 // Reads per-user entitlements/progress on every request -- never static.
 export const dynamic = "force-dynamic";
@@ -35,11 +42,20 @@ type LibraryEntry = {
   sampleOnly: boolean;
   /** Lessons past the free sample (0 for a study the reader owns). */
   lockedCount: number;
+  status: CatalogStatus;
 };
 
-export default async function LibraryPage() {
+// Section order on the page; also what the Status filter picks between.
+const LIBRARY_GROUPS: { status: CatalogStatus; title: string }[] = [
+  { status: "in_progress", title: "Continue" },
+  { status: "not_started", title: "Not started" },
+  { status: "completed", title: "Completed" },
+];
+
+export default async function LibraryPage({ searchParams }: { searchParams: Promise<CatalogSearchParams> }) {
   const session = await getSession();
   if (!session) redirect("/login?next=/library");
+  const initialFilters = parseCatalogFilters(await searchParams);
   const db = await getDb();
 
   const entitledRows = await db
@@ -104,9 +120,7 @@ export default async function LibraryPage() {
   // actually bought. Batched to one extra query, not one per study.
   const displayTitleByStudyId = await getDisplayStudyTitles(db, myStudies);
 
-  const continuing: LibraryEntry[] = [];
-  const notStarted: LibraryEntry[] = [];
-  const completedList: LibraryEntry[] = [];
+  const entries: LibraryEntry[] = [];
 
   for (const rawStudy of myStudies) {
     const study = { ...rawStudy, title: displayTitleByStudyId.get(rawStudy.id) ?? rawStudy.title };
@@ -125,15 +139,9 @@ export default async function LibraryPage() {
     const nextLesson = studyLessons.find((l) => statusByLessonId.get(l.id) !== "completed") ?? studyLessons[0];
     const resumeHref = nextLesson ? `/studies/${study.slug}/${nextLesson.id}` : `/studies/${study.slug}`;
 
-    const entry: LibraryEntry = { study, total, completed, resumeHref, sampleOnly, lockedCount };
-
-    if (total > 0 && completed === total) {
-      completedList.push(entry);
-    } else if (anyStarted) {
-      continuing.push(entry);
-    } else {
-      notStarted.push(entry);
-    }
+    const status: CatalogStatus =
+      total > 0 && completed === total ? "completed" : anyStarted ? "in_progress" : "not_started";
+    entries.push({ study, total, completed, resumeHref, sampleOnly, lockedCount, status });
   }
 
   const isEmpty = myStudies.length === 0;
@@ -157,44 +165,34 @@ export default async function LibraryPage() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-12">
-          <LibrarySection title="Continue" entries={continuing} showRestart={false} />
-          <LibrarySection title="Not started" entries={notStarted} showRestart={false} />
-          <LibrarySection title="Completed" entries={completedList} showRestart={true} />
-        </div>
+        <CatalogBrowser
+          initial={initialFilters}
+          showStatus
+          groups={LIBRARY_GROUPS}
+          noun="titles"
+          searchPlaceholder="Search your library"
+          gridClassName="grid gap-4 sm:grid-cols-2"
+          items={entries.map((entry) => ({
+            id: entry.study.id,
+            kind: entry.study.kind,
+            status: entry.status,
+            searchText: normalizeSearchText(
+              `${entry.study.title} ${entry.study.description ?? ""} ${studyKindLabel(entry.study.kind)}`,
+            ),
+            node: (
+              <LibraryCard
+                study={entry.study}
+                completed={entry.completed}
+                total={entry.total}
+                resumeHref={entry.resumeHref}
+                showRestart={entry.status === "completed"}
+                sampleOnly={entry.sampleOnly}
+                lockedCount={entry.lockedCount}
+              />
+            ),
+          }))}
+        />
       )}
     </div>
-  );
-}
-
-function LibrarySection({
-  title,
-  entries,
-  showRestart,
-}: {
-  title: string;
-  entries: LibraryEntry[];
-  showRestart: boolean;
-}) {
-  if (entries.length === 0) return null;
-
-  return (
-    <section>
-      <h2 className="font-display font-semibold text-xl text-ink mb-4">{title}</h2>
-      <div className="grid gap-4 sm:grid-cols-2">
-        {entries.map((entry) => (
-          <LibraryCard
-            key={entry.study.id}
-            study={entry.study}
-            completed={entry.completed}
-            total={entry.total}
-            resumeHref={entry.resumeHref}
-            showRestart={showRestart}
-            sampleOnly={entry.sampleOnly}
-            lockedCount={entry.lockedCount}
-          />
-        ))}
-      </div>
-    </section>
   );
 }

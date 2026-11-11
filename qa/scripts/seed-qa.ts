@@ -128,6 +128,7 @@ async function main() {
     .values({
       type: "study_access",
       format: "digital",
+      kind: "study",
       title: "QA Digital Study — Not Started",
       slug: "qa-digital-study-not-started",
       description: "A QA fixture study the QA user owns but has never opened.",
@@ -142,6 +143,7 @@ async function main() {
     .values({
       type: "study_access",
       format: "digital",
+      kind: "devotional",
       title: "QA Devotional — In Progress",
       slug: "qa-devotional-in-progress",
       description: "A QA fixture devotional the QA user is partway through.",
@@ -155,6 +157,7 @@ async function main() {
     .values({
       type: "study_access",
       format: "digital",
+      kind: "study",
       title: "QA Study — Completed",
       slug: "qa-study-completed",
       description: "A QA fixture study the QA user has fully finished (Start over should appear).",

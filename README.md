@@ -103,7 +103,9 @@ Cloudflare Workers via the OpenNext adapter (`@opennextjs/cloudflare`, configure
 `wrangler.jsonc`/`open-next.config.ts`). Zero egress fees, and the same Cloudflare
 account also covers Stream (video/audio) and R2 (images/files) below — one account,
 three products. `npm run preview` builds and runs the app in the real Workers runtime
-locally (via `wrangler`); `npm run cf:deploy` builds and deploys it. The bundled Worker
+locally (via `wrangler`); `npm run deploy` ships the pushed commit to staging and then
+production (`scripts/deploy/deploy.ts`: placeholder-env build, secret scan, preview checks,
+automatic rollback). The bundled Worker
 is currently ~5.2MB gzipped — over the Workers Free plan's 3MiB script limit, fine on
 the $5/mo Paid plan — see BUILD_TASKS.md's "Known gaps" for the tradeoff.
 

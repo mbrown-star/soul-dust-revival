@@ -4,6 +4,8 @@ import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
 import { productEyebrowLabel } from "@/lib/commerce/productEyebrow";
 import { CoverThumbnail } from "@/components/commerce/CoverThumbnail";
+import { CatalogBrowser } from "@/components/catalog/CatalogBrowser";
+import { normalizeSearchText, parseCatalogFilters, type CatalogSearchParams } from "@/lib/catalog/filter";
 
 // Rendered dynamically per-request rather than statically at build time —
 // this reads live product/post data an admin can change anytime, and a
@@ -15,7 +17,8 @@ export const metadata = {
   title: "Books & Studies",
 };
 
-export default async function BooksPage() {
+export default async function BooksPage({ searchParams }: { searchParams: Promise<CatalogSearchParams> }) {
+  const initialFilters = parseCatalogFilters(await searchParams);
   const db = await getDb();
   const allProducts = await db
     .select()
@@ -35,36 +38,39 @@ export default async function BooksPage() {
       {allProducts.length === 0 ? (
         <p className="font-serif text-moss">New studies and books are on the way.</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
-          {allProducts.map((p) => (
-            <Link
-              key={p.id}
-              href={`/store/${p.slug}`}
-              className="group focus:outline-none focus:ring-2 focus:ring-ink rounded-lg"
-            >
-              <div className="mb-3">
-                <CoverThumbnail
-                  imageUrl={p.imageUrl}
-                  imageAlt={p.imageAlt}
-                  imageWidth={p.imageWidth}
-                  imageHeight={p.imageHeight}
-                  sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                />
-              </div>
-              <p className="font-sans text-xs uppercase tracking-wide text-moss mb-1">
-                {productEyebrowLabel({
-                  type: p.type,
-                  kind: p.kind,
-                  format: p.format,
-                })}
-              </p>
-              <h2 className="font-display font-semibold text-ink group-hover:text-moss">
-                {p.title}
-              </h2>
-              <p className="font-sans text-sm text-moss mt-1">${(p.priceCents / 100).toFixed(2)}</p>
-            </Link>
-          ))}
-        </div>
+        <CatalogBrowser
+          initial={initialFilters}
+          noun="titles"
+          searchPlaceholder="Search books, studies and devotionals"
+          gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 items-start"
+          items={allProducts.map((p) => {
+            const eyebrow = productEyebrowLabel({ type: p.type, kind: p.kind, format: p.format });
+            return {
+              id: p.id,
+              kind: p.kind,
+              searchText: normalizeSearchText(`${p.title} ${p.description ?? ""} ${eyebrow}`),
+              node: (
+                <Link
+                  href={`/store/${p.slug}`}
+                  className="group block focus:outline-none focus:ring-2 focus:ring-ink rounded-lg"
+                >
+                  <div className="mb-3">
+                    <CoverThumbnail
+                      imageUrl={p.imageUrl}
+                      imageAlt={p.imageAlt}
+                      imageWidth={p.imageWidth}
+                      imageHeight={p.imageHeight}
+                      sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                    />
+                  </div>
+                  <p className="font-sans text-xs uppercase tracking-wide text-moss mb-1">{eyebrow}</p>
+                  <h2 className="font-display font-semibold text-ink group-hover:text-moss">{p.title}</h2>
+                  <p className="font-sans text-sm text-moss mt-1">${(p.priceCents / 100).toFixed(2)}</p>
+                </Link>
+              ),
+            };
+          })}
+        />
       )}
     </div>
   );

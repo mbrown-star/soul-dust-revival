@@ -52,6 +52,34 @@ test.describe("My Library / entitlements", () => {
       await expect(notStartedSection.getByRole("button", { name: /start over/i })).toHaveCount(0);
     });
 
+    test("Status and Type filters and search narrow the library", async ({ page }) => {
+      await page.goto("/library");
+      const status = page.getByRole("group", { name: "Status" });
+      const type = page.getByRole("group", { name: "Type" });
+
+      await status.getByRole("button", { name: /^Completed/ }).click();
+      await expect(page.getByText("QA Study — Completed")).toBeVisible();
+      await expect(page.getByText("QA Devotional — In Progress")).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "Continue" })).toHaveCount(0);
+      await expect(page).toHaveURL(/status=completed/);
+
+      await status.getByRole("button", { name: /^All/ }).click();
+      await type.getByRole("button", { name: /^Devotionals/ }).click();
+      await expect(page.getByText("QA Devotional — In Progress")).toBeVisible();
+      await expect(page.getByText("QA Study — Completed")).toHaveCount(0);
+      await expect(page.getByText("QA Digital Study — Not Started")).toHaveCount(0);
+
+      await type.getByRole("button", { name: /^All/ }).click();
+      await page.getByRole("searchbox", { name: "Search" }).fill("not started");
+      await expect(page.getByText("QA Digital Study — Not Started")).toBeVisible();
+      await expect(page.getByText("QA Study — Completed")).toHaveCount(0);
+
+      // A filter in the URL arrives already applied.
+      await page.goto("/library?status=in_progress");
+      await expect(page.getByText("QA Devotional — In Progress")).toBeVisible();
+      await expect(page.getByText("QA Study — Completed")).toHaveCount(0);
+    });
+
     test("clicking a gated study slug that isn't entitled yet redirects to its product page, not a generic error", async ({ page }) => {
       // qa-bundle-study is real/published but qa-user has no entitlement to its
       // linked product (qa-bundle-both-formats) yet -- see qa/CONVENTIONS.md.

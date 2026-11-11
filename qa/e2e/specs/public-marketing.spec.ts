@@ -47,6 +47,32 @@ test.describe("/store listing", () => {
     await expect(body).not.toContainText("QA Inactive Product");
   });
 
+  test("Type filter and search narrow the listing and stay in the URL", async ({ page }) => {
+    await page.goto("/store");
+    const type = page.getByRole("group", { name: "Type" });
+
+    await type.getByRole("button", { name: /^Devotionals/ }).click();
+    await expect(page.getByText("QA Devotional — In Progress")).toBeVisible();
+    await expect(page.getByText("QA Physical Book — Amazon Only")).toHaveCount(0);
+    await expect(page.getByText(/Showing 1 of \d+ titles/)).toBeVisible();
+    await expect(page).toHaveURL(/type=devotional/);
+
+    // Reloading keeps the filter (the server reads the same URL).
+    await page.reload();
+    await expect(type.getByRole("button", { name: /^Devotionals/ })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByText("QA Physical Book — Amazon Only")).toHaveCount(0);
+
+    await type.getByRole("button", { name: /^All/ }).click();
+    await page.getByRole("searchbox", { name: "Search" }).fill("amazon only");
+    await expect(page.getByText("QA Physical Book — Amazon Only")).toBeVisible();
+    await expect(page.getByText("QA Physical Book — Amazon + Stripe")).toHaveCount(0);
+
+    await page.getByRole("searchbox", { name: "Search" }).fill("no such title anywhere");
+    await expect(page.getByText("Nothing matches those filters.")).toBeVisible();
+    await page.getByRole("button", { name: "Clear filters" }).first().click();
+    await expect(page.getByText("QA Physical Book — Amazon + Stripe")).toBeVisible();
+  });
+
   test("the inactive product's own page 404s even if visited directly by slug", async ({ page }) => {
     const res = await page.goto("/store/qa-inactive-product");
     expect(res?.status()).toBe(404);

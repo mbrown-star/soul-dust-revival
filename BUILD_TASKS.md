@@ -139,6 +139,17 @@ what's left, roughly in the order they need doing.
 
 ## 4. Deployment
 
+> **Use `npm run deploy`** (`scripts/deploy/deploy.ts`, since 2026-11-11). It does the
+> safe procedure described in this section for you: a clean worktree of the pushed
+> commit, a placeholder `.env.local` with only the public build-time values and each
+> site's hostnames and launch mode, a scan of the bundle for every real secret,
+> an inactive upload checked on its preview link (pages, sneak-peek gates, the
+> app-host redirect, guest 403s, a real cover through `/_next/image`), then the
+> switch, a live re-check, and an automatic rollback on failure. `npm run cf:deploy`
+> now runs the same script; the old raw `opennextjs-cloudflare build && deploy`
+> (which would bake every secret in `.env.local` into the Worker) is gone. The
+> warning below explains why the placeholder env matters.
+
 > ⚠️ **Read this before your first real `npm run cf:deploy`.** `opennextjs-cloudflare
 > build` reads whatever `.env`/`.env.local` is present at build time and bakes its
 > *entire* contents — every secret, not just `NEXT_PUBLIC_*` ones — as plaintext into
@@ -631,6 +642,7 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- **2026-11-11 — `npm run deploy` ships to both sites with checks and automatic rollback.** Builds the pushed commit in a clean worktree with a placeholder env, refuses a bundle that is missing a public build value or contains any real secret, uploads an inactive version, checks it on its preview link (pages, sneak-peek gates, guest 403s, a real cover image), switches traffic, re-checks live and rolls back on failure. Dry-run on both sites passed. `cf:deploy` now runs it. See CLAUDE.md's same-dated entry.
 - **2026-11-11 — Upload size caps, enforced by R2.** Every direct-to-R2 upload link is now signed for the file's exact byte count, so storage itself refuses anything bigger or smaller than what the server agreed to sign. Caps (`lib/uploads/limits.ts`): images 20 MB, captions 2 MB, leader PDFs 100 MB, cover PDF 25 MB, cover crops 30 MB; the admin forms say so plainly when a file is over. The same change makes the server choose every file name (the image and leader-PDF routes used to take one from the browser), closing the two upload findings deferred since 2026-11-03. Product, bundle, social and leader-PDF uploads now also show an error when an upload fails, instead of failing silently. Checked live on staging (real form upload, oversize refused in the page and by the server, a wrong-size PUT refused by R2). Deployed to staging (`00883004`) and production (`1319cc0f`). **The same deploy fixed cover images, broken on both sites since `a322659d`** (a deploy-helper bug left `R2_PUBLIC_BASE_URL` out of the build), after the first production attempt (`2531be91`) returned 500s for about six minutes and was rolled back. See CLAUDE.md's same-dated entry.
 - **2026-11-11 — No more 200 MB limit on video/audio uploads.** Uploads now use Cloudflare Stream's resumable (tus) upload: any file up to 30 GB and up to 4 hours long, sent in 50 MB chunks. A dropped connection retries and continues, and choosing the same file again after a reload continues the upload instead of restarting it. Confirmed live with a 210 MB upload reloaded mid-way. Deployed to staging (`457cb48d`) and production (`4926de03`). See CLAUDE.md's same-dated entry.
 - **2026-11-11 — Draft and publish for live lessons.** Edits to a published lesson now save as a draft. Readers keep the published version until the admin clicks **Publish changes**, can be previewed with "Preview as reader" (`?draft=1`, admins only), and can be undone with **Discard changes**. The lesson list shows "Unpublished changes" badges. Migration `0013` is additive (`lessons.published_content`, `lessons.has_draft_changes`, `content_blocks.removed_at`); no backfill, since a lesson is snapshotted on its first edit after this ships. Title, Published, Free sample and order still save live. **Maintenance scripts** that write `content_blocks` directly (`reprocess-study-lessons`, the backfills) change only the working copy and don't set the "Unpublished changes" flag, so a published lesson they touch won't show the change, and the builder won't say so, until someone publishes that lesson. After running one, open each affected lesson, check it in Preview, and use Publish changes. Migration applied to the real database on the user's go-ahead; deployed to staging (`9d8525e1`) and production (`5c105189`), and the full edit → preview → publish → discard flow confirmed live on staging. See CLAUDE.md's same-dated entry.
