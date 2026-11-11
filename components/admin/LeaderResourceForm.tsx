@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { RichTextEditor } from "./RichTextEditor";
-import { IMMUTABLE_CACHE_CONTROL } from "@/lib/r2/cacheControl";
+import { UploadError, uploadFileToR2 } from "@/lib/r2/browserUpload";
+import { RESOURCE_PDF_UPLOAD_MAX_BYTES } from "@/lib/uploads/limits";
 import { useSavedIndicator } from "@/lib/hooks/useSavedIndicator";
 
 type ResourceFormValues = {
@@ -36,20 +37,20 @@ export function LeaderResourceForm({ initial }: { initial: ResourceFormValues })
       return;
     }
     setUploading(true);
-    const key = `leader-resources/${crypto.randomUUID()}.pdf`;
-    const res = await fetch("/api/admin/leader-file-upload-url", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key, contentType: "application/pdf" }),
-    });
-    const { uploadUrl, publicUrl } = (await res.json()) as { uploadUrl: string; publicUrl: string };
-    await fetch(uploadUrl, {
-      method: "PUT",
-      body: file,
-      headers: { "Content-Type": "application/pdf", "Cache-Control": IMMUTABLE_CACHE_CONTROL },
-    });
-    await save({ fileUrl: publicUrl, fileName: file.name });
-    setUploading(false);
+    try {
+      const publicUrl = await uploadFileToR2({
+        endpoint: "/api/admin/leader-file-upload-url",
+        request: {},
+        file,
+        contentType: "application/pdf",
+        maxBytes: RESOURCE_PDF_UPLOAD_MAX_BYTES,
+      });
+      await save({ fileUrl: publicUrl, fileName: file.name });
+    } catch (err) {
+      window.alert(err instanceof UploadError ? err.message : "Couldn't upload that PDF. Please try again.");
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (

@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { defaultCoverAltText } from "@/lib/images/coverAltText";
 import { readImageDimensions } from "@/lib/images/readImageDimensions";
 import { CoverUploadError, uploadBookCoverPdf, type UploadedBookCover } from "@/lib/images/uploadBookCover";
-import { IMMUTABLE_CACHE_CONTROL } from "@/lib/r2/cacheControl";
+import { UploadError, uploadFileToR2 } from "@/lib/r2/browserUpload";
+import { IMAGE_UPLOAD_MAX_BYTES } from "@/lib/uploads/limits";
 import { useSavedIndicator } from "@/lib/hooks/useSavedIndicator";
 
 // Keeps only digits and at most one decimal point -- lets an admin type a
@@ -128,8 +129,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
 
   async function handleImageUpload(file: File) {
     setUploading(true);
-    const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
-    const key = `products/${crypto.randomUUID()}.${ext}`;
+    setUploadError(null);
 
     // There's no server-side decode step on this plain (non-PDF-split)
     // upload path -- the file goes straight to R2 via the presigned PUT
@@ -139,26 +139,25 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
     // reasonable default ratio when these are null.
     const dimensions = await readImageDimensions(file).catch(() => null);
 
-    const res = await fetch("/api/admin/upload-url", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key, contentType: file.type }),
-    });
-    const { uploadUrl, publicUrl } = (await res.json()) as { uploadUrl: string; publicUrl: string };
-
-    await fetch(uploadUrl, {
-      method: "PUT",
-      body: file,
-      headers: { "Content-Type": file.type, "Cache-Control": IMMUTABLE_CACHE_CONTROL },
-    });
-
-    setValues((v) => ({
-      ...v,
-      imageUrl: publicUrl,
-      imageWidth: dimensions?.width ?? null,
-      imageHeight: dimensions?.height ?? null,
-    }));
-    setUploading(false);
+    try {
+      const publicUrl = await uploadFileToR2({
+        endpoint: "/api/admin/upload-url",
+        request: { folder: "products" },
+        file,
+        contentType: file.type,
+        maxBytes: IMAGE_UPLOAD_MAX_BYTES,
+      });
+      setValues((v) => ({
+        ...v,
+        imageUrl: publicUrl,
+        imageWidth: dimensions?.width ?? null,
+        imageHeight: dimensions?.height ?? null,
+      }));
+    } catch (err) {
+      setUploadError(err instanceof UploadError ? err.message : "Couldn't upload that image. Please try again.");
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function handleCoverPdfUpload(file: File) {
@@ -610,6 +609,11 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
           <p role="status" aria-live="polite" className="text-sm text-moss h-5">
             {uploading ? "Uploading..." : ""}
           </p>
+          {uploadError && (
+            <p role="alert" className="text-sm text-error mt-1">
+              {uploadError}
+            </p>
+          )}
 
           {values.imageUrl && (
             <div className="mt-2">

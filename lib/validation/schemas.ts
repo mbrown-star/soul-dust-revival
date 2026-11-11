@@ -1,5 +1,13 @@
 import { z } from "zod";
 import { CONTENT_BLOCK_TYPES, fieldsOutsideType, isHttpsUrl } from "@/lib/content/blocks";
+import {
+  CAPTIONS_UPLOAD_MAX_BYTES,
+  COVER_IMAGE_UPLOAD_MAX_BYTES,
+  COVER_PDF_UPLOAD_MAX_BYTES,
+  formatMegabytes,
+  IMAGE_UPLOAD_MAX_BYTES,
+  RESOURCE_PDF_UPLOAD_MAX_BYTES,
+} from "@/lib/uploads/limits";
 
 // Media URLs end up in <img>/<video>/<audio>/<track> src attributes on the
 // reader, so only https is accepted -- z.string().url() alone would also
@@ -493,47 +501,76 @@ export const contentBlockDeleteSchema = z.object({
 });
 
 // ---------- Admin: uploads ----------
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+// Every direct-to-R2 upload link is signed for one exact byte count
+// (lib/r2/upload.ts), so `size` here is what R2 will accept, and the caps in
+// lib/uploads/limits.ts are enforced by R2 itself, not just by this schema.
+// The server always chooses the R2 key: a caller can't name the object, so it
+// can't aim an upload at an existing file or outside its folder.
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
 
-// The character allowlist alone permits "." and "/", so "../../etc/passwd"
-// passes it -- reject any ".." path segment explicitly so a crafted key
-// can't escape the intended R2 prefix.
-const r2KeySchema = z
-  .string()
-  .min(1)
-  .max(300)
-  .regex(/^[a-zA-Z0-9/_.-]+$/, "Key contains invalid characters")
-  .refine((key) => !key.split("/").includes(".."), "Key must not contain '..' path segments");
+/** The file extension each allowed image type is stored under. */
+export const IMAGE_EXTENSIONS: Record<(typeof ALLOWED_IMAGE_TYPES)[number], string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
 
-export const uploadUrlSchema = z.object({
-  key: r2KeySchema,
-  contentType: z.enum(ALLOWED_IMAGE_TYPES as [string, ...string[]]),
-});
+const uploadSizeSchema = (maxBytes: number) =>
+  z.number().int().positive().max(maxBytes, `File must be ${formatMegabytes(maxBytes)} or smaller`);
+
+// Which top-level R2 folder an image belongs in, by what it's for.
+export const IMAGE_UPLOAD_FOLDERS = ["products", "bundles", "social", "content"] as const;
+
+export const uploadUrlSchema = z
+  .object({
+    folder: z.enum(IMAGE_UPLOAD_FOLDERS),
+    contentType: z.enum(ALLOWED_IMAGE_TYPES),
+    size: uploadSizeSchema(IMAGE_UPLOAD_MAX_BYTES),
+  })
+  .strict();
 
 // What a book-cover PDF upload is for: a product keeps the source PDF and
-// both crops, a study only its front cover. Keys are always server-generated.
-export const coverUploadUrlsSchema = z.object({
-  target: z.enum(["product", "study"]),
-});
+// both crops, a study only its front cover, with each file's exact size.
+export const coverUploadUrlsSchema = z.discriminatedUnion("target", [
+  z
+    .object({
+      target: z.literal("product"),
+      sizes: z
+        .object({
+          source: uploadSizeSchema(COVER_PDF_UPLOAD_MAX_BYTES),
+          back: uploadSizeSchema(COVER_IMAGE_UPLOAD_MAX_BYTES),
+          front: uploadSizeSchema(COVER_IMAGE_UPLOAD_MAX_BYTES),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      target: z.literal("study"),
+      sizes: z.object({ front: uploadSizeSchema(COVER_IMAGE_UPLOAD_MAX_BYTES) }).strict(),
+    })
+    .strict(),
+]);
 
 // Leader resource downloads (guides, notes) — a separate, narrower allowlist
 // from the image upload endpoint above, so widening this one for PDFs
 // doesn't also widen what the general-purpose image endpoint will accept.
-const ALLOWED_RESOURCE_FILE_TYPES = ["application/pdf"];
-
-export const resourceFileUploadUrlSchema = z.object({
-  key: r2KeySchema,
-  contentType: z.enum(ALLOWED_RESOURCE_FILE_TYPES as [string, ...string[]]),
-});
+export const resourceFileUploadUrlSchema = z
+  .object({
+    contentType: z.literal("application/pdf"),
+    size: uploadSizeSchema(RESOURCE_PDF_UPLOAD_MAX_BYTES),
+  })
+  .strict();
 
 // WebVTT captions for video blocks -- its own endpoint for the same reason
-// as resource files above. Caption uploads previously went through
-// uploadUrlSchema, whose image-only allowlist rejected text/vtt, so they
-// could never succeed. The server picks the R2 key, so a caller can't aim
-// the upload at an existing object.
-export const captionsUploadUrlSchema = z.object({
-  contentType: z.literal("text/vtt"),
-});
+// as resource files above.
+export const captionsUploadUrlSchema = z
+  .object({
+    contentType: z.literal("text/vtt"),
+    size: uploadSizeSchema(CAPTIONS_UPLOAD_MAX_BYTES),
+  })
+  .strict();
 
 // ---------- Admin: user roles ----------
 export const roleUpdateSchema = z.object({

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/guard";
-import { createPresignedUploadUrl } from "@/lib/r2/upload";
+import { createPresignedUploadUrl, invalidUploadResponse } from "@/lib/r2/upload";
 import { captionsUploadUrlSchema } from "@/lib/validation/schemas";
 
 // Presigned PUT for a video block's WebVTT captions file -- separate from
@@ -9,12 +9,10 @@ export async function POST(req: NextRequest) {
   const session = await requireAdmin();
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const parsed = captionsUploadUrlSchema.safeParse(await req.json());
-  if (!parsed.success) {
-    return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
-  }
+  const parsed = captionsUploadUrlSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return invalidUploadResponse(parsed.error);
 
   const key = `captions/${crypto.randomUUID()}.vtt`;
-  const { uploadUrl, publicUrl } = await createPresignedUploadUrl(key, parsed.data.contentType);
+  const { uploadUrl, publicUrl } = await createPresignedUploadUrl(key, parsed.data.contentType, parsed.data.size);
   return NextResponse.json({ uploadUrl, publicUrl });
 }

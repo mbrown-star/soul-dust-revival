@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { defaultCoverAltText } from "@/lib/images/coverAltText";
 import { readImageDimensions } from "@/lib/images/readImageDimensions";
-import { IMMUTABLE_CACHE_CONTROL } from "@/lib/r2/cacheControl";
+import { UploadError, uploadFileToR2 } from "@/lib/r2/browserUpload";
+import { IMAGE_UPLOAD_MAX_BYTES } from "@/lib/uploads/limits";
 import { useSavedIndicator } from "@/lib/hooks/useSavedIndicator";
 
 // Sanitizes a price input the same way ProductForm.tsx's own price fields
@@ -84,6 +85,7 @@ export function BundleForm({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const { saved, markSaved } = useSavedIndicator();
 
   function handleTitleChange(title: string) {
@@ -96,8 +98,7 @@ export function BundleForm({
 
   async function handleImageUpload(file: File) {
     setUploading(true);
-    const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
-    const key = `bundles/${crypto.randomUUID()}.${ext}`;
+    setUploadError(null);
 
     // No server-side decode step on this upload path -- read the real
     // dimensions here, client-side, the same way ProductForm's own generic
@@ -106,16 +107,12 @@ export function BundleForm({
     const dimensions = await readImageDimensions(file).catch(() => null);
 
     try {
-      const res = await fetch("/api/admin/upload-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key, contentType: file.type }),
-      });
-      const { uploadUrl, publicUrl } = (await res.json()) as { uploadUrl: string; publicUrl: string };
-      await fetch(uploadUrl, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type, "Cache-Control": IMMUTABLE_CACHE_CONTROL },
+      const publicUrl = await uploadFileToR2({
+        endpoint: "/api/admin/upload-url",
+        request: { folder: "bundles" },
+        file,
+        contentType: file.type,
+        maxBytes: IMAGE_UPLOAD_MAX_BYTES,
       });
 
       setValues((v) => ({
@@ -127,6 +124,8 @@ export function BundleForm({
         // admin already typed, e.g. on a later re-upload of a new cover.
         imageAlt: v.imageAlt.trim() ? v.imageAlt : defaultCoverAltText(v.title, "Front"),
       }));
+    } catch (err) {
+      setUploadError(err instanceof UploadError ? err.message : "Couldn't upload that image. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -435,6 +434,11 @@ export function BundleForm({
         <p role="status" aria-live="polite" className="text-sm text-moss h-5">
           {uploading ? "Uploading..." : ""}
         </p>
+        {uploadError && (
+          <p role="alert" className="text-sm text-error mt-1">
+            {uploadError}
+          </p>
+        )}
         {values.imageUrl && (
           <div className="mt-2">
             <label htmlFor={altId} className="block text-sm font-medium mb-1">

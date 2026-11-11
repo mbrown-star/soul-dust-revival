@@ -15,8 +15,8 @@ vi.mock("./client", () => ({
 const { createPresignedUploadUrl } = await import("./upload");
 
 describe("createPresignedUploadUrl", () => {
-  it("signs the PUT with an immutable Cache-Control alongside the content type", async () => {
-    const result = await createPresignedUploadUrl("products/abc.jpg", "image/jpeg");
+  it("signs the PUT for the exact size, with an immutable Cache-Control and the content type", async () => {
+    const result = await createPresignedUploadUrl("products/abc.jpg", "image/jpeg", 12_345);
 
     expect(result).toEqual({
       uploadUrl: "https://r2.example.com/signed-put-url",
@@ -30,6 +30,7 @@ describe("createPresignedUploadUrl", () => {
       Key: "products/abc.jpg",
       ContentType: "image/jpeg",
       CacheControl: "public, max-age=31536000, immutable",
+      ContentLength: 12_345,
     });
     expect(options).toEqual({ expiresIn: 300 });
   });

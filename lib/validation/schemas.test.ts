@@ -495,45 +495,28 @@ describe("contentBlockCreateSchema / contentBlockUpdateSchema", () => {
 });
 
 describe("uploadUrlSchema", () => {
-  it("accepts an allowlisted image content type", () => {
-    expect(uploadUrlSchema.safeParse({ key: "products/abc.jpg", contentType: "image/jpeg" }).success).toBe(
-      true
-    );
+  it("accepts an allowlisted image type, a known folder and a size", () => {
+    expect(uploadUrlSchema.safeParse({ folder: "products", contentType: "image/jpeg", size: 1000 }).success).toBe(true);
   });
 
   it("rejects a non-allowlisted content type (e.g. svg, html, executable)", () => {
     for (const contentType of ["image/svg+xml", "text/html", "application/octet-stream", "application/pdf"]) {
-      expect(uploadUrlSchema.safeParse({ key: "k", contentType }).success).toBe(false);
+      expect(uploadUrlSchema.safeParse({ folder: "products", contentType, size: 1000 }).success).toBe(false);
     }
   });
 
-  it("rejects a key containing path traversal characters", () => {
+  it("rejects a client-chosen key: the server names every object", () => {
     expect(
-      uploadUrlSchema.safeParse({ key: "../../etc/passwd", contentType: "image/png" }).success
-    ).toBe(false);
-  });
-
-  it("rejects a key with spaces or other disallowed characters", () => {
-    expect(uploadUrlSchema.safeParse({ key: "my file.png", contentType: "image/png" }).success).toBe(
-      false
-    );
-  });
-
-  it("rejects a key over the 300 char cap", () => {
-    expect(
-      uploadUrlSchema.safeParse({ key: "a".repeat(301), contentType: "image/png" }).success
+      uploadUrlSchema.safeParse({ key: "../../etc/passwd", folder: "products", contentType: "image/png", size: 10 })
+        .success
     ).toBe(false);
   });
 });
 
 describe("resourceFileUploadUrlSchema", () => {
   it("accepts application/pdf only, not image types", () => {
-    expect(
-      resourceFileUploadUrlSchema.safeParse({ key: "guides/a.pdf", contentType: "application/pdf" }).success
-    ).toBe(true);
-    expect(
-      resourceFileUploadUrlSchema.safeParse({ key: "guides/a.png", contentType: "image/png" }).success
-    ).toBe(false);
+    expect(resourceFileUploadUrlSchema.safeParse({ contentType: "application/pdf", size: 10 }).success).toBe(true);
+    expect(resourceFileUploadUrlSchema.safeParse({ contentType: "image/png", size: 10 }).success).toBe(false);
   });
 });
 
@@ -735,7 +718,7 @@ describe("content block media schemas", () => {
   });
 
   it("allows WebVTT on the captions upload endpoint, and nothing else", () => {
-    expect(captionsUploadUrlSchema.safeParse({ contentType: "text/vtt" }).success).toBe(true);
+    expect(captionsUploadUrlSchema.safeParse({ contentType: "text/vtt", size: 10 }).success).toBe(true);
     expect(captionsUploadUrlSchema.safeParse({ contentType: "image/png" }).success).toBe(false);
   });
 

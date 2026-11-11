@@ -3,7 +3,8 @@
 import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import { ALL_PLATFORMS, PLATFORM_LIMITS, PLATFORM_LABELS, SocialPlatform } from "@/lib/data/socialPlatforms";
-import { IMMUTABLE_CACHE_CONTROL } from "@/lib/r2/cacheControl";
+import { UploadError, uploadFileToR2 } from "@/lib/r2/browserUpload";
+import { IMAGE_UPLOAD_MAX_BYTES } from "@/lib/uploads/limits";
 
 type TargetConfig = {
   frequency: "once" | "daily" | "weekly";
@@ -42,6 +43,7 @@ export default function NewSocialPostPage() {
   const [drafts, setDrafts] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
   const bodyId = useId();
   const altId = useId();
   const instructionId = useId();
@@ -50,21 +52,22 @@ export default function NewSocialPostPage() {
 
   async function uploadImage(file: File) {
     setUploading(true);
-    const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
-    const key = `social/${crypto.randomUUID()}.${ext}`;
-    const res = await fetch("/api/admin/upload-url", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key, contentType: file.type }),
-    });
-    const { uploadUrl, publicUrl } = (await res.json()) as { uploadUrl: string; publicUrl: string };
-    await fetch(uploadUrl, {
-      method: "PUT",
-      body: file,
-      headers: { "Content-Type": file.type, "Cache-Control": IMMUTABLE_CACHE_CONTROL },
-    });
-    setImageUrl(publicUrl);
-    setUploading(false);
+    setImageError(null);
+    try {
+      setImageUrl(
+        await uploadFileToR2({
+          endpoint: "/api/admin/upload-url",
+          request: { folder: "social" },
+          file,
+          contentType: file.type,
+          maxBytes: IMAGE_UPLOAD_MAX_BYTES,
+        })
+      );
+    } catch (err) {
+      setImageError(err instanceof UploadError ? err.message : "Couldn't upload that image. Please try again.");
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function getSuggestions() {
@@ -208,6 +211,7 @@ export default function NewSocialPostPage() {
         )}
         <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])} />
         <p role="status" aria-live="polite" className="text-sm text-moss h-5">{uploading ? "Uploading..." : ""}</p>
+        {imageError && <p role="alert" className="text-sm text-error mt-1">{imageError}</p>}
         {imageUrl && (
           <div className="mt-2">
             <label htmlFor={altId} className="block text-sm font-medium mb-1">Alt text</label>

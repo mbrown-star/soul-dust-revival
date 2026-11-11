@@ -1,12 +1,8 @@
 import { CoverTooLargeError, NoCoverImageFoundError } from "./bookCover";
-import { IMMUTABLE_CACHE_CONTROL } from "@/lib/r2/cacheControl";
-
-// Same ceiling the old server-side cover routes enforced.
-const MAX_COVER_PDF_BYTES = 25 * 1024 * 1024;
+import { putToSlot, requestUploadSlots, UploadError, type UploadSlot } from "@/lib/r2/browserUpload";
+import { COVER_IMAGE_UPLOAD_MAX_BYTES, COVER_PDF_UPLOAD_MAX_BYTES, oversizeMessage } from "@/lib/uploads/limits";
 
 export type CoverUploadTarget = "product" | "study";
-
-type UploadSlot = { uploadUrl: string; publicUrl: string };
 
 export type UploadedBookCover = {
   coverPdfUrl: string | null;
@@ -22,12 +18,11 @@ export type UploadedBookCover = {
 export class CoverUploadError extends Error {}
 
 async function put(slot: UploadSlot, body: Blob, contentType: string) {
-  const res = await fetch(slot.uploadUrl, {
-    method: "PUT",
-    body,
-    headers: { "Content-Type": contentType, "Cache-Control": IMMUTABLE_CACHE_CONTROL },
-  });
-  if (!res.ok) throw new CoverUploadError("Upload to storage failed. Please try again.");
+  try {
+    await putToSlot(slot, body, contentType);
+  } catch {
+    throw new CoverUploadError("Upload to storage failed. Please try again.");
+  }
 }
 
 /**
@@ -37,7 +32,8 @@ async function put(slot: UploadSlot, body: Blob, contentType: string) {
  */
 export async function uploadBookCoverPdf(file: File, target: CoverUploadTarget): Promise<UploadedBookCover> {
   if (file.type !== "application/pdf") throw new CoverUploadError("File must be a PDF.");
-  if (file.size > MAX_COVER_PDF_BYTES) throw new CoverUploadError("File must be under 25MB.");
+  const pdfTooBig = oversizeMessage(file.size, COVER_PDF_UPLOAD_MAX_BYTES);
+  if (pdfTooBig) throw new CoverUploadError(pdfTooBig);
 
   // Loaded on demand so pdf.js only ships to an admin actually uploading a cover.
   const { splitBookCoverInBrowser } = await import("./splitBookCoverInBrowser");
@@ -51,13 +47,22 @@ export async function uploadBookCoverPdf(file: File, target: CoverUploadTarget):
     throw new CoverUploadError("Couldn't read that file as a cover PDF.");
   }
 
-  const res = await fetch("/api/admin/cover-upload-urls", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ target }),
-  });
-  if (!res.ok) throw new CoverUploadError("Couldn't start the upload. Please try again.");
-  const slots = (await res.json()) as { source?: UploadSlot; back?: UploadSlot; front: UploadSlot };
+  const cropTooBig = [split.front, split.back]
+    .map((crop) => oversizeMessage(crop.size, COVER_IMAGE_UPLOAD_MAX_BYTES))
+    .find(Boolean);
+  if (cropTooBig) throw new CoverUploadError(`A cover image made from this PDF is too large. ${cropTooBig}`);
+
+  // Each link is signed for that file's exact size (lib/r2/upload.ts).
+  const sizes =
+    target === "product"
+      ? { source: file.size, back: split.back.size, front: split.front.size }
+      : { front: split.front.size };
+  let slots: { source?: UploadSlot; back?: UploadSlot; front: UploadSlot };
+  try {
+    slots = await requestUploadSlots("/api/admin/cover-upload-urls", { target, sizes });
+  } catch (err) {
+    throw new CoverUploadError(err instanceof UploadError ? err.message : "Couldn't start the upload. Please try again.");
+  }
 
   await Promise.all([
     slots.source ? put(slots.source, file, "application/pdf") : null,

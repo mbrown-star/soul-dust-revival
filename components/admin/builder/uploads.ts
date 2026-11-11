@@ -1,93 +1,35 @@
 import { browserTusTransport, forgetUpload, rememberUpload, savedUpload, tusUpload, TusUploadError } from "./tusUpload";
-import { IMMUTABLE_CACHE_CONTROL } from "@/lib/r2/cacheControl";
+import { errorMessage, uploadFileToR2, type UploadProgress } from "@/lib/r2/browserUpload";
+import { CAPTIONS_UPLOAD_MAX_BYTES, IMAGE_UPLOAD_MAX_BYTES } from "@/lib/uploads/limits";
 
 // Client-side upload helpers for the builder. Each checks every response and
 // throws a readable Error, so a failed upload surfaces in the UI instead of
 // leaving an "Uploading..." state stuck forever.
 
-async function errorMessage(res: Response, fallback: string): Promise<string> {
-  try {
-    const data = (await res.json()) as { message?: string; error?: string };
-    return data.message ?? fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function extensionOf(file: File, fallback: string) {
-  return file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || fallback;
-}
-
-/** Called with a 0-100 percentage as the file's bytes go out. */
-export type UploadProgress = (percent: number) => void;
-
-/**
- * Sends a request body with upload progress. fetch() can't report upload
- * progress, so this uses XMLHttpRequest; it resolves with the status code.
- */
-function sendWithProgress(
-  method: "PUT" | "POST",
-  url: string,
-  body: Blob | FormData,
-  headers: Record<string, string>,
-  onProgress?: UploadProgress
-): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open(method, url);
-    for (const [name, value] of Object.entries(headers)) xhr.setRequestHeader(name, value);
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
-    };
-    xhr.onload = () => resolve(xhr.status);
-    xhr.onerror = () => reject(new Error("The upload didn't complete. Check your connection and try again."));
-    xhr.send(body);
-  });
-}
-
-async function presignedPut(
-  endpoint: string,
-  key: string | null,
-  file: File,
-  contentType: string,
-  onProgress?: UploadProgress
-): Promise<string> {
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(key ? { key, contentType } : { contentType }),
-  });
-  if (!res.ok) throw new Error(await errorMessage(res, "This file type can't be uploaded here."));
-  const { uploadUrl, publicUrl } = (await res.json()) as { uploadUrl: string; publicUrl: string };
-
-  // Cache-Control must match what the server signed (lib/r2/upload.ts).
-  const status = await sendWithProgress(
-    "PUT",
-    uploadUrl,
-    file,
-    { "Content-Type": contentType, "Cache-Control": IMMUTABLE_CACHE_CONTROL },
-    onProgress
-  );
-  if (status < 200 || status >= 300) throw new Error("The upload didn't complete. Check your connection and try again.");
-  return publicUrl;
-}
-
 export const IMAGE_UPLOAD_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 export async function uploadImage(file: File, onProgress?: UploadProgress): Promise<string> {
   if (!IMAGE_UPLOAD_TYPES.includes(file.type)) throw new Error("Use a JPEG, PNG, WebP, or GIF image.");
-  return presignedPut(
-    "/api/admin/upload-url",
-    `content/${crypto.randomUUID()}.${extensionOf(file, "img")}`,
+  return uploadFileToR2({
+    endpoint: "/api/admin/upload-url",
+    request: { folder: "content" },
     file,
-    file.type,
-    onProgress
-  );
+    contentType: file.type,
+    maxBytes: IMAGE_UPLOAD_MAX_BYTES,
+    onProgress,
+  });
 }
 
 export async function uploadCaptions(file: File, onProgress?: UploadProgress): Promise<string> {
   if (!file.name.toLowerCase().endsWith(".vtt")) throw new Error("Captions must be a WebVTT (.vtt) file.");
-  return presignedPut("/api/admin/captions-upload-url", null, file, "text/vtt", onProgress);
+  return uploadFileToR2({
+    endpoint: "/api/admin/captions-upload-url",
+    request: {},
+    file,
+    contentType: "text/vtt",
+    maxBytes: CAPTIONS_UPLOAD_MAX_BYTES,
+    onProgress,
+  });
 }
 
 // Video and audio go to Cloudflare Stream as resumable (tus) uploads: any

@@ -246,26 +246,30 @@ builder's "Use a link" option):
 - Caption files now upload through their own `/api/admin/captions-upload-url` (`text/vtt`
   only, and the **server** picks the R2 key, so a caller can't aim the upload at an existing
   object). They previously went through the image-only `/api/admin/upload-url`, whose
-  allowlist rejected `text/vtt`, so caption uploads could never succeed. (The older
-  image/PDF upload routes still accept a client-chosen key -- a known, deferred finding; see CLAUDE.md's 2026-11-03 test-suite entry.)
+  allowlist rejected `text/vtt`, so caption uploads could never succeed.
 
 ## File uploads
 - **Product/study/lesson images**: only `image/jpeg`, `image/png`, `image/webp`,
   `image/gif` are accepted (enforced server-side in `uploadUrlSchema`) — the presigned
   R2 URL is never issued for other content types.
-- **Upload keys**: the study document importer (`app/api/admin/studies/import/route.ts`)
-  always generates its own `crypto.randomUUID()` key server-side. The general-purpose
-  `uploadUrlSchema`/`resourceFileUploadUrlSchema` (used by product/study/lesson image
-  uploads and leader-resource PDFs), however, still accept a client-supplied key — the
-  UI always builds a safe `{random-uuid}.{extension}` key today, but the schema itself
-  only enforces a character allowlist plus a refine rejecting `..` path segments
-  (closing literal path traversal), not server-side key generation. **Known gap**: this
-  means any other caller hitting these routes directly (requires `requireAdmin()` first)
-  could overwrite an arbitrary existing R2 key. Fixing this properly means generating
-  the key server-side in the route and ignoring any client-supplied key entirely — not
-  done yet, flagged in CLAUDE.md's 2026-11-03 security-review entry pending a decision.
-- Direct-to-R2 presigned PUT URLs (`lib/r2/upload.ts`) have no enforced upload size cap
-  — also a known gap, see the same CLAUDE.md entry.
+- **Upload keys are always server-generated** (as of 2026-11-11). Every upload-link
+  route picks its own `crypto.randomUUID()` key: `/api/admin/upload-url` takes only a
+  `folder` from a fixed list (`products`, `bundles`, `social`, `content`) and stores
+  `{folder}/{uuid}.{extension from the content type}`; `/api/admin/leader-file-upload-url`
+  stores `leader-resources/{uuid}.pdf`; captions and covers already did this. The
+  schemas are `.strict()`, so a request that still sends a `key` is refused, and no
+  caller can name, overwrite or escape into an existing object. (Until this date the
+  image and leader-PDF routes accepted a client-chosen key, guarded only by a character
+  allowlist and a `..` check.)
+- **Upload size caps are enforced by R2 itself** (as of 2026-11-11). Each route's Zod
+  schema requires the file's exact `size` and caps it (`lib/uploads/limits.ts`: images
+  20 MB, captions 2 MB, leader PDFs 100 MB, cover PDF 25 MB, cover crops 30 MB), and
+  `createPresignedUploadUrl` signs that `ContentLength` into the link
+  (`X-Amz-SignedHeaders=content-length;host`). Checked against the real bucket: a link
+  signed for 100 bytes refused bodies of 99, 101 and 5,000 bytes (403) and a chunked
+  upload with no Content-Length (403), and stored only the exact 100. So a link can't
+  be reused for a bigger file, and the cap holds even for a caller who skips the admin
+  UI. The browser checks the same caps first only to show a clear message.
 - **Video/audio uploads to Cloudflare Stream** (`/api/admin/stream-upload-url`, `lib/stream/upload.ts`): as of 2026-11-11 these use Stream's resumable (tus) direct creator upload.
   - **The server's part:** the route is admin-only and Zod-validated (`streamUploadSchema`: `size` up to Stream's 30 GB, plus a filename). It reserves one upload of exactly that size, using the Stream API token, which stays server-side. The reservation is private (`requiresignedurls`), capped at 4 hours of media (`maxDurationSeconds`), and expires in 6 hours. The browser gets back only the one-time tus URL and the video's uid.
   - **The browser's part** (`components/admin/builder/tusUpload.ts`): it sends the bytes straight to Stream, so they never pass through our server.
@@ -284,8 +288,9 @@ builder's "Use a link" option):
   `lib/images/bookCover.ts`: ~60in per side, 40 megapixels in the browser) now run
   client-side, so they protect the admin's tab rather than the server; and the
   stored crops are whatever the admin's browser produced. Both are acceptable
-  because only an admin can obtain the upload links, and the same presigned-PUT
-  size-cap gap above already applies to every admin image upload. The stored source
+  because only an admin can obtain the upload links, and each link is signed for its
+  file's exact size (the source PDF's cap and the crops' cap are enforced by R2, see
+  above). The stored source
   PDF is still parsed server-side by `scripts/reprocess-book-covers.ts` (Node, run
   by hand), which treats it as untrusted input with the same guards.
 
