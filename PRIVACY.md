@@ -88,6 +88,23 @@ implementation.
     actually revokes the ability to log in, distinct from the DB-side anonymization.
   - An admin cannot delete their own account if they're the only admin — same
     lockout-prevention rationale as the "can't change your own role" guard.
+  - Since 2026-11-11 (`lib/account/deleteAccount.ts`, shared with admin deletion
+    below), the `users` row is **deleted outright when nothing must be kept** (no
+    orders, blog or social posts); it's only anonymized when such rows point at it.
+- **Admin deletion of another account** (`DELETE /api/admin/users`, the Delete button
+  on `/admin/users`): the same deletion as above. Admins can't delete themselves there
+  (use `/account`) or another admin (change their role first). Anonymized accounts are
+  hidden from the admin users list.
+- **Blocked emails** (`blocked_emails`, `/admin/users`): an admin can block an email
+  from signing in or signing up, optionally while deleting the account. What's kept:
+  the email (lowercased), an optional admin-only reason, the blocking admin's id, and
+  the date. To enforce the block, Supabase Auth also keeps a **banned account for that
+  email** — the person's own (with its data, when an existing user is blocked without
+  being deleted) or a placeholder with no data. This is retention of an email address
+  for abuse prevention (legitimate interest), and it outlives an account deletion by
+  design. Unblocking deletes the row and the placeholder (or lifts the ban). The
+  privacy policy doesn't mention blocking yet; add a line before relying on it for
+  real enforcement.
 - **A retention window on `login_events`** — `POST /api/cron/prune-login-events`
   deletes rows older than 13 months (covers a full year of year-over-year engagement
   reporting at `/admin/reports/engagement` plus a one-month buffer), addressing the

@@ -2,13 +2,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import { NextRequest } from "next/server";
 import { getDb, type Db } from "@/lib/db/client";
-import { loginEvents, users } from "@/lib/db/schema";
+import { blockedEmails, loginEvents, users } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 
-vi.mock("@/lib/auth/session", () => ({ getSession: vi.fn() }));
+// Supabase Auth is mocked (a genuine external service); the session check
+// itself, including the blocked-email lookup, runs for real against the
+// local database.
+const getUser = vi.fn();
+const signOut = vi.fn();
+vi.mock("@/lib/supabase/server", () => ({
+  createSupabaseServerClient: async () => ({ auth: { getUser, signOut } }),
+}));
 
 const { POST } = await import("./route");
-const { getSession } = await import("@/lib/auth/session");
+
+function signedInAs(session: { userId: string; email: string } | null) {
+  getUser.mockResolvedValue({ data: { user: session ? { id: session.userId, email: session.email } : null } });
+}
 
 function request() {
   return new NextRequest("https://example.com/api/auth/login-recorded", {
@@ -34,7 +44,7 @@ describe("POST /api/auth/login-recorded", () => {
   });
 
   it("rejects a request with no session", async () => {
-    vi.mocked(getSession).mockResolvedValue(null);
+    signedInAs(null);
     const res = await POST(request());
     expect(res.status).toBe(401);
   });
@@ -45,7 +55,7 @@ describe("POST /api/auth/login-recorded", () => {
   it("creates the users row and a login event for a brand-new account", async () => {
     const userId = randomUUID();
     userIds.push(userId);
-    vi.mocked(getSession).mockResolvedValue({ userId, email: `new-${userId}@example.com` });
+    signedInAs({ userId, email: `new-${userId}@example.com` });
 
     const res = await POST(request());
 
@@ -60,7 +70,7 @@ describe("POST /api/auth/login-recorded", () => {
   it("is safe to call again: keeps one users row, adds one login event per sign-in", async () => {
     const userId = randomUUID();
     userIds.push(userId);
-    vi.mocked(getSession).mockResolvedValue({ userId, email: `again-${userId}@example.com` });
+    signedInAs({ userId, email: `again-${userId}@example.com` });
 
     await POST(request());
     const res = await POST(request());
@@ -78,12 +88,33 @@ describe("POST /api/auth/login-recorded", () => {
     userIds.push(existing!.id);
     const newId = randomUUID();
     userIds.push(newId);
-    vi.mocked(getSession).mockResolvedValue({ userId: newId, email });
+    signedInAs({ userId: newId, email });
 
     const res = await POST(request());
 
     expect(res.status).toBe(409);
     expect(await db.query.users.findFirst({ where: eq(users.id, newId) })).toBeUndefined();
     expect(await db.select().from(loginEvents).where(eq(loginEvents.userId, newId))).toHaveLength(0);
+  });
+
+  it("refuses a blocked email: ends the session, creates nothing, says why", async () => {
+    const userId = randomUUID();
+    userIds.push(userId);
+    const email = `blocked-${userId}@example.com`;
+    // Stored lowercased; the session's email may differ in case.
+    await db.insert(blockedEmails).values({ email });
+    signedInAs({ userId, email: email.toUpperCase() });
+
+    try {
+      const res = await POST(request());
+
+      expect(res.status).toBe(403);
+      expect(await res.json()).toMatchObject({ blocked: true });
+      expect(signOut).toHaveBeenCalled();
+      expect(await db.query.users.findFirst({ where: eq(users.id, userId) })).toBeUndefined();
+      expect(await db.select().from(loginEvents).where(eq(loginEvents.userId, userId))).toHaveLength(0);
+    } finally {
+      await db.delete(blockedEmails).where(eq(blockedEmails.email, email));
+    }
   });
 });

@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db/client";
 import { users } from "@/lib/db/schema";
-import { desc } from "drizzle-orm";
+import { desc, not } from "drizzle-orm";
+import { isAnonymizedEmailSql } from "@/lib/account/deleteAccount";
 
 // Shared by app/admin/users/page.tsx and app/api/admin/users/route.ts GET,
 // which previously duplicated this exact query. Capped rather than
@@ -22,6 +23,8 @@ export async function listUsersForAdmin() {
       createdAt: users.createdAt,
     })
     .from(users)
+    // A deleted account kept only for its orders isn't a user any more.
+    .where(not(isAnonymizedEmailSql()))
     .orderBy(desc(users.createdAt))
     .limit(SAFETY_LIMIT);
 }

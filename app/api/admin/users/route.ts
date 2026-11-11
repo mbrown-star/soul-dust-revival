@@ -3,11 +3,23 @@ import { requireAdmin } from "@/lib/admin/guard";
 import { getDb } from "@/lib/db/client";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { adminUserCreateSchema, adminUserUpdateSchema, roleUpdateSchema } from "@/lib/validation/schemas";
+import {
+  adminUserCreateSchema,
+  adminUserDeleteSchema,
+  adminUserUpdateSchema,
+  roleUpdateSchema,
+} from "@/lib/validation/schemas";
+import { blockEmail, isEmailBlocked } from "@/lib/auth/blockedEmails";
+import { deleteAccount } from "@/lib/account/deleteAccount";
 import { listUsersForAdmin } from "@/lib/admin/listUsers";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/admin";
 import { sendAccountCreatedEmail } from "@/lib/email/send";
 import { appOrigin } from "@/lib/domains";
+
+const BLOCKED_EMAIL_RESPONSE = {
+  error: "email_blocked",
+  message: "That email is blocked. Unblock it under Blocked emails first.",
+};
 
 export async function GET() {
   const session = await requireAdmin();
@@ -28,6 +40,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
   }
   const { email, role, fullName, country } = parsed.data;
+
+  if (await isEmailBlocked(email)) return NextResponse.json(BLOCKED_EMAIL_RESPONSE, { status: 409 });
 
   // Sign-in is code-only (AuthForm + verifyOtp), so there's no password to
   // set and no invite link to send. createUser makes the Supabase Auth
@@ -102,6 +116,10 @@ export async function PUT(req: NextRequest) {
   const existing = await db.query.users.findFirst({ where: eq(users.id, userId) });
   if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
+  if (email !== undefined && email.toLowerCase() !== existing.email.toLowerCase() && (await isEmailBlocked(email))) {
+    return NextResponse.json(BLOCKED_EMAIL_RESPONSE, { status: 409 });
+  }
+
   // Keep Supabase Auth's email in sync with our own table — otherwise the
   // user's sign-in code keeps going to their old address while the
   // admin UI shows the new one.
@@ -163,4 +181,57 @@ export async function PATCH(req: NextRequest) {
   if (!updated) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
   return NextResponse.json(updated);
+}
+
+/**
+ * Deletes another user's account (lib/account/deleteAccount.ts), and with
+ * `block` also blocks their email from signing in or signing up again.
+ */
+export async function DELETE(req: NextRequest) {
+  const session = await requireAdmin();
+  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const json = await req.json().catch(() => null);
+  const parsed = adminUserDeleteSchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
+  }
+  const { userId, block, reason } = parsed.data;
+
+  if (userId === session.userId) {
+    return NextResponse.json(
+      { error: "cannot_delete_self", message: "Delete your own account from your Account page." },
+      { status: 400 }
+    );
+  }
+
+  const db = await getDb();
+  const target = await db.query.users.findFirst({ where: eq(users.id, userId) });
+  if (!target) return NextResponse.json({ error: "not_found" }, { status: 404 });
+
+  // One click shouldn't be able to remove another admin; demoting first is a
+  // deliberate second step (and the role change is its own audit point).
+  if (target.role === "admin") {
+    return NextResponse.json(
+      { error: "cannot_delete_admin", message: "Change their role from Admin first, then delete them." },
+      { status: 400 }
+    );
+  }
+
+  const result = await deleteAccount(userId);
+
+  // After the delete, not before: blocking an email whose account still
+  // exists bans that account, and deleting it would then free the email.
+  // Blocking a deleted email holds the ban on a fresh placeholder instead.
+  let blocked = null;
+  let authWarning = result.authDeleted ? null : "Their data was removed, but deleting their sign-in account failed.";
+  if (block) {
+    const blockResult = await blockEmail({ email: target.email, reason, blockedByUserId: session.userId });
+    blocked = { ...blockResult.row, createdAt: blockResult.row.createdAt?.toISOString() ?? null };
+    if (blockResult.authWarning) {
+      authWarning = `The email is blocked here, but the sign-in ban failed: ${blockResult.authWarning}`;
+    }
+  }
+
+  return NextResponse.json({ ok: true, usersRow: result.usersRow, blocked, authWarning });
 }

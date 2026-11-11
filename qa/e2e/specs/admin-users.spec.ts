@@ -45,4 +45,30 @@ test.describe("admin users & roles, as qa-admin", () => {
     const json = await res.json();
     expect(json.error).toBe("cannot_change_own_role");
   });
+
+  test("Delete opens a confirmation (with the block option) and Cancel leaves the user in place", async ({ page }) => {
+    // Cancels rather than confirms: deleting or blocking calls the real
+    // Supabase Auth project, which the route tests cover with a mock.
+    await page.goto("/admin/users");
+    await page.getByRole("button", { name: "Delete qa-user@soul-dust-revival.test" }).click();
+    const confirm = page.getByRole("form", { name: "Delete qa-user@soul-dust-revival.test" });
+    await expect(confirm).toContainText(/can't be undone/i);
+    await confirm.getByLabel(/also block this email/i).check();
+    await expect(confirm.getByRole("button", { name: "Delete and block" })).toBeVisible();
+    await confirm.getByRole("button", { name: "Cancel" }).click();
+    await expect(page.getByRole("row", { name: /qa-user@soul-dust-revival\.test/i })).toBeVisible();
+  });
+
+  test("no Delete button on the admin's own row or another admin's", async ({ page }) => {
+    await page.goto("/admin/users");
+    await expect(page.getByRole("button", { name: "Delete qa-admin@soul-dust-revival.test" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Delete qa-leader@soul-dust-revival.test" })).toHaveCount(1);
+  });
+
+  test("Blocked emails section is on the page", async ({ page }) => {
+    await page.goto("/admin/users");
+    await expect(page.getByRole("heading", { name: "Blocked emails" })).toBeVisible();
+    await expect(page.getByRole("form", { name: "Block an email" })).toBeVisible();
+  });
 });
+

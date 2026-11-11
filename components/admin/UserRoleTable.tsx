@@ -1,8 +1,10 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { COUNTRIES } from "@/lib/data/countries";
+import { Button } from "@/components/ui/Button";
 import { AddUserForm } from "./AddUserForm";
+import { BlockedEmailsPanel, type BlockedEmail } from "./BlockedEmailsPanel";
 
 type UserRow = {
   id: string;
@@ -134,17 +136,127 @@ function EditUserRow({
   );
 }
 
+function DeleteUserRow({
+  user,
+  onDeleted,
+  onCancel,
+}: {
+  user: UserRow;
+  onDeleted: (result: { blocked: BlockedEmail | null; warning: string | null }) => void;
+  onCancel: () => void;
+}) {
+  const headingRef = useRef<HTMLParagraphElement>(null);
+  const blockId = useId();
+  const reasonId = useId();
+  const [block, setBlock] = useState(false);
+  const [reason, setReason] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Move focus into the confirmation, since it replaces the row the Delete
+  // button was in.
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+
+  async function handleDelete(e: React.FormEvent) {
+    e.preventDefault();
+    setDeleting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id, block, reason: block && reason.trim() ? reason.trim() : undefined }),
+      });
+      const data = (await res.json().catch(() => null)) as
+        | { blocked?: BlockedEmail | null; authWarning?: string | null; message?: string }
+        | null;
+      if (!res.ok) {
+        setError(data?.message ?? "Couldn't delete that account.");
+        setDeleting(false);
+        return;
+      }
+      onDeleted({ blocked: data?.blocked ?? null, warning: data?.authWarning ?? null });
+    } catch {
+      setError("Couldn't reach the server. Check your connection and try again.");
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <tr className="border-b border-moss/10 bg-parchment/50">
+      <td colSpan={5} className="py-3">
+        <form onSubmit={handleDelete} aria-label={`Delete ${user.email}`} className="space-y-3">
+          <p ref={headingRef} tabIndex={-1} className="font-sans text-sm text-ink focus:outline-none">
+            <strong>Delete {user.email}?</strong> This removes their account, saved answers,
+            progress, and access to anything they bought. Their orders are kept without their
+            name. This can&apos;t be undone.
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              id={blockId}
+              type="checkbox"
+              checked={block}
+              onChange={(e) => setBlock(e.target.checked)}
+              className="h-4 w-4 accent-ink"
+            />
+            <label htmlFor={blockId} className="font-sans text-sm text-ink">
+              Also block this email from signing in or signing up again
+            </label>
+          </div>
+          {block && (
+            <div className="max-w-md">
+              <label htmlFor={reasonId} className="block font-sans text-xs font-medium text-ink mb-1">
+                Reason (optional, for admins only)
+              </label>
+              <input
+                id={reasonId}
+                type="text"
+                maxLength={500}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                className="w-full border border-moss/30 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-ink"
+              />
+            </div>
+          )}
+          {error && (
+            <p role="alert" className="font-sans text-sm text-error">
+              {error}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <Button type="submit" variant="danger" size="sm" disabled={deleting}>
+              {deleting ? "Deleting..." : block ? "Delete and block" : "Delete account"}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onCancel} disabled={deleting}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </td>
+    </tr>
+  );
+}
+
 export function UserRoleTable({
   initialUsers,
+  initialBlocked,
   currentUserId,
 }: {
   initialUsers: UserRow[];
+  initialBlocked: BlockedEmail[];
   currentUserId: string;
 }) {
   const [userList, setUserList] = useState(initialUsers);
+  const [blockedList, setBlockedList] = useState(initialBlocked);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const blockedSet = new Set(blockedList.map((b) => b.email));
 
   async function updateRole(userId: string, role: UserRow["role"]) {
     setSavingId(userId);
@@ -178,6 +290,14 @@ export function UserRoleTable({
     setUserList((list) => [newUser, ...list]);
   }
 
+  function handleDeleted(user: UserRow, result: { blocked: BlockedEmail | null; warning: string | null }) {
+    setUserList((list) => list.filter((u) => u.id !== user.id));
+    const { blocked } = result;
+    if (blocked) setBlockedList((list) => (list.some((b) => b.id === blocked.id) ? list : [blocked, ...list]));
+    setDeletingId(null);
+    setNotice(result.warning ?? `Deleted ${user.email}${blocked ? " and blocked the email" : ""}.`);
+  }
+
   function handleSaved(updated: UserRow) {
     setUserList((list) => list.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)));
     setEditingId(null);
@@ -192,6 +312,9 @@ export function UserRoleTable({
           {error}
         </p>
       )}
+      <p role="status" className="text-sm text-moss">
+        {notice}
+      </p>
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -209,9 +332,23 @@ export function UserRoleTable({
             {userList.map((u) =>
               editingId === u.id ? (
                 <EditUserRow key={u.id} user={u} onSaved={handleSaved} onCancel={() => setEditingId(null)} />
+              ) : deletingId === u.id ? (
+                <DeleteUserRow
+                  key={u.id}
+                  user={u}
+                  onDeleted={(result) => handleDeleted(u, result)}
+                  onCancel={() => setDeletingId(null)}
+                />
               ) : (
                 <tr key={u.id} className="border-b border-moss/10">
-                  <td className="py-3 pr-4 font-sans text-sm">{u.email}</td>
+                  <td className="py-3 pr-4 font-sans text-sm">
+                    {u.email}
+                    {blockedSet.has(u.email.toLowerCase()) && (
+                      <span className="ml-2 inline-block rounded bg-error/10 px-1.5 py-0.5 text-xs font-medium text-error">
+                        Blocked
+                      </span>
+                    )}
+                  </td>
                   <td className="py-3 pr-4 font-sans text-sm text-moss">{u.country ?? "—"}</td>
                   <td className="py-3 pr-4 font-sans text-sm text-moss">
                     {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}
@@ -238,12 +375,32 @@ export function UserRoleTable({
                     )}
                   </td>
                   <td className="py-3">
-                    <button
-                      onClick={() => setEditingId(u.id)}
-                      className="font-sans text-sm text-moss underline focus:outline-none focus:ring-2 focus:ring-ink rounded p-2 -m-2"
-                    >
-                      Edit
-                    </button>
+                    <div className="flex gap-4">
+                      <button
+                        onClick={() => {
+                          setDeletingId(null);
+                          setEditingId(u.id);
+                        }}
+                        aria-label={`Edit ${u.email}`}
+                        className="font-sans text-sm text-moss underline focus:outline-none focus:ring-2 focus:ring-ink rounded p-2 -m-2"
+                      >
+                        Edit
+                      </button>
+                      {/* Not yourself (use your Account page) and not another admin (change their role first). */}
+                      {u.id !== currentUserId && u.role !== "admin" && (
+                        <button
+                          onClick={() => {
+                            setEditingId(null);
+                            setNotice(null);
+                            setDeletingId(u.id);
+                          }}
+                          aria-label={`Delete ${u.email}`}
+                          className="font-sans text-sm text-error underline focus:outline-none focus:ring-2 focus:ring-error rounded p-2 -m-2"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )
@@ -251,6 +408,12 @@ export function UserRoleTable({
           </tbody>
         </table>
       </div>
+
+      <BlockedEmailsPanel
+        blocked={blockedList}
+        onBlocked={(row) => setBlockedList((list) => [row, ...list])}
+        onUnblocked={(id) => setBlockedList((list) => list.filter((b) => b.id !== id))}
+      />
     </div>
   );
 }

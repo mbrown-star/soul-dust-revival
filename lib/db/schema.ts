@@ -30,6 +30,27 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
+// Emails that can't be used to sign in or sign up (/admin/users). Enforced
+// twice, see lib/auth/blockedEmails.ts: the email's Supabase auth account is
+// banned, so a sign-in code never verifies, and getSession() treats any
+// session whose email is listed here as signed out. Stored lowercased.
+export const blockedEmails = pgTable("blocked_emails", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  // Optional note for other admins ("spam sign-ups"). Never shown to the
+  // blocked person.
+  reason: text("reason"),
+  // The banned Supabase auth account for this email, when there is one.
+  authUserId: uuid("auth_user_id"),
+  // true: blocking created that auth account only to hold the ban (the email
+  // had no account, or its owner was just deleted), so unblocking deletes it.
+  // false: it's the person's own existing account, so unblocking lifts the ban.
+  authUserIsPlaceholder: boolean("auth_user_is_placeholder").notNull().default(false),
+  // No foreign key: the admin who blocked it may later be deleted themselves.
+  blockedByUserId: uuid("blocked_by_user_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
 // One row per login — the basis for "how often" access reporting.
 // lastActiveAt is updated by a lightweight heartbeat while the user has an
 // authenticated page open, giving an approximate session duration

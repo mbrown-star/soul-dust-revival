@@ -641,6 +641,27 @@ export const adminUserUpdateSchema = z.object({
   country: countryCodeSchema.optional().nullable(),
 });
 
+// An optional note for other admins about why an email is blocked.
+const blockReasonSchema = z.string().trim().max(500).optional();
+
+export const adminUserDeleteSchema = z
+  .object({
+    userId: z.string().uuid(),
+    // Also block the email from signing in or signing up again.
+    block: z.boolean().default(false),
+    reason: blockReasonSchema,
+  })
+  .strict();
+
+export const blockedEmailCreateSchema = z
+  .object({
+    email: z.string().trim().email().max(320),
+    reason: blockReasonSchema,
+  })
+  .strict();
+
+export const blockedEmailDeleteSchema = z.object({ id: z.string().uuid() }).strict();
+
 // ---------- Admin: leader resources ----------
 export const leaderResourceCreateSchema = z.object({
   title: z.string().min(1).max(200),

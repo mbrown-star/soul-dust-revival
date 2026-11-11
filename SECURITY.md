@@ -125,6 +125,31 @@ A published lesson has two versions: the **working copy** the admin builder edit
 - **Removing a block the snapshot shows** sets `content_blocks.removed_at` instead of deleting it, because answers reference it by foreign key. Every working-copy read filters `removed_at is null`.
 - **Not drafted, and live on save:** title, Published, Free sample, lesson order.
 
+## Deleting accounts and blocking emails (`/admin/users`)
+- `DELETE /api/admin/users` and `/api/admin/blocked-emails` are `requireAdmin()` routes
+  with `.strict()` Zod input. An admin can't delete or block themselves, or delete or
+  block another admin (demote first), so one click can't lock out the admin team.
+- **A block is enforced twice** (`lib/auth/blockedEmails.ts`):
+  1. The email's Supabase auth account is banned (`ban_duration` about 100 years), so a
+     sign-in code for it never verifies. An email with no account gets a banned
+     placeholder account, which also stops sign-up, since sign-up only signs in to the
+     existing account for that email. Deleting with "also block" deletes the person's
+     own auth account first and then bans a placeholder, so their old (anonymized)
+     `users` row can never be signed into again.
+  2. `getSession()` treats a session whose email is in `blocked_emails` as signed out,
+     so a session issued before the block, or one that got past step 1, reaches no
+     page or route. `/api/auth/login-recorded` ends such a session and the sign-in
+     form says the email can't be used.
+- If the Supabase ban fails, the app-side block (2) still holds and the admin is told.
+  Unblocking keeps the row if Supabase refuses, so the two stay in step.
+- **Not covered:** a different address for the same person (plus-addressing, Gmail
+  dots, a new address) isn't blocked; guest physical checkout takes an email but no
+  sign-in, so it isn't blocked either. The sign-in form's blocked message reveals that
+  an email is blocked (the same enumeration trade-off as below).
+- `getSession()` now does one indexed lookup in `blocked_emails` per signed-in request.
+  It fails closed: if the table is unreachable, signed-in pages error rather than
+  skipping the check. Apply the migration before deploying code that reads it.
+
 ## Signup vs. login trade-off (account enumeration)
 `/login` and `/signup` are functionally distinct, not just different copy on the same
 form: login sets Supabase's `shouldCreateUser: false`, so submitting an email with no

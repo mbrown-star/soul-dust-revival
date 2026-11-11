@@ -3,6 +3,7 @@
 import { useState, useId, useRef, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import { BLOCKED_EMAIL_MESSAGE } from "@/lib/auth/blockedMessage";
 
 // "sneak_peek": embedded on /sneak-peek under that page's own h1 -- creates
 // an account for a new email and simply signs in an existing one, since
@@ -66,6 +67,9 @@ export function AuthForm({
       // Supabase's own real message instead.
       if (!canCreateAccount && authError.code === "otp_disabled") {
         setError("no_account");
+      } else if (authError.code === "user_banned") {
+        // A blocked email (/admin/users): its Supabase account is banned.
+        setError(BLOCKED_EMAIL_MESSAGE);
       } else {
         setError(authError.message);
       }
@@ -92,7 +96,7 @@ export function AuthForm({
 
       if (authError) {
         setLoading(false);
-        setError(authError.message);
+        setError(authError.code === "user_banned" ? BLOCKED_EMAIL_MESSAGE : authError.message);
         return;
       }
       setVerified(true);
@@ -105,8 +109,16 @@ export function AuthForm({
     try {
       const res = await fetch("/api/auth/login-recorded", { method: "POST" });
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        const body = (await res.json().catch(() => null)) as { error?: string; blocked?: boolean } | null;
         setLoading(false);
+        // 403: a blocked email. The route ended the session; clear every
+        // cookie copy too, and drop the retry, since retrying can't help.
+        if (res.status === 403 && body?.blocked) {
+          await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+          setSetupBlocked(true);
+          setError(BLOCKED_EMAIL_MESSAGE);
+          return;
+        }
         // 409: the email belongs to a different `users` row -- retrying can't
         // fix that, so the retry button goes away and the message (from the
         // route) asks them to get in touch.
