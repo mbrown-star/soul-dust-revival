@@ -81,12 +81,19 @@ export default async function AdminProductsPage() {
                     Featured
                   </span>
                 )}
+                {p.comingSoon && (
+                  <span className="text-xs font-medium bg-dusk/10 text-ink rounded-full px-2 py-0.5">
+                    Coming soon
+                  </span>
+                )}
               </p>
               <p className="text-sm text-moss">
                 {p.format} · ${(p.priceCents / 100).toFixed(2)}
                 {p.format === "both" && p.digitalPriceCents != null && ` / $${(p.digitalPriceCents / 100).toFixed(2)} digital`}
                 {" · "}
-                {[p.sellOnStripe && "Stripe", p.amazonUrl && "Amazon"].filter(Boolean).join(" + ")}
+                {[p.sellOnStripe && "Stripe", p.sellOnAmazon && (p.amazonUrl ? "Amazon" : "Amazon (link pending)")]
+                  .filter(Boolean)
+                  .join(" + ")}
                 {p.bookBinding && ` · ${p.bookBinding === "hardback" ? "Hardback" : "Softback"}`}
                 {!p.active && " · inactive"}
               </p>

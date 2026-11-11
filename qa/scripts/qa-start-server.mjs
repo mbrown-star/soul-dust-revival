@@ -16,6 +16,9 @@ if (!process.env.TEST_DATABASE_URL) {
   process.exit(1);
 }
 
-const env = { ...process.env, DATABASE_URL: process.env.TEST_DATABASE_URL, PORT: "3100" };
-const child = spawn("npx", ["next", "start", "-p", "3100"], { env, stdio: "inherit" });
+// Port 3100 by default; pass another (`node qa/scripts/qa-start-server.mjs 3101`)
+// when 3100 is taken, and point the suite at it with QA_BASE_URL.
+const port = process.argv[2] ?? "3100";
+const env = { ...process.env, DATABASE_URL: process.env.TEST_DATABASE_URL, PORT: port };
+const child = spawn("npx", ["next", "start", "-p", port], { env, stdio: "inherit" });
 child.on("exit", (code) => process.exit(code ?? 0));

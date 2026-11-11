@@ -170,6 +170,43 @@ describe("productSchema", () => {
     expect(productSchema.safeParse(base).success).toBe(true);
   });
 
+  describe("Coming soon and Amazon without a link", () => {
+    const physical = { ...base, type: "book" as const, format: "physical" as const };
+
+    it("lets a Coming soon title have no price or purchase route yet", () => {
+      const result = productSchema.safeParse({ ...physical, priceCents: 0, sellOnStripe: false, comingSoon: true });
+      expect(result.success).toBe(true);
+    });
+
+    it("still requires a route for a title that's on sale", () => {
+      expect(productSchema.safeParse({ ...physical, sellOnStripe: false }).success).toBe(false);
+    });
+
+    it("counts Amazon as a route before its link exists", () => {
+      const result = productSchema.safeParse({ ...physical, sellOnStripe: false, sellOnAmazon: true, amazonUrl: null });
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject({ sellOnAmazon: true, amazonUrl: null });
+    });
+
+    it("treats an Amazon link as choosing Amazon, even if sellOnAmazon wasn't sent", () => {
+      const result = productSchema.safeParse({
+        ...physical,
+        sellOnStripe: false,
+        amazonUrl: "https://www.amazon.com/dp/B000000000",
+      });
+      expect(result.success).toBe(true);
+      expect(result.data?.sellOnAmazon).toBe(true);
+    });
+
+    it("refuses Amazon for a digital-only product, with or without a link", () => {
+      expect(productSchema.safeParse({ ...base, sellOnAmazon: true }).success).toBe(false);
+    });
+
+    it("defaults both to false", () => {
+      expect(productSchema.parse(base)).toMatchObject({ comingSoon: false, sellOnAmazon: false });
+    });
+  });
+
   it("rejects an uppercase or symbol-containing slug", () => {
     expect(productSchema.safeParse({ ...base, slug: "Study-One" }).success).toBe(false);
     expect(productSchema.safeParse({ ...base, slug: "study one" }).success).toBe(false);

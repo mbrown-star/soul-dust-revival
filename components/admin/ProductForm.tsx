@@ -42,6 +42,8 @@ type ProductFormValues = {
   coverPdfUrl: string | null;
   amazonUrl: string | null;
   sellOnStripe: boolean;
+  sellOnAmazon: boolean;
+  comingSoon: boolean;
   active: boolean;
   featured: boolean;
 };
@@ -79,6 +81,8 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
     coverPdfUrl: initial?.coverPdfUrl ?? null,
     amazonUrl: initial?.amazonUrl ?? null,
     sellOnStripe: initial?.sellOnStripe ?? true,
+    sellOnAmazon: initial?.sellOnAmazon ?? !!initial?.amazonUrl,
+    comingSoon: initial?.comingSoon ?? false,
     active: initial?.active ?? true,
     featured: initial?.featured ?? false,
   });
@@ -114,7 +118,9 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
   // cover the digital side (always Stripe-only, its own price).
   const showBookOptions = values.format === "physical" || values.format === "both";
   const showDigitalOptions = values.format === "digital" || values.format === "both";
-  const noPurchaseRoute = showBookOptions && !values.sellOnStripe && !values.amazonUrl;
+  // Amazon counts even before its link exists ("Coming soon on Amazon"), and
+  // a Coming soon title needs no route yet.
+  const noPurchaseRoute = showBookOptions && !values.comingSoon && !values.sellOnStripe && !values.sellOnAmazon;
 
   function handleTitleChange(title: string) {
     setValues((v) => ({
@@ -199,11 +205,13 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
     setSaving(true);
 
     const method = initial?.id ? "PATCH" : "POST";
-    // An enabled-but-empty Amazon URL field submits as "" — normalize to
-    // null so it doesn't fail the server's url() validation.
+    // An empty Amazon link (not known yet) submits as null, so it doesn't
+    // fail the server's url() validation; sellOnAmazon keeps the choice.
+    const sellOnAmazon = showBookOptions && values.sellOnAmazon;
     const payload = {
       ...values,
-      amazonUrl: showBookOptions && values.amazonUrl ? values.amazonUrl : null,
+      sellOnAmazon,
+      amazonUrl: sellOnAmazon && values.amazonUrl?.trim() ? values.amazonUrl.trim() : null,
       digitalPriceCents: values.format === "both" ? values.digitalPriceCents : null,
       // Binding only describes a physical copy -- matches productSchema's
       // own refine rejecting it for a purely digital product.
@@ -328,7 +336,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
               // Amazon isn't a valid route for a purely digital product (no
               // way to grant entitlements off an Amazon sale), and digital
               // must always go through Stripe.
-              ...(format === "digital" ? { amazonUrl: null, sellOnStripe: true } : {}),
+              ...(format === "digital" ? { amazonUrl: null, sellOnAmazon: false, sellOnStripe: true } : {}),
               // The digital price field displays a $0.00 fallback for a null
               // value (see its own input below), so default the real state
               // to 0 here too the moment "both" is selected -- otherwise an
@@ -444,26 +452,29 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
             <label className="flex items-center gap-2 mb-2">
               <input
                 type="checkbox"
-                checked={values.amazonUrl !== null}
-                onChange={(e) => setValues((v) => ({ ...v, amazonUrl: e.target.checked ? "" : null }))}
+                checked={values.sellOnAmazon}
+                onChange={(e) => setValues((v) => ({ ...v, sellOnAmazon: e.target.checked }))}
               />
               <span className="text-sm">Sell via Amazon (shows a &quot;Buy on Amazon&quot; button)</span>
             </label>
 
-            {values.amazonUrl !== null && (
+            {values.sellOnAmazon && (
               <div>
                 <label htmlFor={amazonUrlId} className="block text-sm font-medium mb-1">
-                  Amazon product URL
+                  Amazon product URL <span className="text-moss font-normal">(optional until you have it)</span>
                 </label>
                 <input
                   id={amazonUrlId}
-                  required
                   type="url"
+                  aria-describedby={`${amazonUrlId}-note`}
                   placeholder="https://www.amazon.com/dp/XXXXXXXXXX"
                   className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
-                  value={values.amazonUrl}
+                  value={values.amazonUrl ?? ""}
                   onChange={(e) => setValues((v) => ({ ...v, amazonUrl: e.target.value }))}
                 />
+                <p id={`${amazonUrlId}-note`} className="text-xs text-moss mt-1">
+                  Without a link, the product page shows &quot;Coming soon on Amazon&quot; in place of the button.
+                </p>
               </div>
             )}
           </div>
@@ -640,6 +651,22 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
         />
         <span className="text-sm">Active (visible for purchase)</span>
       </label>
+
+      <div>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={values.comingSoon}
+            aria-describedby={`${priceId}-coming-soon-note`}
+            onChange={(e) => setValues((v) => ({ ...v, comingSoon: e.target.checked }))}
+          />
+          <span className="text-sm">Coming soon (shown in the store, not for sale yet)</span>
+        </label>
+        <p id={`${priceId}-coming-soon-note`} className="text-xs text-moss mt-1 ml-6">
+          Shows &quot;Coming soon&quot; instead of a price and buy buttons. Prices and purchase options can wait
+          until you have them; untick this when it goes on sale.
+        </p>
+      </div>
 
       <label className="flex items-center gap-2">
         <input

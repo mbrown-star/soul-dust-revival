@@ -99,6 +99,13 @@
       "when": 1794405562466,
       "tag": "0013_abnormal_ender_wiggin",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794414967439,
+      "tag": "0014_fuzzy_paper_doll",
+      "breakpoints": true
     }
   ]
 }

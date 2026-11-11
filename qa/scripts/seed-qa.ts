@@ -176,6 +176,7 @@ async function main() {
       description: "A QA fixture physical book sellable through both routes.",
       priceCents: 1699,
       amazonUrl: "https://www.amazon.com/dp/QA0000000",
+      sellOnAmazon: true,
       sellOnStripe: true,
       active: true,
     })
@@ -189,6 +190,7 @@ async function main() {
     description: "A QA fixture physical book sold only through Amazon.",
     priceCents: 1499,
     amazonUrl: "https://www.amazon.com/dp/QA1111111",
+    sellOnAmazon: true,
     sellOnStripe: false,
     active: true,
   });
@@ -207,6 +209,33 @@ async function main() {
       active: true,
     })
     .returning();
+
+  // Announced, not for sale: no price, no purchase route yet.
+  await db.insert(schema.products).values({
+    type: "book",
+    format: "physical",
+    title: "QA Coming Soon Book",
+    slug: "qa-coming-soon-book",
+    description: "A QA fixture title that's announced but not on sale yet.",
+    priceCents: 0,
+    sellOnStripe: false,
+    sellOnAmazon: true,
+    comingSoon: true,
+    active: true,
+  });
+
+  // On sale through Stripe, with Amazon chosen but its link not known yet.
+  await db.insert(schema.products).values({
+    type: "book",
+    format: "physical",
+    title: "QA Amazon Link Pending",
+    slug: "qa-amazon-link-pending",
+    description: "A QA fixture printed book whose Amazon link isn't known yet.",
+    priceCents: 1899,
+    sellOnStripe: true,
+    sellOnAmazon: true,
+    active: true,
+  });
 
   await db.insert(schema.products).values({
     type: "book",

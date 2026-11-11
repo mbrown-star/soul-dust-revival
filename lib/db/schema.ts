@@ -128,6 +128,14 @@ export const products = pgTable("products", {
   // for format: "physical". See productSchema in lib/validation/schemas.ts.
   amazonUrl: text("amazon_url"),
   sellOnStripe: boolean("sell_on_stripe").notNull().default(true),
+  // The admin chose Amazon as a route for the printed copy. Stored on its
+  // own so the choice survives before the link exists: with amazonUrl the
+  // page shows "Buy on Amazon", without it "Coming soon on Amazon".
+  sellOnAmazon: boolean("sell_on_amazon").notNull().default(false),
+  // The whole title is announced but not for sale yet: the store and its
+  // page show "Coming soon" with no price or buy buttons, it needs no price
+  // or purchase route, and checkout refuses it (its price may be $0).
+  comingSoon: boolean("coming_soon").notNull().default(false),
   // Shown in the homepage's "Featured content" section (up to 8 -- enforced
   // in the API route, since "no more than 8 featured" is a cross-row count,
   // not something a single-row Zod schema can check). Not an ordering

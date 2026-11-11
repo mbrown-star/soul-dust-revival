@@ -165,6 +165,11 @@ export const productSchema = z
         { message: "Must be an https://amazon.<tld> product link" }
       ),
     sellOnStripe: z.boolean().default(true),
+    // Amazon is a route for the printed copy even before its link exists;
+    // a link on its own also counts (see the transform below).
+    sellOnAmazon: z.boolean().default(false),
+    // Announced, not on sale: needs no price or purchase route yet.
+    comingSoon: z.boolean().default(false),
     active: z.boolean(),
     // The "no more than 8 featured products" rule is a cross-row count, not
     // something this per-row schema can check -- enforced in
@@ -175,7 +180,7 @@ export const productSchema = z
   // for format "both", that's one of its two independent purchases (the
   // other, digital, is unconditionally Stripe-only, enforced by schema shape
   // alone: there's no amazonUrl/sellOnStripe field for it).
-  .refine((p) => p.format !== "digital" || p.amazonUrl == null, {
+  .refine((p) => p.format !== "digital" || (p.amazonUrl == null && !p.sellOnAmazon), {
     message: "Amazon purchase links are only supported for physical products",
     path: ["amazonUrl"],
   })
@@ -183,7 +188,9 @@ export const productSchema = z
     message: "Digital products must sell through Stripe (required to grant entitlements)",
     path: ["sellOnStripe"],
   })
-  .refine((p) => p.format === "digital" || p.sellOnStripe || !!p.amazonUrl, {
+  // Amazon counts as a route even without its link yet (the page then shows
+  // "Coming soon on Amazon"); a "Coming soon" title needs no route at all.
+  .refine((p) => p.comingSoon || p.format === "digital" || p.sellOnStripe || p.sellOnAmazon || !!p.amazonUrl, {
     message: "At least one purchase route (Stripe or Amazon) is required",
     path: ["sellOnStripe"],
   })
@@ -194,7 +201,9 @@ export const productSchema = z
   .refine((p) => p.format !== "digital" || p.bookBinding == null, {
     message: "Binding only applies to a physical book",
     path: ["bookBinding"],
-  });
+  })
+  // A link means Amazon is a route, whether or not the caller said so.
+  .transform((p) => ({ ...p, sellOnAmazon: p.sellOnAmazon || !!p.amazonUrl }));
 
 // Alt text is no longer required by this schema (previously required for a
 // non-book product image; book covers were already exempted earlier the

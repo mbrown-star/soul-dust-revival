@@ -14,3 +14,20 @@ export function AmazonBuyButton({ amazonUrl }: { amazonUrl: string }) {
     </a>
   );
 }
+
+/**
+ * The Amazon route for a printed copy: the buy button once there's a link,
+ * or a muted "Coming soon on Amazon" while the admin has chosen Amazon but
+ * doesn't have the link yet (products.sellOnAmazon without amazonUrl).
+ */
+export function AmazonPurchase({ sellOnAmazon, amazonUrl }: { sellOnAmazon: boolean; amazonUrl: string | null }) {
+  if (amazonUrl) return <AmazonBuyButton amazonUrl={amazonUrl} />;
+  if (!sellOnAmazon) return null;
+  return (
+    // self-start: the buy button beside it carries a status line below it,
+    // which would otherwise stretch this taller than the button.
+    <span className="inline-block self-start font-sans font-semibold text-moss border border-moss/30 rounded-lg px-6 py-3">
+      Coming soon on Amazon
+    </span>
+  );
+}

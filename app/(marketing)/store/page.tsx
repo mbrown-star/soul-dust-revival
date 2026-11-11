@@ -65,7 +65,9 @@ export default async function BooksPage({ searchParams }: { searchParams: Promis
                   </div>
                   <p className="font-sans text-xs uppercase tracking-wide text-moss mb-1">{eyebrow}</p>
                   <h2 className="font-display font-semibold text-ink group-hover:text-moss">{p.title}</h2>
-                  <p className="font-sans text-sm text-moss mt-1">${(p.priceCents / 100).toFixed(2)}</p>
+                  <p className="font-sans text-sm text-moss mt-1">
+                    {p.comingSoon ? "Coming soon" : `$${(p.priceCents / 100).toFixed(2)}`}
+                  </p>
                 </Link>
               ),
             };

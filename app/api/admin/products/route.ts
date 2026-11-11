@@ -49,6 +49,8 @@ export async function POST(req: NextRequest) {
       coverPdfUrl: body.coverPdfUrl,
       amazonUrl: body.amazonUrl,
       sellOnStripe: body.sellOnStripe,
+      sellOnAmazon: body.sellOnAmazon,
+      comingSoon: body.comingSoon,
       active: body.active,
       featured: body.featured,
     })
@@ -109,6 +111,8 @@ export async function PATCH(req: NextRequest) {
       featured: body.featured,
       amazonUrl: body.amazonUrl,
       sellOnStripe: body.sellOnStripe,
+      sellOnAmazon: body.sellOnAmazon,
+      comingSoon: body.comingSoon,
       active: body.active,
       ...stripePriceInvalidationFields(existing, body),
     })

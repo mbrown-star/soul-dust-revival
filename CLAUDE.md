@@ -66,7 +66,23 @@ webhook/entitlement changes done.
   - **Committed oddity:** the code landed in `d30b09c` ("Add npm run deploy"), because another session committed everything in the shared working tree while this build was still uncommitted. Content is exactly what was tested; not rewritten since it was already pushed.
   - **Shipped per step 8** with `npm run deploy -- both --yes` from `39fe929`: **staging `034a2664`** and **production `754c5d0e`** (sneak-peek gates unchanged, covers load). Every preview and live check passed. `/store?type=devotional` on staging renders with Devotionals already selected.
   - **Note:** the Store is closed on the sneak-peek production site, so the Store filters show only on staging for now; My Library's filters are live on both.
-- **2026-11-11 (newest of all) — `npm run deploy`: one committed, checked deploy command for both sites.** Requested as "Deploy script" after the same day's outage and broken covers, both caused by ad hoc deploy helpers kept in a session scratchpad.
+- **2026-11-11 (latest) — "Coming soon" products, and Amazon chosen before its link exists.** Requested while planning the next catalog import ("I do not have prices yet or amazon links yet ... I need a Coming Soon option/checkbox ... and display option if I do not have the physical books amazon URL").
+  - **Schema:** migration `0014_fuzzy_paper_doll.sql` adds `products.coming_soon` and `products.sell_on_amazon` (both boolean, default false) and sets `sell_on_amazon = true` wherever `amazon_url` is already set.
+  - **Coming soon** (checkbox on the product form, next to Featured):
+    - The store tile, the homepage tile on the full site, and a bundle's "What's included" row read "Coming soon" instead of a price.
+    - The product page shows a "Coming soon" panel instead of prices and buy buttons.
+    - It needs no price and no purchase route (`productSchema`'s route refine skips it).
+    - `/api/checkout` refuses it (`400 coming_soon`), since its price may be $0 and a digital one would otherwise unlock for free.
+    - Sneak-peek tiles still read "Coming at launch".
+  - **Amazon without a link:** "Sell via Amazon" is now its own saved choice (`sellOnAmazon`); before, the checkbox existed only while a link was filled in. With a link, the page shows "Buy on Amazon"; without one, it shows a muted "Coming soon on Amazon" in the same spot (`AmazonPurchase` in `components/commerce/AmazonBuyButton.tsx`). It counts as a purchase route, an Amazon link alone still implies it (schema transform), and a digital-only product can't choose it. The admin list shows "Amazon (link pending)".
+  - **Tests:**
+    - 9 new tests: schema rules, the route saving and clearing both flags, and checkout refusing a $0 Coming soon product without creating an order.
+    - New QA fixtures `qa-coming-soon-book` and `qa-amazon-link-pending`, and `qa/e2e/specs/coming-soon.spec.ts` (7 tests: store tile, product page, the pending Amazon box beside Buy Now, the admin list, saving and reloading both choices, and the save button needing a route unless it's Coming soon).
+    - `npm run verify` clean, `npm test` 575/575, the affected specs plus accessibility 124/124 on desktop and mobile, and the full desktop QA suite 258/258.
+  - **Testing note:** another session's `next dev` held port 3100 with stale code (its product API didn't know the new columns, so a save "succeeded" without storing Coming soon). `qa/scripts/qa-start-server.mjs` now takes a port argument, and `.claude/launch.json` has `qa-start-3101`. Run the suite with `QA_BASE_URL=http://localhost:3101` when 3100 is taken.
+  - **Self-review:** admin-only writes through Zod; the only new money path is a refusal at checkout; no findings.
+  - The "Coming soon on Amazon" box was first stretched taller than Buy Now on the product page; it's now `self-start` and lines up (checked in the browser).
+- **2026-11-11 (newer still) — `npm run deploy`: one committed, checked deploy command for both sites.** Requested as "Deploy script" after the same day's outage and broken covers, both caused by ad hoc deploy helpers kept in a session scratchpad.
   - **`scripts/deploy/deploy.ts`** (`npm run deploy -- [staging|production|both] [--no-promote] [--yes] [--allow-unpushed]`, default both). Per site, staging first:
     - Builds the pushed HEAD (refuses an unpushed commit) in a clean temporary worktree.
     - Uses a placeholder `.env.local` written by `placeholderEnv`: only `NEXT_PUBLIC_SUPABASE_URL`/`ANON_KEY` and `R2_PUBLIC_BASE_URL` are real, plus the site's hostnames and launch mode. Child processes get the shell env minus every app variable, so an exported secret can't override the placeholder.

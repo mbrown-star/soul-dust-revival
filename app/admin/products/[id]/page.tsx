@@ -36,6 +36,8 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           coverPdfUrl: product.coverPdfUrl,
           amazonUrl: product.amazonUrl,
           sellOnStripe: product.sellOnStripe,
+          sellOnAmazon: product.sellOnAmazon,
+          comingSoon: product.comingSoon,
           active: product.active,
           featured: product.featured,
         }}

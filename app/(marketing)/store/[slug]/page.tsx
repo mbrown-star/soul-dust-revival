@@ -5,7 +5,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { AddToCartButton } from "@/components/commerce/AddToCartButton";
-import { AmazonBuyButton } from "@/components/commerce/AmazonBuyButton";
+import { AmazonPurchase } from "@/components/commerce/AmazonBuyButton";
+import { ComingSoonNotice } from "@/components/commerce/ComingSoonNotice";
 import { CoverGallery } from "@/components/commerce/CoverGallery";
 import { coverAspectRatio } from "@/lib/images/coverAspectRatio";
 import { productEyebrowLabel } from "@/lib/commerce/productEyebrow";
@@ -64,6 +65,8 @@ export default async function BookDetailPage({
             imageHeight: products.imageHeight,
             amazonUrl: products.amazonUrl,
             sellOnStripe: products.sellOnStripe,
+            sellOnAmazon: products.sellOnAmazon,
+            comingSoon: products.comingSoon,
           })
           .from(bundleItems)
           .innerJoin(products, eq(bundleItems.componentProductId, products.id))
@@ -107,7 +110,9 @@ export default async function BookDetailPage({
             <p className="font-serif text-ink/80 mb-6 leading-relaxed">{product.description}</p>
           )}
 
-          {product.format === "both" ? (
+          {product.comingSoon ? (
+            <ComingSoonNotice />
+          ) : product.format === "both" ? (
             <div className="space-y-6">
               <div className="border border-moss/20 rounded-lg p-4">
                 <h2 className="font-sans text-sm font-semibold uppercase tracking-wide text-moss mb-2">
@@ -127,7 +132,7 @@ export default async function BookDetailPage({
                       label={product.type === "bundle" ? "Buy the bundle" : "Buy the book"}
                     />
                   )}
-                  {product.amazonUrl && <AmazonBuyButton amazonUrl={product.amazonUrl} />}
+                  <AmazonPurchase sellOnAmazon={product.sellOnAmazon} amazonUrl={product.amazonUrl} />
                 </div>
                 <p className="font-sans text-sm text-moss mt-3">
                   {product.type === "bundle"
@@ -171,7 +176,7 @@ export default async function BookDetailPage({
                     format={product.format}
                   />
                 )}
-                {product.amazonUrl && <AmazonBuyButton amazonUrl={product.amazonUrl} />}
+                <AmazonPurchase sellOnAmazon={product.sellOnAmazon} amazonUrl={product.amazonUrl} />
               </div>
 
               <p className="font-sans text-sm text-moss mt-6">
@@ -207,13 +212,15 @@ export default async function BookDetailPage({
                     {component.title}
                   </Link>
                   <p className="font-sans text-sm text-moss">
-                    {component.format === "both"
+                    {component.comingSoon
+                      ? "Coming soon"
+                      : component.format === "both"
                       ? `$${(component.priceCents / 100).toFixed(2)} printed · $${((component.digitalPriceCents ?? 0) / 100).toFixed(2)} digital`
                       : `$${(component.priceCents / 100).toFixed(2)} on its own`}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2 justify-end flex-shrink-0">
-                  {component.format === "both" ? (
+                  {component.comingSoon ? null : component.format === "both" ? (
                     <>
                       {component.sellOnStripe && (
                         <AddToCartButton
@@ -244,7 +251,9 @@ export default async function BookDetailPage({
                       />
                     )
                   )}
-                  {component.amazonUrl && <AmazonBuyButton amazonUrl={component.amazonUrl} />}
+                  {!component.comingSoon && (
+                    <AmazonPurchase sellOnAmazon={component.sellOnAmazon} amazonUrl={component.amazonUrl} />
+                  )}
                 </div>
               </div>
             ))}

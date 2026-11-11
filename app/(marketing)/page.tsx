@@ -84,7 +84,7 @@ export default async function HomePage() {
                       {p.title}
                     </h3>
                     <p className="font-sans text-sm text-moss mt-1">
-                      {sneakPeek ? "Coming at launch" : `$${(p.priceCents / 100).toFixed(2)}`}
+                      {sneakPeek ? "Coming at launch" : p.comingSoon ? "Coming soon" : `$${(p.priceCents / 100).toFixed(2)}`}
                     </p>
                   </>
                 );

@@ -141,6 +141,18 @@ describe("POST /api/checkout", () => {
     expect(res.status).toBe(400);
   });
 
+  it("refuses a Coming soon product, even a $0 digital one, before creating an order", async () => {
+    vi.mocked(getSession).mockResolvedValue({ userId, email: "buyer@example.com" });
+    await db.update(products).set({ comingSoon: true, priceCents: 0 }).where(eq(products.id, digitalProductId));
+
+    const res = await POST(checkoutRequest({ items: [{ productId: digitalProductId, quantity: 1 }], country: "US" }));
+
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toBe("coming_soon");
+    expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
+    expect(await db.select().from(orders).where(eq(orders.userId, userId))).toEqual([]);
+  });
+
   it("rejects checkout for a product an admin has marked Amazon-exclusive (sellOnStripe: false)", async () => {
     vi.mocked(getSession).mockResolvedValue({ userId: randomUUID(), email: "buyer@example.com" });
 

@@ -287,6 +287,68 @@ describe("admin products route — kind and bookBinding", () => {
   });
 });
 
+describe("admin products route — Coming soon and Amazon without a link", () => {
+  let createdProductIds: string[] = [];
+  let adminUserId: string;
+  let db: Db;
+
+  afterEach(async () => {
+    if (createdProductIds.length) await db.delete(products).where(inArray(products.id, createdProductIds));
+    createdProductIds = [];
+    if (adminUserId) await db.delete(users).where(eq(users.id, adminUserId));
+    vi.mocked(requireAdmin).mockReset();
+  });
+
+  async function signInAsAdmin() {
+    db = await getDb();
+    const [admin] = await db
+      .insert(users)
+      .values({ email: `admin-${randomUUID()}@example.com`, role: "admin" })
+      .returning();
+    adminUserId = admin!.id;
+    vi.mocked(requireAdmin).mockResolvedValue({ userId: adminUserId, email: "admin@example.com", role: "admin" });
+  }
+
+  it("saves a Coming soon printed book with no price, no Stripe, and Amazon chosen without a link", async () => {
+    await signInAsAdmin();
+    const res = await POST(
+      request(
+        baseProduct({
+          type: "book",
+          format: "physical",
+          priceCents: 0,
+          sellOnStripe: false,
+          sellOnAmazon: true,
+          amazonUrl: null,
+          comingSoon: true,
+        })
+      )
+    );
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { id: string };
+    createdProductIds.push(json.id);
+    const [saved] = await db.select().from(products).where(eq(products.id, json.id));
+    expect(saved).toMatchObject({ comingSoon: true, sellOnAmazon: true, amazonUrl: null, sellOnStripe: false });
+  });
+
+  it("takes a title off Coming soon and adds its Amazon link on update", async () => {
+    await signInAsAdmin();
+    const insertValues = baseProduct({ type: "book", format: "physical", sellOnStripe: false, sellOnAmazon: true, comingSoon: true });
+    const [product] = await db.insert(products).values(insertValues as typeof products.$inferInsert).returning();
+    createdProductIds.push(product!.id);
+
+    const res = await PATCH(
+      request(
+        { ...insertValues, id: product!.id, comingSoon: false, amazonUrl: "https://www.amazon.com/dp/B000000001" },
+        "PATCH"
+      )
+    );
+    expect(res.status).toBe(200);
+    const [saved] = await db.select().from(products).where(eq(products.id, product!.id));
+    expect(saved).toMatchObject({ comingSoon: false, sellOnAmazon: true, amazonUrl: "https://www.amazon.com/dp/B000000001" });
+  });
+});
+
 describe("admin products route — image dimensions", () => {
   let createdProductIds: string[];
   let adminUserId: string;

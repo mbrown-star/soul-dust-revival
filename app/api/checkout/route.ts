@@ -42,6 +42,14 @@ export async function POST(req: NextRequest) {
     if (!product.active) {
       return NextResponse.json({ error: "invalid_product" }, { status: 400 });
     }
+    // Announced but not on sale: there may be no real price yet ($0), so a
+    // crafted request must not be able to buy it (and, if digital, unlock it).
+    if (product.comingSoon) {
+      return NextResponse.json(
+        { error: "coming_soon", message: `${product.title} isn't available yet.` },
+        { status: 400 }
+      );
+    }
     if (product.format === "both") {
       if (!item.variant) {
         return NextResponse.json({ error: "variant_required" }, { status: 400 });

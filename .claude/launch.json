@@ -20,6 +20,12 @@
       "port": 3100
     },
     {
+      "name": "qa-start-3101",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["qa/scripts/qa-start-server.mjs", "3101"],
+      "port": 3101
+    },
+    {
       "name": "interactive-prototype",
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "4100", "--directory", "soul-dust-interactive/dist"],
