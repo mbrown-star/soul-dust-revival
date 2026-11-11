@@ -3,7 +3,7 @@ import { bundleItems, entitlements, lessons } from "@/lib/db/schema";
 import { and, eq, or, isNull, gt } from "drizzle-orm";
 import { getRoleForSession } from "@/lib/admin/guard";
 import type { Session } from "@/lib/auth/session";
-import { getJourneyForStudy, loadJourneyProgress, journeyHref, type Journey } from "@/lib/journey/load";
+import { getJourneyForStudy, loadJourneyProgress, journeyHref, type Journey, type JourneyProgress } from "@/lib/journey/load";
 import { canReadStop } from "@/lib/journey/schedule";
 
 /**
@@ -92,6 +92,12 @@ export type LessonAccess = StudyAccess & {
   sampleOnly: boolean;
   /** Set when an owner is refused only by The Journey's pacing. */
   journeyLock?: JourneyLock;
+  /**
+   * The Journey this lesson is a stop of, with the reader's place in it --
+   * set only for a reader who owns the whole Journey (the only readers it
+   * paces), so the lesson page can lay out navigation without reloading it.
+   */
+  journey?: JourneyProgress;
 };
 
 /**
@@ -114,8 +120,9 @@ export async function getLessonAccess(
   const access = await getStudyAccess(session, study.productId);
   if (access.allowed) {
     if (!access.isAdminPreview) {
-      const journeyLock = await getJourneyLock(session.userId, study.id, lesson.id);
-      if (journeyLock) return { allowed: false, isAdminPreview: false, sampleOnly: false, journeyLock };
+      const paced = await getJourneyPacing(session, study.id, lesson.id);
+      if (paced?.lock) return { allowed: false, isAdminPreview: false, sampleOnly: false, journeyLock: paced.lock, journey: paced.progress };
+      if (paced) return { ...access, sampleOnly: false, journey: paced.progress };
     }
     return { ...access, sampleOnly: false };
   }
@@ -123,22 +130,53 @@ export async function getLessonAccess(
   return { allowed: sample, isAdminPreview: false, sampleOnly: sample };
 }
 
-async function getJourneyLock(userId: string, studyId: string, lessonId: string): Promise<JourneyLock | null> {
+/**
+ * The Journey's pacing for one lesson, for a reader who owns every Part of
+ * the published Journey it belongs to. Null when the lesson isn't paced for
+ * him: no published Journey, or he owns only some Parts (then he reads what
+ * he owns as ordinary studies -- pacing a Journey he can't begin would lock
+ * him out of what he paid for).
+ */
+async function getJourneyPacing(
+  session: Session,
+  studyId: string,
+  lessonId: string
+): Promise<{ progress: JourneyProgress; lock: JourneyLock | null } | null> {
   const db = await getDb();
   const journey = await getJourneyForStudy(db, studyId);
-  if (!journey) return null;
-  const progress = await loadJourneyProgress(db, journey, userId);
+  if (!journey || !(await ownsEveryPart(session.userId, journey))) return null;
+  const progress = await loadJourneyProgress(db, journey, session.userId);
   const index = progress.stops.findIndex((s) => s.lessonId === lessonId);
-  // Not a stop (an unpublished lesson): the reader pages' own draft checks
-  // already keep it from non-admins.
-  if (index === -1) return null;
+  // Not a stop (an unpublished lesson): not paced. The reader pages refuse
+  // drafts to non-admins themselves.
+  if (index === -1) return { progress, lock: null };
   const href = journeyHref(journey);
-  if (!progress.enrollment) return { journeyHref: href, reason: "not_started" };
+  if (!progress.enrollment) {
+    // A stop finished before the Journey was switched on stays open to reread.
+    return { progress, lock: progress.completedLessonIds.has(lessonId) ? null : { journeyHref: href, reason: "not_started" } };
+  }
   const state = progress.states[index]!;
-  if (canReadStop(state)) return null;
-  return state.state === "waiting"
-    ? { journeyHref: href, reason: "waiting", opensOn: state.opensOn }
-    : { journeyHref: href, reason: "earlier_stop" };
+  if (canReadStop(state)) return { progress, lock: null };
+  return {
+    progress,
+    lock:
+      state.state === "waiting"
+        ? { journeyHref: href, reason: "waiting", opensOn: state.opensOn }
+        : { journeyHref: href, reason: "earlier_stop" },
+  };
+}
+
+async function ownsEveryPart(userId: string, journey: Journey): Promise<boolean> {
+  const db = await getDb();
+  const components = await db
+    .select({ productId: bundleItems.componentProductId })
+    .from(bundleItems)
+    .where(eq(bundleItems.bundleProductId, journey.bundleProductId));
+  if (components.length === 0) return false;
+  for (const { productId } of components) {
+    if (!(await hasEntitlement(userId, productId))) return false;
+  }
+  return true;
 }
 
 /**
@@ -148,14 +186,5 @@ async function getJourneyLock(userId: string, studyId: string, lessonId: string)
 export async function getJourneyAccess(session: Session, journey: Journey): Promise<StudyAccess> {
   const isAdminPreview = (await getRoleForSession(session)) === "admin";
   if (isAdminPreview) return { allowed: true, isAdminPreview };
-  const db = await getDb();
-  const components = await db
-    .select({ productId: bundleItems.componentProductId })
-    .from(bundleItems)
-    .where(eq(bundleItems.bundleProductId, journey.bundleProductId));
-  if (components.length === 0) return { allowed: false, isAdminPreview };
-  for (const { productId } of components) {
-    if (!(await hasEntitlement(session.userId, productId))) return { allowed: false, isAdminPreview };
-  }
-  return { allowed: true, isAdminPreview };
+  return { allowed: await ownsEveryPart(session.userId, journey), isAdminPreview };
 }

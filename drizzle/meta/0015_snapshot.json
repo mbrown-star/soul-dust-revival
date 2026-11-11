@@ -1,5 +1,5 @@
 {
-  "id": "615237f0-66eb-4ca5-aae9-1569ae692067",
+  "id": "fe502c73-a812-4672-b857-3d3b5809346a",
   "prevId": "26129798-5e75-434b-960e-6aa158e36781",
   "version": "7",
   "dialect": "postgresql",
@@ -419,6 +419,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": 0
+        },
+        "opened_on": {
+          "name": "opened_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
         },
         "next_opens_on": {
           "name": "next_opens_on",

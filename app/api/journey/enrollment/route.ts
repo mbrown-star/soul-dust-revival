@@ -7,7 +7,7 @@ import { journeyEnrollments, journeys } from "@/lib/db/schema";
 import { journeyBeginSchema, journeyWeekdaySchema } from "@/lib/validation/schemas";
 import { getJourneyAccess } from "@/lib/entitlements/check";
 import { beginRhythm, changeWeekday, isValidTimeZone, todayIn } from "@/lib/journey/schedule";
-import { journeyHref, rhythmOf } from "@/lib/journey/load";
+import { finishedPrefixLength, journeyHref, loadJourneyProgress, rhythmOf } from "@/lib/journey/load";
 
 async function readJson(req: NextRequest): Promise<unknown> {
   try {
@@ -49,7 +49,9 @@ export async function POST(req: NextRequest) {
   const { db, journey, allowed } = await findOwnedJourney(journeyId, session);
   if (!journey || !allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const rhythm = beginRhythm(weekday, todayIn(timeZone));
+  // Begin past any stops he'd already finished before the Journey was on.
+  const progress = await loadJourneyProgress(db, journey, session.userId);
+  const rhythm = beginRhythm(weekday, todayIn(timeZone), finishedPrefixLength(progress));
   const inserted = await db
     .insert(journeyEnrollments)
     .values({ userId: session.userId, journeyId, timeZone, ...rhythm })

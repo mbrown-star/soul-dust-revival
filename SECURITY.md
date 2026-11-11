@@ -181,7 +181,11 @@ that isn't open, whatever id a request names. The rhythm is stored server-side a
 changes through `PATCH /api/journey/enrollment`, which re-anchors from today and never opens
 the next stop sooner than a week after the last one, so switching days can't speed the
 Journey up. Enrollment routes act only on the caller's own enrollment and require owning
-every Part (`getJourneyAccess`). Admins previewing are never paced.
+every Part (`getJourneyAccess`). Admins previewing are never paced. Readers who own only some
+Parts aren't paced at all (they read what they own as ordinary studies). Known trade-off:
+the time zone comes from the reader's browser once, when he begins, so choosing a far-east
+zone (up to UTC+14) opens each week up to about a day early. It's a one-time, bounded choice
+and only affects his own pace.
 
 ## Amazon purchase links
 Physical products can carry an `amazonUrl` the storefront renders as an outbound

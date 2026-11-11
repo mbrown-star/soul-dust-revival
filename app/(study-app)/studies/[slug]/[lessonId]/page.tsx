@@ -167,8 +167,11 @@ export default async function LessonPage({
 
   // A Part of The Journey reads as one year-long road: navigation runs
   // across Parts and only to stops that are open (lib/journey/nav.ts).
-  const journey = await getJourneyForStudy(db, study.id);
-  const journeyProgress = journey ? await loadJourneyProgress(db, journey, session.userId) : null;
+  // getLessonAccess already loaded it for a reader who owns the Journey;
+  // an admin previewing gets it laid out unlocked.
+  const adminJourney = access.isAdminPreview ? await getJourneyForStudy(db, study.id) : null;
+  const journeyProgress =
+    access.journey ?? (adminJourney ? await loadJourneyProgress(db, adminJourney, session.userId) : null);
   const journeyNav = journeyProgress ? journeyLessonNav(journeyProgress, lesson.id, access.isAdminPreview) : null;
   const lookBack =
     journeyProgress && journeyNav?.stop.isThreshold && journeyNav.part.index > 0

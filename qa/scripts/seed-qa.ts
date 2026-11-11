@@ -659,6 +659,7 @@ async function main() {
     weekday: new Date(`${inThreeDays}T00:00:00Z`).getUTCDay(),
     timeZone: "UTC",
     openedThrough: 3,
+    openedOn: new Date(Date.now() - 4 * 86_400_000).toISOString().slice(0, 10),
     nextOpensOn: inThreeDays,
   });
   await db.insert(schema.lessonProgress).values(

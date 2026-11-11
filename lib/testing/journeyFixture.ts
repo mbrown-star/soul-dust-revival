@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { eq, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
+import { addDays } from "@/lib/journey/schedule";
 import {
   bundleItems,
   contentBlocks,
@@ -84,9 +85,18 @@ export async function createJourneyFixture() {
     lessons: lessonRows,
     questionBlockIds: questionBlocks.map((b) => b.id),
     productIds: { bundle: bundle!.id, partOne: partOne!.id, partTwo: partTwo!.id },
-    /** Begin the Journey for the reader, as if on `openedThrough`/`nextOpensOn`. */
-    async enroll(rhythm: { weekday: number; openedThrough: number; nextOpensOn: string }, userId = reader!.id) {
-      await db.insert(journeyEnrollments).values({ userId, journeyId: journey!.id, timeZone: "UTC", ...rhythm });
+    /** Begin the Journey for the reader with this rhythm (openedOn defaults to a week before nextOpensOn). */
+    async enroll(
+      rhythm: { weekday: number; openedThrough: number; nextOpensOn: string; openedOn?: string },
+      userId = reader!.id
+    ) {
+      await db.insert(journeyEnrollments).values({
+        userId,
+        journeyId: journey!.id,
+        timeZone: "UTC",
+        openedOn: addDays(rhythm.nextOpensOn, -7),
+        ...rhythm,
+      });
     },
     async complete(stopIndex: number, userId = reader!.id) {
       await db

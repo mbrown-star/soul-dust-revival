@@ -84,6 +84,26 @@ describe("The Journey's pacing in getLessonAccess", () => {
     expect((await access(4)).allowed).toBe(true);
   });
 
+  it("doesn't pace a reader who owns only some Parts: he reads what he owns", async () => {
+    const db = await getDb();
+    await db.delete(entitlements).where(eq(entitlements.productId, f.productIds.partTwo));
+    const result = await access(2);
+    expect(result).toEqual({ allowed: true, isAdminPreview: false, sampleOnly: false });
+  });
+
+  it("keeps a stop finished before the Journey was switched on open, even before beginning", async () => {
+    await f.complete(0);
+    await f.complete(1);
+    expect((await access(1)).allowed).toBe(true);
+    expect((await access(2)).journeyLock).toMatchObject({ reason: "not_started" });
+  });
+
+  it("hands the page the Journey it loaded", async () => {
+    await f.enroll({ weekday: 2, openedThrough: 0, nextOpensOn: addDays(today, 7) });
+    const result = await access(0);
+    expect(result.journey?.stops).toHaveLength(5);
+  });
+
   it("requires every Part's entitlement to own the Journey", async () => {
     expect((await getJourneyAccess(f.reader, f.journey)).allowed).toBe(true);
     const db = await getDb();

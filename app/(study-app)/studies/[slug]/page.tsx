@@ -2,7 +2,7 @@ import { getDb } from "@/lib/db/client";
 import { studies, lessons, products, lessonProgress } from "@/lib/db/schema";
 import { eq, asc, and, inArray } from "drizzle-orm";
 import { getJourneyForStudy, journeyHref } from "@/lib/journey/load";
-import { getStudyAccess, isOpenSampleLesson, studyHasOpenSample } from "@/lib/entitlements/check";
+import { getJourneyAccess, getStudyAccess, isOpenSampleLesson, studyHasOpenSample } from "@/lib/entitlements/check";
 import { lockedLessonNote } from "@/lib/launchMode";
 import { LockIcon } from "@/components/study/LockIcon";
 import { getSession } from "@/lib/auth/session";
@@ -62,12 +62,12 @@ export default async function StudyPage({
   const access = await getStudyAccess(session, study.productId);
   if (!study.published && !access.isAdminPreview) redirect("/studies");
 
-  // A Part of a published Journey isn't read on its own: its owners go to
-  // the Journey home, where every Part's weeks are laid out in order. Admins
-  // still get the Part's own list.
+  // A Part of a published Journey isn't read on its own: a reader who owns
+  // the whole Journey goes to its home, where every Part's weeks are laid out
+  // in order. Admins, and readers who own only this Part, get the Part's list.
   if (access.allowed && !access.isAdminPreview) {
     const journey = await getJourneyForStudy(db, study.id);
-    if (journey) redirect(journeyHref(journey));
+    if (journey && (await getJourneyAccess(session, journey)).allowed) redirect(journeyHref(journey));
   }
 
   const studyLessons = await db

@@ -5,6 +5,7 @@ CREATE TABLE "journey_enrollments" (
 	"weekday" integer NOT NULL,
 	"time_zone" text NOT NULL,
 	"opened_through" integer DEFAULT 0 NOT NULL,
+	"opened_on" date NOT NULL,
 	"next_opens_on" date NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now(),
 	"updated_at" timestamp with time zone DEFAULT now(),

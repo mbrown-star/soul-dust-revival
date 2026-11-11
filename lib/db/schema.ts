@@ -333,10 +333,11 @@ export const journeys = pgTable("journeys", {
 });
 
 // One reader's place in a Journey's weekly rhythm (see lib/journey/schedule.ts).
-// Stops 0..openedThrough are open by date; stop openedThrough+1 opens on
-// nextOpensOn (a calendar date in `timeZone`, always a `weekday`, 0 = Sunday),
-// and each one after that a week later. Changing the weekday rewrites these
-// two from today, so an open stop never closes and none opens early.
+// Stops 0..openedThrough are open by date, the last of them since openedOn;
+// stop openedThrough+1 opens on nextOpensOn (a calendar date in `timeZone`,
+// always a `weekday`, 0 = Sunday), and each one after that a week later.
+// Changing the weekday rewrites these from today, so an open stop never
+// closes and the next never opens sooner than a week after openedOn.
 export const journeyEnrollments = pgTable(
   "journey_enrollments",
   {
@@ -346,6 +347,7 @@ export const journeyEnrollments = pgTable(
     weekday: integer("weekday").notNull(),
     timeZone: text("time_zone").notNull(),
     openedThrough: integer("opened_through").notNull().default(0),
+    openedOn: date("opened_on", { mode: "string" }).notNull(),
     nextOpensOn: date("next_opens_on", { mode: "string" }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),

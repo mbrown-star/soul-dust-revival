@@ -39,6 +39,7 @@ export type JourneyProgress = JourneyMap & {
   today: string | null;
   /** Per stop, in order. Empty until the reader begins. */
   states: StopState[];
+  completedLessonIds: Set<string>;
 };
 
 // "Soul Dust Revival: Part Two — Formed and Sent" -> "Part Two — Formed and Sent"
@@ -114,7 +115,12 @@ export async function loadJourneyMap(db: Db, journey: Journey): Promise<JourneyM
 }
 
 export function rhythmOf(enrollment: typeof journeyEnrollments.$inferSelect): JourneyRhythm {
-  return { weekday: enrollment.weekday, openedThrough: enrollment.openedThrough, nextOpensOn: enrollment.nextOpensOn };
+  return {
+    weekday: enrollment.weekday,
+    openedThrough: enrollment.openedThrough,
+    openedOn: enrollment.openedOn,
+    nextOpensOn: enrollment.nextOpensOn,
+  };
 }
 
 /** A Journey's map plus one reader's place in it. */
@@ -146,14 +152,14 @@ export async function loadJourneyProgress(
           );
   const completedIds = new Set(completedRows.map((r) => r.lessonId));
 
-  if (!enrollment) return { ...map, enrollment: null, today: null, states: [] };
+  if (!enrollment) return { ...map, enrollment: null, today: null, states: [], completedLessonIds: completedIds };
   const today = todayIn(enrollment.timeZone, now);
   const states = stopStates(
     map.stops.map((s) => completedIds.has(s.lessonId)),
     rhythmOf(enrollment),
     today
   );
-  return { ...map, enrollment, today, states };
+  return { ...map, enrollment, today, states, completedLessonIds: completedIds };
 }
 
 /** Index of the stop to continue with: the open one, else the first unfinished. */
@@ -162,6 +168,16 @@ export function currentStopIndex(progress: JourneyProgress): number {
   if (open !== -1) return open;
   const unfinished = progress.states.findIndex((s) => s.state !== "completed");
   return unfinished === -1 ? progress.stops.length - 1 : unfinished;
+}
+
+/**
+ * Where a reader begins: past any stops at the start of the road he had
+ * already finished (before the Journey was switched on), so he isn't made to
+ * wait weeks for stops he's done.
+ */
+export function finishedPrefixLength(progress: JourneyProgress): number {
+  const first = progress.stops.findIndex((s) => !progress.completedLessonIds.has(s.lessonId));
+  return first === -1 ? Math.max(progress.stops.length - 1, 0) : first;
 }
 
 export function completedCount(progress: JourneyProgress): number {

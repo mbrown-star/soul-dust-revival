@@ -45,6 +45,15 @@ describe("/api/journey/enrollment", () => {
     expect(weekdayOf(row!.nextOpensOn)).toBe(4);
   });
 
+  it("begins past the stops he'd already finished", async () => {
+    await f.complete(0);
+    await f.complete(1);
+    expect((await POST(request("POST", { journeyId: f.journey.id, weekday: 1, timeZone: "UTC" }))).status).toBe(200);
+    const row = await enrollment();
+    expect(row!.openedThrough).toBe(2);
+    expect(row!.openedOn).toBe(todayIn("UTC"));
+  });
+
   it("refuses a second begin, an unknown time zone, and bad input", async () => {
     const body = { journeyId: f.journey.id, weekday: 1, timeZone: "UTC" };
     expect((await POST(request("POST", body))).status).toBe(200);

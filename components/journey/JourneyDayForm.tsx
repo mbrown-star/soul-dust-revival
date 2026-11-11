@@ -66,7 +66,7 @@ export function JourneyDayForm({
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <fieldset>
+      <fieldset aria-describedby={`${groupId}-hint`}>
         <legend className="font-sans font-semibold text-sm text-ink">
           {mode === "begin" ? "Choose your Journey day" : "Your Journey day"}
         </legend>
@@ -75,7 +75,7 @@ export function JourneyDayForm({
             ? "Each week of the Journey opens on this day. Pick the day you can give it your best attention."
             : "Weeks already open stay open. The next week opens on your new day, never sooner than a week after the last."}
         </p>
-        <div className="mt-3 flex flex-wrap gap-2" aria-describedby={`${groupId}-hint`}>
+        <div className="mt-3 flex flex-wrap gap-2">
           {WEEKDAYS.map((day) => (
             <label
               key={day}

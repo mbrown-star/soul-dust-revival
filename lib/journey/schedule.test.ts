@@ -62,7 +62,7 @@ describe("beginRhythm", () => {
 
   it("keeps a weekly cadence through a daylight-saving change", () => {
     // US clocks change on 2027-03-14; plain dates are unaffected.
-    const rhythm = { weekday: 0, openedThrough: 0, nextOpensOn: "2027-03-07" };
+    const rhythm = { weekday: 0, openedThrough: 0, openedOn: "2027-02-28", nextOpensOn: "2027-03-07" };
     expect(stopOpensOn(rhythm, 2)).toBe("2027-03-14");
     expect(stopOpensOn(rhythm, 3)).toBe("2027-03-21");
   });
@@ -152,6 +152,22 @@ describe("changeWeekday", () => {
     }
     // Six days of switching later, still only stop 0 (and at most one more).
     expect(openedThroughToday(current, today)).toBeLessThanOrEqual(1);
+  });
+
+  it("doesn't cost a week to undo a change made the same day", () => {
+    // Stop 1 opened Tue the 17th. On Wed the 18th he switches to
+    // Wednesdays, then straight back to Tuesdays: stop 2 is still the 24th.
+    const wednesdays = changeWeekday(rhythm, 3, "2026-11-18");
+    expect(wednesdays.nextOpensOn).toBe("2026-11-25");
+    const backToTuesdays = changeWeekday(wednesdays, 2, "2026-11-18");
+    expect(backToTuesdays.nextOpensOn).toBe("2026-11-24");
+    expect(backToTuesdays.openedOn).toBe("2026-11-17");
+  });
+
+  it("can begin further along, for a reader who already finished the first stops", () => {
+    const rhythm = beginRhythm(2, TUE, 4);
+    expect(openedThroughToday(rhythm, TUE)).toBe(4);
+    expect(stopOpensOn(rhythm, 5)).toBe("2026-11-17");
   });
 
   it("may move the next stop later", () => {

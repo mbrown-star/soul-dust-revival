@@ -4,15 +4,17 @@
  * everything is a plain calendar date ("YYYY-MM-DD") in the reader's own time
  * zone, so a stop opens at the start of his Journey day wherever he is.
  *
- * A rhythm records two things (see journey_enrollments in lib/db/schema.ts):
- * stops 0..openedThrough are already open by date, and stop openedThrough+1
- * opens on nextOpensOn, each later one a week after the one before.
+ * A rhythm records (see journey_enrollments in lib/db/schema.ts): stops
+ * 0..openedThrough are already open by date, the last of them since
+ * openedOn, and stop openedThrough+1 opens on nextOpensOn, each later one a
+ * week after the one before.
  */
 
 export type JourneyRhythm = {
   /** 0 = Sunday … 6 = Saturday. */
   weekday: number;
   openedThrough: number;
+  openedOn: string;
   nextOpensOn: string;
 };
 
@@ -77,9 +79,12 @@ export function todayIn(timeZone: string, now: Date = new Date()): string {
   }).format(now);
 }
 
-/** A new reader's rhythm: stop 0 opens today, stop 1 on his next Journey day. */
-export function beginRhythm(weekday: number, today: string): JourneyRhythm {
-  return { weekday, openedThrough: 0, nextOpensOn: nextWeekdayAfter(today, weekday) };
+/**
+ * A new reader's rhythm: stop `openedThrough` (0, unless he'd already finished
+ * the stops before it) opens today, the next on his next Journey day.
+ */
+export function beginRhythm(weekday: number, today: string, openedThrough = 0): JourneyRhythm {
+  return { weekday, openedThrough, openedOn: today, nextOpensOn: nextWeekdayAfter(today, weekday) };
 }
 
 /**
@@ -109,17 +114,12 @@ export function openedThroughToday(rhythm: JourneyRhythm, today: string): number
  */
 export function changeWeekday(rhythm: JourneyRhythm, weekday: number, today: string): JourneyRhythm {
   const openedThrough = openedThroughToday(rhythm, today);
-  // When the latest open stop opened. A stop open since the rhythm was last
-  // set is treated as having opened a week before that rhythm's next date,
-  // which is never later than it really did.
-  const lastOpenedOn =
-    openedThrough > rhythm.openedThrough
-      ? stopOpensOn(rhythm, openedThrough)!
-      : addDays(rhythm.nextOpensOn, -7);
-  const earliest = addDays(lastOpenedOn, 7);
+  // When the latest open stop opened: its own date if it opened since the
+  // rhythm was last set, otherwise the date already recorded.
+  const openedOn = openedThrough > rhythm.openedThrough ? stopOpensOn(rhythm, openedThrough)! : rhythm.openedOn;
   const afterToday = nextWeekdayAfter(today, weekday);
-  const fromSpacing = weekdayOnOrAfter(earliest, weekday);
-  return { weekday, openedThrough, nextOpensOn: afterToday > fromSpacing ? afterToday : fromSpacing };
+  const fromSpacing = weekdayOnOrAfter(addDays(openedOn, 7), weekday);
+  return { weekday, openedThrough, openedOn, nextOpensOn: afterToday > fromSpacing ? afterToday : fromSpacing };
 }
 
 /**
