@@ -171,6 +171,18 @@ sample reader clear only their own progress on sample lessons. Which lessons are
 is admin data (set by `scripts/mark-sample-lessons.ts`), not something a request can
 influence.
 
+## The Journey's pacing
+A bundle presented as a Journey (`journeys`, `journey_enrollments`) is read one week at a
+time, in order (`lib/journey/schedule.ts`). The pacing is enforced in the same place as
+every other reader check, `getLessonAccess`: for a non-admin, a lesson in a published
+Journey is allowed only if it's already finished or it's the reader's open stop. So the
+lesson page, `/api/progress`, `/api/responses` and `/api/stream/sign-url` all refuse a stop
+that isn't open, whatever id a request names. The rhythm is stored server-side and only
+changes through `PATCH /api/journey/enrollment`, which re-anchors from today and never opens
+the next stop sooner than a week after the last one, so switching days can't speed the
+Journey up. Enrollment routes act only on the caller's own enrollment and require owning
+every Part (`getJourneyAccess`). Admins previewing are never paced.
+
 ## Amazon purchase links
 Physical products can carry an `amazonUrl` the storefront renders as an outbound
 "Buy on Amazon" link (`components/commerce/AmazonBuyButton.tsx`). Because this becomes

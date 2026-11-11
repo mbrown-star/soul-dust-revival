@@ -27,6 +27,7 @@ sign-in link or code.
 | Login timestamps + user agent | `login_events` | Access/engagement reporting (`/admin/reports/engagement`) |
 | Study and devotional answers | `responses.answerText` | The product's actual function — saving a user's own study responses and devotional "A Question to Sit With" reflections (added 2026-11-06; previously the devotional question was display-only and never persisted) |
 | Role, purchase history | `users.role`, `orders`/`order_items` | Access control; sales reporting |
+| Journey day and time zone | `journey_enrollments.weekday`, `.timeZone` | The Journey opens one week at a time on the reader's chosen weekday, on his own calendar. The IANA time zone (e.g. `America/Chicago`) comes from his browser when he begins; nothing finer than that is stored. Included in the data export; deleted with the account. |
 
 **Data minimization in practice**: country is collected as a 2-letter code, not a full
 address, for every order — full street address is only ever collected by Stripe's own

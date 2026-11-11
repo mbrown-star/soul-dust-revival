@@ -606,6 +606,8 @@ deployment before treating any of it as launch-ready:
       `/api/progress`, `/login` (see SECURITY.md — not built into the app itself)
 
 ## 7. Known gaps worth deciding on, not yet built
+- [ ] The Journey, before switching it on: publish the four Parts' lessons (all 52 are drafts), repair the Life Application text stuck inside each week's last word study (Part One 11 weeks, Part Two 9, Part Three 1, Part Four 2), fix Week 25 and Week 36's cut-off titles, then tick Published on the bundle's Journey panel and walk it on staging as a buyer.
+- [ ] The Journey, Phase 2/3 (not built): a reminder email on each reader's Journey day, the printed record of every answer, the commissioning at the end, crews of men walking it together, and fixed spots for each week's opening video.
 - [ ] Have counsel review `/privacy` for legal sufficiency in your actual jurisdictions
       (the content is real and accurate, just not attorney-reviewed yet)
 - [ ] Worker bundle size: `wrangler deploy --dry-run` shows ~5.2MB gzipped,
@@ -642,6 +644,8 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- **2026-11-11 — the four John parts ("John: That You May Believe") imported as hidden drafts**, Coming soon products with unpublished studies of 13 draft lessons each. 12 titles remain in the author's folder.
+- **2026-11-11 — The Journey read as one year-long road (Phase 1, weekly rhythm).** A bundle can be presented as a Journey (admin: the bundle's edit page, "Present as a Journey"). Its Parts become one path of stops in the bundle's order: each Part's introduction is a threshold, then its weeks. A reader who owns every Part picks a Journey day; stop 1 opens at once and one more each week after, in order. Pacing is enforced in `getLessonAccess`, so every reader route honors it. New Journey home (`/journey/[slug]`: year ring, this week, the map, change your day), threshold pages with a look-back at the previous Part's answers, one My Library card per Journey. Migration `0015` (two new tables). Ships unpublished: readers keep seeing four Parts until it's switched on. See CLAUDE.md's same-dated entry.
 - **2026-11-11 — 1 Timothy, James, Ecclesiastes and Law and Gospel imported as hidden drafts** (Coming soon products with unpublished studies of 13 draft lessons each). No parser changes were needed. 13 titles remain in the author's folder; see CLAUDE.md's same-dated entry for the list.
 - **2026-11-11 — Galatians, Philippians, Ephesians and 1 Peter imported as hidden drafts.** Each is a Coming soon product (cover split from its PDF, back-cover copy as its description, no prices, Amazon chosen without a link) and an unpublished study of 13 draft lessons. New `scripts/import-catalog-title.ts` does this for any title in the author's folder; run it without `--apply` and check its output first. Four study-parser fixes came out of it, the important one being that a week's Life Application is no longer imported inside its last word study. **Open:** the live Journey parts still have that problem (Part One 11 weeks, Part Two 9, Part Three 1, Part Four 2); repairing them needs a go-ahead. See CLAUDE.md's same-dated entry.
 - **To publish one of the new titles:** review its lessons in Preview as reader, publish the study and its lessons, set prices (and the Amazon link once it exists) on the product, then untick Coming soon.

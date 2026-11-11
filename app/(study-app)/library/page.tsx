@@ -1,5 +1,5 @@
 import { getDb } from "@/lib/db/client";
-import { entitlements, studies, lessons, lessonProgress } from "@/lib/db/schema";
+import { entitlements, studies, lessons, lessonProgress, journeys, bundleItems, products } from "@/lib/db/schema";
 import { eq, and, inArray, asc } from "drizzle-orm";
 import { getSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
@@ -10,7 +10,10 @@ import { marketingUrl } from "@/lib/domains";
 import { getDisplayStudyTitles } from "@/lib/study/displayTitle";
 import { studyKindLabel, type StudyKind } from "@/lib/study/studyKindLabel";
 import type { Metadata } from "next";
-import { CatalogBrowser } from "@/components/catalog/CatalogBrowser";
+import { CatalogBrowser, type CatalogBrowserItem } from "@/components/catalog/CatalogBrowser";
+import { JourneyCard } from "@/components/journey/JourneyCard";
+import { completedCount, currentStopIndex, journeyHref, loadJourneyProgress } from "@/lib/journey/load";
+import { formatOpensOn } from "@/lib/journey/schedule";
 import {
   normalizeSearchText,
   parseCatalogFilters,
@@ -72,6 +75,64 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
           .from(studies)
           .where(and(inArray(studies.productId, productIds), eq(studies.published, true)));
 
+  // A published Journey the reader owns every Part of shows as one card,
+  // in place of a card per Part (see JourneyCard).
+  const journeyRows =
+    ownedStudies.length === 0
+      ? []
+      : await db
+          .select({ journey: journeys, componentProductId: bundleItems.componentProductId })
+          .from(journeys)
+          .innerJoin(bundleItems, eq(bundleItems.bundleProductId, journeys.bundleProductId))
+          .where(eq(journeys.published, true));
+  const ownedProductIds = new Set(productIds);
+  const ownedJourneys = [...new Map(journeyRows.map((r) => [r.journey.id, r.journey])).values()].filter((j) =>
+    journeyRows.filter((r) => r.journey.id === j.id).every((r) => ownedProductIds.has(r.componentProductId))
+  );
+  const journeyProductIds = new Set(
+    journeyRows.filter((r) => ownedJourneys.some((j) => j.id === r.journey.id)).map((r) => r.componentProductId)
+  );
+  const journeyItems: CatalogBrowserItem[] = [];
+  for (const journey of ownedJourneys) {
+    const progress = await loadJourneyProgress(db, journey, session.userId);
+    const bundle = await db.query.products.findFirst({
+      where: eq(products.id, journey.bundleProductId),
+      columns: { imageUrl: true, imageAlt: true },
+    });
+    const total = progress.stops.length;
+    const done = completedCount(progress);
+    const begun = !!progress.enrollment;
+    const current = begun && total > 0 ? progress.stops[currentStopIndex(progress)] : undefined;
+    const currentState = current ? progress.states[current.index] : undefined;
+    const currentTitle = current ? (current.isThreshold ? `${current.label}: Introduction` : current.title) : "";
+    const nextLine = !current
+      ? null
+      : currentState?.state === "waiting"
+        ? `${currentTitle} opens ${formatOpensOn(currentState.opensOn)}.`
+        : `This week: ${currentTitle}`;
+    journeyItems.push({
+      id: journey.id,
+      kind: "study",
+      status: !begun ? "not_started" : total > 0 && done === total ? "completed" : "in_progress",
+      searchText: normalizeSearchText(
+        `${journey.title} The Journey Study ${progress.parts.map((p) => p.label).join(" ")}`
+      ),
+      node: (
+        <JourneyCard
+          title={journey.title}
+          href={journeyHref(journey)}
+          coverImageUrl={bundle?.imageUrl ?? null}
+          coverImageAlt={bundle?.imageAlt ?? null}
+          partCount={progress.parts.length}
+          done={done}
+          total={total}
+          begun={begun}
+          nextLine={nextLine}
+        />
+      ),
+    });
+  }
+
   // Studies with a free sample the reader doesn't own show up too, as
   // "Sneak peek" cards counting only their sample lessons.
   const ownedIds = new Set(ownedStudies.map((s) => s.id));
@@ -91,7 +152,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
           .from(studies)
           .where(and(inArray(studies.id, sampleStudyIds), eq(studies.published, true)));
   const sampleOnlyIds = new Set(sampleStudies.map((s) => s.id));
-  const myStudies = [...ownedStudies, ...sampleStudies];
+  const myStudies = [...ownedStudies.filter((s) => !journeyProductIds.has(s.productId)), ...sampleStudies];
 
   const studyIds = myStudies.map((s) => s.id);
   const allLessons =
@@ -144,7 +205,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
     entries.push({ study, total, completed, resumeHref, sampleOnly, lockedCount, status });
   }
 
-  const isEmpty = myStudies.length === 0;
+  const isEmpty = myStudies.length === 0 && journeyItems.length === 0;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16">
@@ -172,7 +233,9 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
           noun="titles"
           searchPlaceholder="Search your library"
           gridClassName="grid gap-4 sm:grid-cols-2"
-          items={entries.map((entry) => ({
+          items={[
+            ...journeyItems,
+            ...entries.map((entry) => ({
             id: entry.study.id,
             kind: entry.study.kind,
             status: entry.status,
@@ -190,7 +253,8 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
                 lockedCount={entry.lockedCount}
               />
             ),
-          }))}
+          })),
+          ]}
         />
       )}
     </div>

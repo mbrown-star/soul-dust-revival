@@ -66,7 +66,23 @@ webhook/entitlement changes done.
   - **Committed oddity:** the code landed in `d30b09c` ("Add npm run deploy"), because another session committed everything in the shared working tree while this build was still uncommitted. Content is exactly what was tested; not rewritten since it was already pushed.
   - **Shipped per step 8** with `npm run deploy -- both --yes` from `39fe929`: **staging `034a2664`** and **production `754c5d0e`** (sneak-peek gates unchanged, covers load). Every preview and live check passed. `/store?type=devotional` on staging renders with Devotionals already selected.
   - **Note:** the Store is closed on the sneak-peek production site, so the Store filters show only on staging for now; My Library's filters are live on both.
-- **2026-11-11 (newest of all) — second catalog batch imported as hidden drafts: 1 Timothy, James, Ecclesiastes, Law and Gospel.** Requested as "import the next four". The three remaining 6x9 Book Studies other than the John parts (kept together for their own batch), plus Law and Gospel, the first Topical Study, to try that family early.
+- **2026-11-11 (latest of all) — the four John parts imported as hidden drafts.** Requested as "Yes, the John parts".
+  - Their metadata uses the `front`/`back` layout, so `scripts/import-catalog-title.ts` now names a part "<title>: <tagline> — Part N", matching the author's folder names. The products are "Soul Dust Revival: John: That You May Believe — Part One" and so on. The double colon is the author's naming plus the series prefix; rename in the admin if wanted.
+  - No parser changes were needed. Each part is an Introduction (Foreword and Preface) plus 12 weeks of 5 questions and 5 word studies. The 22 MB covers split by 6x9 trim geometry.
+  - **Records:**
+
+    | Part | Product | Study |
+    |---|---|---|
+    | One | `4f133280` | `8bb4f28e` |
+    | Two | `bd0dbe8b` | `5e5671e4` |
+    | Three | `a16caf0d` | `572bf1b2` |
+    | Four | `276427e8` | `fc035f7a` |
+
+  - **Checked live on staging:** each part is in `/store` with its cover (200) and "Coming soon", with no buy buttons; a visitor can't open the studies; production's homepage doesn't mention them.
+  - Nothing was deployed (only the import script changed, which doesn't ship in the Worker).
+  - **Remaining 12:** In Christ, The Ten Commandments, Sermon on the Mount, Dusty and Holy (Hebrews), Dusty but Hopeful (Romans), Genesis Parts 1 and 2, Prayer, The Gospel, The Holy Spirit, Benedictions (176-page study), and A 365-Day Journey Through the Bible (devotional). (The earlier count of 13 included the John parts; 16 titles are imported today in total, and 12 remain.)
+  - The Journey session acknowledged the Journey parts' word-study issue and will put the repair to the user after its own build.
+- **2026-11-11 (newer still) — second catalog batch imported as hidden drafts: 1 Timothy, James, Ecclesiastes, Law and Gospel.** Requested as "import the next four". The three remaining 6x9 Book Studies other than the John parts (kept together for their own batch), plus Law and Gospel, the first Topical Study, to try that family early.
   - Same script, dry-run first. No parser changes were needed.
   - 1 Timothy and James: 5 questions and 5 word studies a week.
   - Ecclesiastes and Law and Gospel: 6–8 questions a week. Checked block by block: some passages carry a question but no word study (e.g. "MATTHEW 6:19–21 → Where is your treasure stored right now?"), which is the manuscripts' real structure, not a misread. Each Life Application is its own reading section.

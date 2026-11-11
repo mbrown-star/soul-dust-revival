@@ -86,11 +86,14 @@ function readMetadata(dir: string): Metadata {
   const back = json.back as { hook?: string; paragraphs?: string[] } | undefined;
   if (front && back) {
     const kicker = front.kicker ? cleanCopy(front.kicker) : "";
-    // "PART ONE · A STUDY OF" + "John" -> "John: Part One"
-    const part = /^(PART \w+)/i.exec(kicker)?.[1];
-    const title = cleanCopy(front.title ?? "");
+    // "PART ONE · A STUDY OF" + "John" + "That You May Believe" ->
+    // "John: That You May Believe — Part One", as the author names the folders.
+    const partWords = /^(PART \w+)/i.exec(kicker)?.[1];
+    const part = partWords?.replace(/\w\S*/g, (w) => w[0]!.toUpperCase() + w.slice(1).toLowerCase());
+    const baseTitle = cleanCopy(front.title ?? "");
+    const named = front.tagline ? `${baseTitle}: ${cleanCopy(front.tagline)}` : baseTitle;
     return {
-      title: part ? `${title}: ${part.replace(/\w\S*/g, (w) => w[0]!.toUpperCase() + w.slice(1).toLowerCase())}` : title,
+      title: part ? `${named} — ${part}` : named,
       tagline: front.tagline && cleanCopy(front.tagline),
       kindLine: front.kind && cleanCopy(front.kind),
       description: [back.hook, ...(back.paragraphs ?? [])].filter(Boolean).map((t) => cleanCopy(t!)).join("\n\n"),

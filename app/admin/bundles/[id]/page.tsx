@@ -1,8 +1,11 @@
 import { getDb } from "@/lib/db/client";
-import { products, bundleItems } from "@/lib/db/schema";
-import { and, eq, ne, or, inArray } from "drizzle-orm";
+import { products, bundleItems, journeys, journeyEnrollments } from "@/lib/db/schema";
+import { and, count, eq, ne, or, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { BundleForm } from "@/components/admin/BundleForm";
+import { JourneyPanel } from "@/components/admin/JourneyPanel";
+import { appUrl } from "@/lib/domains";
+import { journeyHref } from "@/lib/journey/load";
 
 export default async function EditBundlePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -39,6 +42,11 @@ export default async function EditBundlePage({ params }: { params: Promise<{ id:
       )
     );
 
+  const journey = await db.query.journeys.findFirst({ where: eq(journeys.bundleProductId, id) });
+  const [enrolled] = journey
+    ? await db.select({ n: count() }).from(journeyEnrollments).where(eq(journeyEnrollments.journeyId, journey.id))
+    : [];
+
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">Edit bundle</h1>
@@ -61,6 +69,23 @@ export default async function EditBundlePage({ params }: { params: Promise<{ id:
           componentProductIds,
         }}
         candidates={candidates}
+      />
+      <JourneyPanel
+        bundleProductId={bundle.id}
+        bundleTitle={bundle.title}
+        bundleSlug={bundle.slug}
+        journey={
+          journey
+            ? {
+                id: journey.id,
+                slug: journey.slug,
+                title: journey.title,
+                published: journey.published,
+                readerHref: appUrl(journeyHref(journey)),
+                enrolled: enrolled?.n ?? 0,
+              }
+            : null
+        }
       />
     </div>
   );

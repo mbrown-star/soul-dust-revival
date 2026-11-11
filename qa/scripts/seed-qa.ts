@@ -17,6 +17,7 @@
 import { Client } from "pg";
 import { createClient } from "@supabase/supabase-js";
 import { drizzle } from "drizzle-orm/node-postgres";
+import { eq } from "drizzle-orm";
 import * as schema from "../../lib/db/schema";
 import type { StudyWeekContent } from "../../lib/study/studyContent";
 
@@ -105,6 +106,12 @@ async function main() {
   await pg.query(
     `DELETE FROM orders WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'qa-%@soul-dust-revival.test') OR guest_email LIKE 'qa-%@soul-dust-revival.test'`
   );
+  await pg.query(`DELETE FROM journey_enrollments WHERE journey_id IN (SELECT id FROM journeys WHERE slug LIKE $1)`, [qaSlugPrefix]);
+  await pg.query(
+    `DELETE FROM journey_enrollments WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'qa-%@soul-dust-revival.test')`
+  );
+  await pg.query(`DELETE FROM journeys WHERE slug LIKE $1`, [qaSlugPrefix]);
+  await pg.query(`DELETE FROM bundle_items WHERE bundle_product_id IN (SELECT id FROM products WHERE slug LIKE $1)`, [qaSlugPrefix]);
   await pg.query(`DELETE FROM content_blocks WHERE lesson_id IN (SELECT id FROM lessons WHERE study_id IN (SELECT id FROM studies WHERE slug LIKE $1))`, [qaSlugPrefix]);
   await pg.query(`DELETE FROM lessons WHERE study_id IN (SELECT id FROM studies WHERE slug LIKE $1)`, [qaSlugPrefix]);
   await pg.query(`DELETE FROM studies WHERE slug LIKE $1`, [qaSlugPrefix]);
@@ -588,6 +595,81 @@ async function main() {
       },
       { lessonId: lesson.id, orderIndex: 2, type: "question", questionPrompt: d.question },
     ]);
+  }
+
+  // ---------- The Journey: two Parts read as one road, owned by qa-leader ----------
+  // qa-leader has walked all of Part One (with one written answer, for Part
+  // Two's look-back) and Part Two's threshold is this week's stop; Week 3
+  // opens in three days. qa-admin owns nothing and can begin it as a preview.
+  // Products are inactive so the Journey stays off the storefront.
+  console.log("Seeding QA Journey...");
+  const [pJourney, pPartOne, pPartTwo] = await db
+    .insert(schema.products)
+    .values([
+      { type: "bundle", format: "digital", kind: "study", title: "QA Journey", slug: "qa-journey-bundle", priceCents: 8000, active: false },
+      { type: "book", format: "physical", kind: "study", title: "QA Journey Part One", slug: "qa-journey-part-one", priceCents: 2500, active: false },
+      { type: "book", format: "physical", kind: "study", title: "QA Journey Part Two", slug: "qa-journey-part-two", priceCents: 2500, active: false },
+    ])
+    .returning();
+  if (!pJourney || !pPartOne || !pPartTwo) throw new Error("QA seed: Journey product insert returned no row.");
+  await db.insert(schema.bundleItems).values([
+    { bundleProductId: pJourney.id, componentProductId: pPartOne.id, orderIndex: 0 },
+    { bundleProductId: pJourney.id, componentProductId: pPartTwo.id, orderIndex: 1 },
+  ]);
+  const [jsOne, jsTwo] = await db
+    .insert(schema.studies)
+    .values([
+      { productId: pPartOne.id, title: "Soul Dust Revival: Part One — Out of the Dust", slug: "qa-journey-part-one", kind: "study", published: true },
+      { productId: pPartTwo.id, title: "Soul Dust Revival: Part Two — Formed and Sent", slug: "qa-journey-part-two", kind: "study", published: true },
+    ])
+    .returning();
+  if (!jsOne || !jsTwo) throw new Error("QA seed: Journey study insert returned no row.");
+  const journeyLessons = await db
+    .insert(schema.lessons)
+    .values([
+      { studyId: jsOne.id, orderIndex: 0, title: "Introduction", published: true },
+      { studyId: jsOne.id, orderIndex: 1, title: "Week 1: Where Most Men Actually Live", published: true },
+      { studyId: jsOne.id, orderIndex: 2, title: "Week 2: Revive Me According to Your Word", published: true },
+      { studyId: jsTwo.id, orderIndex: 0, title: "Introduction", published: true },
+      { studyId: jsTwo.id, orderIndex: 1, title: "Week 3: How Formation Actually Happens", published: true },
+    ])
+    .returning();
+  const journeyBlocks = await db
+    .insert(schema.contentBlocks)
+    .values(
+      journeyLessons.flatMap((lesson, i) => [
+        { lessonId: lesson.id, orderIndex: 0, type: "text" as const, body: `<p>QA Journey reading for stop ${i + 1}.</p>` },
+        ...(i === 1 || i === 2 || i === 4
+          ? [{ lessonId: lesson.id, orderIndex: 1, type: "question" as const, questionPrompt: `Where is the dust in your life? (stop ${i + 1})` }]
+          : []),
+      ])
+    )
+    .returning();
+  const week1Question = journeyBlocks.find((b) => b.lessonId === journeyLessons[1]!.id && b.type === "question");
+  await db.insert(schema.journeys).values({ bundleProductId: pJourney.id, title: "QA Journey", slug: "qa-journey", published: true });
+  const [qaJourney] = await db.select().from(schema.journeys).where(eq(schema.journeys.slug, "qa-journey"));
+  await db.insert(schema.entitlements).values([
+    { userId: userIds.leader, productId: pPartOne.id, source: "purchase" },
+    { userId: userIds.leader, productId: pPartTwo.id, source: "purchase" },
+  ]);
+  const inThreeDays = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
+  await db.insert(schema.journeyEnrollments).values({
+    userId: userIds.leader,
+    journeyId: qaJourney!.id,
+    weekday: new Date(`${inThreeDays}T00:00:00Z`).getUTCDay(),
+    timeZone: "UTC",
+    openedThrough: 3,
+    nextOpensOn: inThreeDays,
+  });
+  await db.insert(schema.lessonProgress).values(
+    journeyLessons.slice(0, 3).map((lesson) => ({ userId: userIds.leader, lessonId: lesson.id, status: "completed" as const, completedAt: new Date() }))
+  );
+  if (week1Question) {
+    await db.insert(schema.responses).values({
+      userId: userIds.leader,
+      contentBlockId: week1Question.id,
+      answerText: "QA look-back answer: in the places I keep hidden.",
+    });
   }
 
   console.log("Seeding QA blog posts...");
