@@ -94,6 +94,7 @@ webhook/entitlement changes done.
     - Part One: 11 of 12 weeks; Part Two: 9; Part Three: 1; Part Four: 2. The largest box is 16,236 characters.
     - Colossians' stored blocks have it too (12), but readers don't see them, because its weeks render from structured `studyContent`.
     - A safe repair splits each affected callout at its Life Application heading and inserts the rest as a text block right after it, keeping every block id so saved answers stay attached. The Journey lessons have no published snapshots, so the edit is visible to readers immediately.
+  - **Shipped** (the parser fix also changes the admin's Import study): `npm run deploy -- both --yes` from `f3570ee`, staging `008ea9ff` and production `e4938480`, all 42 preview and live checks passing.
   - **The remaining 21 titles** can go through the same script: run it without `--apply` and review its output first, since each new manuscript family has needed parser fixes.
 - **2026-11-11 (later) — "Coming soon" products, and Amazon chosen before its link exists.** Requested while planning the next catalog import ("I do not have prices yet or amazon links yet ... I need a Coming Soon option/checkbox ... and display option if I do not have the physical books amazon URL").
   - **Schema:** migration `0014_fuzzy_paper_doll.sql` adds `products.coming_soon` and `products.sell_on_amazon` (both boolean, default false) and sets `sell_on_amazon = true` wherever `amazon_url` is already set.

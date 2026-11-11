@@ -7,6 +7,7 @@ import {
   timestamp,
   unique,
   jsonb,
+  date,
 } from "drizzle-orm/pg-core";
 import type { StudyWeekContent } from "@/lib/study/studyContent";
 import type { ContentBlockType } from "@/lib/content/blocks";
@@ -315,6 +316,42 @@ export const responses = pgTable("responses", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
+
+// ---------- THE JOURNEY ----------
+// A bundle whose Parts are read as one year-long experience: in order, one
+// stop a week (see lib/journey/schedule.ts). Parts aren't stored here -- they
+// are the bundle's own components in bundle_items order, each read through
+// its linked study, so reordering the bundle reorders the Journey. Until
+// `published` is on, readers see the Parts as ordinary separate studies.
+export const journeys = pgTable("journeys", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  slug: text("slug").notNull().unique(), // /journey/[slug]
+  title: text("title").notNull(),
+  bundleProductId: uuid("bundle_product_id").references(() => products.id).notNull().unique(),
+  published: boolean("published").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+// One reader's place in a Journey's weekly rhythm (see lib/journey/schedule.ts).
+// Stops 0..openedThrough are open by date; stop openedThrough+1 opens on
+// nextOpensOn (a calendar date in `timeZone`, always a `weekday`, 0 = Sunday),
+// and each one after that a week later. Changing the weekday rewrites these
+// two from today, so an open stop never closes and none opens early.
+export const journeyEnrollments = pgTable(
+  "journey_enrollments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id).notNull(),
+    journeyId: uuid("journey_id").references(() => journeys.id).notNull(),
+    weekday: integer("weekday").notNull(),
+    timeZone: text("time_zone").notNull(),
+    openedThrough: integer("opened_through").notNull().default(0),
+    nextOpensOn: date("next_opens_on", { mode: "string" }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [unique("journey_enrollments_user_journey_unique").on(table.userId, table.journeyId)]
+);
 
 // ---------- BLOG ----------
 export const posts = pgTable("posts", {
