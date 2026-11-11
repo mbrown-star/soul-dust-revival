@@ -76,7 +76,7 @@ export default async function BookDetailPage({
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-10 items-start">
         <CoverGallery
           front={
             product.imageUrl
@@ -103,13 +103,9 @@ export default async function BookDetailPage({
               format: product.format,
             })}
           </p>
-          <h1 className="font-display font-bold text-3xl sm:text-4xl text-ink mb-4">
+          <h1 className="font-display font-bold text-3xl sm:text-4xl text-ink mb-6">
             {product.title}
           </h1>
-          {product.description && (
-            <p className="font-serif text-ink/80 mb-6 leading-relaxed">{product.description}</p>
-          )}
-
           {product.comingSoon ? (
             <ComingSoonNotice />
           ) : product.format === "both" ? (
@@ -121,7 +117,7 @@ export default async function BookDetailPage({
                 <p className="font-sans text-xl font-semibold text-ink mb-3">
                   ${(product.priceCents / 100).toFixed(2)}
                 </p>
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap items-start gap-3">
                   {product.sellOnStripe && (
                     <AddToCartButton
                       productId={product.id}
@@ -167,7 +163,7 @@ export default async function BookDetailPage({
                 ${(product.priceCents / 100).toFixed(2)}
               </p>
 
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap items-start gap-3">
                 {product.sellOnStripe && (
                   <AddToCartButton
                     productId={product.id}
@@ -190,6 +186,19 @@ export default async function BookDetailPage({
           )}
         </div>
       </div>
+
+      {/* The full description reads as one column under the cover and buy
+          options (explicit request, 2026-11-11), rather than squeezed into
+          the narrow column beside the cover. pre-line keeps any paragraph
+          breaks the admin typed. */}
+      {product.description && (
+        <section className="mt-12 sm:mt-16" aria-labelledby="product-description-heading">
+          <h2 id="product-description-heading" className="font-display font-bold text-2xl text-ink mb-4">
+            About this {product.type === "bundle" ? "bundle" : product.kind}
+          </h2>
+          <p className="font-serif text-ink/80 leading-relaxed whitespace-pre-line">{product.description}</p>
+        </section>
+      )}
 
       {product.type === "bundle" && components.length > 0 && (
         <div className="mt-16">
@@ -219,7 +228,7 @@ export default async function BookDetailPage({
                       : `$${(component.priceCents / 100).toFixed(2)} on its own`}
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2 justify-end flex-shrink-0">
+                <div className="flex flex-wrap items-start gap-2 justify-end flex-shrink-0">
                   {component.comingSoon ? null : component.format === "both" ? (
                     <>
                       {component.sellOnStripe && (

@@ -1,12 +1,8 @@
 import Image from "next/image";
-import { coverAspectRatio } from "@/lib/images/coverAspectRatio";
+import { COVER_SLOT_ASPECT_RATIO, coverAspectRatio } from "@/lib/images/coverAspectRatio";
 
-// Every tile slot shares this shape, so a row of covers lines up at one
-// height. It matches the widest cover shape we sell (an 8.5x11 crop is
-// ~0.765, The Journey bundle art ~0.773), so the widest covers fill their
-// column and narrower ones (6x9, ~0.667) keep the full height and simply sit
-// a little narrower, centered.
-const TILE_SLOT_ASPECT_RATIO = "31 / 40";
+// Every tile shares one slot shape (COVER_SLOT_ASPECT_RATIO), so a row of
+// covers lines up at one height.
 
 /**
  * Renders a product's cover at one shared height, each at its own true
@@ -29,7 +25,7 @@ export function CoverThumbnail({
   sizes: string;
 }) {
   return (
-    <div className="flex justify-center" style={{ aspectRatio: TILE_SLOT_ASPECT_RATIO }}>
+    <div className="flex justify-center" style={{ aspectRatio: COVER_SLOT_ASPECT_RATIO }}>
       <div
         className="relative h-full max-w-full bg-dusk rounded-xl overflow-hidden shadow-lg"
         style={{ aspectRatio: coverAspectRatio(imageWidth, imageHeight) }}

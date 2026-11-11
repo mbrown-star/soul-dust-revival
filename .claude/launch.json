@@ -4,31 +4,57 @@
     {
       "name": "dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 3000
     },
     {
       "name": "qa-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "qa:dev"],
+      "runtimeArgs": [
+        "run",
+        "qa:dev"
+      ],
       "port": 3100
     },
     {
       "name": "qa-start",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["qa/scripts/qa-start-server.mjs"],
+      "runtimeArgs": [
+        "qa/scripts/qa-start-server.mjs"
+      ],
       "port": 3100
     },
     {
       "name": "qa-start-3101",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["qa/scripts/qa-start-server.mjs", "3101"],
+      "runtimeArgs": [
+        "qa/scripts/qa-start-server.mjs",
+        "3101"
+      ],
       "port": 3101
+    },
+    {
+      "name": "qa-start-3102",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "qa/scripts/qa-start-server.mjs",
+        "3102"
+      ],
+      "port": 3102
     },
     {
       "name": "interactive-prototype",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "4100", "--directory", "soul-dust-interactive/dist"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4100",
+        "--directory",
+        "soul-dust-interactive/dist"
+      ],
       "port": 4100
     }
   ]

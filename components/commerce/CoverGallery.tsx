@@ -2,17 +2,20 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { coverAspectRatio } from "@/lib/images/coverAspectRatio";
+import { COVER_SLOT_ASPECT_RATIO, coverAspectRatio } from "@/lib/images/coverAspectRatio";
 
 type Cover = { url: string; alt: string; width: number | null; height: number | null };
 
 /**
- * Horizontally scrollable front/back cover gallery for a book's detail
- * page. Falls back to a single static front-cover image (or the plain
- * text placeholder) when there's no back cover — most non-book products
- * only ever have one image. The box takes the first cover's own shape, so
- * the full border box shows; a back cover is split from the same trim, so
- * it shares that shape.
+ * Front/back cover gallery for a product's detail page.
+ *
+ * Every product's gallery is the same slot shape (COVER_SLOT_ASPECT_RATIO,
+ * the one the Store tiles use), with each cover shown whole at its own
+ * shape, centered at full slot height. So the slot, and the control row
+ * under it, sit in exactly the same place on every product page whatever
+ * the cover's trim (explicit request, 2026-11-11). The controls are never
+ * laid over the art, and a disabled arrow stays in place (dimmed) rather
+ * than disappearing, so nothing shifts as the reader moves between covers.
  */
 export function CoverGallery({
   front,
@@ -28,16 +31,16 @@ export function CoverGallery({
 
   if (covers.length === 0) {
     return (
-      <div
-        className="bg-dusk rounded-lg overflow-hidden relative flex items-center justify-center text-parchment/70 font-display"
-        style={{ aspectRatio: coverAspectRatio(null, null) }}
-      >
-        Soul Dust Revival
+      <div className="flex justify-center" style={{ aspectRatio: COVER_SLOT_ASPECT_RATIO }}>
+        <div
+          className="h-full max-w-full bg-dusk rounded-lg flex items-center justify-center text-parchment/70 font-display"
+          style={{ aspectRatio: coverAspectRatio(null, null) }}
+        >
+          Soul Dust Revival
+        </div>
       </div>
     );
   }
-
-  const aspectRatio = coverAspectRatio(covers[0]!.width, covers[0]!.height);
 
   function scrollToIndex(index: number) {
     const container = scrollRef.current;
@@ -54,51 +57,50 @@ export function CoverGallery({
     setActiveIndex(Math.round(container.scrollLeft / container.clientWidth));
   }
 
+  const arrowClass =
+    "w-9 h-9 flex items-center justify-center rounded-full border border-moss/30 text-ink hover:bg-moss/10 disabled:opacity-30 disabled:hover:bg-transparent focus:outline-none focus:ring-2 focus:ring-gold";
+
   return (
-    <div className="relative">
+    <div>
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="no-scrollbar bg-dusk rounded-lg overflow-x-auto relative flex snap-x snap-mandatory scroll-smooth motion-reduce:scroll-auto"
-        style={{ scrollbarWidth: "none", aspectRatio }}
+        className="no-scrollbar overflow-x-auto flex snap-x snap-mandatory scroll-smooth motion-reduce:scroll-auto"
+        style={{ scrollbarWidth: "none", aspectRatio: COVER_SLOT_ASPECT_RATIO }}
         role="group"
         aria-label={covers.length > 1 ? "Front and back cover" : "Cover image"}
       >
         {covers.map((cover, i) => (
-          <div key={cover.url} className="relative w-full h-full flex-shrink-0 snap-center">
-            <Image
-              src={cover.url}
-              alt={cover.alt}
-              fill
-              sizes="(min-width: 640px) 50vw, 100vw"
-              className="object-cover"
-              priority={i === 0}
-            />
+          <div key={cover.url} className="w-full h-full flex-shrink-0 snap-center flex justify-center">
+            <div
+              className="relative h-full max-w-full bg-dusk rounded-lg overflow-hidden"
+              style={{ aspectRatio: coverAspectRatio(cover.width, cover.height) }}
+            >
+              <Image
+                src={cover.url}
+                alt={cover.alt}
+                fill
+                sizes="(min-width: 640px) 50vw, 100vw"
+                className="object-cover"
+                priority={i === 0}
+              />
+            </div>
           </div>
         ))}
       </div>
 
       {covers.length > 1 && (
-        <>
+        <div className="mt-4 flex items-center justify-center gap-4">
           <button
             type="button"
             onClick={() => scrollToIndex(activeIndex - 1)}
             disabled={activeIndex === 0}
             aria-label="Show front cover"
-            className="absolute left-2 top-1/2 -translate-y-1/2 bg-ink/70 text-parchment rounded-full w-9 h-9 flex items-center justify-center disabled:opacity-0 focus:outline-none focus:ring-2 focus:ring-gold"
+            className={arrowClass}
           >
-            ‹
+            <span aria-hidden="true">‹</span>
           </button>
-          <button
-            type="button"
-            onClick={() => scrollToIndex(activeIndex + 1)}
-            disabled={activeIndex === covers.length - 1}
-            aria-label="Show back cover"
-            className="absolute right-2 top-1/2 -translate-y-1/2 bg-ink/70 text-parchment rounded-full w-9 h-9 flex items-center justify-center disabled:opacity-0 focus:outline-none focus:ring-2 focus:ring-gold"
-          >
-            ›
-          </button>
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2" role="group" aria-label="Cover images">
+          <div className="flex gap-2" role="group" aria-label="Cover images">
             {covers.map((cover, i) => (
               <button
                 key={cover.url}
@@ -107,12 +109,21 @@ export function CoverGallery({
                 aria-label={i === 0 ? "Front cover" : "Back cover"}
                 onClick={() => scrollToIndex(i)}
                 className={`w-2.5 h-2.5 rounded-full focus:outline-none focus:ring-2 focus:ring-gold ${
-                  i === activeIndex ? "bg-gold" : "bg-parchment/60"
+                  i === activeIndex ? "bg-ember-700" : "bg-moss/30"
                 }`}
               />
             ))}
           </div>
-        </>
+          <button
+            type="button"
+            onClick={() => scrollToIndex(activeIndex + 1)}
+            disabled={activeIndex === covers.length - 1}
+            aria-label="Show back cover"
+            className={arrowClass}
+          >
+            <span aria-hidden="true">›</span>
+          </button>
+        </div>
       )}
     </div>
   );
