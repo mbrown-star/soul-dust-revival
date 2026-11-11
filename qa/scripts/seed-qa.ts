@@ -633,6 +633,64 @@ async function main() {
     ]);
   }
 
+  // ---------- Study S6: a day-by-day Bible devotional, read by qa-admin ----------
+  // Shaped like A 365-Day Journey Through the Bible: day labels with no
+  // reading ("DAY 1 · JANUARY 1"), each day opening with its readings line and
+  // title, ending with Lift Up Your Eyes and a prayer, and no questions.
+  // Owned by nobody, so it stays out of every My Library count: qa-admin reads
+  // it (admins can open any published study) and has walked Day 1. The
+  // product is inactive so it stays off the storefront.
+  console.log("Seeding QA Bible-reading devotional...");
+  const [pBible] = await db
+    .insert(schema.products)
+    .values({
+      type: "study_access",
+      format: "digital",
+      kind: "devotional",
+      title: "QA Bible Journey",
+      slug: "qa-bible-journey",
+      priceCents: 1500,
+      active: false,
+    })
+    .returning();
+  if (!pBible) throw new Error("QA seed: product insert returned no row.");
+  const [s6] = await db
+    .insert(schema.studies)
+    .values({ productId: pBible.id, title: "QA Bible Journey", slug: "qa-bible-journey", kind: "devotional", published: true })
+    .returning();
+  if (!s6) throw new Error("QA seed: study insert returned no row.");
+  const bibleDays = [
+    { day: 1, readings: "GENESIS 1–2 · MATTHEW 1:1–12 · PSALM 1", title: "In the Beginning", prayer: "A PRAYER TO BEGIN" },
+    { day: 2, readings: "GENESIS 3–4 · MATTHEW 2 · PSALM 2", title: "The Promise in the Dark", prayer: "A PRAYER" },
+    { day: 3, readings: "GENESIS 5–6 · MATTHEW 3 · PSALM 3", title: "Is Anything Too Hard?", prayer: "A PRAYER" },
+  ];
+  const s6LessonIds: string[] = [];
+  for (const d of bibleDays) {
+    const [lesson] = await db
+      .insert(schema.lessons)
+      .values({ studyId: s6.id, orderIndex: d.day, title: `DAY ${d.day} · JANUARY ${d.day}`, published: true })
+      .returning();
+    if (!lesson) throw new Error("QA seed: Bible devotional lesson insert returned no row.");
+    s6LessonIds.push(lesson.id);
+    await db.insert(schema.contentBlocks).values({
+      lessonId: lesson.id,
+      orderIndex: 1,
+      type: "text",
+      body: [
+        `<p><strong>${d.readings}</strong></p>`,
+        `<p><strong>${d.title}</strong></p>`,
+        `<p>A QA reading for day ${d.day}.</p>`,
+        "<p><strong>LIFT UP YOUR EYES</strong></p>",
+        `<p>Lift your eyes, day ${d.day}.</p>`,
+        `<p><strong>${d.prayer}</strong></p>`,
+        `<p>A QA prayer for day ${d.day}.</p>`,
+      ].join("\n"),
+    });
+  }
+  await db
+    .insert(schema.lessonProgress)
+    .values({ userId: userIds.admin, lessonId: s6LessonIds[0]!, status: "completed", completedAt: new Date() });
+
   // ---------- The Journey: two Parts read as one road, owned by qa-leader ----------
   // qa-leader has walked all of Part One (with one written answer, for Part
   // Two's look-back) and Part Two's threshold is this week's stop; Week 3

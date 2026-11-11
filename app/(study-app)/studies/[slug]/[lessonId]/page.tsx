@@ -14,7 +14,9 @@ import { StudyLessonView } from "@/components/study/StudyLessonView";
 import { WeekMediaList } from "@/components/study/WeekMediaList";
 import { weekMediaBySlot } from "@/lib/study/weekMedia";
 import { DevotionalAppView } from "@/components/devotional/DevotionalAppView";
-import { parseDayLabel, todaysDateLabel } from "@/lib/devotional/parseDayLabel";
+import { formatReadings, parseDayLabel, todaysDateLabel } from "@/lib/devotional/parseDayLabel";
+import { isReadingsLine } from "@/lib/devotional/parseDevotionalHtml";
+import { htmlToPlainText } from "@/lib/content/plainText";
 import { getDisplayStudyTitle } from "@/lib/study/displayTitle";
 import type { YearDay } from "@/components/devotional/YearView";
 import type { JournalEntry } from "@/components/devotional/JournalView";
@@ -212,6 +214,8 @@ export default async function LessonPage({
     questionBlockId: string | null;
     todayAnswer: string | undefined;
     pickUpWithToday: { href: string } | null;
+    psalmsEdition: boolean;
+    hasQuestions: boolean;
   } | null = null;
 
   if (isDevotional) {
@@ -270,14 +274,39 @@ export default async function LessonPage({
             .where(and(eq(responses.userId, session.userId), inArray(responses.contentBlockId, questionBlockIds)));
     const answerByQuestionBlockId = new Map(devotionalAnswerRows.map((r) => [r.contentBlockId, r.answerText ?? ""]));
 
+    // A day whose label names no reading ("DAY 1 · JANUARY 1", A 365-Day
+    // Journey Through the Bible) opens with its readings instead, as the
+    // first bold line of its text. Pulled out in SQL so the Year view can show
+    // and search them without loading every day's whole text.
+    const parsedLabels = new Map(studyLessons.map((l) => [l.id, parseDayLabel(l.title)]));
+    const needReadings = [...parsedLabels].filter(([, p]) => p && !p.reading).map(([id]) => id);
+    const readingRows =
+      needReadings.length === 0
+        ? []
+        : await db
+            .select({
+              lessonId: contentBlocks.lessonId,
+              firstLine: sql<string | null>`substring(${contentBlocks.body} from '^<p><strong>([^<]{6,160})</strong></p>')`,
+            })
+            .from(contentBlocks)
+            .where(and(inArray(contentBlocks.lessonId, needReadings), eq(contentBlocks.type, "text"), isNull(contentBlocks.removedAt)))
+            .orderBy(asc(contentBlocks.orderIndex));
+    const readingByLessonId = new Map<string, string | null>();
+    for (const row of readingRows) {
+      if (readingByLessonId.has(row.lessonId)) continue;
+      const line = row.firstLine ? htmlToPlainText(row.firstLine) : "";
+      readingByLessonId.set(row.lessonId, isReadingsLine(line) ? formatReadings(line) : null);
+    }
+
     const todayLabel = todaysDateLabel();
     const yearDays: YearDay[] = [];
     const journalEntries: JournalEntry[] = [];
     let todayLessonId: string | null = null;
 
     for (const l of studyLessons) {
-      const parsed = parseDayLabel(l.title);
+      const parsed = parsedLabels.get(l.id);
       if (!parsed) continue; // the "Introduction" lesson, or a hand-edited title
+      const reading = parsed.reading ?? readingByLessonId.get(l.id) ?? null;
       const locked = isLocked(l);
       if (parsed.date === todayLabel && !locked) todayLessonId = l.id;
 
@@ -293,7 +322,7 @@ export default async function LessonPage({
         date: parsed.date,
         month: parsed.month,
         dateNum: parsed.dateNum,
-        psalmRef: parsed.psalmRef,
+        reading,
         psalmNumber: parsed.psalmNumber,
         title: l.title,
         walked: statusByLessonId.get(l.id) === "completed",
@@ -308,7 +337,7 @@ export default async function LessonPage({
           href,
           day: parsed.day,
           date: parsed.date,
-          psalmRef: parsed.psalmRef,
+          reading,
           question: questionBlock.questionPrompt ?? "",
           answer: answer!,
         });
@@ -325,6 +354,11 @@ export default async function LessonPage({
       daysWalked: yearDays.filter((d) => d.walked && !d.locked).length,
       yearDays,
       journalEntries,
+      // The Psalms devotional (its labels name a psalm a day) has its own
+      // edition line and "Six Faces of the Dust" essay; other devotionals don't.
+      psalmsEdition: yearDays.some((d) => d.psalmNumber !== null),
+      // No day has an answerable question: no Journal tab, no answer count.
+      hasQuestions: questionBlockByLessonId.size > 0,
       questionBlockId: currentQuestionBlock?.id ?? null,
       todayAnswer: currentQuestionBlock ? answerByBlockId.get(currentQuestionBlock.id) : undefined,
       pickUpWithToday:
@@ -390,6 +424,8 @@ export default async function LessonPage({
           daysWalked={devotionalProps.daysWalked}
           yearDays={devotionalProps.yearDays}
           journalEntries={devotionalProps.journalEntries}
+          psalmsEdition={devotionalProps.psalmsEdition}
+          hasQuestions={devotionalProps.hasQuestions}
           today={{
             dayLabel: lesson.title,
             bodyHtml: dayTextBlock?.body ?? "",

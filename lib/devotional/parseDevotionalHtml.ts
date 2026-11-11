@@ -2,12 +2,27 @@ import { htmlToPlainText } from "@/lib/content/plainText";
 
 export type ParsedDevotionalDay = {
   title: string;
+  /** The day's readings, when the day opens with them (A 365-Day Journey
+   * Through the Bible: "GENESIS 1–2 · MATTHEW 1:1–12 · PSALM 1"). */
+  readings: string | null;
   keyVerseQuote: string | null;
   keyVerseCitation: string | null;
   bodyParagraphs: string[];
   liftUpParagraphs: string[];
   questionParagraphs: string[];
+  /** The closing prayer and its printed heading ("A Prayer", "A Prayer to Begin"). */
+  prayerHeading: string | null;
+  prayerParagraphs: string[];
 };
+
+// Same shape the importer recognizes (lib/import/splitIntoLessons.ts):
+// capitals and chapter numbers, no lower-case letters.
+// Never a day's own label ("DAY 1 · JANUARY 1 · PSALM 1").
+const READINGS_HEADING = /^(?!DAY\s*\d)(?=.*\d)(?=.*[A-Z]{3})[^a-z]{6,160}$/;
+
+export function isReadingsLine(line: string): boolean {
+  return READINGS_HEADING.test(line);
+}
 
 const HEADING_PARAGRAPH = /^<p><strong>(.*?)<\/strong><\/p>$/;
 const PLAIN_PARAGRAPH = /^<p>(.*)<\/p>$/;
@@ -37,14 +52,17 @@ export function parseDevotionalHtml(html: string): ParsedDevotionalDay {
 
   const result: ParsedDevotionalDay = {
     title: "",
+    readings: null,
     keyVerseQuote: null,
     keyVerseCitation: null,
     bodyParagraphs: [],
     liftUpParagraphs: [],
     questionParagraphs: [],
+    prayerHeading: null,
+    prayerParagraphs: [],
   };
 
-  type Section = "title" | "keyVerse" | "citation" | "body" | "lift" | "question";
+  type Section = "title" | "keyVerse" | "citation" | "body" | "lift" | "question" | "prayer";
   let section: Section = "title";
 
   const isQuote = (text: string) => /^[“"]/.test(text);
@@ -58,9 +76,15 @@ export function parseDevotionalHtml(html: string): ParsedDevotionalDay {
       const heading = htmlToPlainText(headingMatch[1]);
       const normalized = heading.replace(/[^a-zA-Z]/g, "").toUpperCase();
 
+      if (section === "title" && result.title === "" && result.readings === null && READINGS_HEADING.test(heading)) {
+        result.readings = heading;
+        continue;
+      }
       if (section === "title" && result.title === "") {
         result.title = heading;
-        section = "keyVerse";
+        // A day that opens with its readings has no key verse: its first
+        // paragraph can start with a quotation and is still body text.
+        section = result.readings ? "body" : "keyVerse";
         continue;
       }
       if (normalized === "LIFTUPYOUREYES") {
@@ -69,6 +93,11 @@ export function parseDevotionalHtml(html: string): ParsedDevotionalDay {
       }
       if (normalized.startsWith("AQUESTIONTOSITWITH") || normalized === "QUESTIONTOSITWITH") {
         section = "question";
+        continue;
+      }
+      if (normalized.startsWith("APRAYER")) {
+        result.prayerHeading = toTitleCase(heading);
+        section = "prayer";
         continue;
       }
       if (section === "citation" || (section === "keyVerse" && isCitationHeading(heading))) {
@@ -132,8 +161,24 @@ function normalizeBlockBoundaries(html: string): string {
   );
 }
 
-function pushToSection(result: ParsedDevotionalDay, section: "title" | "keyVerse" | "citation" | "body" | "lift" | "question", text: string) {
+// "A PRAYER TO BEGIN" -> "A Prayer to Begin".
+function toTitleCase(heading: string): string {
+  if (/[a-z]/.test(heading)) return heading;
+  const small = new Set(["a", "an", "and", "the", "to", "of", "for", "in", "on", "with"]);
+  return heading
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word, i) => (i > 0 && small.has(word) ? word : word.charAt(0).toUpperCase() + word.slice(1)))
+    .join(" ");
+}
+
+function pushToSection(
+  result: ParsedDevotionalDay,
+  section: "title" | "keyVerse" | "citation" | "body" | "lift" | "question" | "prayer",
+  text: string
+) {
   if (section === "lift") result.liftUpParagraphs.push(text);
   else if (section === "question") result.questionParagraphs.push(text);
+  else if (section === "prayer") result.prayerParagraphs.push(text);
   else result.bodyParagraphs.push(text);
 }

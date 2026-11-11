@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { parseDevotionalHtml } from "@/lib/devotional/parseDevotionalHtml";
+import { formatReadings } from "@/lib/devotional/parseDayLabel";
 import { HideWordsSlider } from "./HideWordsSlider";
 import { ReadAloudButton } from "./ReadAloudButton";
 import { QuestionBlock } from "@/components/study/QuestionBlock";
@@ -55,12 +56,15 @@ export function DevotionalDayView({
 
   const readAloudText = [
     parsed.title,
+    parsed.readings ? `Today's readings: ${formatReadings(parsed.readings)}.` : null,
     parsed.keyVerseQuote,
     ...parsed.bodyParagraphs,
     parsed.liftUpParagraphs.length ? "Lift up your eyes." : null,
     ...parsed.liftUpParagraphs,
     parsed.questionParagraphs.length ? "A question to sit with." : null,
     ...parsed.questionParagraphs,
+    parsed.prayerHeading,
+    ...parsed.prayerParagraphs,
   ]
     .filter(Boolean)
     .join(" ");
@@ -97,6 +101,13 @@ export function DevotionalDayView({
         <>
           {parsed.title && (
             <h1 className="font-display font-bold text-3xl sm:text-4xl text-ink text-center">{parsed.title}</h1>
+          )}
+
+          {parsed.readings && (
+            <div className="bg-white border border-dusk/10 rounded-xl p-5 text-center">
+              <p className="font-sans text-xs font-semibold uppercase tracking-wide text-moss mb-2">Today&apos;s Readings</p>
+              <p className="font-display text-xl text-ink">{formatReadings(parsed.readings)}</p>
+            </div>
           )}
 
           {pickUpWithToday && (
@@ -146,6 +157,19 @@ export function DevotionalDayView({
               </p>
               {parsed.liftUpParagraphs.map((p, i) => (
                 <p key={i} className="font-serif italic text-ink">
+                  {p}
+                </p>
+              ))}
+            </div>
+          )}
+
+          {parsed.prayerParagraphs.length > 0 && (
+            <div>
+              <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700 mb-2">
+                {parsed.prayerHeading ?? "A Prayer"}
+              </p>
+              {parsed.prayerParagraphs.map((p, i) => (
+                <p key={i} className="font-serif text-ink mb-3 last:mb-0">
                   {p}
                 </p>
               ))}

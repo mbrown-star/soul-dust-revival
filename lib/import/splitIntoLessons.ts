@@ -66,7 +66,7 @@ export function splitPlainTextByHeadings(text: string): ImportedLesson[] {
   if (toc) {
     const sections = splitByTocEntries(lines, toc);
     if (sections.length >= 2) {
-      return sections.map((s) => ({ title: s.title, bodyHtml: paragraphsToHtml(s.lines) }));
+      return sections.map((s) => ({ title: s.title, bodyHtml: sectionToHtml(s.lines) }));
     }
     // Found what looked like a TOC, but couldn't actually locate most of its
     // entries as real headings in the body (e.g. the PDF's text-extraction
@@ -224,7 +224,7 @@ function splitByHeadingKeywords(lines: string[]): ImportedLesson[] {
 
   return sections.map((s) => ({
     title: s.title,
-    bodyHtml: paragraphsToHtml(s.lines),
+    bodyHtml: sectionToHtml(s.lines),
   }));
 }
 
@@ -345,7 +345,7 @@ function narrowToForewordAndPreface(lines: string[]): string[] {
  * the prose around it. Still a heuristic over unstructured text, not a
  * reconstruction of the original layout.
  */
-function paragraphsToHtml(lines: string[]): string {
+function paragraphsToHtml(lines: string[], forcedHeadingIndex: number | null = null): string {
   const blocks: { text: string; heading: boolean }[] = [];
   let buffer: string[] = [];
 
@@ -356,12 +356,12 @@ function paragraphsToHtml(lines: string[]): string {
     }
   };
 
-  for (const line of lines) {
+  for (const [index, line] of lines.entries()) {
     if (line === "") {
       flush();
       continue;
     }
-    if (looksLikeHeadingLine(line)) {
+    if (index === forcedHeadingIndex || looksLikeHeadingLine(line)) {
       flush();
       blocks.push({ text: line, heading: true });
       continue;
@@ -374,6 +374,34 @@ function paragraphsToHtml(lines: string[]): string {
   return blocks
     .map((b) => (b.heading ? `<p><strong>${escapeHtml(b.text)}</strong></p>` : `<p>${escapeHtml(b.text)}</p>`))
     .join("\n");
+}
+
+// A day's list of readings, set in capitals with chapter numbers:
+// "GENESIS 1–2 · MATTHEW 1:1–12 · PSALM 1", "2 CHRONICLES 32–33 · 1 CORINTHIANS 10:1–16 · PSALM 74".
+// Never a day's own label ("DAY 1 · JANUARY 1 · PSALM 1").
+const READINGS_LINE = /^(?!DAY\s*\d)(?=.*\d)(?=.*[A-Z]{3})[^a-z]{6,160}$/;
+
+/**
+ * A devotional day (A 365-Day Journey Through the Bible) opens with its
+ * readings line and then its title on a line of its own: "In the Beginning",
+ * "Grace Even for the Worst". Those titles keep small words in lower case, so
+ * looksLikeHeadingLine (every word capitalized) misses them and the title
+ * used to run into the first paragraph. Returns the title's line index when a
+ * section opens that way, so it's kept as its own heading.
+ */
+function dayTitleIndex(lines: string[]): number | null {
+  const filled = lines.flatMap((line, index) => (line === "" ? [] : [index]));
+  const [readings, title, next] = filled;
+  if (readings === undefined || title === undefined || next === undefined) return null;
+  if (!READINGS_LINE.test(lines[readings]!)) return null;
+  const titleLine = lines[title]!;
+  // A title can be a question ("Is Anything Too Hard?"), but not end like a
+  // sentence or a line of prose broken mid-sentence.
+  return titleLine.length <= 70 && !/[.,;:][”"')\]]*$/.test(titleLine) && !READINGS_LINE.test(titleLine) ? title : null;
+}
+
+function sectionToHtml(lines: string[]): string {
+  return paragraphsToHtml(lines, dayTitleIndex(lines));
 }
 
 function stripTags(html: string): string {

@@ -95,3 +95,48 @@ describe("parseDevotionalHtml", () => {
     expect(parsed.bodyParagraphs).toEqual(["Just prose, nothing special."]);
   });
 });
+
+describe("parseDevotionalHtml, a day that opens with its readings", () => {
+  const JOURNEY_DAY = [
+    "<p><strong>GENESIS 1–2 · MATTHEW 1:1–12 · PSALM 1</strong></p>",
+    "<p><strong>In the Beginning</strong></p>",
+    "<p>“In the beginning, God created the heavens and the earth” (Genesis 1:1). Three openings.</p>",
+    "<p>Psalm 1 shows you what a life looks like.</p>",
+    "<p><strong>LIFT UP YOUR EYES</strong></p>",
+    "<p>Lift your eyes to Christ.</p>",
+    "<p><strong>A PRAYER TO BEGIN</strong></p>",
+    "<p>Father, You formed me from the dust.</p>",
+    "<p>Amen.</p>",
+  ].join("\n");
+
+  it("splits out the readings, title, body, Lift Up and the closing prayer", () => {
+    const parsed = parseDevotionalHtml(JOURNEY_DAY);
+    expect(parsed.readings).toBe("GENESIS 1–2 · MATTHEW 1:1–12 · PSALM 1");
+    expect(parsed.title).toBe("In the Beginning");
+    expect(parsed.keyVerseQuote).toBeNull();
+    expect(parsed.bodyParagraphs).toEqual([
+      "“In the beginning, God created the heavens and the earth” (Genesis 1:1). Three openings.",
+      "Psalm 1 shows you what a life looks like.",
+    ]);
+    expect(parsed.liftUpParagraphs).toEqual(["Lift your eyes to Christ."]);
+    expect(parsed.prayerHeading).toBe("A Prayer to Begin");
+    expect(parsed.prayerParagraphs).toEqual(["Father, You formed me from the dust.", "Amen."]);
+  });
+
+  it("keeps a plain 'A PRAYER' heading as printed, in title case", () => {
+    const parsed = parseDevotionalHtml(JOURNEY_DAY.replace("A PRAYER TO BEGIN", "A PRAYER"));
+    expect(parsed.prayerHeading).toBe("A Prayer");
+  });
+
+  it("never takes a day's own label for its readings", () => {
+    const parsed = parseDevotionalHtml("<p><strong>DAY 1 · JANUARY 1 · PSALM 1</strong></p>\n<p>“A key verse.”</p>");
+    expect(parsed.readings).toBeNull();
+    expect(parsed.title).toBe("DAY 1 · JANUARY 1 · PSALM 1");
+    expect(parsed.keyVerseQuote).toBe("“A key verse.”");
+  });
+
+  it("leaves a Psalms day without readings", () => {
+    expect(parseDevotionalHtml(DAY_1_HTML).readings).toBeNull();
+    expect(parseDevotionalHtml(DAY_1_HTML).prayerParagraphs).toEqual([]);
+  });
+});

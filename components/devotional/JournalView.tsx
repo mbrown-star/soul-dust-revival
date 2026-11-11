@@ -5,7 +5,7 @@ export type JournalEntry = {
   href: string;
   day: number;
   date: string;
-  psalmRef: string;
+  reading: string | null;
   question: string;
   answer: string;
 };
@@ -50,7 +50,8 @@ export function JournalView({ entries }: { entries: JournalEntry[] }) {
             className="block bg-white border border-dusk/10 rounded-xl p-5 hover:border-moss/40"
           >
             <p className="font-sans text-xs font-bold uppercase tracking-wide text-ember-700">
-              Day {e.day} · {e.date} · {e.psalmRef}
+              Day {e.day} · {e.date}
+              {e.reading ? ` · ${e.reading}` : ""}
             </p>
             <p className="font-sans font-semibold text-ink mt-1 mb-2">{e.question}</p>
             <p className="font-serif text-ink whitespace-pre-wrap">{e.answer}</p>

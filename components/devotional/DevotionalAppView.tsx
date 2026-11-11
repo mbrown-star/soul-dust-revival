@@ -46,6 +46,8 @@ export function DevotionalAppView({
   today,
   yearDays,
   journalEntries,
+  psalmsEdition = true,
+  hasQuestions = true,
 }: {
   studyTitle: string;
   studyHref: string;
@@ -67,8 +69,14 @@ export function DevotionalAppView({
   };
   yearDays: YearDay[];
   journalEntries: JournalEntry[];
+  // The Psalms devotional's own edition line and "Six Faces of the Dust"
+  // essay. Another devotional (A 365-Day Journey Through the Bible) has neither.
+  psalmsEdition?: boolean;
+  // Days with an answerable question. Without any, there's nothing to journal.
+  hasQuestions?: boolean;
 }) {
   const [tab, setTab] = useState<TabKey>("today");
+  const tabs = TABS.filter((t) => (t.key === "journal" ? hasQuestions : t.key === "faces" ? psalmsEdition : true));
   const appTitle = deriveAppTitle(studyTitle);
   const percent = totalDays > 0 ? Math.round((daysWalked / totalDays) * 100) : 0;
 
@@ -80,7 +88,7 @@ export function DevotionalAppView({
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
           <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700">
-            Soul Dust Revival · Universal Edition
+            {psalmsEdition ? "Soul Dust Revival · Universal Edition" : "Soul Dust Revival"}
           </p>
           <h1 className="font-display font-bold text-2xl sm:text-3xl text-ink mt-0.5">{appTitle}</h1>
         </div>
@@ -107,7 +115,7 @@ export function DevotionalAppView({
       </div>
 
       <ScrollFadeTabs ariaLabel="Devotional sections">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.key}
             type="button"
@@ -142,14 +150,18 @@ export function DevotionalAppView({
         />
       </div>
       <div role="tabpanel" hidden={tab !== "year"}>
-        <YearView days={yearDays} />
+        <YearView days={yearDays} hasQuestions={hasQuestions} />
       </div>
-      <div role="tabpanel" hidden={tab !== "journal"}>
-        <JournalView entries={journalEntries} />
-      </div>
-      <div role="tabpanel" hidden={tab !== "faces"}>
-        <SixFacesOfTheDust />
-      </div>
+      {hasQuestions && (
+        <div role="tabpanel" hidden={tab !== "journal"}>
+          <JournalView entries={journalEntries} />
+        </div>
+      )}
+      {psalmsEdition && (
+        <div role="tabpanel" hidden={tab !== "faces"}>
+          <SixFacesOfTheDust />
+        </div>
+      )}
     </div>
   );
 }

@@ -305,6 +305,49 @@ describe("splitPlainTextByHeadings, a day-by-day devotional", () => {
     expect(lessons[1]!.bodyHtml).toContain("kneels in the dust");
     expect(lessons[0]!.bodyHtml).not.toContain("TWELVE MONTHS");
   });
+
+  it("keeps a day's title as its own heading after the readings line, small words and all", () => {
+    const text = [
+      "DAY 1 · JANUARY 1",
+      "GENESIS 1–2 · MATTHEW 1:1–12 · PSALM 1",
+      "In the Beginning",
+      "Three readings, three first pages. Genesis starts with God:",
+      "“In the beginning, God created the heavens and the earth” (Genesis 1:1).",
+      "DAY 200 · JULY 19",
+      "2 CHRONICLES 32–33 · 1 CORINTHIANS 10:1–16 · PSALM 74",
+      "Grace Even for the Worst",
+      "Assyria comes for Jerusalem.",
+      "DAY 9 · JANUARY 9",
+      "GENESIS 17–18 · MATTHEW 6:18–34 · PSALM 9",
+      "Is Anything Too Hard?",
+      "God comes to a man of ninety-nine.",
+    ].join("\n");
+
+    const [day1, day200, day9] = splitPlainTextByHeadings(text);
+    expect(day9!.bodyHtml).toContain("<p><strong>Is Anything Too Hard?</strong></p>");
+    expect(day1!.bodyHtml).toBe(
+      [
+        "<p><strong>GENESIS 1–2 · MATTHEW 1:1–12 · PSALM 1</strong></p>",
+        "<p><strong>In the Beginning</strong></p>",
+        "<p>Three readings, three first pages. Genesis starts with God: “In the beginning, God created the heavens and the earth” (Genesis 1:1).</p>",
+      ].join("\n")
+    );
+    expect(day200!.bodyHtml).toContain("<p><strong>Grace Even for the Worst</strong></p>\n<p>Assyria comes for Jerusalem.</p>");
+  });
+
+  it("doesn't make a heading of a day's first sentence when it doesn't open with a readings line", () => {
+    // The Psalms devotional: title, key verse, then prose.
+    const text = [
+      "DAY 1 · JANUARY 1 · PSALM 1",
+      "Two Trees, Two Soils",
+      "“He will be like a tree planted by the streams of water”",
+      "— PSALM 1:3",
+      "Psalm 1 opens the whole songbook with two people",
+      "and two kinds of ground.",
+    ].join("\n");
+
+    expect(splitPlainTextByHeadings(text)[0]!.bodyHtml).toContain("<p>Psalm 1 opens the whole songbook with two people and two kinds of ground.</p>");
+  });
 });
 
 describe("splitStudyPlainTextByHeadings", () => {

@@ -12,7 +12,8 @@ export type YearDay = {
   date: string;
   month: string;
   dateNum: number;
-  psalmRef: string;
+  /** The day's reading(s), when known: "Psalm 1", or "Genesis 1–2 · Matthew 1:1–12 · Psalm 1". */
+  reading: string | null;
   psalmNumber: number | null;
   title: string;
   walked: boolean;
@@ -31,15 +32,24 @@ export type YearDay = {
  * lesson_progress / responses data this page already fetched server-side,
  * so it's correct across devices for the same account.
  */
-export function YearView({ days }: { days: YearDay[] }) {
+export function YearView({ days, hasQuestions = true }: { days: YearDay[]; hasQuestions?: boolean }) {
   const [query, setQuery] = useState("");
 
+  // The Psalms devotional reads one psalm a day: count psalms and search by
+  // psalm number. Any other devotional searches by day number instead.
+  const psalter = days.some((d) => d.psalmNumber !== null);
   const anyLocked = days.some((d) => d.locked);
   const daysWalked = days.filter((d) => d.walked).length;
   const answersWritten = days.filter((d) => d.answered).length;
   const psalmsCovered = new Set(
     days.filter((d) => d.walked && d.psalmNumber !== null).map((d) => d.psalmNumber)
   ).size;
+  const stats = [
+    { value: daysWalked, label: "days walked" },
+    psalter ? { value: psalmsCovered, label: "of 150 psalms" } : { value: days.length - daysWalked, label: "days to go" },
+    ...(hasQuestions ? [{ value: answersWritten, label: "answers written" }] : []),
+  ];
+  const describe = (d: YearDay) => (d.reading ? `${d.date} · ${d.reading}` : d.date);
 
   const months = useMemo(() => {
     const byMonth = new Map<string, YearDay[]>();
@@ -57,34 +67,28 @@ export function YearView({ days }: { days: YearDay[] }) {
     ? days
         .filter((d) =>
           isNumericQuery
-            ? d.psalmNumber === Number(normalizedQuery)
-            : `${d.title} ${d.psalmRef} ${d.date}`.toLowerCase().includes(normalizedQuery)
+            ? (psalter ? d.psalmNumber : d.day) === Number(normalizedQuery)
+            : `${d.title} ${d.reading ?? ""} ${d.date}`.toLowerCase().includes(normalizedQuery)
         )
         .slice(0, 30)
     : [];
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white border border-dusk/10 rounded-xl p-3">
-          <p className="font-display text-2xl text-ink tabular-nums">{daysWalked}</p>
-          <p className="font-sans text-xs text-moss">days walked</p>
-        </div>
-        <div className="bg-white border border-dusk/10 rounded-xl p-3">
-          <p className="font-display text-2xl text-ink tabular-nums">{psalmsCovered}</p>
-          <p className="font-sans text-xs text-moss">of 150 psalms</p>
-        </div>
-        <div className="bg-white border border-dusk/10 rounded-xl p-3">
-          <p className="font-display text-2xl text-ink tabular-nums">{answersWritten}</p>
-          <p className="font-sans text-xs text-moss">answers written</p>
-        </div>
+      <div className={`grid gap-3 ${stats.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+        {stats.map((stat) => (
+          <div key={stat.label} className="bg-white border border-dusk/10 rounded-xl p-3">
+            <p className="font-display text-2xl text-ink tabular-nums">{stat.value}</p>
+            <p className="font-sans text-xs text-moss">{stat.label}</p>
+          </div>
+        ))}
       </div>
 
       <input
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Find a day: a psalm number, a title, a word…"
+        placeholder={psalter ? "Find a day: a psalm number, a title, a word…" : "Find a day: a day number, a book, a date…"}
         aria-label="Search days"
         className="w-full font-sans text-sm rounded-lg border border-dusk/20 px-4 py-3 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ink"
       />
@@ -103,7 +107,7 @@ export function YearView({ days }: { days: YearDay[] }) {
                       {d.title}
                     </span>
                     <span className="block font-sans text-xs text-moss">
-                      {d.locked ? lockedLessonNote() : `${d.date} · ${d.psalmRef}`}
+                      {d.locked ? lockedLessonNote() : describe(d)}
                     </span>
                   </span>
                 </>
@@ -135,12 +139,14 @@ export function YearView({ days }: { days: YearDay[] }) {
             <span className="inline-flex items-center gap-1.5">
               <span className="inline-block w-3 h-3 rounded-sm border-2 border-ember" aria-hidden="true" /> Today
             </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="relative inline-block w-3 h-3 rounded-sm border border-dusk/20" aria-hidden="true">
-                <span className="absolute top-0 right-0 w-1 h-1 rounded-full bg-ember-700 translate-x-1/4 -translate-y-1/4" />
+            {hasQuestions && (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="relative inline-block w-3 h-3 rounded-sm border border-dusk/20" aria-hidden="true">
+                  <span className="absolute top-0 right-0 w-1 h-1 rounded-full bg-ember-700 translate-x-1/4 -translate-y-1/4" />
+                </span>
+                Answer written
               </span>
-              Answer written
-            </span>
+            )}
             {anyLocked && (
               <span className="inline-flex items-center gap-1.5">
                 <span className="inline-block w-3 h-3 rounded-sm bg-dusk/10" aria-hidden="true" /> {lockedLessonNote()}
@@ -178,8 +184,8 @@ export function YearView({ days }: { days: YearDay[] }) {
                       <Link
                         key={d.lessonId}
                         href={d.href}
-                        title={`${d.date} · ${d.psalmRef}`}
-                        aria-label={`Day ${d.day}, ${d.date}: ${d.psalmRef}${d.walked ? ", walked" : ""}`}
+                        title={describe(d)}
+                        aria-label={`Day ${d.day}, ${describe(d).replace(" · ", ": ")}${d.walked ? ", walked" : ""}`}
                         className={`relative aspect-square flex items-center justify-center rounded-lg border font-sans font-semibold text-xs tabular-nums min-h-[32px] ${
                           d.walked
                             ? "bg-moss border-moss text-white"

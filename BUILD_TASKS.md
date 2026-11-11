@@ -344,7 +344,7 @@ what's left, roughly in the order they need doing.
 - [x] Set every real `.env` value as a Cloudflare dashboard variable/secret on the
       deployed Worker (not baked into the build — see warning above) — done
       2026-11-05 via `wrangler secret put` for all ~21 vars.
-- [ ] **`CLOUDFLARE_ACCOUNT_ID` is missing from the deployed Worker's secrets —
+- [x] **Resolved 2026-11-06** (set with `wrangler versions secret put`; every deploy since has passed). Original note: **`CLOUDFLARE_ACCOUNT_ID` is missing from the deployed Worker's secrets —
       found overnight 2026-11-05 when a safe-procedure redeploy 500'd every page
       with "Invalid/missing environment variables: CLOUDFLARE_ACCOUNT_ID".**
       `wrangler secret list --name soul-dust-revival` confirms it isn't one of
@@ -421,7 +421,11 @@ what's left, roughly in the order they need doing.
       login options.
 - [ ] Configure the Stripe webhook endpoint (`/api/webhooks/stripe`) in the Stripe
       dashboard, pointed at the deployed domain, and copy the signing secret into
-      the Worker's `STRIPE_WEBHOOK_SECRET` (dashboard, not `.env`)
+      the Worker's `STRIPE_WEBHOOK_SECRET` (dashboard, not `.env`). **Partly done
+      2026-11-10:** an endpoint exists, pointed at the staging `.workers.dev` URL
+      (Access blocks `staging.souldustrevival.com`). Before the store opens on
+      `souldustrevival.com`, point it (or a second endpoint) at production and set
+      that Worker's secret.
 - [ ] Set up a scheduler to call `/api/cron/social-publish` every 5-15 min,
       `/api/cron/social-metrics` daily, and `/api/cron/prune-login-events` daily or
       weekly (see PRIVACY.md), all three with the `CRON_SECRET` bearer token —
@@ -644,13 +648,15 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- **2026-11-11 — The devotional reader handles A 365-Day Journey Through the Bible.** Day labels without a psalm ("DAY 1 · JANUARY 1") now drive the Year view; each day shows its title, a "Today's Readings" card and its closing prayer; the Year view searches by day number or book and shows "days to go" instead of a psalm count; the Journal tab, the answer count, the "Universal Edition" line and "Six Faces of the Dust" only appear for books that have them. The importer keeps a day's title as its own heading, and the Journey's 366 draft lessons were rebuilt with it. See CLAUDE.md.
+- **2026-11-11 — Delete users and block emails (`/admin/users`).** Each user row (not yourself, not another admin) has **Delete**, with an option to also block the email; a **Blocked emails** section blocks any email (an existing user keeps their data but is locked out) and unblocks. A block bans the email's Supabase account (or a placeholder) and makes `getSession()` treat it as signed out. Migration `0017` (new `blocked_emails` table). Self-delete now shares the deletion code and removes the `users` row outright when nothing (orders, posts) needs it. See CLAUDE.md, SECURITY.md and PRIVACY.md. **Open:** add a line about blocking to the privacy policy; the Supabase ban behavior was checked against the real project only as noted in CLAUDE.md.
 - **2026-11-11 — Contact page.** Signed-in readers get a **Contact** nav item (`/contact`): name and email (filled in from the account), a message box, and up to 5 screenshots (PNG/JPEG/WebP/GIF, 10 MB each, 20 MB total). `/api/contact` emails it to `admin@souldustrevival.com` through Resend with Reply-To set to the sender; screenshots are attachments, never stored. **Open:** add `/api/contact` to the Cloudflare rate-limiting rule; a live test message was delivered to `admin@souldustrevival.com` with its screenshot (2026-11-11). See CLAUDE.md and SECURITY.md.
 - **2026-11-11 — Benedictions, Blessings & Doxologies imported** (hidden draft, Coming soon) with its Scriptural Catalog attached as a study resource; parser skips a week's Roman numeral set on its own line. See CLAUDE.md.
 - **2026-11-11 — study Resources.** Admins can attach PDFs to a study (Resources panel on the study's admin page). Owners download them from the study page through a 5-minute signed link, and free-sample readers see them locked. Migration `0016` (a new `study_resources` table) applied and live on both sites. See CLAUDE.md's same-dated entry and SECURITY.md.
 - **2026-11-11 — AI suggestions moved to the current Claude model.** Blog and social suggestions called `claude-sonnet-4-5` (retiring 2026-11-30) and the Connections key check called `claude-3-5-haiku` (retired 2026-02-19). Both now go through `lib/ai/claude.ts` (`claude-sonnet-5-5`, low effort, server-side refusal fallback), which also fixes a silent empty-suggestions bug once thinking is on (the routes read `content[0].text`). The key check now lists models instead of calling one. **Not verified live:** no Anthropic key is connected yet, so no real suggestion has been generated.
 - **2026-11-11 — The Gospel, The Holy Spirit and A 365-Day Journey Through the Bible imported as hidden drafts.** PDF import now drops NUL bytes, which made The Holy Spirit fail and would fail the admin's Import study too. A day-by-day devotional now splits only on its "DAY" headings. **Open:**
   - Benedictions needs its 176-page manuscript; the Materials folder has the old 14-page catalog.
-  - The devotional reader's Year calendar and Journal only understand Psalms-style day labels, so the 365-Day Journey's days don't show there yet.
+  - ~~The devotional reader's Year calendar and Journal only understand Psalms-style day labels~~ Done 2026-11-11 (see the newer entry).
   - Deploys are held for the Journey session's migration `0015`.
 - **2026-11-11 — Dusty but Hopeful, Genesis Parts 1 and 2, and Prayer imported as hidden drafts**, after three more parser fixes. The main one: a word study now ends after its LIVE IT paragraph, so a pull-quote can't land inside it. The 15 earlier drafts were rebuilt again. 4 titles remain (The Gospel, The Holy Spirit, Benedictions, and the 365-day Bible devotional). The deploy hold for the Journey migration still stands.
 - **2026-11-11 — In Christ, The Ten Commandments, Sermon on the Mount and Dusty and Holy imported as hidden drafts**, after four more study-parser fixes. The main one stops a word study being cut off at its own single-verse source line. The 11 earlier drafts were rebuilt with `--replace-lessons`; Galatians needed nothing. 8 titles remain. **Hold:** don't deploy `main` until the Journey session's migration `0015` is applied; my earlier commits swept its unfinished build in. See CLAUDE.md's same-dated entry.
