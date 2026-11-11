@@ -644,6 +644,7 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- **2026-11-11 — Benedictions, Blessings & Doxologies imported** (hidden draft, Coming soon) with its Scriptural Catalog attached as a study resource; parser skips a week's Roman numeral set on its own line. See CLAUDE.md.
 - **2026-11-11 — study Resources.** Admins can attach PDFs to a study (Resources panel on the study's admin page). Owners download them from the study page through a 5-minute signed link, and free-sample readers see them locked. Migration `0016` (a new `study_resources` table) applied and live on both sites. See CLAUDE.md's same-dated entry and SECURITY.md.
 - **2026-11-11 — AI suggestions moved to the current Claude model.** Blog and social suggestions called `claude-sonnet-4-5` (retiring 2026-11-30) and the Connections key check called `claude-3-5-haiku` (retired 2026-02-19). Both now go through `lib/ai/claude.ts` (`claude-sonnet-5-5`, low effort, server-side refusal fallback), which also fixes a silent empty-suggestions bug once thinking is on (the routes read `content[0].text`). The key check now lists models instead of calling one. **Not verified live:** no Anthropic key is connected yet, so no real suggestion has been generated.
 - **2026-11-11 — The Gospel, The Holy Spirit and A 365-Day Journey Through the Bible imported as hidden drafts.** PDF import now drops NUL bytes, which made The Holy Spirit fail and would fail the admin's Import study too. A day-by-day devotional now splits only on its "DAY" headings. **Open:**

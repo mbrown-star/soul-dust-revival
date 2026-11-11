@@ -607,6 +607,8 @@ function splitWeekIntoBlocks(lines: string[]): StudyImportedBlock[] {
  */
 // Every week's subtitle in this series starts "from dust to ...".
 const SUBTITLE_START = /^from dust\b/i;
+// A line that is only a Roman numeral (up to 39, enough for any week count).
+const ROMAN_NUMERAL_LINE = /^(?=[IVX])X{0,3}(?:IX|IV|V?I{0,3})\.?$/;
 
 export function splitStudyPlainTextByHeadings(text: string): StudyImportedLesson[] {
   const lines = text.split("\n").map((l) => l.trim());
@@ -644,6 +646,13 @@ export function splitStudyPlainTextByHeadings(text: string): StudyImportedLesson
     // marker (its title-page heading, e.g. "The Faith That Bears Fruit").
     let titleIndex = headingIndex + 1;
     while (titleIndex < lines.length && lines[titleIndex] === "") titleIndex++;
+    // Some title pages set the week's Roman numeral on its own line between
+    // "WEEK 1" and the title ("WEEK 1" / "I" / "The Face That Shines"). It's
+    // an ornament, not part of the title.
+    if (ROMAN_NUMERAL_LINE.test(lines[titleIndex] ?? "")) {
+      titleIndex++;
+      while (titleIndex < lines.length && lines[titleIndex] === "") titleIndex++;
+    }
     let title = lines[titleIndex] || `Week ${weekNumber}`;
     // A long title wraps onto a second line ("The Mountain and the
     // Righteousness That" / "Surpasses"). The week's subtitle always starts

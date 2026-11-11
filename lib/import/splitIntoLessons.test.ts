@@ -811,6 +811,35 @@ describe("splitStudyPlainTextByHeadings", () => {
     ]);
   });
 
+  it("leaves out a Roman numeral set on its own line between 'WEEK N' and the title", () => {
+    // Benedictions, Blessings & Doxologies: "WEEK 1" / "I" / "The Face That Shines".
+    const text = [
+      "WEEK 1",
+      "I",
+      "The Face That Shines",
+      "from dust to the shining face",
+      "Some essay text.",
+      "WEEK 4",
+      "IV",
+      "The First and Better Word",
+      "from dust to the original blessing",
+      "More essay text.",
+      "WEEK 12",
+      "XII",
+      "Worthy Is the Lamb",
+      "from dust to the throne",
+      "Last essay text.",
+    ].join("\n");
+
+    const lessons = splitStudyPlainTextByHeadings(text);
+    expect(lessons.map((l) => l.title)).toEqual([
+      "Week 1: The Face That Shines",
+      "Week 4: The First and Better Word",
+      "Week 12: Worthy Is the Lamb",
+    ]);
+    expect(JSON.stringify(lessons[0]!.blocks)).not.toContain("The Face That Shines");
+  });
+
   it("keeps a Foreword line that merely starts with 'Before you begin' in ordinary case", () => {
     const text = [
       "Foreword",
