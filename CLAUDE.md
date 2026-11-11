@@ -66,7 +66,28 @@ webhook/entitlement changes done.
   - **Committed oddity:** the code landed in `d30b09c` ("Add npm run deploy"), because another session committed everything in the shared working tree while this build was still uncommitted. Content is exactly what was tested; not rewritten since it was already pushed.
   - **Shipped per step 8** with `npm run deploy -- both --yes` from `39fe929`: **staging `034a2664`** and **production `754c5d0e`** (sneak-peek gates unchanged, covers load). Every preview and live check passed. `/store?type=devotional` on staging renders with Devotionals already selected.
   - **Note:** the Store is closed on the sneak-peek production site, so the Store filters show only on staging for now; My Library's filters are live on both.
-- **2026-11-11 (newest) — first catalog batch imported as hidden drafts (Galatians, Philippians, Ephesians, 1 Peter); four study-parser fixes; found the live Journey parts' Life Application sections sitting inside their last word-study box.** Requested as "Yes, import a batch". The author's folder `/Users/matthewbrown/Documents/Soul Dust Revival` holds 25 titles not yet in the catalog, each with a final cover PDF, a web-version manuscript, and a metadata `.json` (back-cover copy).
+- **2026-11-11 (newest of all) — second catalog batch imported as hidden drafts: 1 Timothy, James, Ecclesiastes, Law and Gospel.** Requested as "import the next four". The three remaining 6x9 Book Studies other than the John parts (kept together for their own batch), plus Law and Gospel, the first Topical Study, to try that family early.
+  - Same script, dry-run first. No parser changes were needed.
+  - 1 Timothy and James: 5 questions and 5 word studies a week.
+  - Ecclesiastes and Law and Gospel: 6–8 questions a week. Checked block by block: some passages carry a question but no word study (e.g. "MATTHEW 6:19–21 → Where is your treasure stored right now?"), which is the manuscripts' real structure, not a misread. Each Life Application is its own reading section.
+  - Law and Gospel's cover is 8.5x11 (front 2316x3027), split by trim geometry.
+  - **Records:**
+
+    | Title | Product | Study |
+    |---|---|---|
+    | 1 Timothy | `2a32a32e` | `28eded34` |
+    | James | `d5a2827a` | `9dfd6b54` |
+    | Ecclesiastes | `6f82a4e7` | `f7522936` |
+    | Law and Gospel | `d49973d9` | `f1e62ebd` |
+
+    Each is a Coming soon product with an unpublished study of 13 draft lessons.
+  - **Checked live on staging:** all four are in `/store` with their covers (200) and "Coming soon", with no buy buttons; a visitor can't open the studies; production's homepage doesn't mention them.
+  - No code changed, so nothing was deployed.
+  - **Still to import (13):**
+    - The four John parts (next).
+    - The other Topical Studies: In Christ, The Ten Commandments, Sermon on the Mount, Dusty and Holy (Hebrews), Dusty but Hopeful (Romans), Genesis Parts 1 and 2, Prayer, The Gospel, The Holy Spirit, Benedictions (the 176-page study, not the superseded 14-page catalog).
+    - A 365-Day Journey Through the Bible (a devotional, so `--kind devotional` and its own parser path).
+- **2026-11-11 (newer) — first catalog batch imported as hidden drafts (Galatians, Philippians, Ephesians, 1 Peter); four study-parser fixes; found the live Journey parts' Life Application sections sitting inside their last word-study box.** Requested as "Yes, import a batch". The author's folder `/Users/matthewbrown/Documents/Soul Dust Revival` holds 25 titles not yet in the catalog, each with a final cover PDF, a web-version manuscript, and a metadata `.json` (back-cover copy).
   - **`scripts/import-catalog-title.ts`** (`--covers <title folder> --manuscript <pdf> [--kind] [--apply]`, dry run by default):
     - Reads the metadata (both layouts: `title_fields`, or `front`/`back` for the John parts), turning `--` into an em dash and decoding entities.
     - Parses the manuscript with the same code as the admin's Import study, then splits the cover with the Node splitter. Manuscript first: the cover splitter's pdf.js and the manuscript parser's pdf.js are different versions sharing one global worker, and pdf-parse refuses to run after unpdf's has registered.

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/client";
-import { users, orders, orderItems, products, responses, loginEvents, entitlements } from "@/lib/db/schema";
+import { users, orders, orderItems, products, responses, loginEvents, entitlements, journeyEnrollments, journeys } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 /**
@@ -34,6 +34,11 @@ export async function GET() {
   const myResponses = await db.select().from(responses).where(eq(responses.userId, session.userId));
   const myLogins = await db.select().from(loginEvents).where(eq(loginEvents.userId, session.userId));
   const myEntitlements = await db.select().from(entitlements).where(eq(entitlements.userId, session.userId));
+  const myJourneys = await db
+    .select({ journey: journeys.title, enrollment: journeyEnrollments })
+    .from(journeyEnrollments)
+    .innerJoin(journeys, eq(journeys.id, journeyEnrollments.journeyId))
+    .where(eq(journeyEnrollments.userId, session.userId));
 
   const exportData = {
     exportedAt: new Date().toISOString(),
@@ -51,6 +56,12 @@ export async function GET() {
     studyResponses: myResponses.map((r) => ({ answerText: r.answerText, createdAt: r.createdAt, updatedAt: r.updatedAt })),
     loginHistory: myLogins.map((l) => ({ loginAt: l.loginAt, lastActiveAt: l.lastActiveAt })),
     entitlements: myEntitlements.map((e) => ({ grantedAt: e.grantedAt, source: e.source })),
+    journeys: myJourneys.map(({ journey, enrollment }) => ({
+      journey,
+      journeyWeekday: enrollment.weekday,
+      timeZone: enrollment.timeZone,
+      begunAt: enrollment.createdAt,
+    })),
   };
 
   return new NextResponse(JSON.stringify(exportData, null, 2), {

@@ -82,9 +82,9 @@ describe("getLessonAccess / studyHasOpenSample (free sample)", () => {
   let productId: string;
   let studyId: string;
 
-  const publishedStudy = () => ({ productId, published: true });
-  const sample = { isSample: true, published: true };
-  const locked = { isSample: false, published: true };
+  const publishedStudy = () => ({ id: studyId, productId, published: true });
+  const sample = { id: randomUUID(), isSample: true, published: true };
+  const locked = { id: randomUUID(), isSample: false, published: true };
 
   beforeEach(async () => {
     db = await getDb();
@@ -123,8 +123,8 @@ describe("getLessonAccess / studyHasOpenSample (free sample)", () => {
   });
 
   it("keeps an unpublished sample lesson, or any lesson of an unpublished study, locked", async () => {
-    expect((await getLessonAccess({ userId, email: "x" }, publishedStudy(), { isSample: true, published: false })).allowed).toBe(false);
-    expect((await getLessonAccess({ userId, email: "x" }, { productId, published: false }, sample)).allowed).toBe(false);
+    expect((await getLessonAccess({ userId, email: "x" }, publishedStudy(), { id: randomUUID(), isSample: true, published: false })).allowed).toBe(false);
+    expect((await getLessonAccess({ userId, email: "x" }, { id: studyId, productId, published: false }, sample)).allowed).toBe(false);
   });
 
   it("gives an owner every lesson, not as a sample", async () => {

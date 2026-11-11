@@ -19,6 +19,13 @@ import { getDisplayStudyTitle } from "@/lib/study/displayTitle";
 import type { YearDay } from "@/components/devotional/YearView";
 import type { JournalEntry } from "@/components/devotional/JournalView";
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { getJourneyForStudy, loadJourneyProgress } from "@/lib/journey/load";
+import { journeyLessonNav } from "@/lib/journey/nav";
+import { loadLookBack } from "@/lib/journey/lookBack";
+import { CompleteStopButton } from "@/components/journey/CompleteStopButton";
+import { LookBackList } from "@/components/journey/LookBackList";
+import { JourneyNextStopNote } from "@/components/journey/JourneyNextStopNote";
 import type { Metadata } from "next";
 import { z } from "zod";
 
@@ -77,6 +84,9 @@ export default async function LessonPage({
   if (!lesson) redirect(`/studies/${slug}`);
 
   const access = await getLessonAccess(session, study, lesson);
+  // An owner whose Journey stop isn't open yet goes to the Journey home,
+  // which says when it opens.
+  if (access.journeyLock) redirect(access.journeyLock.journeyHref);
   if (!access.allowed) {
     // A study with a free sample: back to its lesson list, which shows which
     // lessons are open and which are locked.
@@ -155,9 +165,27 @@ export default async function LessonPage({
           .where(and(eq(responses.userId, session.userId), inArray(responses.contentBlockId, questionBlockIds)));
   const answerByBlockId = new Map(savedAnswers.map((r) => [r.contentBlockId, r.answerText ?? ""]));
 
-  const studyHref = `/studies/${slug}`;
-  const previousHref = previousLesson && !isLocked(previousLesson) ? `${studyHref}/${previousLesson.id}` : null;
-  const nextHref = nextLesson && !isLocked(nextLesson) ? `${studyHref}/${nextLesson.id}` : null;
+  // A Part of The Journey reads as one year-long road: navigation runs
+  // across Parts and only to stops that are open (lib/journey/nav.ts).
+  const journey = await getJourneyForStudy(db, study.id);
+  const journeyProgress = journey ? await loadJourneyProgress(db, journey, session.userId) : null;
+  const journeyNav = journeyProgress ? journeyLessonNav(journeyProgress, lesson.id, access.isAdminPreview) : null;
+  const lookBack =
+    journeyProgress && journeyNav?.stop.isThreshold && journeyNav.part.index > 0
+      ? await loadLookBack(db, journeyProgress, journeyNav.part.index - 1, session.userId)
+      : null;
+
+  const studyHref = journeyNav?.homeHref ?? `/studies/${slug}`;
+  const previousHref = journeyNav
+    ? journeyNav.previousHref
+    : previousLesson && !isLocked(previousLesson)
+      ? `${studyHref}/${previousLesson.id}`
+      : null;
+  const nextHref = journeyNav
+    ? journeyNav.nextHref
+    : nextLesson && !isLocked(nextLesson)
+      ? `${studyHref}/${nextLesson.id}`
+      : null;
   const isDevotional = study.kind === "devotional";
   // A Study-kind lesson without studyContent (the "Introduction" lesson, or
   // any lesson imported before the interactive Study reader existed) falls
@@ -319,13 +347,13 @@ export default async function LessonPage({
       ) : null}
       <LessonNavigation
         studyHref={studyHref}
-        studyTitle={displayStudyTitle}
+        studyTitle={journeyNav ? "The Journey" : displayStudyTitle}
         lessonId={lesson.id}
         initialStatus={progressRow?.status ?? "not_started"}
         previousHref={previousHref}
         nextHref={nextHref}
         position="top"
-        visible={!hasCustomHeader}
+        visible={!hasCustomHeader && !journeyNav?.stop.isThreshold}
       />
       {isDevotional && devotionalProps ? (
         <DevotionalAppView
@@ -365,13 +393,27 @@ export default async function LessonPage({
           previousHref={previousHref}
           nextHref={nextHref}
           bookLabel={study.title}
-          weeks={studyLessons.map((l) => ({
-            id: l.id,
-            title: l.title,
-            href: `${studyHref}/${l.id}`,
-            isCurrent: l.id === lesson.id,
-            locked: isLocked(l),
-          }))}
+          weeks={
+            journeyNav
+              ? journeyNav.pickerItems
+              : studyLessons.map((l) => ({
+                  id: l.id,
+                  title: l.title,
+                  href: `${studyHref}/${l.id}`,
+                  isCurrent: l.id === lesson.id,
+                  locked: isLocked(l),
+                }))
+          }
+          journey={
+            journeyNav
+              ? {
+                  homeHref: journeyNav.homeHref,
+                  breadcrumb: `The Journey · ${journeyNav.part.shortLabel}`,
+                  pickerHeading: `The Journey · ${journeyProgress!.stops.length} Weeks`,
+                  continueHref: journeyNav.continueHref,
+                }
+              : undefined
+          }
           studyHref={studyHref}
           initialStatus={progressRow?.status ?? "not_started"}
           media={Object.fromEntries(
@@ -381,6 +423,32 @@ export default async function LessonPage({
             ])
           )}
         />
+      ) : journeyNav?.stop.isThreshold ? (
+        // A Part's introduction is a threshold: read it, look back at the
+        // Part behind, and cross into the next.
+        <>
+          <div className="space-y-1">
+            <Link href={journeyNav.homeHref} className="inline-block text-sm text-moss hover:text-ink underline underline-offset-2">
+              ← The Journey
+            </Link>
+            <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700 pt-4">
+              The Journey · Threshold
+            </p>
+            <h1 className="font-display font-bold text-3xl sm:text-4xl text-ink">{journeyNav.part.label}</h1>
+          </div>
+          {blocks.map((block) => (
+            <LessonBlock key={block.id} block={block} initialAnswer={answerByBlockId.get(block.id)} />
+          ))}
+          {lookBack && <LookBackList lookBack={lookBack} heading={`Before you cross into ${journeyNav.part.shortLabel}`} />}
+          <CompleteStopButton
+            lessonId={lesson.id}
+            initialStatus={progressRow?.status ?? "not_started"}
+            label={journeyNav.part.index === 0 ? `Begin ${journeyNav.part.shortLabel}` : `Cross into ${journeyNav.part.shortLabel}`}
+            doneLabel={journeyNav.part.index === 0 ? `${journeyNav.part.shortLabel} begun` : "Crossed"}
+            continueHref={journeyNav.continueHref}
+            continueLabel={journeyNav.continueHref === journeyNav.homeHref ? "Back to The Journey →" : "Go on →"}
+          />
+        </>
       ) : (
         <>
           <h1 className="font-display font-bold text-2xl sm:text-3xl text-ink">{lesson.title}</h1>
@@ -388,6 +456,9 @@ export default async function LessonPage({
             <LessonBlock key={block.id} block={block} initialAnswer={answerByBlockId.get(block.id)} />
           ))}
         </>
+      )}
+      {journeyNav?.nextLockNote && (
+        <JourneyNextStopNote note={journeyNav.nextLockNote} homeHref={journeyNav.homeHref} />
       )}
       {lockedNextLesson && (
         <LockedNextLesson
@@ -410,6 +481,8 @@ export default async function LessonPage({
         previousHref={previousHref}
         nextHref={nextHref}
         position="bottom"
+        backLabel={journeyNav ? "Back to The Journey" : undefined}
+        continueHref={journeyNav?.continueHref}
         // Hidden for both custom-header cases, each for its own real
         // completion control that already covers this: a devotional's
         // WalkedToggle (see DevotionalAppView), and a Study week's own Lift
@@ -417,7 +490,7 @@ export default async function LessonPage({
         // make the same lesson_progress write this button would, so showing
         // this one too would be a second control for the same action,
         // disconnected from the per-tab progress ring sitting right above it.
-        visible={!hasCustomHeader}
+        visible={!hasCustomHeader && !journeyNav?.stop.isThreshold}
       />
     </div>
   );

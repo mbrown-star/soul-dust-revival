@@ -729,3 +729,44 @@ export const blogPostDeleteSchema = z.object({
 export const blogSuggestSchema = z.object({
   customInstruction: z.string().max(2_000).optional(),
 });
+
+// ---------- The Journey ----------
+// Beginning a Journey picks the reader's weekly Journey day (0 = Sunday) and
+// records his own time zone, so each stop opens on his calendar, not UTC.
+export const journeyBeginSchema = z
+  .object({
+    journeyId: z.string().uuid(),
+    weekday: z.number().int().min(0).max(6),
+    timeZone: z.string().min(1).max(64),
+  })
+  .strict();
+
+export const journeyWeekdaySchema = z
+  .object({
+    journeyId: z.string().uuid(),
+    weekday: z.number().int().min(0).max(6),
+  })
+  .strict();
+
+// Admin: present a bundle as a Journey (create), publish/unpublish it, or
+// remove it before anyone has begun.
+export const adminJourneyCreateSchema = z
+  .object({
+    bundleProductId: z.string().uuid(),
+    title: z.string().min(1).max(200),
+    slug: z
+      .string()
+      .min(1)
+      .max(200)
+      .regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers, and hyphens only"),
+  })
+  .strict();
+
+export const adminJourneyUpdateSchema = z
+  .object({
+    id: z.string().uuid(),
+    published: z.boolean(),
+  })
+  .strict();
+
+export const adminJourneyDeleteSchema = z.object({ id: z.string().uuid() }).strict();

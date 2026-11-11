@@ -57,6 +57,8 @@ export async function POST(req: NextRequest) {
   // page elsewhere" rather than relying on client-side refresh timing.
   revalidatePath(`/studies/${study.slug}`);
   revalidatePath("/library");
+  // A Journey's home shows every stop's state (lib/journey/load.ts).
+  revalidatePath("/journey/[slug]", "page");
 
   return NextResponse.json({ ok: true });
 }

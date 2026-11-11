@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/client";
-import { users, responses, loginEvents, entitlements, lessonProgress } from "@/lib/db/schema";
+import { users, responses, loginEvents, entitlements, lessonProgress, journeyEnrollments } from "@/lib/db/schema";
 import { eq, and, ne } from "drizzle-orm";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/admin";
 
@@ -51,6 +51,7 @@ export async function POST() {
   await db.delete(loginEvents).where(eq(loginEvents.userId, session.userId));
   await db.delete(entitlements).where(eq(entitlements.userId, session.userId));
   await db.delete(lessonProgress).where(eq(lessonProgress.userId, session.userId));
+  await db.delete(journeyEnrollments).where(eq(journeyEnrollments.userId, session.userId));
 
   // Anonymize rather than delete the users row itself — orders.userId
   // references it, and orders are intentionally retained (see above).

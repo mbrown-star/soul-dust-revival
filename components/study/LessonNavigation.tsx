@@ -21,6 +21,8 @@ export function LessonNavigation({
   nextHref,
   position,
   visible = true,
+  backLabel,
+  continueHref,
 }: {
   studyHref: string;
   studyTitle: string;
@@ -35,6 +37,10 @@ export function LessonNavigation({
   // mounts normally and just renders nothing rather than being left out of
   // the tree entirely.
   visible?: boolean;
+  /** Bottom back link's text; defaults to "Back to table of contents". */
+  backLabel?: string;
+  /** Where "Mark complete" leads; defaults to the next lesson, else the contents. */
+  continueHref?: string;
 }) {
   const router = useRouter();
   const [status, setStatus] = useState(initialStatus);
@@ -63,7 +69,7 @@ export function LessonNavigation({
       return;
     }
     setStatus("completed");
-    router.push(nextHref ?? studyHref);
+    router.push(continueHref ?? nextHref ?? studyHref);
   }
 
   if (!visible) return null;
@@ -93,7 +99,7 @@ export function LessonNavigation({
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 border-t border-moss/10 pt-6">
       <Link href={studyHref} className="text-sm text-moss hover:text-ink underline underline-offset-2">
-        ← Back to table of contents
+        ← {backLabel ?? "Back to table of contents"}
       </Link>
       <div className="flex items-center gap-4">
         {previousHref && (
@@ -115,7 +121,11 @@ export function LessonNavigation({
             disabled={completing}
             className="bg-ink text-white rounded-lg px-5 py-2 text-sm font-medium min-h-[44px] disabled:opacity-50"
           >
-            {completing ? "Saving..." : nextHref ? "Mark complete & continue" : "Mark complete & finish"}
+            {completing
+              ? "Saving..."
+              : (continueHref ?? nextHref)
+                ? "Mark complete & continue"
+                : "Mark complete & finish"}
           </button>
         )}
         {status === "completed" && nextHref && (

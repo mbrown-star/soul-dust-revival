@@ -26,7 +26,7 @@ const COOKIE_DOMAIN = process.env.NEXT_PUBLIC_COOKIE_DOMAIN;
 // leader resources aren't fully built out yet -- it belongs on the app
 // domain once it is. A future new top-level gated route needs adding here
 // too -- it isn't derived automatically from the route tree.
-const APP_PATH_PREFIXES = ["/library", "/studies", "/account", "/leader"];
+const APP_PATH_PREFIXES = ["/library", "/studies", "/journey", "/account", "/leader"];
 
 // Renders identically regardless of which host served the request -- never
 // redirected. Login/signup specifically so a visitor can authenticate

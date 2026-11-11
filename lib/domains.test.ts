@@ -73,7 +73,7 @@ describe("lib/domains", () => {
 
     it("isAppPath matches every app path prefix and its subtree", async () => {
       const { isAppPath } = await loadDomains(env);
-      for (const path of ["/library", "/studies", "/studies/colossians/week-1", "/account", "/leader", "/leader/42"]) {
+      for (const path of ["/library", "/studies", "/studies/colossians/week-1", "/journey/the-journey", "/account", "/leader", "/leader/42"]) {
         expect(isAppPath(path)).toBe(true);
       }
     });

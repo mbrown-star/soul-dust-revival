@@ -25,6 +25,8 @@ export function LiftUpTab({
   content,
   initialStatus,
   nextHref,
+  nextLabel = "Next week →",
+  keepCompleted = false,
   isDone,
   onSetDone,
 }: {
@@ -32,6 +34,12 @@ export function LiftUpTab({
   content: StudyWeekContent;
   initialStatus: LessonStatus;
   nextHref: string | null;
+  nextLabel?: string;
+  /**
+   * A Journey week stays done once done: un-finishing it would lock every
+   * stop opened since (they go in order), so the button can't undo.
+   */
+  keepCompleted?: boolean;
   isDone: boolean;
   onSetDone: (done: boolean) => void;
 }) {
@@ -100,7 +108,7 @@ export function LiftUpTab({
       <button
         type="button"
         onClick={toggle}
-        disabled={saving}
+        disabled={saving || (keepCompleted && completed)}
         className={`w-full min-h-[44px] rounded-full font-sans font-semibold text-sm disabled:opacity-50 ${
           completed ? "bg-moss text-white" : "bg-ink text-parchment"
         }`}
@@ -113,7 +121,7 @@ export function LiftUpTab({
           href={nextHref}
           className="block text-center text-sm font-sans font-semibold text-moss hover:text-ink underline underline-offset-2"
         >
-          Next week →
+          {nextLabel}
         </Link>
       )}
 

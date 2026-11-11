@@ -73,6 +73,7 @@ export function StudyLessonView({
   studyHref,
   initialStatus,
   media = {},
+  journey,
 }: {
   lessonId: string;
   lessonTitle: string;
@@ -86,6 +87,15 @@ export function StudyLessonView({
   initialStatus: LessonStatus;
   /** Server-rendered media placed inside the week, keyed by where it goes. */
   media?: Partial<Record<WeekMediaSlotKey, ReactNode>>;
+  /** Set when this week is a stop in The Journey (see lib/journey/nav.ts). */
+  journey?: {
+    homeHref: string;
+    /** "The Journey · Part Two" */
+    breadcrumb: string;
+    pickerHeading: string;
+    /** Where finishing the week leads. */
+    continueHref: string;
+  };
 }) {
   const [tab, setTab] = useState<TabKey>("study");
   const [greekStationRef, setGreekStationRef] = useState<string | null>(null);
@@ -110,8 +120,11 @@ export function StudyLessonView({
   return (
     <WeekMediaContext.Provider value={media}>
     <div className="space-y-6">
-      <Link href={studyHref} className="inline-block text-sm text-moss hover:text-ink underline underline-offset-2">
-        ← Back to table of contents
+      <Link
+        href={journey?.homeHref ?? studyHref}
+        className="inline-block text-sm text-moss hover:text-ink underline underline-offset-2"
+      >
+        {journey ? "← The Journey" : "← Back to table of contents"}
       </Link>
 
       <div className="flex items-start gap-3">
@@ -133,7 +146,7 @@ export function StudyLessonView({
             onClick={() => setPickerOpen(true)}
             className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700 border-b border-dotted border-ember-700 hover:text-ink hover:border-ink"
           >
-            Soul Dust Revival · {shortBookLabel} · {weekLabel} ▾
+            {journey ? journey.breadcrumb : `Soul Dust Revival · ${shortBookLabel}`} · {weekLabel} ▾
           </button>
           <h1 className="font-display font-bold text-2xl sm:text-3xl text-ink mt-0.5">{weekTitle}</h1>
           <p className="font-serif italic text-moss">{content.subtitle}</p>
@@ -241,7 +254,9 @@ export function StudyLessonView({
           lessonId={lessonId}
           content={content}
           initialStatus={initialStatus}
-          nextHref={nextHref}
+          nextHref={journey ? journey.continueHref : nextHref}
+          nextLabel={journey ? (journey.continueHref === journey.homeHref ? "Back to The Journey →" : "Next week →") : undefined}
+          keepCompleted={!!journey}
           isDone={done.has("lift")}
           onSetDone={(v) => setDone("lift", v)}
         />
@@ -256,7 +271,12 @@ export function StudyLessonView({
       )}
 
       {pickerOpen && (
-        <WeekPickerSheet bookLabel={shortBookLabel} weeks={weeks} onClose={() => setPickerOpen(false)} />
+        <WeekPickerSheet
+          bookLabel={journey ? "The Journey" : shortBookLabel}
+          heading={journey?.pickerHeading}
+          weeks={weeks}
+          onClose={() => setPickerOpen(false)}
+        />
       )}
     </div>
     </WeekMediaContext.Provider>

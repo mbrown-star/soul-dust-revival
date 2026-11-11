@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/guard";
 import { getDb } from "@/lib/db/client";
-import { products, bundleItems, orderItems, entitlements } from "@/lib/db/schema";
+import { products, bundleItems, orderItems, entitlements, journeys } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { bundleSchema, bundleDeleteSchema } from "@/lib/validation/schemas";
 import { MAX_FEATURED_PRODUCTS, featuredCount } from "@/lib/commerce/featuredLimit";
@@ -208,6 +208,14 @@ export async function DELETE(req: NextRequest) {
   if (linkedEntitlement) {
     return NextResponse.json(
       { error: "has_entitlements", message: "This bundle has granted entitlements and can't be deleted. Mark it inactive instead." },
+      { status: 409 }
+    );
+  }
+
+  const [journey] = await db.select({ id: journeys.id }).from(journeys).where(eq(journeys.bundleProductId, id)).limit(1);
+  if (journey) {
+    return NextResponse.json(
+      { error: "is_journey", message: "This bundle is presented as a Journey. Remove the Journey first." },
       { status: 409 }
     );
   }
