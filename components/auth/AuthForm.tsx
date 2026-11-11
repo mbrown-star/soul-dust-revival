@@ -8,7 +8,9 @@ import { BLOCKED_EMAIL_MESSAGE } from "@/lib/auth/blockedMessage";
 // "sneak_peek": embedded on /sneak-peek under that page's own h1 -- creates
 // an account for a new email and simply signs in an existing one, since
 // either way the visitor just wants the sample.
-type Mode = "login" | "signup" | "sneak_peek";
+// "claim": the same, embedded on /claim for someone who bought the printed
+// book on Amazon and wants its digital edition.
+type Mode = "login" | "signup" | "sneak_peek" | "claim";
 
 export function AuthForm({
   mode,
@@ -30,9 +32,18 @@ export function AuthForm({
 
   const isSignup = mode === "signup";
   const isSneakPeek = mode === "sneak_peek";
+  const isClaim = mode === "claim";
+  const isEmbedded = isSneakPeek || isClaim;
   const canCreateAccount = mode !== "login";
-  const Heading = isSneakPeek ? "h2" : "h1";
-  const formClass = isSneakPeek ? "max-w-sm space-y-4" : "max-w-sm mx-auto px-4 py-16 sm:py-20 space-y-4";
+  const Heading = isEmbedded ? "h2" : "h1";
+  const formClass = isEmbedded ? "max-w-sm space-y-4" : "max-w-sm mx-auto px-4 py-16 sm:py-20 space-y-4";
+  const title = isSneakPeek
+    ? "Get your free sample"
+    : isClaim
+    ? "First, sign in or create your account"
+    : isSignup
+    ? "Create your account"
+    : "Log in";
 
   async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -228,14 +239,18 @@ export function AuthForm({
     <form
       onSubmit={handleEmailSubmit}
       className={formClass}
-      aria-label={isSneakPeek ? "Get your free sample" : isSignup ? "Sign up" : "Log in"}
+      aria-label={isSignup ? "Sign up" : title}
     >
-      <Heading className="font-display font-bold text-2xl text-ink">
-        {isSneakPeek ? "Get your free sample" : isSignup ? "Create your account" : "Log in"}
-      </Heading>
+      <Heading className="font-display font-bold text-2xl text-ink">{title}</Heading>
       {isSignup && (
         <p className="text-sm text-moss">
           First time buying a study or book? Start here — we&apos;ll send a code to confirm your email.
+        </p>
+      )}
+      {isClaim && (
+        <p className="text-sm text-moss">
+          Your digital edition lives in your account. Enter your email and we&apos;ll send a code to confirm it;
+          new here, and we&apos;ll set up your account at the same time.
         </p>
       )}
       {isSneakPeek && (
@@ -281,12 +296,12 @@ export function AuthForm({
         disabled={loading}
         className="w-full bg-ink text-white rounded-lg p-3 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink"
       >
-        {loading ? "Sending..." : isSneakPeek ? "Send my code" : isSignup ? "Sign up" : "Send code"}
+        {loading ? "Sending..." : isEmbedded ? "Send my code" : isSignup ? "Sign up" : "Send code"}
       </button>
 
-      {/* No login/signup cross-link on the sneak-peek form: it already works
+      {/* No login/signup cross-link on the embedded forms: they already work
           for both new and existing emails. */}
-      {!isSneakPeek && <p className="text-sm text-moss text-center">
+      {!isEmbedded && <p className="text-sm text-moss text-center">
         {isSignup ? (
           <>
             Already have an account?{" "}

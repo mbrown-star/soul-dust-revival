@@ -97,6 +97,7 @@ async function main() {
   await pg.query(
     `DELETE FROM lesson_progress WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'qa-%@soul-dust-revival.test')`
   );
+  await pg.query(`DELETE FROM amazon_claims WHERE product_id IN (SELECT id FROM products WHERE slug LIKE $1)`, [qaSlugPrefix]);
   await pg.query(
     `DELETE FROM entitlements WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'qa-%@soul-dust-revival.test')`
   );
@@ -201,6 +202,32 @@ async function main() {
     sellOnAmazon: true,
     sellOnStripe: false,
     active: true,
+  });
+
+  // A printed book on Amazon with a study behind it: a reader who bought it
+  // there claims the digital edition on /claim (qa/e2e/specs/amazon-claim.spec.ts).
+  const [pAmazonStudy] = await db
+    .insert(schema.products)
+    .values({
+      type: "book",
+      format: "physical",
+      kind: "study",
+      title: "QA Printed Study — On Amazon",
+      slug: "qa-amazon-with-study",
+      description: "A QA fixture printed study sold on Amazon, which includes its digital edition.",
+      priceCents: 1999,
+      amazonUrl: "https://www.amazon.com/dp/QA2222222",
+      sellOnAmazon: true,
+      sellOnStripe: false,
+      active: true,
+    })
+    .returning();
+  await db.insert(schema.studies).values({
+    productId: pAmazonStudy!.id,
+    title: "QA Printed Study — On Amazon",
+    slug: "qa-amazon-claim-study",
+    kind: "study",
+    published: true,
   });
 
   const [pBoth] = await db

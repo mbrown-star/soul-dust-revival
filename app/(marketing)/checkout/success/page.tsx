@@ -7,6 +7,7 @@ import { getSession } from "@/lib/auth/session";
 import { ClearCartOnMount } from "@/components/commerce/ClearCartOnMount";
 import { isDigitalVariant, isPhysicalVariant } from "@/lib/stripe/products";
 import { appUrl } from "@/lib/domains";
+import { includesDigitalEdition } from "@/lib/commerce/digitalEdition";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -81,8 +82,10 @@ export default async function CheckoutSuccessPage({
     })
     .filter((li): li is NonNullable<typeof li> => li !== null);
 
-  const hasDigital = lineItems.some((li) => li.isDigital);
   const hasPhysical = lineItems.some((li) => li.isPhysical);
+  // Something in the order is readable in the app. An account order only:
+  // that's who the webhook granted access to (older guest orders got none).
+  const hasAppContent = !!order.userId && (await includesDigitalEdition(db, productIds));
 
   return (
     <div className="max-w-xl mx-auto px-4 py-10 sm:py-16 space-y-6">
@@ -122,20 +125,20 @@ export default async function CheckoutSuccessPage({
         </div>
       )}
 
-      {/* Physical-only: order info was emailed, nothing further needed here. */}
-      {!hasDigital && hasPhysical && (
-        <p className="text-moss">
-          A confirmation with these details has also been sent to your email.
-        </p>
+      <p className="text-moss">A confirmation with these details has also been sent to your email.</p>
+
+      {/* A printed book comes with its digital edition, granted to this
+          account by the webhook along with anything bought digital. */}
+      {hasPhysical && hasAppContent && (
+        <p className="text-ink">Your book also comes with its digital edition, ready in the Soul Dust Revival app.</p>
       )}
 
-      {/* Digital-only or mixed: prompt to log in and access the web app content. */}
-      {hasDigital && (
+      {hasAppContent && (
         <Link
-          href={appUrl("/login?next=/library")}
+          href={appUrl("/library")}
           className="inline-block bg-ink text-white rounded-lg px-6 py-3"
         >
-          Log in to access your content
+          Open My Library
         </Link>
       )}
     </div>

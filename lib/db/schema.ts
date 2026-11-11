@@ -209,9 +209,38 @@ export const entitlements = pgTable("entitlements", {
   userId: uuid("user_id").references(() => users.id).notNull(),
   productId: uuid("product_id").references(() => products.id).notNull(),
   grantedAt: timestamp("granted_at", { withTimezone: true }).defaultNow(),
-  source: text("source").notNull().$type<"purchase" | "admin_grant" | "trial">(),
+  // "amazon_claim": a printed copy bought on Amazon, unlocked with its order
+  // number on /claim (see amazonClaims below).
+  source: text("source").notNull().$type<"purchase" | "admin_grant" | "trial" | "amazon_claim">(),
   expiresAt: timestamp("expires_at", { withTimezone: true }), // null = permanent
 });
+
+// A printed book bought on Amazon includes its digital edition. Amazon never
+// tells us who bought what, so a reader claims it on /claim with their
+// Amazon order number: access is granted at once, on trust, and every claim
+// is listed for an admin to review and revoke (/admin/reports/amazon-claims).
+// One claim per order number per title, so one order can't unlock a title
+// for several accounts.
+export const amazonClaims = pgTable(
+  "amazon_claims",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // Cascade: when an account is removed outright, its claims go with it
+    // (an anonymized account keeps them, like its orders).
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+    productId: uuid("product_id").references(() => products.id).notNull(),
+    // Normalized to Amazon's printed form, 123-1234567-1234567.
+    amazonOrderNumber: text("amazon_order_number").notNull(),
+    // The entitlement this claim granted. No foreign key: revoking deletes
+    // that entitlement and clears this, keeping the claim as the record.
+    entitlementId: uuid("entitlement_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    // No foreign key, like blockedByUserId elsewhere: the admin may later be deleted.
+    revokedByUserId: uuid("revoked_by_user_id"),
+  },
+  (table) => [unique("amazon_claims_order_product_unique").on(table.amazonOrderNumber, table.productId)]
+);
 
 // A `products` row with type: "bundle" groups other existing products
 // together at one combined price -- this table is just the membership list.

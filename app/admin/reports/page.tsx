@@ -9,6 +9,10 @@ export default function ReportsIndexPage() {
           <p className="font-medium">Sales</p>
           <p className="text-sm text-moss">Who purchased what, when, and from where.</p>
         </Link>
+        <Link href="/admin/reports/amazon-claims" className="block p-4 hover:bg-moss/5">
+          <p className="font-medium">Amazon claims</p>
+          <p className="text-sm text-moss">Digital editions unlocked with an Amazon order number, to review or revoke.</p>
+        </Link>
         <Link href="/admin/reports/engagement" className="block p-4 hover:bg-moss/5">
           <p className="font-medium">Engagement</p>
           <p className="text-sm text-moss">Login frequency and approximate session length per user.</p>

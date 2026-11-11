@@ -21,6 +21,11 @@ export function SiteFooter() {
           >
             {isSneakPeek() ? "Try a sample" : "Books & Studies"}
           </Link>
+          {/* Open on both sites: Amazon sells the printed books whether or not
+              our own store is. */}
+          <Link href="/claim" className="hover:text-gold focus:outline-none focus:ring-2 focus:ring-gold rounded p-1 -m-1">
+            Bought on Amazon? Claim your digital edition
+          </Link>
           <Link href="/blog" className="hover:text-gold focus:outline-none focus:ring-2 focus:ring-gold rounded p-1 -m-1">
             Blog
           </Link>

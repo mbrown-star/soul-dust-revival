@@ -64,26 +64,18 @@ test.describe("Checkout — logged-in digital purchase ('both' format bundle)", 
   });
 });
 
-test.describe("Checkout — guest physical-only purchase", () => {
-  test("requires an email field, no login gate, and total matches the single line item", async ({ page }) => {
+test.describe("Checkout — guest with a printed book", () => {
+  // A printed book includes its digital edition (2026-11-11), so every order
+  // now needs an account: no guest-email checkout any more.
+  test("asks them to sign up or log in first, and explains why", async ({ page }) => {
     await page.goto("/store/qa-physical-amazon-and-stripe");
     await page.getByRole("button", { name: /Buy Now/i }).click();
 
     await page.goto("/checkout");
-    await expect(page.locator("body")).not.toContainText("requires an account");
-
-    const emailField = page.getByLabel(/Email \(for order confirmation\)/);
-    await expect(emailField).toBeVisible();
-
-    const submit = page.getByRole("button", { name: /Proceed to payment/i });
-    await expect(submit).toBeDisabled(); // no country, no email yet
-
-    await page.getByLabel(/Country/).selectOption("US");
-    await expect(submit).toBeDisabled(); // still no guest email
-    await emailField.fill("qa-guest@soul-dust-revival.test");
-    await expect(submit).toBeEnabled();
-
-    await expect(page.locator("body")).toContainText("$16.99");
+    await expect(page.locator("body")).toContainText("comes with its digital edition");
+    await expect(page.getByRole("link", { name: "Sign up to continue" })).toHaveAttribute("href", "/signup?next=/checkout");
+    await expect(page.getByLabel(/Email \(for order confirmation\)/)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Proceed to payment/i })).toHaveCount(0);
   });
 });
 
@@ -98,6 +90,18 @@ test.describe("Checkout API — server-side guards a client can't be trusted to 
     expect(res.status()).toBe(400);
     const body = (await res.json()) as { error?: string };
     expect(body.error).toBe("invalid_product");
+  });
+
+  test("rejects a printed-only cart with no session, even with a guest email", async ({ request }) => {
+    const physicalId = await productIdBySlug("qa-physical-amazon-and-stripe");
+    const res = await postCheckout(request, {
+      items: [{ productId: physicalId, quantity: 1 }],
+      guestEmail: "qa-guest@soul-dust-revival.test",
+      country: "US",
+    });
+    expect(res.status()).toBe(401);
+    const body = (await res.json()) as { error?: string };
+    expect(body.error).toBe("login_required");
   });
 
   test("rejects digital content with no session and no guest email fallback", async ({ request }) => {

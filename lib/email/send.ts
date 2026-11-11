@@ -15,8 +15,9 @@ type OrderConfirmationParams = {
 /**
  * Sends the order confirmation email via Resend, with content tailored to
  * the order's composition:
- * - physical_only: order + shipping summary, no login prompt
- * - digital_only / mixed: order summary + a link to log in and access content
+ * - anything with something to read in the app (hasWebAppAccess, which a
+ *   printed book with a digital edition has too): a link to log in to it
+ * - a shipping note whenever something ships
  */
 export async function sendOrderConfirmationEmail(params: OrderConfirmationParams) {
   if (!params.to) return; // no email to send to (shouldn't happen, but don't crash)
@@ -29,7 +30,11 @@ export async function sendOrderConfirmationEmail(params: OrderConfirmationParams
     .join("");
 
   const loginSection = params.hasWebAppAccess
-    ? `<p style="margin-top:24px;">
+    ? `${
+        params.composition !== "digital_only"
+          ? `<p style="margin-top:16px;">Your book comes with its digital edition, ready now in the Soul Dust Revival app.</p>`
+          : ""
+      }<p style="margin-top:24px;">
          <a href="${params.appUrl}/login?next=/library" style="background:#171717;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block;">
            Log in to access your content
          </a>

@@ -225,6 +225,31 @@ the full string can still match). `amazonUrl` is admin-only input (behind
 can only sell through Stripe, since entitlements are granted off the Stripe webhook and
 an Amazon sale has no equivalent.
 
+## A printed book includes its digital edition (Amazon claims, 2026-11-11)
+Every purchase grants an entitlement, printed copies included (`lib/stripe/webhook-handlers.ts`),
+so `/api/checkout` now requires a signed-in account for **every** cart: there is no guest
+checkout any more. The webhook grants each product (and each bundle's components) once,
+skipping anything the buyer already owns, still inside the atomic `status != 'paid'` guard.
+
+A printed copy bought on Amazon is claimed on `/claim` with its Amazon order number
+(`/api/amazon-claims`, `lib/commerce/amazonClaims.ts`). **Amazon offers no way to check an
+order number, so a claim is granted on trust** (the user's explicit choice over admin
+approval or a code printed in the book). What limits abuse:
+- The claimant must be signed in, so the email is one they proved with a sign-in code;
+  nothing here creates an account or sends email to a typed address.
+- Only the shape is validated (`amazonOrderNumberSchema`: 17 digits, stored as
+  `123-1234567-1234567`), and each order number can claim each title once (unique
+  `(amazon_order_number, product_id)`, the insert itself is the check, so two simultaneous
+  claims can't both win). A revoked claim keeps its number used.
+- At most `MAX_CLAIMS_PER_DAY` (10) claims per account per day (429 after that).
+- Only active products sold on Amazon with a live link and a linked study can be claimed.
+- Every claim is listed at `/admin/reports/amazon-claims` (admin-only page; revoke is
+  `PATCH /api/admin/amazon-claims`, `requireAdmin`), which deletes exactly the entitlement
+  the claim created and marks the claim revoked.
+- Accepted (Low): the 409 for a used order number tells a signed-in caller that someone has
+  claimed that title with that number; it reveals nothing about who. Add `/api/amazon-claims`
+  to the Cloudflare rate-limiting rule.
+
 ## Webhook idempotency
 Stripe redelivers webhook events (retries, at-least-once delivery). The checkout webhook
 handler checks `order.status === 'paid'` before granting entitlements or sending the
@@ -411,7 +436,7 @@ which the route emails to `admin@souldustrevival.com` (`CONTACT_INBOX` in
 No custom rate limiter is built into the app code, to avoid adding a stateful
 dependency (e.g. Redis) for a concern the hosting platform already handles well:
 - **Cloudflare** (already your host) — set Rate Limiting Rules in the dashboard for
-  `/api/checkout`, `/api/responses`, `/api/progress`, `/api/contact`, and `/login`. This is free-tier
+  `/api/checkout`, `/api/responses`, `/api/progress`, `/api/contact`, `/api/amazon-claims`, and `/login`. This is free-tier
   available and requires no code changes.
 - **Supabase Auth** already throttles magic-link requests per email address at the
   project level (configurable under Auth settings), which limits email-bombing abuse

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AMAZON_ORDER_NUMBER_HINT } from "@/lib/commerce/amazonOrderHint";
 import { CONTENT_BLOCK_TYPES, fieldsOutsideType, isHttpsUrl } from "@/lib/content/blocks";
 import {
   CAPTIONS_UPLOAD_MAX_BYTES,
@@ -846,3 +847,26 @@ export const contactMessageSchema = z.object({
     .optional()
     .transform((v) => (v && /^https?:\/\//i.test(v) ? v : undefined)),
 });
+
+// ---------- AMAZON CLAIMS ----------
+// Amazon prints an order number as three groups of digits, 123-1234567-1234567.
+// Readers paste it with or without the dashes (or with spaces); it's stored in
+// the printed form so the same order can't be claimed twice by spelling it
+// differently. The shape is all we can check: Amazon offers no way to look an
+// order up (see amazonClaims in lib/db/schema.ts).
+
+export const amazonOrderNumberSchema = z
+  .string()
+  .max(40)
+  .transform((value) => value.replace(/[\s‐-―-]/g, ""))
+  .refine((digits) => /^\d{17}$/.test(digits), { message: `That doesn't look like an Amazon order number. ${AMAZON_ORDER_NUMBER_HINT}` })
+  .transform((digits) => `${digits.slice(0, 3)}-${digits.slice(3, 10)}-${digits.slice(10)}`);
+
+export const amazonClaimSchema = z
+  .object({
+    productId: z.string().uuid(),
+    orderNumber: amazonOrderNumberSchema,
+  })
+  .strict();
+
+export const amazonClaimRevokeSchema = z.object({ id: z.string().uuid() }).strict();

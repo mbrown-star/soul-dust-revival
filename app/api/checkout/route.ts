@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid_input", details: parsed.error.flatten() }, { status: 400 });
   }
-  const { items, guestEmail, country } = parsed.data;
+  const { items, country } = parsed.data;
   const db = await getDb();
 
   const productIds = items.map((i) => i.productId);
@@ -101,19 +101,19 @@ export async function POST(req: NextRequest) {
 
   const session = await getSession();
 
-  // Rule: any digital/webapp content in the cart requires an account.
-  // Physical-only carts may check out as a guest with just an email.
-  if (hasDigital && !session) {
+  // Rule: every order needs an account. Digital content unlocks in the app,
+  // and so does a printed copy's digital edition (a printed book includes
+  // it, explicit decision 2026-11-11), so the buyer's email has to be one
+  // they've signed in with before they pay.
+  if (!session) {
     return NextResponse.json(
-      { error: "login_required", message: "Please log in to purchase digital content." },
+      {
+        error: "login_required",
+        message: hasDigital
+          ? "Please log in to purchase digital content."
+          : "Please log in or create an account: your book comes with its digital edition in the app.",
+      },
       { status: 401 }
-    );
-  }
-
-  if (!hasDigital && !session && !guestEmail) {
-    return NextResponse.json(
-      { error: "guest_email_required", message: "Email is required for guest checkout." },
-      { status: 400 }
     );
   }
 
@@ -141,8 +141,8 @@ export async function POST(req: NextRequest) {
   const [order] = await db
     .insert(orders)
     .values({
-      userId: session?.userId ?? null,
-      guestEmail: session ? null : guestEmail,
+      userId: session.userId,
+      guestEmail: null,
       country,
       status: "pending",
       totalCents,
@@ -162,11 +162,9 @@ export async function POST(req: NextRequest) {
   // this is what lets the country be known outside the context of any one
   // order (e.g. for account-level data-protection handling), without asking
   // for it again at every future purchase.
-  if (session) {
-    const user = await db.query.users.findFirst({ where: eq(users.id, session.userId) });
-    if (user && !user.country) {
-      await db.update(users).set({ country }).where(eq(users.id, session.userId));
-    }
+  const user = await db.query.users.findFirst({ where: eq(users.id, session.userId) });
+  if (user && !user.country) {
+    await db.update(users).set({ country }).where(eq(users.id, session.userId));
   }
 
   await db.insert(orderItems).values(
@@ -191,7 +189,7 @@ export async function POST(req: NextRequest) {
   const checkoutSession = await stripe.checkout.sessions.create({
     mode: "payment",
     line_items: lineItems,
-    customer_email: session?.email ?? guestEmail,
+    customer_email: session.email,
     allow_promotion_codes: true,
     shipping_address_collection: hasPhysical ? { allowed_countries: ["US", "CA"] } : undefined,
     success_url: `${origin}/checkout/success?orderId=${order.id}`,

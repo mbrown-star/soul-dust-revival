@@ -10,6 +10,8 @@ import { ComingSoonNotice } from "@/components/commerce/ComingSoonNotice";
 import { CoverGallery } from "@/components/commerce/CoverGallery";
 import { coverAspectRatio } from "@/lib/images/coverAspectRatio";
 import { productEyebrowLabel } from "@/lib/commerce/productEyebrow";
+import { includesDigitalEdition } from "@/lib/commerce/digitalEdition";
+import { PrintedPurchaseNote } from "@/components/commerce/PrintedPurchaseNote";
 import type { Metadata } from "next";
 
 // Rendered dynamically per-request rather than statically at build time —
@@ -74,6 +76,21 @@ export default async function BookDetailPage({
           .orderBy(asc(bundleItems.orderIndex))
       : [];
 
+  // A printed copy comes with its digital edition when there's a study to
+  // read (for a bundle, any component's). Said beside the printed buy options.
+  const includesDigital = await includesDigitalEdition(db, [product.id]);
+  const onAmazon = product.sellOnAmazon || !!product.amazonUrl;
+  const printedNote = (
+    <PrintedPurchaseNote
+      slug={product.slug}
+      isBundle={product.type === "bundle"}
+      includesDigital={includesDigital}
+      sellsOnStripe={product.sellOnStripe}
+      onAmazon={onAmazon}
+      amazonLinkLive={!!product.amazonUrl}
+    />
+  );
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-10 items-start">
@@ -130,11 +147,7 @@ export default async function BookDetailPage({
                   )}
                   <AmazonPurchase sellOnAmazon={product.sellOnAmazon} amazonUrl={product.amazonUrl} />
                 </div>
-                <p className="font-sans text-sm text-moss mt-3">
-                  {product.type === "bundle"
-                    ? "Ships within a few business days. No account needed to buy the physical bundle alone."
-                    : "Ships within a few business days. No account needed to buy the printed book alone."}
-                </p>
+                {printedNote}
               </div>
 
               <div className="border border-moss/20 rounded-lg p-4">
@@ -153,6 +166,9 @@ export default async function BookDetailPage({
                   label="Buy digital access"
                 />
                 <p className="font-sans text-sm text-moss mt-3">
+                  {includesDigital
+                    ? "The digital edition on its own, without the printed copy. "
+                    : ""}
                   Digital access requires an account — you&apos;ll be prompted to sign up during checkout.
                 </p>
               </div>
@@ -175,13 +191,20 @@ export default async function BookDetailPage({
                 <AmazonPurchase sellOnAmazon={product.sellOnAmazon} amazonUrl={product.amazonUrl} />
               </div>
 
-              <p className="font-sans text-sm text-moss mt-6">
-                {product.type === "bundle"
-                  ? "One purchase, everything below included."
-                  : product.format === "digital"
-                  ? "Digital studies require an account — you'll be prompted to sign up during checkout."
-                  : "Ships within a few business days. No account needed to buy a physical book alone."}
-              </p>
+              {product.format === "digital" ? (
+                <p className="font-sans text-sm text-moss mt-6">
+                  {product.type === "bundle"
+                    ? "One purchase, everything below included."
+                    : "Digital studies require an account — you'll be prompted to sign up during checkout."}
+                </p>
+              ) : (
+                <>
+                  {product.type === "bundle" && (
+                    <p className="font-sans text-sm text-moss mt-6">One purchase, everything below included.</p>
+                  )}
+                  {printedNote}
+                </>
+              )}
             </>
           )}
         </div>

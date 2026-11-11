@@ -122,6 +122,27 @@ describe("POST /api/checkout", () => {
     expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
   });
 
+  it("requires login for a printed-only cart too, even with a guest email (it includes the digital edition)", async () => {
+    vi.mocked(getSession).mockResolvedValue(null);
+    const [book] = await db
+      .insert(products)
+      .values({ type: "book", format: "physical", title: "Printed Book", slug: `printed-${randomUUID()}`, priceCents: 1899 })
+      .returning();
+
+    try {
+      const res = await POST(
+        checkoutRequest({ items: [{ productId: book!.id, quantity: 1 }], guestEmail: "guest@example.com", country: "US" })
+      );
+
+      expect(res.status).toBe(401);
+      expect(((await res.json()) as { error: string }).error).toBe("login_required");
+      expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
+      expect(await db.select().from(orderItems).where(eq(orderItems.productId, book!.id))).toHaveLength(0);
+    } finally {
+      await db.delete(products).where(eq(products.id, book!.id));
+    }
+  });
+
   it("rejects a cart referencing a product ID that doesn't exist", async () => {
     vi.mocked(getSession).mockResolvedValue({ userId: randomUUID(), email: "buyer@example.com" });
 

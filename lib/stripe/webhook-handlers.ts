@@ -4,12 +4,14 @@ import { eq, inArray, and, ne } from "drizzle-orm";
 import type Stripe from "stripe";
 import { sendOrderConfirmationEmail, sendBundleShipmentNotificationEmail } from "@/lib/email/send";
 import { isDigitalVariant, isPhysicalVariant } from "./products";
+import { bundleComponentIds, productIdsWithDigitalEdition } from "@/lib/commerce/digitalEdition";
 
 /**
  * Called from the /api/webhooks/stripe route on checkout.session.completed.
  * - Marks the order paid
  * - Records shipping details if collected
- * - Grants entitlements only for digital/webapp products (not physical books)
+ * - Grants entitlements for everything bought (a printed copy includes its
+ *   digital edition), cascading through bundles
  * - Sends a confirmation email appropriate to the order composition
  */
 export async function handleCheckoutCompleted(session: Stripe.Checkout.Session, appUrl: string) {
@@ -70,54 +72,39 @@ export async function handleCheckoutCompleted(session: Stripe.Checkout.Session, 
   const hasPhysical = items.some(isPhysicalItem);
   const recipientEmail = order.guestEmail ?? session.customer_details?.email ?? "";
 
-  // Only digital/webapp content grants an entitlement — physical books just
-  // ship. One entitlement per distinct product, even if it somehow appears
-  // in more than one digital line item (quantity already covers "more than
-  // one copy" without needing more than one entitlement row). A digital
-  // bundle is excluded from this ordinary per-item loop -- nothing gates
-  // content behind the bundle's own product id, only behind each
-  // component's -- and instead cascades below.
-  if (order.userId) {
-    const grantedProductIds = new Set<string>();
-    const digitalBundleIds: string[] = [];
-    for (const item of digitalItems) {
-      const product = productById.get(item.productId)!;
-      if (product.type === "bundle") {
-        digitalBundleIds.push(product.id);
-        continue;
-      }
-      if (grantedProductIds.has(item.productId)) continue;
-      grantedProductIds.add(item.productId);
+  // Every purchase grants an entitlement, printed copies included: a printed
+  // book comes with its digital edition in the app (explicit decision,
+  // 2026-11-11). Checkout requires an account for that reason, so a paid
+  // order normally has a userId; an older guest order (from before that rule)
+  // has nobody to grant to. One entitlement per distinct product, and none for
+  // a product the buyer already owns. A bundle isn't itself gated content, so
+  // it cascades to each of its components instead, as if each were bought.
+  const orderedIds = [...new Set(items.map((item) => item.productId))];
+  const bundleIds = orderedIds.filter((id) => productById.get(id)!.type === "bundle");
+  const componentIds = await bundleComponentIds(db, bundleIds);
+  const accessIds = new Set([...orderedIds.filter((id) => !bundleIds.includes(id)), ...componentIds]);
+
+  if (order.userId && accessIds.size > 0) {
+    const owned = await db
+      .select({ productId: entitlements.productId })
+      .from(entitlements)
+      .where(and(eq(entitlements.userId, order.userId), inArray(entitlements.productId, [...accessIds])));
+    const ownedIds = new Set(owned.map((o) => o.productId));
+    for (const productId of accessIds) {
+      if (ownedIds.has(productId)) continue;
       await db.insert(entitlements).values({
         userId: order.userId,
-        productId: item.productId,
+        productId,
         source: "purchase",
         expiresAt: null,
       });
     }
-
-    // Buying a digital bundle cascades an entitlement to every one of its
-    // components, exactly as if each had been bought individually. Added to
-    // the same `grantedProductIds` set so a component that's *also*
-    // independently in the cart (bought both inside the bundle and on its
-    // own) still only gets one entitlement row.
-    if (digitalBundleIds.length > 0) {
-      const components = await db
-        .select({ bundleProductId: bundleItems.bundleProductId, componentProductId: bundleItems.componentProductId })
-        .from(bundleItems)
-        .where(inArray(bundleItems.bundleProductId, digitalBundleIds));
-      for (const { componentProductId } of components) {
-        if (grantedProductIds.has(componentProductId)) continue;
-        grantedProductIds.add(componentProductId);
-        await db.insert(entitlements).values({
-          userId: order.userId,
-          productId: componentProductId,
-          source: "purchase",
-          expiresAt: null,
-        });
-      }
-    }
   }
+
+  // Whether the email should point them to the app: something they now have
+  // access to has a study to read.
+  const hasWebAppAccess =
+    !!order.userId && (await productIdsWithDigitalEdition(db, [...accessIds])).size > 0;
 
   // A physical bundle ships like any other physical product, but there's no
   // Amazon fulfillment behind it (bundles are always Stripe-only -- see
@@ -157,7 +144,7 @@ export async function handleCheckoutCompleted(session: Stripe.Checkout.Session, 
     to: recipientEmail,
     orderId: order.id,
     composition,
-    hasWebAppAccess: digitalItems.length > 0,
+    hasWebAppAccess,
     totalCents: session.amount_total ?? order.totalCents,
     items: items.map((item) => {
       const product = productById.get(item.productId)!;
@@ -174,3 +161,4 @@ export async function handleCheckoutCompleted(session: Stripe.Checkout.Session, 
     appUrl,
   });
 }
+

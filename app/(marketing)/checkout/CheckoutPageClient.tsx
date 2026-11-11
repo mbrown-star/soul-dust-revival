@@ -18,12 +18,10 @@ import Link from "next/link";
 // already does this (see AccountPageClient.tsx).
 export default function CheckoutPageClient({ initialLoggedIn }: { initialLoggedIn: boolean }) {
   const { items, totalCents, hasDigital, removeItem } = useCart();
-  const [guestEmail, setGuestEmail] = useState("");
   const [country, setCountry] = useState("");
   const loggedIn = initialLoggedIn;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const emailId = useId();
   const countryId = useId();
 
   async function handleCheckout() {
@@ -35,7 +33,6 @@ export default function CheckoutPageClient({ initialLoggedIn }: { initialLoggedI
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, variant: i.variant })),
-        guestEmail: hasDigital ? undefined : guestEmail,
         country,
       }),
     });
@@ -60,13 +57,16 @@ export default function CheckoutPageClient({ initialLoggedIn }: { initialLoggedI
     );
   }
 
-  // Digital content in the cart requires an account before proceeding.
-  if (hasDigital && loggedIn === false) {
+  // Every order needs an account before proceeding: digital content unlocks
+  // in the app, and so does a printed book's digital edition.
+  if (!loggedIn) {
     return (
       <div className="max-w-xl mx-auto px-4 py-16 sm:py-20 text-center space-y-4">
         <h1 className="font-display font-bold text-2xl text-ink">Checkout</h1>
         <p className="font-serif text-ink">
-          Your cart includes digital content, which requires an account.
+          {hasDigital
+            ? "Your cart includes digital content, which requires an account."
+            : "Your book comes with its digital edition in the Soul Dust Revival app, so we'll set up your account first. It only takes your email."}
         </p>
         {/* Two distinct actions rather than one ambiguous "log in or sign up"
             link — a first-time buyer (the common case here) needs signup,
@@ -90,7 +90,7 @@ export default function CheckoutPageClient({ initialLoggedIn }: { initialLoggedI
     );
   }
 
-  const canSubmit = !!country && (hasDigital || loggedIn || !!guestEmail);
+  const canSubmit = !!country;
 
   return (
     <div className="max-w-xl mx-auto px-4 py-10 sm:py-16 space-y-6">
@@ -124,23 +124,7 @@ export default function CheckoutPageClient({ initialLoggedIn }: { initialLoggedI
         <span>${(totalCents / 100).toFixed(2)}</span>
       </div>
 
-      {!hasDigital && !loggedIn && (
-        <div>
-          <label htmlFor={emailId} className="block font-sans text-sm font-medium text-ink mb-1">
-            Email (for order confirmation)
-          </label>
-          <input
-            id={emailId}
-            type="email"
-            required
-            className="w-full border border-moss/30 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
-            value={guestEmail}
-            onChange={(e) => setGuestEmail(e.target.value)}
-          />
-        </div>
-      )}
-
-      {/* Required for every order — including guest and digital-only
+      {/* Required for every order — including digital-only
           purchases that never go through Stripe's shipping-address
           collection — since data-protection handling depends on the
           buyer's country regardless of what they bought. See PRIVACY.md. */}

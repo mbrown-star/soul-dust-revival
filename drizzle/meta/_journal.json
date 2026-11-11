@@ -127,6 +127,13 @@
       "when": 1794427094601,
       "tag": "0017_neat_cammi",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1794427799183,
+      "tag": "0018_natural_cyclops",
+      "breakpoints": true
     }
   ]
 }

@@ -11,7 +11,7 @@ a codebase can't determine on its own. Get real legal review before treating thi
 
 | Data | Where | Why |
 |---|---|---|
-| Email | `users.email`, `orders.guestEmail` | Account identity; order confirmation |
+| Email | `users.email`, `orders.guestEmail` | Account identity; order confirmation. Since 2026-11-11 every order needs an account (a printed book includes its digital edition), so new orders never set `guestEmail`; older guest orders keep it. |
 | Country | `orders.country`, `users.country` | Determines which data-protection regime applies to that person (see below) |
 | Full name (optional) | `users.fullName` | Convenience display only — never required, never used to gate access |
 
@@ -27,6 +27,7 @@ sign-in link or code.
 | Login timestamps + user agent | `login_events` | Access/engagement reporting (`/admin/reports/engagement`) |
 | Study and devotional answers | `responses.answerText` | The product's actual function — saving a user's own study responses and devotional "A Question to Sit With" reflections (added 2026-11-06; previously the devotional question was display-only and never persisted) |
 | Role, purchase history | `users.role`, `orders`/`order_items` | Access control; sales reporting |
+| Amazon order number | `amazon_claims.amazon_order_number` | Only when a reader claims the digital edition of a printed book bought on Amazon (`/claim`): proves the claim, stops one order unlocking a title for several accounts, and lets an admin check it against Amazon's sales report (`/admin/reports/amazon-claims`). Linked to the account; removed with it when the account row is deleted outright (FK cascade); an anonymized account keeps it, like its orders. |
 | Journey day and time zone | `journey_enrollments.weekday`, `.timeZone` | The Journey opens one week at a time on the reader's chosen weekday, on his own calendar. The IANA time zone (e.g. `America/Chicago`) comes from his browser when he begins; nothing finer than that is stored. Included in the data export; deleted with the account. |
 
 **Contact page messages** (added 2026-11-11): a signed-in reader's name, the email they type,

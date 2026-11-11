@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import { getDb, type Db } from "@/lib/db/client";
-import { bundleItems, entitlements, orders, orderItems, products, users } from "@/lib/db/schema";
+import { bundleItems, entitlements, orders, orderItems, products, studies, users } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import type Stripe from "stripe";
 
@@ -107,18 +107,61 @@ describe("handleCheckoutCompleted", () => {
     expect(sendOrderConfirmationEmail).toHaveBeenCalledTimes(1); // not double-sent either
   });
 
-  it("does not grant an entitlement for a physical-only order", async () => {
-    // Swap the order to a physical-only cart for this case.
+  it("grants the digital edition with a printed-only order", async () => {
+    // A printed book includes its digital edition (2026-11-11), so a
+    // physical-only cart grants access to that product too.
+    await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
+    await db.insert(orderItems).values({ orderId, productId: physicalProductId, quantity: 1 });
+    const [study] = await db
+      .insert(studies)
+      .values({ productId: physicalProductId, title: "Companion Study", slug: `companion-study-${randomUUID()}` })
+      .returning();
+
+    try {
+      await handleCheckoutCompleted(fakeCheckoutSession(orderId), "https://example.com");
+
+      const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
+      expect(order!.status).toBe("paid");
+
+      const grants = await db.select().from(entitlements).where(eq(entitlements.userId, userId));
+      expect(grants.map((g) => g.productId)).toEqual([physicalProductId]);
+      expect(sendOrderConfirmationEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ composition: "physical_only", hasWebAppAccess: true })
+      );
+    } finally {
+      await db.delete(studies).where(eq(studies.id, study!.id));
+    }
+  });
+
+  it("doesn't point a printed order with nothing to read to the app", async () => {
     await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
     await db.insert(orderItems).values({ orderId, productId: physicalProductId, quantity: 1 });
 
     await handleCheckoutCompleted(fakeCheckoutSession(orderId), "https://example.com");
 
-    const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
-    expect(order!.status).toBe("paid");
+    expect(sendOrderConfirmationEmail).toHaveBeenCalledWith(expect.objectContaining({ hasWebAppAccess: false }));
+  });
+
+  it("doesn't add a second entitlement for a product the buyer already owns", async () => {
+    await db.insert(entitlements).values({ userId, productId: digitalProductId, source: "amazon_claim" });
+
+    await handleCheckoutCompleted(fakeCheckoutSession(orderId), "https://example.com");
 
     const grants = await db.select().from(entitlements).where(eq(entitlements.userId, userId));
+    expect(grants).toHaveLength(1);
+    expect(grants[0]!.source).toBe("amazon_claim");
+  });
+
+  it("grants nothing for an older guest order with no account", async () => {
+    await db.update(orders).set({ userId: null, guestEmail: "guest@example.com" }).where(eq(orders.id, orderId));
+
+    await handleCheckoutCompleted(fakeCheckoutSession(orderId), "https://example.com");
+
+    const grants = await db.select().from(entitlements).where(eq(entitlements.productId, digitalProductId));
     expect(grants).toHaveLength(0);
+    expect(sendOrderConfirmationEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "guest@example.com", hasWebAppAccess: false })
+    );
   });
 
   it("does nothing for an unknown orderId (no matching metadata)", async () => {
@@ -127,7 +170,7 @@ describe("handleCheckoutCompleted", () => {
   });
 
   describe("format: \"both\" products", () => {
-    it("grants an entitlement for the digital variant of a \"both\" order item, but not the physical one", async () => {
+    it("grants one entitlement for a \"both\" product bought in both variants", async () => {
       const [bothProduct] = await db
         .insert(products)
         .values({
@@ -157,9 +200,8 @@ describe("handleCheckoutCompleted", () => {
         const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
         expect(order!.status).toBe("paid");
 
-        // One entitlement for the product, even though it has two order
-        // items -- the digital one grants it, the physical one doesn't, and
-        // they're never double-counted into two entitlement rows.
+        // One entitlement for the product, even though both of its order
+        // items grant it (a printed copy includes the digital edition).
         const grants = await db.select().from(entitlements).where(eq(entitlements.userId, userId));
         expect(grants).toHaveLength(1);
         expect(grants[0]!.productId).toBe(bothProduct!.id);
@@ -243,7 +285,7 @@ describe("handleCheckoutCompleted", () => {
       }
     });
 
-    it("a physical bundle sends the founder shipment-notification email and grants no entitlement", async () => {
+    it("a physical bundle sends the founder shipment-notification email and grants each component", async () => {
       const [component] = await db
         .insert(products)
         .values({ type: "book", format: "physical", title: "Physical Component", slug: `physical-component-${randomUUID()}`, priceCents: 1500 })
@@ -267,7 +309,7 @@ describe("handleCheckoutCompleted", () => {
         );
 
         const grants = await db.select().from(entitlements).where(eq(entitlements.userId, userId));
-        expect(grants).toHaveLength(0);
+        expect(grants.map((g) => g.productId)).toEqual([component!.id]);
 
         expect(sendBundleShipmentNotificationEmail).toHaveBeenCalledTimes(1);
         expect(sendBundleShipmentNotificationEmail).toHaveBeenCalledWith(
@@ -278,6 +320,7 @@ describe("handleCheckoutCompleted", () => {
         );
       } finally {
         await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
+        await db.delete(entitlements).where(eq(entitlements.productId, component!.id));
         await db.delete(bundleItems).where(eq(bundleItems.bundleProductId, bundle!.id));
         await db.delete(products).where(inArray(products.id, [component!.id, bundle!.id]));
       }
@@ -336,6 +379,7 @@ describe("handleCheckoutCompleted", () => {
       } finally {
         await db.delete(entitlements).where(inArray(entitlements.productId, [component!.id, bundle!.id]));
         await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
+        await db.delete(entitlements).where(eq(entitlements.productId, component!.id));
         await db.delete(bundleItems).where(eq(bundleItems.bundleProductId, bundle!.id));
         await db.delete(products).where(inArray(products.id, [component!.id, bundle!.id]));
       }
