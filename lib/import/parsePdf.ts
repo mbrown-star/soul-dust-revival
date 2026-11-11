@@ -31,6 +31,11 @@ export async function parsePdfToText(buffer: Buffer): Promise<string> {
     const result = await parser.getText({ pageJoiner: "" });
     const text = stripRunningHeadersAndFooters(result.pages.map((p) => p.text));
     return text
+      // A decorative ornament can extract as a NUL byte (The Holy Spirit has
+      // 12, one between sections), and Postgres rejects NUL in text, failing
+      // the whole import. Other invisible control characters go too; tabs and
+      // line breaks stay.
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
       .split("\n")
       .filter((line) => !isBarePageNumber(line))
       .map(collapseLetterSpacing)

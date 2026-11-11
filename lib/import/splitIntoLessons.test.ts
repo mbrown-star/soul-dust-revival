@@ -282,6 +282,31 @@ describe("splitPlainTextByHeadings", () => {
   });
 });
 
+describe("splitPlainTextByHeadings, a day-by-day devotional", () => {
+  it("splits only on its main label, so a paragraph starting 'Chapter 12 ...' stays in its day", () => {
+    const text = [
+      "FOREWORD",
+      "A word before the first page.",
+      "TWELVE MONTHS · 365 DAYS",
+      "DAY 1 · JANUARY 1",
+      "GENESIS 1–2 · MATTHEW 1 · PSALM 1",
+      "In the beginning God created.",
+      "Chapter 2 slows down and kneels in the dust.",
+      "DAY 2 · JANUARY 2",
+      "GENESIS 3–4 · MATTHEW 2 · PSALM 2",
+      "The serpent speaks.",
+      "DAY 3 · JANUARY 3",
+      "GENESIS 5–6 · MATTHEW 3 · PSALM 3",
+      "The flood.",
+    ].join("\n");
+
+    const lessons = splitPlainTextByHeadings(text);
+    expect(lessons.map((l) => l.title)).toEqual(["Introduction", "DAY 1 · JANUARY 1", "DAY 2 · JANUARY 2", "DAY 3 · JANUARY 3"]);
+    expect(lessons[1]!.bodyHtml).toContain("kneels in the dust");
+    expect(lessons[0]!.bodyHtml).not.toContain("TWELVE MONTHS");
+  });
+});
+
 describe("splitStudyPlainTextByHeadings", () => {
   function buildWeek(n: number, title: string, verseRef: string, question: string, greekWord: string): string[] {
     return [
@@ -551,6 +576,7 @@ describe("splitStudyPlainTextByHeadings", () => {
     for (const [beforeYouBegin, contents] of [
       ["BEFORE YOU BEGIN", "TWELVE WEEKS IN GALATIANS"],
       ["BEFOREYOUBEGIN", "TWELVEWEEKSIN 1 PETER"],
+      ["BEFORE YOU BEGIN", "TWELVEWEEKSWITHTHEHOLYSPIRIT"],
     ]) {
       const text = [
         "Foreword",

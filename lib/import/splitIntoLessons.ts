@@ -176,8 +176,20 @@ function splitByHeadingKeywords(lines: string[]): ImportedLesson[] {
   const sections: { title: string; lines: string[] }[] = [];
   let current: { title: string; lines: string[] } | null = null;
 
+  // A document is organized by one label, so split only on the one it uses
+  // most. A day-by-day devotional (A 365-Day Journey Through the Bible) has
+  // 365 "DAY N" headings and also paragraphs that start "Chapter 12 holds a
+  // detail...", which used to break those days in two.
+  const labelOf = (line: string) => (headingPattern.test(line) && line.length < 80 ? /^\w+/.exec(line)![0].toLowerCase() : null);
+  const labelCounts = new Map<string, number>();
   for (const line of lines) {
-    if (headingPattern.test(line) && line.length < 80) {
+    const label = labelOf(line);
+    if (label) labelCounts.set(label, (labelCounts.get(label) ?? 0) + 1);
+  }
+  const mainLabel = [...labelCounts].sort((a, b) => b[1] - a[1])[0]?.[0];
+
+  for (const line of lines) {
+    if (mainLabel && labelOf(line) === mainLabel) {
       if (current) sections.push(current);
       current = { title: line, lines: [] };
     } else if (current) {
@@ -272,7 +284,9 @@ const FRONT_MATTER_END_HEADING =
 // Contents page headed "TWELVE WEEKS IN <BOOK>". Matched case-sensitively,
 // unlike the list above, so a Foreword line that happens to start with
 // "Before you begin..." or "Twelve weeks in..." can't cut the section short.
-const FRONT_MATTER_END_CAPS_HEADING = /^(BEFORE ?YOU ?BEGIN|TWELVE ?WEEKS ?IN)\b/;
+// Also "TWELVE WEEKS WITH THE HOLY SPIRIT" and a devotional's "TWELVE MONTHS · 365 DAYS".
+// (No word break after WITH: it extracts as "TWELVEWEEKSWITHTHEHOLYSPIRIT".)
+const FRONT_MATTER_END_CAPS_HEADING = /^(?:BEFORE ?YOU ?BEGIN\b|TWELVE ?WEEKS ?(?:IN\b|WITH)|TWELVE ?MONTHS\b)/;
 
 // A Table-of-Contents entry for "Foreword"/"Preface" itself ("Foreword
 // .......... 3", "Preface 5") matches FRONT_MATTER_KEEP_HEADING's prefix

@@ -644,6 +644,10 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- **2026-11-11 — The Gospel, The Holy Spirit and A 365-Day Journey Through the Bible imported as hidden drafts.** PDF import now drops NUL bytes, which made The Holy Spirit fail and would fail the admin's Import study too. A day-by-day devotional now splits only on its "DAY" headings. **Open:**
+  - Benedictions needs its 176-page manuscript; the Materials folder has the old 14-page catalog.
+  - The devotional reader's Year calendar and Journal only understand Psalms-style day labels, so the 365-Day Journey's days don't show there yet.
+  - Deploys are held for the Journey session's migration `0015`.
 - **2026-11-11 — Dusty but Hopeful, Genesis Parts 1 and 2, and Prayer imported as hidden drafts**, after three more parser fixes. The main one: a word study now ends after its LIVE IT paragraph, so a pull-quote can't land inside it. The 15 earlier drafts were rebuilt again. 4 titles remain (The Gospel, The Holy Spirit, Benedictions, and the 365-day Bible devotional). The deploy hold for the Journey migration still stands.
 - **2026-11-11 — In Christ, The Ten Commandments, Sermon on the Mount and Dusty and Holy imported as hidden drafts**, after four more study-parser fixes. The main one stops a word study being cut off at its own single-verse source line. The 11 earlier drafts were rebuilt with `--replace-lessons`; Galatians needed nothing. 8 titles remain. **Hold:** don't deploy `main` until the Journey session's migration `0015` is applied; my earlier commits swept its unfinished build in. See CLAUDE.md's same-dated entry.
 - **2026-11-11 — the four John parts ("John: That You May Believe") imported as hidden drafts**, Coming soon products with unpublished studies of 13 draft lessons each. 12 titles remain in the author's folder.

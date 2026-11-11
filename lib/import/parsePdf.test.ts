@@ -19,6 +19,14 @@ describe("parsePdfToText", () => {
     expect(getTextMock).toHaveBeenCalledWith({ pageJoiner: "" });
   });
 
+  it("drops NUL and other control characters (a decorative ornament can extract as NUL, which Postgres rejects)", async () => {
+    getTextMock.mockResolvedValue({ pages: [{ num: 1, text: "Before the ornament.\n\u0000\nAfter it.\u0007\tTabbed." }] });
+    const text = await parsePdfToText(Buffer.from(""));
+    expect(text).not.toMatch(/[\u0000\u0007]/);
+    expect(text).toContain("Before the ornament.");
+    expect(text).toContain("After it.\tTabbed.");
+  });
+
   it("strips a line that recurs across most pages as a running header/footer", async () => {
     const pages = Array.from({ length: 10 }, (_, i) => ({
       num: i + 1,

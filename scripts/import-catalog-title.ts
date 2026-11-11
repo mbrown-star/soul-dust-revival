@@ -82,7 +82,8 @@ function readMetadata(dir: string): Metadata {
   const fields = json.title_fields as Record<string, string> | undefined;
   if (fields) {
     return {
-      title: cleanCopy(fields.title ?? ""),
+      // A two-line cover title is stored as title_line1/title_line2.
+      title: cleanCopy(fields.title ?? [fields.title_line1, fields.title_line2].filter(Boolean).join(" ")),
       tagline: fields.tagline && cleanCopy(fields.tagline),
       kindLine: fields.kind_line && cleanCopy(fields.kind_line),
       description: [fields.back_hook, fields.back_para_1, fields.back_para_2].filter(Boolean).map((t) => cleanCopy(t!)).join("\n\n"),
@@ -300,6 +301,11 @@ async function main() {
 main()
   .then(() => process.exit(0))
   .catch((err: unknown) => {
-    console.error(`\n✗ ${err instanceof Error ? err.message : String(err)}`);
+    // A failed insert's message includes the whole query and its parameters
+    // (thousands of lines for a study); the database's actual reason is in
+    // `cause`.
+    const message = err instanceof Error ? err.message : String(err);
+    const cause = err instanceof Error && err.cause instanceof Error ? err.cause.message : null;
+    console.error(`\n✗ ${message.length > 300 ? `${message.slice(0, 300)}…` : message}${cause ? `\n  cause: ${cause}` : ""}`);
     process.exit(1);
   });
