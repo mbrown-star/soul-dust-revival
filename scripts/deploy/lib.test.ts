@@ -58,6 +58,20 @@ describe("placeholderEnv", () => {
     expect(parseEnvFile(text).get("NEXT_PUBLIC_LAUNCH_MODE")).toBe("");
   });
 
+  it("copies the old R2 address when set, and never reports it missing", () => {
+    const moved = new Map(REAL);
+    moved.set("R2_PUBLIC_BASE_URL", "https://media.example.com");
+    moved.set("R2_LEGACY_PUBLIC_BASE_URL", "https://pub-123.r2.dev");
+    const withLegacy = placeholderEnv(exampleKeys, moved, TARGETS.production);
+    expect(withLegacy.missing).toEqual([]);
+    expect(parseEnvFile(withLegacy.text).get("R2_LEGACY_PUBLIC_BASE_URL")).toBe("https://pub-123.r2.dev");
+    expect(secretValues(moved).map((s) => s.key)).not.toContain("R2_LEGACY_PUBLIC_BASE_URL");
+
+    const without = placeholderEnv(exampleKeys, REAL, TARGETS.production);
+    expect(without.missing).toEqual([]);
+    expect(parseEnvFile(without.text).get("R2_LEGACY_PUBLIC_BASE_URL")).toBe("");
+  });
+
   it("reports a missing public value instead of building without it", () => {
     const partial = new Map(REAL);
     partial.delete("R2_PUBLIC_BASE_URL");

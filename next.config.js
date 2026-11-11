@@ -14,6 +14,19 @@ function getR2Hostname() {
   }
 }
 
+// The bucket's previous public address, when it has moved (e.g. from its
+// *.r2.dev URL to a custom domain). Stored image URLs and already-sent
+// emails still name the old host until they're repointed, so both stay
+// allowed for next/image. Optional; unset means only the current host.
+function getLegacyR2Hostnames() {
+  try {
+    const legacy = new URL(process.env.R2_LEGACY_PUBLIC_BASE_URL).hostname;
+    return legacy === getR2Hostname() ? [] : [legacy];
+  } catch {
+    return [];
+  }
+}
+
 // NEXT_PUBLIC_LAUNCH_MODE is inlined at build time (lib/launchMode.ts), and
 // anything other than "sneak_peek" builds the full site with the store open.
 // lib/env.ts only validates at runtime, after the value is already baked in,
@@ -59,12 +72,10 @@ const nextConfig = {
   // bloat, so it's kept external the same way.
   serverExternalPackages: ["pdf-parse", "pdfjs-dist", "@cf-wasm/photon"],
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: getR2Hostname(),
-      },
-    ],
+    remotePatterns: [getR2Hostname(), ...getLegacyR2Hostnames()].map((hostname) => ({
+      protocol: "https",
+      hostname,
+    })),
   },
   // The storefront moved from /books to /store (2026-11-10). Old links,
   // bookmarks, search results, and already-sent emails still point at

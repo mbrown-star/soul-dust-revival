@@ -12,6 +12,9 @@ const envSchema = z.object({
   R2_SECRET_ACCESS_KEY: z.string().min(1),
   R2_BUCKET_NAME: z.string().min(1),
   R2_PUBLIC_BASE_URL: z.string().url(),
+  // The bucket's previous public address after a move (next.config.js keeps
+  // it allowed for next/image). Optional.
+  R2_LEGACY_PUBLIC_BASE_URL: z.string().url().optional(),
   CLOUDFLARE_STREAM_KEY_ID: z.string().min(1),
   CLOUDFLARE_STREAM_SIGNING_KEY: z.string().min(1),
   CLOUDFLARE_STREAM_CUSTOMER_CODE: z.string().min(1),

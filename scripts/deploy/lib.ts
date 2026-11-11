@@ -53,6 +53,11 @@ export const TARGETS: Record<Target, TargetConfig> = {
 // images), which is why a missing one stops the deploy here instead.
 export const BUILD_TIME_PUBLIC_KEYS = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY", "R2_PUBLIC_BASE_URL"];
 
+// Public build-time values that may be blank: copied when set, never
+// reported missing. R2_LEGACY_PUBLIC_BASE_URL keeps the bucket's old address
+// in images.remotePatterns after it moves to a custom domain.
+export const OPTIONAL_BUILD_TIME_PUBLIC_KEYS = ["R2_LEGACY_PUBLIC_BASE_URL"];
+
 // Names with digits (R2_*) are real keys too; a pattern without 0-9 once
 // silently dropped R2_PUBLIC_BASE_URL from every build.
 const ENV_LINE = /^([A-Z0-9_]+)=(.*)$/;
@@ -97,6 +102,9 @@ export function placeholderEnv(
     if (!value) missing.push(key);
     fixed[key] = value;
   }
+  for (const key of OPTIONAL_BUILD_TIME_PUBLIC_KEYS) {
+    fixed[key] = real.get(key) ?? "";
+  }
   const keys = [...new Set([...exampleKeys, ...Object.keys(fixed)])];
   const text = keys.map((key) => `${key}=${key in fixed ? fixed[key] : "placeholder"}`).join("\n") + "\n";
   return { text, missing };
@@ -106,7 +114,7 @@ export function placeholderEnv(
 // Configuration names, not secrets. The R2 bucket is named "soul-dust-revival",
 // the same string as the brand slug, so scanning for it refused any bundle
 // whose code mentioned the brand (hit by the Journey session, 2026-11-11).
-const NOT_SECRET = new Set(["R2_PUBLIC_BASE_URL", "R2_BUCKET_NAME"]);
+const NOT_SECRET = new Set(["R2_PUBLIC_BASE_URL", "R2_LEGACY_PUBLIC_BASE_URL", "R2_BUCKET_NAME"]);
 
 export function secretValues(real: Map<string, string>): { key: string; value: string }[] {
   return [...real]
