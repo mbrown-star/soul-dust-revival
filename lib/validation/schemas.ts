@@ -7,6 +7,7 @@ import {
   formatMegabytes,
   IMAGE_UPLOAD_MAX_BYTES,
   RESOURCE_PDF_UPLOAD_MAX_BYTES,
+  STUDY_RESOURCE_UPLOAD_MAX_BYTES,
 } from "@/lib/uploads/limits";
 
 // Media URLs end up in <img>/<video>/<audio>/<track> src attributes on the
@@ -571,6 +572,44 @@ export const resourceFileUploadUrlSchema = z
     size: uploadSizeSchema(RESOURCE_PDF_UPLOAD_MAX_BYTES),
   })
   .strict();
+
+// A study resource PDF. The server picks the key; the browser gets only the
+// signed upload link and that key, never a public URL (resources are gated).
+export const studyResourceUploadUrlSchema = z
+  .object({
+    contentType: z.literal("application/pdf"),
+    size: uploadSizeSchema(STUDY_RESOURCE_UPLOAD_MAX_BYTES),
+  })
+  .strict();
+
+/** The only keys a study resource can point at: ones the upload route issued. */
+export const STUDY_RESOURCE_KEY = /^study-resources\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.pdf$/;
+
+const resourceTitle = z.string().trim().min(1).max(200);
+const resourceDescription = z.string().trim().max(1_000).nullable().optional();
+
+export const studyResourceCreateSchema = z
+  .object({
+    studyId: z.string().uuid(),
+    title: resourceTitle,
+    description: resourceDescription,
+    fileKey: z.string().regex(STUDY_RESOURCE_KEY, "Not an uploaded resource"),
+    // Shown and used as the download's file name; path characters are removed.
+    fileName: z
+      .string()
+      .trim()
+      .min(1)
+      .max(200)
+      .transform((name) => name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_")),
+  })
+  .strict();
+
+export const studyResourceUpdateSchema = z.union([
+  z.object({ id: z.string().uuid(), title: resourceTitle, description: resourceDescription }).strict(),
+  z.object({ studyId: z.string().uuid(), order: z.array(z.string().uuid()).min(1).max(200) }).strict(),
+]);
+
+export const studyResourceDeleteSchema = z.object({ id: z.string().uuid() }).strict();
 
 // WebVTT captions for video blocks -- its own endpoint for the same reason
 // as resource files above.

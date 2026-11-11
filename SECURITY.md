@@ -277,6 +277,11 @@ builder's "Use a link" option):
   caller can name, overwrite or escape into an existing object. (Until this date the
   image and leader-PDF routes accepted a client-chosen key, guarded only by a character
   allowlist and a `..` check.)
+- **Study resources are gated downloads** (as of 2026-11-11). A study's downloadable PDFs (`study_resources`) are uploaded through `/api/admin/study-resource-upload-url` (admin-only, PDF only, up to 100 MB, signed for the exact size). Unlike every other upload, that route returns only the server-chosen key (`study-resources/<uuid>.pdf`), never a public URL.
+  - `POST /api/admin/study-resources` accepts only a key matching that pattern, and takes the size and type from R2 (`HeadObject`), which also confirms the upload finished.
+  - Readers download through `GET /api/study-resources/[id]`. It requires a session (otherwise it redirects to sign-in), hides a draft study from everyone but admins (404), and requires `getStudyAccess` (owner or admin; 403 otherwise, including free-sample readers). It then redirects to a 5-minute signed GET with `Content-Disposition: attachment` under the file's own name, sent `Cache-Control: private, no-store`.
+  - The key never reaches a reader's browser. Note the bucket also has a public r2.dev domain, so the object is reachable there by anyone who knows its key; the key is a random UUID that's never published, so the signed link is the only way to it in practice.
+  - Removing a resource deletes its R2 object; deleting a study removes its resources and their files.
 - **Upload size caps are enforced by R2 itself** (as of 2026-11-11). Each route's Zod
   schema requires the file's exact `size` and caps it (`lib/uploads/limits.ts`: images
   20 MB, captions 2 MB, leader PDFs 100 MB, cover PDF 25 MB, cover crops 30 MB), and

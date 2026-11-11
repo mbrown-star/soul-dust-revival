@@ -1,11 +1,12 @@
 import { getDb } from "@/lib/db/client";
-import { studies, products, lessons } from "@/lib/db/schema";
+import { studies, products, lessons, studyResources } from "@/lib/db/schema";
 import { eq, asc, or } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { StudyForm } from "@/components/admin/StudyForm";
 import { LessonList } from "@/components/admin/builder/LessonList";
 import { PublishAllLessonsButton } from "@/components/admin/PublishAllLessonsButton";
 import { ReimportStudyForm } from "@/components/admin/ReimportStudyForm";
+import { StudyResourcesPanel } from "@/components/admin/StudyResourcesPanel";
 
 export default async function StudyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -45,6 +46,19 @@ export default async function StudyDetailPage({ params }: { params: Promise<{ id
     .from(lessons)
     .where(eq(lessons.studyId, study.id))
     .orderBy(asc(lessons.orderIndex));
+
+  const resources = await db
+    .select({
+      id: studyResources.id,
+      title: studyResources.title,
+      description: studyResources.description,
+      fileName: studyResources.fileName,
+      fileSize: studyResources.fileSize,
+      contentType: studyResources.contentType,
+    })
+    .from(studyResources)
+    .where(eq(studyResources.studyId, study.id))
+    .orderBy(asc(studyResources.orderIndex));
 
   return (
     <div className="space-y-10">
@@ -99,6 +113,11 @@ export default async function StudyDetailPage({ params }: { params: Promise<{ id
             isWeek: study.kind === "study" && !!l.studyContent,
           }))}
         />
+      </div>
+
+      <div>
+        <h2 className="text-lg font-semibold mb-4">Resources</h2>
+        <StudyResourcesPanel studyId={study.id} initial={resources} />
       </div>
     </div>
   );

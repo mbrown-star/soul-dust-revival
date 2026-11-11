@@ -114,6 +114,7 @@ async function main() {
   await pg.query(`DELETE FROM bundle_items WHERE bundle_product_id IN (SELECT id FROM products WHERE slug LIKE $1)`, [qaSlugPrefix]);
   await pg.query(`DELETE FROM content_blocks WHERE lesson_id IN (SELECT id FROM lessons WHERE study_id IN (SELECT id FROM studies WHERE slug LIKE $1))`, [qaSlugPrefix]);
   await pg.query(`DELETE FROM lessons WHERE study_id IN (SELECT id FROM studies WHERE slug LIKE $1)`, [qaSlugPrefix]);
+  await pg.query(`DELETE FROM study_resources WHERE study_id IN (SELECT id FROM studies WHERE slug LIKE $1)`, [qaSlugPrefix]);
   await pg.query(`DELETE FROM studies WHERE slug LIKE $1`, [qaSlugPrefix]);
   await pg.query(`DELETE FROM products WHERE slug LIKE $1`, [qaSlugPrefix]);
   await pg.query(`DELETE FROM posts WHERE slug LIKE $1`, [qaSlugPrefix]);
@@ -417,6 +418,30 @@ async function main() {
   // qa-user: entitled, zero lesson_progress -> "Not started" bucket in My Library.
   await db.insert(schema.entitlements).values({ userId: userIds.user, productId: pNotStarted.id, source: "admin_grant" });
 
+  // Two downloadable resources (study_resources). The files don't exist in R2;
+  // the download route only signs a link, so the specs check the redirect.
+  await db.insert(schema.studyResources).values([
+    {
+      studyId: s1.id,
+      title: "QA Scriptural Catalog",
+      description: "A companion list of every benediction in the study.",
+      fileKey: "study-resources/00000000-0000-4000-8000-000000000001.pdf",
+      fileName: "QA Scriptural Catalog.pdf",
+      fileSize: 91_146,
+      contentType: "application/pdf",
+      orderIndex: 0,
+    },
+    {
+      studyId: s1.id,
+      title: "QA Leader Guide",
+      fileKey: "study-resources/00000000-0000-4000-8000-000000000002.pdf",
+      fileName: "QA Leader Guide.pdf",
+      fileSize: 2 * 1024 * 1024,
+      contentType: "application/pdf",
+      orderIndex: 1,
+    },
+  ]);
+
   // ---------- Study S2: kind="devotional", linked to pInProgress ----------
   console.log("Seeding QA devotional study (kind=devotional)...");
   const [s2] = await db
@@ -579,6 +604,15 @@ async function main() {
     })
     .returning();
   if (!s5) throw new Error("QA seed: study insert returned no row.");
+  // A free-sample reader sees this listed, locked.
+  await db.insert(schema.studyResources).values({
+    studyId: s5.id,
+    title: "QA Sample Companion",
+    fileKey: "study-resources/00000000-0000-4000-8000-000000000003.pdf",
+    fileName: "QA Sample Companion.pdf",
+    fileSize: 300 * 1024,
+    contentType: "application/pdf",
+  });
   for (const d of devotionalDays) {
     const title = `DAY ${d.day} · ${d.month} ${d.date} · PSALM ${d.psalm}`;
     const [lesson] = await db

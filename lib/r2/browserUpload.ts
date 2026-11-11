@@ -49,7 +49,7 @@ export async function requestUploadSlots<T>(endpoint: string, body: unknown): Pr
  * (lib/r2/upload.ts); the browser sets Content-Length from the body itself,
  * and R2 refuses it if that isn't the size the link was signed for.
  */
-export function putToSlot(slot: UploadSlot, body: Blob, contentType: string, onProgress?: UploadProgress): Promise<void> {
+export function putToSlot(slot: Pick<UploadSlot, "uploadUrl">, body: Blob, contentType: string, onProgress?: UploadProgress): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", slot.uploadUrl);

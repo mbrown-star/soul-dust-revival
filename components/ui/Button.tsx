@@ -26,6 +26,7 @@ export function Button({
   onClick,
   type = "button",
   className = "",
+  "aria-label": ariaLabel,
 }: {
   children: React.ReactNode;
   variant?: ButtonVariant;
@@ -34,12 +35,16 @@ export function Button({
   onClick?: () => void;
   type?: "button" | "submit";
   className?: string;
+  // For a button whose visible text is a symbol ("↑"); TypeScript doesn't
+  // flag an unknown hyphenated prop, so without this it was silently dropped.
+  "aria-label"?: string;
 }) {
   return (
     <button
       type={type}
       disabled={disabled}
       onClick={onClick}
+      aria-label={ariaLabel}
       className={`inline-flex items-center justify-center gap-2 font-sans font-medium rounded-lg border transition-opacity disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 ${SIZE_CLASSES[size]} ${VARIANT_CLASSES[variant]} ${className}`}
     >
       {children}

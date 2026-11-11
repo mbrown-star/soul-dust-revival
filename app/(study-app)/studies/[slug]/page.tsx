@@ -1,5 +1,5 @@
 import { getDb } from "@/lib/db/client";
-import { studies, lessons, products, lessonProgress } from "@/lib/db/schema";
+import { studies, lessons, products, lessonProgress, studyResources } from "@/lib/db/schema";
 import { eq, asc, and, inArray } from "drizzle-orm";
 import { getJourneyForStudy, journeyHref } from "@/lib/journey/load";
 import { getJourneyAccess, getStudyAccess, isOpenSampleLesson, studyHasOpenSample } from "@/lib/entitlements/check";
@@ -9,6 +9,7 @@ import { getSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ProgressBar } from "@/components/study/ProgressBar";
+import { StudyResources } from "@/components/study/StudyResources";
 import { getDisplayStudyTitle } from "@/lib/study/displayTitle";
 import { studyKindLabel } from "@/lib/study/studyKindLabel";
 import type { Metadata } from "next";
@@ -103,6 +104,17 @@ export default async function StudyPage({
   const progressByLesson = new Map(progressRows.map((p) => [p.lessonId, p.status]));
   const completed = openLessons.filter((l) => progressByLesson.get(l.id) === "completed").length;
   const displayTitle = await getDisplayStudyTitle(db, study);
+  const resources = await db
+    .select({
+      id: studyResources.id,
+      title: studyResources.title,
+      description: studyResources.description,
+      fileSize: studyResources.fileSize,
+      contentType: studyResources.contentType,
+    })
+    .from(studyResources)
+    .where(eq(studyResources.studyId, study.id))
+    .orderBy(asc(studyResources.orderIndex));
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16">
@@ -173,6 +185,8 @@ export default async function StudyPage({
           })}
         </ol>
       )}
+
+      <StudyResources resources={resources} locked={sampleOnly} lockedNote={lockedLessonNote()} />
     </div>
   );
 }

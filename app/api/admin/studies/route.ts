@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/guard";
 import { getDb } from "@/lib/db/client";
-import { studies, lessons, contentBlocks, lessonProgress, responses, orderItems, entitlements } from "@/lib/db/schema";
+import { studies, lessons, contentBlocks, lessonProgress, responses, orderItems, entitlements, studyResources } from "@/lib/db/schema";
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { r2, R2_BUCKET } from "@/lib/r2/client";
 import { eq, inArray } from "drizzle-orm";
 import { studySchema, studyDeleteSchema } from "@/lib/validation/schemas";
 
@@ -112,7 +114,12 @@ export async function DELETE(req: NextRequest) {
   // their study, so deleting one means deleting all of it -- in dependency
   // order, inside one transaction so a failure partway through can't leave
   // orphaned rows.
-  await db.transaction(async (tx) => {
+  const resourceFiles = await db.transaction(async (tx) => {
+    // Its downloadable resources go with it (rows here, files after commit).
+    const removedResources = await tx
+      .delete(studyResources)
+      .where(eq(studyResources.studyId, id))
+      .returning({ fileKey: studyResources.fileKey });
     const studyLessons = await tx.select({ id: lessons.id }).from(lessons).where(eq(lessons.studyId, id));
     const lessonIds = studyLessons.map((l) => l.id);
 
@@ -132,7 +139,17 @@ export async function DELETE(req: NextRequest) {
     }
 
     await tx.delete(studies).where(eq(studies.id, id));
+    return removedResources.map((r) => r.fileKey);
   });
+
+  // File cleanup only; the study and its resource rows are already gone.
+  await Promise.all(
+    resourceFiles.map((Key) =>
+      r2.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key })).catch((err: unknown) => {
+        console.error("study delete: couldn't remove a resource file", Key, err);
+      })
+    )
+  );
 
   return NextResponse.json({ ok: true });
 }

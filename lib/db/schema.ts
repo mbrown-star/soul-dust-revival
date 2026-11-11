@@ -238,6 +238,24 @@ export const studies = pgTable("studies", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
+// Downloadable files attached to a study (a companion catalog, a guide), shown
+// in the study page's "Resources" section. Only readers who own the study (and
+// admins) can download one: the file sits at a server-chosen R2 key that is
+// never sent to the browser, and /api/study-resources/[id] checks access, then
+// redirects to a five-minute signed link.
+export const studyResources = pgTable("study_resources", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  studyId: uuid("study_id").references(() => studies.id).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  fileKey: text("file_key").notNull(), // "study-resources/<uuid>.pdf"; never a public URL
+  fileName: text("file_name").notNull(), // the name the download is saved under
+  fileSize: integer("file_size").notNull(),
+  contentType: text("content_type").notNull(),
+  orderIndex: integer("order_index").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
 export const lessons = pgTable("lessons", {
   id: uuid("id").primaryKey().defaultRandom(),
   studyId: uuid("study_id").references(() => studies.id).notNull(),

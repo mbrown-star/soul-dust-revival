@@ -15,6 +15,8 @@ export const IMAGE_UPLOAD_MAX_BYTES = 20 * MB;
 export const CAPTIONS_UPLOAD_MAX_BYTES = 2 * MB;
 /** Leader resource PDFs (guides, notes). */
 export const RESOURCE_PDF_UPLOAD_MAX_BYTES = 100 * MB;
+/** A study resource PDF (a companion catalog or guide readers download). */
+export const STUDY_RESOURCE_UPLOAD_MAX_BYTES = 100 * MB;
 /** A full-wrap KDP cover PDF (the same ceiling the old server-side cover routes had). */
 export const COVER_PDF_UPLOAD_MAX_BYTES = 25 * MB;
 /** One cover crop, a JPEG made in the admin's browser from that PDF. */
