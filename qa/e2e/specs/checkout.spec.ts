@@ -29,7 +29,7 @@ test.describe("Checkout — logged-in digital purchase ('both' format bundle)", 
   test.use({ storageState: "qa/.auth/user.json" });
 
   test("adding both the physical and digital lines of a 'both' product shows two distinct line items and prices", async ({ page }) => {
-    await page.goto("/books/qa-bundle-both-formats");
+    await page.goto("/store/qa-bundle-both-formats");
     await page.getByRole("button", { name: /Buy the book/i }).click();
     await page.getByRole("button", { name: /Buy digital access/i }).click();
 
@@ -66,7 +66,7 @@ test.describe("Checkout — logged-in digital purchase ('both' format bundle)", 
 
 test.describe("Checkout — guest physical-only purchase", () => {
   test("requires an email field, no login gate, and total matches the single line item", async ({ page }) => {
-    await page.goto("/books/qa-physical-amazon-and-stripe");
+    await page.goto("/store/qa-physical-amazon-and-stripe");
     await page.getByRole("button", { name: /Buy Now/i }).click();
 
     await page.goto("/checkout");

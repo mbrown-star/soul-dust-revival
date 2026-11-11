@@ -3,9 +3,9 @@ import { test, expect } from "@playwright/test";
 test.describe("admin products list and form, as qa-admin", () => {
   test.use({ storageState: "qa/.auth/admin.json" });
 
-  test("list shows the inactive QA fixture (admin list is unfiltered, unlike /books)", async ({ page }) => {
+  test("list shows the inactive QA fixture (admin list is unfiltered, unlike /store)", async ({ page }) => {
     // app/admin/products/page.tsx queries db.select().from(products) with no
-    // `active` filter -- the public /books page filters to active only. The
+    // `active` filter -- the public /store page filters to active only. The
     // admin list marks an inactive row with " · inactive" text instead of
     // hiding it.
     await page.goto("/admin/products");

@@ -16,8 +16,8 @@ async function expectNoSeriousViolations(page: Page) {
 test.describe("axe: public pages (guest)", () => {
   const paths = [
     "/",
-    "/books",
-    "/books/qa-physical-amazon-and-stripe",
+    "/store",
+    "/store/qa-physical-amazon-and-stripe",
     "/blog",
     "/blog/qa-fixture-published-post",
     "/privacy",

@@ -38,7 +38,7 @@ decisions already made there.
 
 ### Screen-reader-relevant structure
 
-5. Check each major page has exactly one real `<h1>`. → **Expect:** homepage, /books, /books/[slug],
+5. Check each major page has exactly one real `<h1>`. → **Expect:** homepage, /store, /store/[slug],
    /blog, /blog/[slug], /library, a study lesson page, /admin/products, /login, /signup, /checkout
    (including its empty-cart and login-required early-return states — ACCESSIBILITY.md flags these
    as a past bug, confirm the fix is still in place) all have one.

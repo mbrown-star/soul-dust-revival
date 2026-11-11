@@ -80,7 +80,7 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
   const publicItems: NavItem[] = [
     sneakPeek
       ? { label: "Try a sample", href: marketingUrl("/sneak-peek") }
-      : { label: "Store", href: marketingUrl("/books") },
+      : { label: "Store", href: marketingUrl("/store") },
     { label: "Blog", href: marketingUrl("/blog") },
   ];
   // "App" (was "My Library") -- the one link into the gated reading app

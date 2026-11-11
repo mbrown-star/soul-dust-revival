@@ -1,6 +1,6 @@
 /**
  * Config for splitting the site across two hostnames: the marketing/
- * storefront domain (home, /books, /blog, checkout) and the app domain
+ * storefront domain (home, /store, /blog, checkout) and the app domain
  * (My Library, Study/Devotional readers, Account, Leader Resources).
  * proxy.ts (Next's middleware equivalent) uses this to redirect a request
  * to the right host.

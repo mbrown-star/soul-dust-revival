@@ -83,7 +83,7 @@ export const products = pgTable("products", {
   // "both") -- null means not yet specified, not "softback by default".
   bookBinding: text("book_binding").$type<"softback" | "hardback">(),
   title: text("title").notNull(),
-  slug: text("slug").notNull().unique(), // used for public /books/[slug] pages
+  slug: text("slug").notNull().unique(), // used for public /store/[slug] pages
   description: text("description"),
   imageUrl: text("image_url"), // Cloudflare R2 public URL -- front cover, for book products
   imageAlt: text("image_alt"), // encouraged but not enforced (WCAG 1.1.1) -- see ACCESSIBILITY.md

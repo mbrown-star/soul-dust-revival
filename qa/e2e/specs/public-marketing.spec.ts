@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-// Public storefront: homepage, /books listing + detail, /blog, /privacy,
+// Public storefront: homepage, /store listing + detail, /blog, /privacy,
 // and the nav bar's guest/logged-in states. /leader is NOT public -- it's
 // gated by requireLeaderOrAdmin() (see leader/layout.tsx) and is covered in
 // admin specs' access-control coverage instead, not here.
@@ -20,7 +20,7 @@ test.describe("Homepage", () => {
     const tile = page.getByRole("link", { name: /QA Digital Study — Not Started/ });
     await expect(tile).toContainText("$19.00");
     await tile.click();
-    await expect(page).toHaveURL(/\/books\/qa-digital-study-not-started/);
+    await expect(page).toHaveURL(/\/store\/qa-digital-study-not-started/);
   });
 
   test("shows the 'From the blog' section with only published posts", async ({ page }) => {
@@ -30,9 +30,9 @@ test.describe("Homepage", () => {
   });
 });
 
-test.describe("/books listing", () => {
+test.describe("/store listing", () => {
   test("lists every active QA product and excludes the inactive one", async ({ page }) => {
-    await page.goto("/books");
+    await page.goto("/store");
     const body = page.locator("body");
     for (const title of [
       "QA Digital Study — Not Started",
@@ -48,26 +48,26 @@ test.describe("/books listing", () => {
   });
 
   test("the inactive product's own page 404s even if visited directly by slug", async ({ page }) => {
-    const res = await page.goto("/books/qa-inactive-product");
+    const res = await page.goto("/store/qa-inactive-product");
     expect(res?.status()).toBe(404);
   });
 });
 
-test.describe("/books/[slug] detail page — purchase routing per format", () => {
+test.describe("/store/[slug] detail page — purchase routing per format", () => {
   test("Amazon + Stripe physical book shows both buttons", async ({ page }) => {
-    await page.goto("/books/qa-physical-amazon-and-stripe");
+    await page.goto("/store/qa-physical-amazon-and-stripe");
     await expect(page.getByRole("button", { name: /Buy Now/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /Buy on Amazon/i })).toBeVisible();
   });
 
   test("Amazon-only physical book shows only the Amazon button, no Stripe add-to-cart", async ({ page }) => {
-    await page.goto("/books/qa-physical-amazon-only");
+    await page.goto("/store/qa-physical-amazon-only");
     await expect(page.getByRole("link", { name: /Buy on Amazon/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /Buy Now/i })).toHaveCount(0);
   });
 
   test("'both' format bundle shows two independent purchase options with distinct prices", async ({ page }) => {
-    await page.goto("/books/qa-bundle-both-formats");
+    await page.goto("/store/qa-bundle-both-formats");
     const body = page.locator("body");
     await expect(body).toContainText("Printed book");
     await expect(body).toContainText("Digital access");
@@ -80,7 +80,7 @@ test.describe("/books/[slug] detail page — purchase routing per format", () =>
   });
 
   test("digital-only study shows the digital account-required copy", async ({ page }) => {
-    await page.goto("/books/qa-digital-study-not-started");
+    await page.goto("/store/qa-digital-study-not-started");
     await expect(page.locator("body")).toContainText("Digital studies require an account");
   });
 });

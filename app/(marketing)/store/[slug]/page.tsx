@@ -203,7 +203,7 @@ export default async function BookDetailPage({
                   <div className="w-14 h-14 bg-moss/10 rounded flex-shrink-0" />
                 )}
                 <div className="flex-1 min-w-0">
-                  <Link href={`/books/${component.slug}`} className="font-sans font-semibold text-ink hover:text-moss">
+                  <Link href={`/store/${component.slug}`} className="font-sans font-semibold text-ink hover:text-moss">
                     {component.title}
                   </Link>
                   <p className="font-sans text-sm text-moss">

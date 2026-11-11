@@ -30,7 +30,7 @@ describe("lib/domains", () => {
 
     it("marketingUrl/appUrl return the plain path unchanged", async () => {
       const { marketingUrl, appUrl } = await loadDomains({});
-      expect(marketingUrl("/books")).toBe("/books");
+      expect(marketingUrl("/store")).toBe("/store");
       expect(appUrl("/library")).toBe("/library");
     });
 
@@ -62,7 +62,7 @@ describe("lib/domains", () => {
 
     it("marketingUrl/appUrl return absolute cross-domain URLs", async () => {
       const { marketingUrl, appUrl } = await loadDomains(env);
-      expect(marketingUrl("/books")).toBe("https://souldustrevival.com/books");
+      expect(marketingUrl("/store")).toBe("https://souldustrevival.com/store");
       expect(appUrl("/library")).toBe("https://app.souldustrevival.com/library");
     });
 
@@ -80,7 +80,7 @@ describe("lib/domains", () => {
 
     it("isAppPath rejects marketing paths, including a path merely prefixed by an app path's name", async () => {
       const { isAppPath } = await loadDomains(env);
-      for (const path of ["/", "/books", "/blog", "/checkout", "/admin/products", "/librarything"]) {
+      for (const path of ["/", "/store", "/blog", "/checkout", "/admin/products", "/librarything"]) {
         expect(isAppPath(path)).toBe(false);
       }
     });

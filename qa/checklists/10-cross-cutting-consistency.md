@@ -19,7 +19,7 @@ displayed in more than one spot.
 
 ## Walkthrough / checks
 
-1. **Study/devotional title, 4+ places.** A study's title appears in: the public `/books/[slug]`
+1. **Study/devotional title, 4+ places.** A study's title appears in: the public `/store/[slug]`
    storefront page (via its linked product's title), `/studies/[slug]`'s own `<h1>`/tab title
    (`study.title` directly), the Study reader's breadcrumb (`deriveBookLabel()` off `study.title`),
    My Library's card, and the admin studies list. → **Expect:** all of these show the *same* title
@@ -63,8 +63,8 @@ displayed in more than one spot.
    CLAUDE.md documents real past bugs here (line items merging incorrectly, a non-null assertion
    on `digitalPriceCents`)?
 8. **Inactive product never resurfaces.** `QA Inactive Product` (`active: false`) — confirm it's
-   absent from `/`, `/books`, the homepage featured section (even if it were marked featured), and
-   that its direct `/books/qa-inactive-product` URL doesn't quietly render a buyable page. It
+   absent from `/`, `/store`, the homepage featured section (even if it were marked featured), and
+   that its direct `/store/qa-inactive-product` URL doesn't quietly render a buyable page. It
    SHOULD still appear in the admin products list (admins manage inactive products too) — confirm
    that asymmetry is real and intentional by checking the actual admin list query's WHERE clause.
 9. **Greek station match count.** The QA Digital Study fixture has 3 Work the Word stations, 2 with

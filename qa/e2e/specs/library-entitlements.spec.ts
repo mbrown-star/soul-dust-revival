@@ -57,7 +57,7 @@ test.describe("My Library / entitlements", () => {
       // linked product (qa-bundle-both-formats) yet -- see qa/CONVENTIONS.md.
       const res = await page.goto("/studies/qa-bundle-study");
       expect(res?.status()).toBeLessThan(400);
-      await expect(page).toHaveURL(/\/books\/qa-bundle-both-formats/);
+      await expect(page).toHaveURL(/\/store\/qa-bundle-both-formats/);
     });
   });
 
@@ -78,7 +78,7 @@ test.describe("My Library / entitlements", () => {
     test("visiting an entitled-only study directly redirects to the purchase page, not a 403", async ({ page }) => {
       const res = await page.goto("/studies/qa-study-not-started");
       expect(res?.status()).toBeLessThan(400);
-      await expect(page).toHaveURL(/\/books\/qa-digital-study-not-started/);
+      await expect(page).toHaveURL(/\/store\/qa-digital-study-not-started/);
     });
 
     test("visiting an entitled-only lesson directly also redirects to the purchase page", async ({ page }) => {
@@ -86,7 +86,7 @@ test.describe("My Library / entitlements", () => {
       // (no entitlement, no free sample) sends the visitor on to the product.
       const res = await page.goto("/studies/qa-study-not-started/00000000-0000-0000-0000-000000000000");
       expect(res?.status()).toBeLessThan(400);
-      await expect(page).toHaveURL(/\/books\/qa-digital-study-not-started/);
+      await expect(page).toHaveURL(/\/store\/qa-digital-study-not-started/);
     });
   });
 });

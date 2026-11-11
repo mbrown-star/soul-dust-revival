@@ -16,7 +16,7 @@ export function SiteFooter() {
         <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2 font-sans text-sm">
           {/* The store is closed on the sneak-peek site (lib/launchMode.ts). */}
           <Link
-            href={isSneakPeek() ? "/sneak-peek" : "/books"}
+            href={isSneakPeek() ? "/sneak-peek" : "/store"}
             className="hover:text-gold focus:outline-none focus:ring-2 focus:ring-gold rounded p-1 -m-1"
           >
             {isSneakPeek() ? "Try a sample" : "Books & Studies"}

@@ -39,7 +39,7 @@ export default async function BooksPage() {
           {allProducts.map((p) => (
             <Link
               key={p.id}
-              href={`/books/${p.slug}`}
+              href={`/store/${p.slug}`}
               className="group focus:outline-none focus:ring-2 focus:ring-ink rounded-lg"
             >
               <div className="mb-3">

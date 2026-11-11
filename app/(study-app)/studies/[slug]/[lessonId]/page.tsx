@@ -81,7 +81,7 @@ export default async function LessonPage({
     // a study's slug and its linked product's slug are two different fields
     // on two different rows and are never guaranteed to match.
     const product = await db.query.products.findFirst({ where: eq(products.id, study.productId) });
-    redirect(product ? `/books/${product.slug}` : "/books");
+    redirect(product ? `/store/${product.slug}` : "/store");
   }
 
   // Drafts (an unpublished lesson or study) are visible only to an admin
@@ -119,7 +119,7 @@ export default async function LessonPage({
     lockedNextLesson && !isSneakPeek()
       ? await db.query.products
           .findFirst({ where: eq(products.id, study.productId), columns: { slug: true, active: true } })
-          .then((p) => (p?.active ? `/books/${p.slug}` : null))
+          .then((p) => (p?.active ? `/store/${p.slug}` : null))
       : null;
 
   const blocks = await db
@@ -367,7 +367,7 @@ export default async function LessonPage({
       {/* Only rendered by print CSS — invisible on screen (see globals.css). */}
       <p className="print-only-notice">
         Study content isn&apos;t available to print from the web app. If you&apos;d like a
-        printed copy, the physical book is available at /books.
+        printed copy, the physical book is available at /store.
       </p>
       <LessonNavigation
         studyHref={studyHref}

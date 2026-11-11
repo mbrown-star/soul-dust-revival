@@ -66,6 +66,15 @@ const nextConfig = {
       },
     ],
   },
+  // The storefront moved from /books to /store (2026-11-10). Old links,
+  // bookmarks, search results, and already-sent emails still point at
+  // /books, so send them on permanently rather than 404ing.
+  async redirects() {
+    return [
+      { source: "/books", destination: "/store", permanent: true },
+      { source: "/books/:slug", destination: "/store/:slug", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {

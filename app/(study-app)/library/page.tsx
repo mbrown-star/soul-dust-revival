@@ -150,7 +150,7 @@ export default async function LibraryPage() {
           <p className="font-serif text-moss mb-4">You don&apos;t have any studies or devotionals yet.</p>
           {/* The store is closed on the sneak-peek site (lib/launchMode.ts). */}
           <Link
-            href={marketingUrl(isSneakPeek() ? "/sneak-peek" : "/books")}
+            href={marketingUrl(isSneakPeek() ? "/sneak-peek" : "/store")}
             className="inline-block bg-ink text-parchment rounded-lg px-5 py-3 font-sans text-sm font-medium min-h-[44px]"
           >
             {isSneakPeek() ? "Try a free sample" : "Browse studies & books"}

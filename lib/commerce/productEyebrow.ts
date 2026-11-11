@@ -16,7 +16,7 @@ const BUNDLE_KIND_LABEL: Record<ProductKind, string> = {
 };
 
 /**
- * The storefront eyebrow label for a product, shared by the public /books
+ * The storefront eyebrow label for a product, shared by the public /store
  * listing, the homepage's featured grid, and a product's own detail page so
  * the three can't drift apart (they already have, more than once).
  *

@@ -16,17 +16,17 @@ See `qa/checklists/07-admin-console.md` for leader-resource access control, and
 2. Read each featured tile's category label under its title. → **Expect:** "Study · Web app" for
    the digital study, "Book & Study" for the bundle — the label must match the product's real
    `format`, not a hardcoded guess.
-3. Click a featured tile. → **Expect:** navigates to `/books/<slug>` for that exact product.
+3. Click a featured tile. → **Expect:** navigates to `/store/<slug>` for that exact product.
 4. Scroll to "From the blog". → **Expect:** only `QA Fixture: Published Post` appears; the draft
    post is absent.
-5. Open `/books`. → **Expect:** every active QA product appears (6 of the 7 seeded), `QA Inactive
-   Product` does not. Visit `/books/qa-inactive-product` directly. → **Expect:** a real 404, not a
+5. Open `/store`. → **Expect:** every active QA product appears (6 of the 7 seeded), `QA Inactive
+   Product` does not. Visit `/store/qa-inactive-product` directly. → **Expect:** a real 404, not a
    blank/broken page.
-6. Open `/books/qa-physical-amazon-and-stripe`. → **Expect:** both a "Buy Now" button and a "Buy
+6. Open `/store/qa-physical-amazon-and-stripe`. → **Expect:** both a "Buy Now" button and a "Buy
    on Amazon" link render.
-7. Open `/books/qa-physical-amazon-only`. → **Expect:** only "Buy on Amazon" renders — no Stripe
+7. Open `/store/qa-physical-amazon-only`. → **Expect:** only "Buy on Amazon" renders — no Stripe
    purchase button anywhere on the page, in any viewport width.
-8. Open `/books/qa-bundle-both-formats`. → **Expect:** two clearly separated sections ("Printed
+8. Open `/store/qa-bundle-both-formats`. → **Expect:** two clearly separated sections ("Printed
    book", "Digital access"), each with its own price and its own button; the two prices must be
    visibly different ($24.99 vs $15.99) and neither button should look like it applies to both.
 9. Open `/blog`, then the published post. → **Expect:** listing excludes the draft; the post body
@@ -50,9 +50,9 @@ See `qa/checklists/07-admin-console.md` for leader-resource access control, and
   only one price (`priceCents`, the physical side) with no indication a second, independent
   digital price exists — **is that a gap, or intentional brevity?** Flag it either way; don't
   assume it's fine just because it's not technically wrong.
-- `/books` listing also shows a single price per product, same caveat for the "both" format.
+- `/store` listing also shows a single price per product, same caveat for the "both" format.
 - Does a product's "Book & Study" / "Study · Web app" / "Book · Ships to you" label stay
-  consistent between the homepage tile, the `/books` listing, and the detail page's own eyebrow
+  consistent between the homepage tile, the `/store` listing, and the detail page's own eyebrow
   text? All three read from `product.format` the same way — confirm they don't drift if a future
   change touches only one of the three call sites.
 - Does the blog post's published date (shown on both `/blog` and the post page) match exactly,

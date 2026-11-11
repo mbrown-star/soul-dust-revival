@@ -95,7 +95,7 @@ export default async function HomePage() {
                     {tile}
                   </div>
                 ) : (
-                  <Link key={p.id} href={`/books/${p.slug}`} className={`group focus:outline-none ${tileClass}`}>
+                  <Link key={p.id} href={`/store/${p.slug}`} className={`group focus:outline-none ${tileClass}`}>
                     {tile}
                   </Link>
                 );

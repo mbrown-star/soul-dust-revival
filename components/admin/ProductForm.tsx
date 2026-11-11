@@ -289,7 +289,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
 
       <div>
         <label htmlFor={slugId} className="block text-sm font-medium mb-1">
-          Slug (URL path — used for the public /books/[slug] page)
+          Slug (URL path — used for the public /store/[slug] page)
         </label>
         <input
           id={slugId}

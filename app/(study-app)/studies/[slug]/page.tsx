@@ -76,7 +76,7 @@ export default async function StudyPage({
     // reusing the study's slug here would send people to the wrong (or a
     // nonexistent) product page -- same reasoning as [lessonId]/page.tsx.
     const product = await db.query.products.findFirst({ where: eq(products.id, study.productId) });
-    redirect(product ? `/books/${product.slug}` : "/books");
+    redirect(product ? `/store/${product.slug}` : "/store");
   }
   const isLocked = (l: { isSample: boolean }) => sampleOnly && !l.isSample;
   const openLessons = studyLessons.filter((l) => !isLocked(l));

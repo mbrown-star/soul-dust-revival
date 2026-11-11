@@ -13,7 +13,7 @@ const TILE_SLOT_ASPECT_RATIO = "31 / 40";
  * shape (from its stored dimensions) -- never cropped and never on a
  * visible background box, so the whole double-line border and its margin
  * always show (explicit decision, 2026-11-10). Used by both the homepage's
- * Featured content grid and the /books grid.
+ * Featured content grid and the /store grid.
  */
 export function CoverThumbnail({
   imageUrl,
