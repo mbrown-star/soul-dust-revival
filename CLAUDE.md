@@ -58,7 +58,25 @@ webhook/entitlement changes done.
 - **Scaffold code is in scope for both reviews.** Inherited code, dependencies, default configs, and seed data are reviewed too. Report scaffold-origin findings separately from new-code findings.
 - **On scaffold updates,** re-run both reviews against the whole updated scaffold, not just the diff.
 
-- **2026-11-12 (latest) — Tabbed weeks for the Journey's Parts One to Three, and Hebrew in reading order; code shipped, data not loaded yet.** Requested as "No Passage (Journey)".
+- **2026-11-12 (latest) — Study weeks no longer throw React error #418 on load.** Found after publishing the Journey weeks (entry below), then "Yes, fix it".
+  - **Cause:** three things in a tabbed week come from the browser's localStorage:
+    - the progress ring;
+    - "N of 4 parts read";
+    - the practice checkboxes.
+    Both hooks behind them (`useTabProgress`, `useLocalProgress`) read localStorage during the first render. Any week with saved progress therefore drew differently from the server's HTML, and React threw #418 and redrew the page. The Journey made it near-universal: a week without a passage saves its Passage tab as done on first visit. Confirmed in dev mode: the ring read "20" against the server's "0".
+  - **Fix:**
+    - New `lib/hooks/useStoredSet.ts` (`useSyncExternalStore` with an empty server snapshot), shared by both hooks. Hydration matches the server; saved progress appears right after.
+    - Every write goes through the current saved set, so the automatic "done" marks (no-passage tab, all stations, Lift Up) can't overwrite saved progress.
+    - Marks also live in memory, so they still work for the visit when storage is unavailable.
+    - A first try with `useEffect` + `setState` was refused by the lint rule `react-hooks/set-state-in-effect`, and kept within it.
+  - **Tests:**
+    - New e2e in `study-reader.spec.ts`: mark a part, a tab and a practice, reload, then require saved progress shown and no hydration error. Failed before the fix with the ring diff.
+    - `npm run verify` clean; `npm test` 809/809; full desktop QA 294/294; reader, Journey, library and accessibility on mobile 49/49.
+    - Run in a worktree, on its own dev server (port 3107, removed afterward).
+  - **Review:** no routes, input or data changed; stored values are parsed only as an array and used only for set membership. No findings.
+  - **Shipped** `072a39f` (`npm run deploy -- both --yes`): **staging `89e9056f`**, **production `5bf4a7d8`**, every check passing.
+  - **Checked on staging in fresh tabs:** Part One Week 6 (saved progress, ring 20%), Part Three Week 32 and Colossians Week 2: no console errors.
+- **2026-11-12 (later) — Tabbed weeks for the Journey's Parts One to Three, and Hebrew in reading order; code shipped, data not loaded yet.** Requested as "No Passage (Journey)".
   - **Found:** Parts One and Two share one layout and Part Three another.
     - **One and Two:** no printed passage; STUDY/REFLECTION labels; small-capitals section headings and Part sub-headings; commentary between each verse and its question; "A SIMPLE DAILY PRAYER"; Extra Practical boxes; capstone weeks (6, 12, 18, 24) close with a "Movement … Closing" essay.
     - **Three:** Passage Walk without a passage: 8–10 inline questions, 5 word studies, some printed after a pull-quote, two in a row, or before their station; Week 32 and Week 36 put 2–3 word studies on one verse.
@@ -109,7 +127,7 @@ webhook/entitlement changes done.
     - Checked on staging as a reader (no `?draft=1`):
       - Part One Week 6 opens in Study / Work the Word / Live It / Lift Up.
       - Part Three Week 32 opens in the same four tabs with nine stations.
-  - **Seen, not caused by this:** React hydration error #418 (text mismatch) in the console on tabbed weeks, including Colossians Week 2, which has been live since before today. The pages work. Not investigated yet.
+  - **Seen, not caused by this:** React hydration error #418 (text mismatch) in the console on tabbed weeks, including Colossians Week 2, which had been live since before today. Fixed in the entry below.
 - **2026-11-12 — Tabbed weeks for the 15 "Five Stations" studies: parser, loader and reader built; data not loaded yet.** Requested as a layout analysis of every manuscript, then "Yes, start there".
   - **Analysis:** read all 32 manuscripts in `Documents/Soul Dust Revival` with their typography.
     - **Devotionals:** both use one day layout, which the reader already handles.
