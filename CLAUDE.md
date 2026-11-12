@@ -58,7 +58,40 @@ webhook/entitlement changes done.
 - **Scaffold code is in scope for both reviews.** Inherited code, dependencies, default configs, and seed data are reviewed too. Report scaffold-origin findings separately from new-code findings.
 - **On scaffold updates,** re-run both reviews against the whole updated scaffold, not just the diff.
 
-- **2026-11-12 (latest) — Study weeks no longer throw React error #418 on load.** Found after publishing the Journey weeks (entry below), then "Yes, fix it".
+- **2026-11-12 (latest) — Tabbed weeks for the six "Passage Walk" studies; stations on one verse kept apart.** Requested as "Now convert the Passage Walk studies", then "Yes, load them".
+  - **Parser** (`parse_five_stations.py`). Ecclesiastes and Law and Gospel parsed almost as they were; Hebrews, Romans and the Sermon on the Mount had 52–65 warnings each, Part Four 12. Fixed:
+    - The passage is printed under THE WORD (not THE PASSAGE), with an italic "World English Bible" line, which had also doubled Part Four's first verse.
+    - Cross-references in ordinary case ("Hebrews 1:4; 7:19, 22") weren't recognised: 26 Hebrews, 32 Romans and 12 Part Four studies had the line run into their text, and 10 Sermon studies lost their gloss to it.
+    - The Sermon's Hebrew sets the transliteration on the word's own line ("ארָבָּ bārāʾ").
+    - Law and Gospel's Part headings are only half a point above the body, so they had run into each Part's first paragraph.
+    - A word study whose verse no station covers (ὑποπόδιον, σύμφυτος, συνείδησις) now stays with the station it's printed under, as a second study.
+    - **Result:** all six parse with 0 warnings. All 360 word studies have a gloss and a cross-reference, and every passage's verse count matches its range. All 17 titles loaded before still parse identically, and Colossians still matches its live data.
+  - **Reader:**
+    - **Stations are identified by their question block, not their reference.** Twelve of the Five Stations drafts have weeks with two stations on one verse (e.g. 1 Peter Week 3, two on 1:22). These shared an answer box, so station 1's typed text showed under station 2 and saved there on blur. They also shared the word-study toggle and the Passage tab's link. None was published, so no reader hit it.
+    - **Work the Word keeps text typed this visit** when moving between stations. The box had reopened with the page-load answer, so a just-saved answer looked lost until reload. This happened in every study.
+    - **Station buttons wrap** into even rows (a grid, at least 2.5rem each) instead of shrinking to about 23px for 12 stations at 375px.
+  - **Tests:**
+    - The QA Journey-shaped week's second station now shares its first station's reference. The e2e test types in station 1 and checks station 2 is empty and station 1 keeps its text. It failed on the old reader both ways.
+    - `npm run verify` clean; `npm test` 809/809; full desktop QA 294/294; reader, Journey, library and accessibility on mobile 49/49.
+    - Hebrews Week 1, loaded into the local test DB, checked by screenshot at 375px: ten 44px buttons in two rows, no sideways scroll, no console errors.
+    - Run in a worktree (port 3107, removed afterward).
+  - **Review:** no routes, input or schema changed; stations are keyed by an id the server already sends. No findings.
+  - **Loaded, on the user's "Yes, load them":**
+    - Backup first (`backup-before-passage-walk.json` in the session scratchpad: 6 studies, 78 lessons, 641 question blocks).
+    - All six studies: 12 weeks each, 0 problems, 0 new blocks.
+    - 69 glued prompts corrected, each checked first: pull-quotes, Hebrews' Psalm 119:25 station text, and in Part Four a whole Life Application section with page furniture.
+    - Checked by query: every station points at a block in its own lesson; still 641 blocks; 0 saved answers.
+    - Part Four's 12 weeks are staged as Unpublished changes; its readers still see the plain view.
+  - **Shipped** `3ac78c3` (`npm run deploy -- both --yes`): **staging `690168b8`**, **production `43ac097d`**, every check passing.
+  - **Checked on staging signed in as the user:**
+    - Hebrews Week 10: five tabs, nine stations, four word-study buttons, the fourth opening both διηνεκής and ὑποπόδιον.
+    - 1 Peter Week 3: opening ἁγνίζω on station 1 leaves station 2's ἐκτενῶς closed.
+    - Part Four Week 38: readers see the plain view; `?draft=1` shows the tabbed week.
+    - No console errors.
+  - **Not done:**
+    - Publishing Part Four's staged weeks (the Journey's other Parts are published).
+    - Layout C, Gathered Passages: Prayer, The Gospel, The Holy Spirit, The Ten Commandments.
+- **2026-11-12 (later still) — Study weeks no longer throw React error #418 on load.** Found after publishing the Journey weeks (entry below), then "Yes, fix it".
   - **Cause:** three things in a tabbed week come from the browser's localStorage:
     - the progress ring;
     - "N of 4 parts read";
