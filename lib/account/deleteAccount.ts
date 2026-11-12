@@ -45,9 +45,28 @@ export type DeleteAccountResult = {
 };
 
 export async function deleteAccount(userId: string): Promise<DeleteAccountResult> {
-  const db = await getDb();
+  const usersRow = await clearAppData(userId);
 
-  const usersRow = await db.transaction(async (tx) => {
+  const serviceClient = createSupabaseServiceRoleClient();
+  const { error } = await serviceClient.auth.admin.deleteUser(userId);
+  // 404: no auth account left to delete, which is the goal.
+  const authDeleted = !error || error.status === 404;
+  if (!authDeleted) console.error("deleteAccount: Supabase auth deletion failed:", error?.message);
+
+  // The session check recreates a signed-in account's missing `users` row
+  // (lib/auth/session.ts). A request from this account already in flight
+  // between the clear above and the login's deletion (another tab's activity
+  // ping, say) could have put the row back. Now that no session can, clear
+  // once more.
+  if (authDeleted && usersRow === "removed") await clearAppData(userId);
+
+  return { usersRow, authDeleted };
+}
+
+/** Deletes the account's app data and its `users` row, or anonymizes the row when something must keep pointing at it. */
+async function clearAppData(userId: string): Promise<DeleteAccountResult["usersRow"]> {
+  const db = await getDb();
+  return db.transaction(async (tx) => {
     await tx.delete(responses).where(eq(responses.userId, userId));
     await tx.delete(loginEvents).where(eq(loginEvents.userId, userId));
     await tx.delete(entitlements).where(eq(entitlements.userId, userId));
@@ -69,12 +88,4 @@ export async function deleteAccount(userId: string): Promise<DeleteAccountResult
       return "anonymized" as const;
     }
   });
-
-  const serviceClient = createSupabaseServiceRoleClient();
-  const { error } = await serviceClient.auth.admin.deleteUser(userId);
-  // 404: no auth account left to delete, which is the goal.
-  const authDeleted = !error || error.status === 404;
-  if (!authDeleted) console.error("deleteAccount: Supabase auth deletion failed:", error?.message);
-
-  return { usersRow, authDeleted };
 }
