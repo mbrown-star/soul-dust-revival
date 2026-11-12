@@ -211,6 +211,40 @@ export async function sendContactMessageEmail(params: ContactMessageParams) {
   if (error) throw new Error(`Resend refused the contact email: ${error.message}`);
 }
 
+/**
+ * The Buy on Amazon modal's reminder: where to unlock the digital edition
+ * once the Amazon order arrives. Sent to an address someone typed, so the
+ * content is fixed; only the title (an admin-set product name) and the link
+ * vary. Throws when Resend refuses, so the route can say it didn't go.
+ */
+export async function sendAmazonClaimReminderEmail(params: { to: string; productTitle: string; claimUrl: string }) {
+  const title = escapeHtml(params.productTitle);
+  const html = `
+    <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;color:#1a120c;">
+      <h2 style="margin-bottom:8px;">Your digital edition is waiting</h2>
+      <p>You're buying <strong>${title}</strong> on Amazon. The printed book comes with its digital edition in the Soul Dust Revival app.</p>
+      <p>Amazon doesn't tell us who bought, so once your order arrives:</p>
+      <ol>
+        <li>Open the link below and sign in, or create an account, with this email address.</li>
+        <li>Enter your Amazon order number (it looks like 123-1234567-1234567).</li>
+      </ol>
+      <p style="margin:24px 0;">
+        <a href="${escapeHtml(params.claimUrl)}" style="background:#1a120c;color:#fefdfa;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block;">
+          Claim your digital edition
+        </a>
+      </p>
+      <p style="color:#666;font-size:14px;">You're getting this because this address was entered on souldustrevival.com before going to Amazon. If that wasn't you, you can ignore it; nothing else will be sent.</p>
+    </div>
+  `;
+  const { error } = await resend.emails.send({
+    from: `Soul Dust Revival <${process.env.RESEND_FROM_EMAIL}>`,
+    to: params.to,
+    subject: `Your digital edition of ${params.productTitle.replace(/[\r\n]+/g, " ").slice(0, 120)}`,
+    html,
+  });
+  if (error) throw new Error(`Resend refused the reminder email: ${error.message}`);
+}
+
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")

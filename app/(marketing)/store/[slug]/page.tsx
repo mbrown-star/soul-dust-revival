@@ -10,7 +10,8 @@ import { ComingSoonNotice } from "@/components/commerce/ComingSoonNotice";
 import { CoverGallery } from "@/components/commerce/CoverGallery";
 import { coverAspectRatio } from "@/lib/images/coverAspectRatio";
 import { productEyebrowLabel } from "@/lib/commerce/productEyebrow";
-import { includesDigitalEdition } from "@/lib/commerce/digitalEdition";
+import { includesDigitalEdition, productIdsWithDigitalEdition } from "@/lib/commerce/digitalEdition";
+import { getSession } from "@/lib/auth/session";
 import { PrintedPurchaseNote } from "@/components/commerce/PrintedPurchaseNote";
 import type { Metadata } from "next";
 
@@ -79,6 +80,12 @@ export default async function BookDetailPage({
   // A printed copy comes with its digital edition when there's a study to
   // read (for a bundle, any component's). Said beside the printed buy options.
   const includesDigital = await includesDigitalEdition(db, [product.id]);
+  // Buy on Amazon explains the digital edition (and offers to email the claim
+  // link) for a printed book that has one; a signed-in reader's email is filled in.
+  const withDigital = await productIdsWithDigitalEdition(db, [product.id, ...components.map((c) => c.id)]);
+  const session = await getSession();
+  const digitalEditionOf = (p: { id: string; slug: string; title: string }) =>
+    withDigital.has(p.id) ? { productId: p.id, slug: p.slug, title: p.title } : null;
   const onAmazon = product.sellOnAmazon || !!product.amazonUrl;
   const printedNote = (
     <PrintedPurchaseNote
@@ -145,7 +152,12 @@ export default async function BookDetailPage({
                       label={product.type === "bundle" ? "Buy the bundle" : "Buy the book"}
                     />
                   )}
-                  <AmazonPurchase sellOnAmazon={product.sellOnAmazon} amazonUrl={product.amazonUrl} />
+                  <AmazonPurchase
+                    sellOnAmazon={product.sellOnAmazon}
+                    amazonUrl={product.amazonUrl}
+                    digitalEdition={digitalEditionOf(product)}
+                    signedInEmail={session?.email}
+                  />
                 </div>
                 {printedNote}
               </div>
@@ -188,7 +200,12 @@ export default async function BookDetailPage({
                     format={product.format}
                   />
                 )}
-                <AmazonPurchase sellOnAmazon={product.sellOnAmazon} amazonUrl={product.amazonUrl} />
+                <AmazonPurchase
+                    sellOnAmazon={product.sellOnAmazon}
+                    amazonUrl={product.amazonUrl}
+                    digitalEdition={digitalEditionOf(product)}
+                    signedInEmail={session?.email}
+                  />
               </div>
 
               {product.format === "digital" ? (
@@ -284,7 +301,12 @@ export default async function BookDetailPage({
                     )
                   )}
                   {!component.comingSoon && (
-                    <AmazonPurchase sellOnAmazon={component.sellOnAmazon} amazonUrl={component.amazonUrl} />
+                    <AmazonPurchase
+                      sellOnAmazon={component.sellOnAmazon}
+                      amazonUrl={component.amazonUrl}
+                      digitalEdition={digitalEditionOf(component)}
+                      signedInEmail={session?.email}
+                    />
                   )}
                 </div>
               </div>

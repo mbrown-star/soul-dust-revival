@@ -250,6 +250,32 @@ approval or a code printed in the book). What limits abuse:
   claimed that title with that number; it reveals nothing about who. Add `/api/amazon-claims`
   to the Cloudflare rate-limiting rule.
 
+## "Email me the claim link" from the Buy on Amazon modal (2026-11-12)
+On a printed book that has a digital edition, "Buy on Amazon" opens a modal
+(`components/commerce/AmazonBuyModal.tsx`) that explains the claim step and offers to email
+the `/claim` link before sending the visitor to Amazon. `POST /api/amazon-reminders`
+(`lib/commerce/amazonReminders.ts`) needs **no sign-in** and emails an address someone
+typed, a deliberate exception to the claim route's "never email a typed address" rule. What
+keeps it from being used to email strangers:
+- The message is fixed (`sendAmazonClaimReminderEmail`): only the product title (admin-set)
+  and the claim link vary; nothing the visitor typed appears in it, and it says to ignore
+  it if unexpected.
+- Strict Zod input (`amazonReminderSchema`: a product id and an email of at most 254
+  characters). Only claimable titles (active, on Amazon with a live link, with a study).
+- Limits, checked in one transaction before sending: one email per title per address per
+  day, three per address per day, and ten requests per visitor (IP) per hour, after which
+  the visitor gets 429. A blocked email (`blocked_emails`) gets nothing.
+- The response is the same `{ status: "ok" }` whether the email went, was already sent
+  today, or the address is blocked, so the endpoint reveals nothing about an address.
+- The table (`amazon_reminders`) stores no email address or IP, only HMAC-SHA256 hashes
+  keyed with a sub-key derived from `TOKEN_ENCRYPTION_KEY`. Rows older than a week are
+  deleted as new ones arrive. A failed send removes its row, so it isn't counted.
+- The IP comes from `cf-connecting-ip` (set by Cloudflare). Behind anything else, a
+  spoofed header could only change which hash a visitor's requests count against, and the
+  per-address limits still hold.
+- Accepted (Low): someone can still have us send one fixed email per title per day to an
+  address they don't own. Add `/api/amazon-reminders` to the Cloudflare rate-limiting rule.
+
 ## Webhook idempotency
 Stripe redelivers webhook events (retries, at-least-once delivery). The checkout webhook
 handler checks `order.status === 'paid'` before granting entitlements or sending the

@@ -19,10 +19,64 @@ test.describe("Product page: printed book on Amazon", () => {
     );
   });
 
+  test("Buy on Amazon explains the digital edition, emails the claim link, then opens Amazon", async ({ page, context }) => {
+    // The reminder route is stubbed: no real email from the QA run (its own
+    // rules are covered by app/api/amazon-reminders/route.test.ts).
+    let sentBody: { productId?: string; email?: string } | null = null;
+    await page.route("**/api/amazon-reminders", async (route) => {
+      sentBody = route.request().postDataJSON();
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "ok" }) });
+    });
+    // Amazon itself isn't loaded.
+    await context.route("https://www.amazon.com/**", (route) => route.fulfill({ status: 200, body: "Amazon" }));
+
+    await page.goto("/store/qa-amazon-with-study");
+    const buy = page.getByRole("button", { name: "Buy on Amazon" });
+    await buy.click();
+    const dialog = page.getByRole("dialog", { name: "Your book comes with its digital edition" });
+    await expect(dialog).toContainText("Amazon doesn't tell us who bought");
+    await expect(dialog.getByLabel("Email")).toBeFocused();
+
+    // No email: it says so and stays.
+    await dialog.getByRole("link", { name: "Email me the link and continue to Amazon" }).click();
+    await expect(dialog.getByRole("alert")).toContainText("valid email");
+
+    await dialog.getByLabel("Email").fill("buyer@soul-dust-revival.test");
+    const [amazon] = await Promise.all([
+      context.waitForEvent("page"),
+      dialog.getByRole("link", { name: "Email me the link and continue to Amazon" }).click(),
+    ]);
+    expect(amazon.url()).toBe("https://www.amazon.com/dp/QA2222222");
+    await amazon.close();
+    await expect(dialog.getByRole("status")).toContainText("We've emailed the link to buyer@soul-dust-revival.test");
+    expect(sentBody).toMatchObject({ email: "buyer@soul-dust-revival.test" });
+
+    await dialog.getByRole("button", { name: "Done" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(buy).toBeFocused();
+  });
+
+  test("the Amazon modal closes with Escape and has no axe violations", async ({ page }) => {
+    await page.goto("/store/qa-amazon-with-study");
+    await page.getByRole("button", { name: "Buy on Amazon" }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("link", { name: "Already ordered? Claim it now" })).toHaveAttribute(
+      "href",
+      "/claim?product=qa-amazon-with-study"
+    );
+    const violations = await runAxe(page);
+    expect(violations, formatViolations(violations)).toEqual([]);
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Buy on Amazon" })).toBeFocused();
+  });
+
   test("a printed book with nothing to read in the app makes no such promise", async ({ page }) => {
     await page.goto("/store/qa-physical-amazon-only");
     await expect(page.locator("body")).toContainText("ships from Amazon");
     await expect(page.locator("body")).not.toContainText("You get both");
+    // So Buy on Amazon is a plain link, no modal.
+    await expect(page.getByRole("link", { name: "Buy on Amazon" })).toBeVisible();
   });
 });
 

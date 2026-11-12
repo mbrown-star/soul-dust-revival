@@ -915,4 +915,12 @@ export const amazonClaimSchema = z
   })
   .strict();
 
+// The Buy on Amazon modal's "email me the claim link" (app/api/amazon-reminders).
+export const amazonReminderSchema = z
+  .object({
+    productId: z.string().uuid(),
+    email: z.string().trim().email("Please enter a valid email address").max(254),
+  })
+  .strict();
+
 export const amazonClaimRevokeSchema = z.object({ id: z.string().uuid() }).strict();

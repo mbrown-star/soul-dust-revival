@@ -8,6 +8,7 @@ import {
   unique,
   jsonb,
   date,
+  index,
 } from "drizzle-orm/pg-core";
 import type { StudyWeekContent } from "@/lib/study/studyContent";
 import type { ContentBlockType } from "@/lib/content/blocks";
@@ -240,6 +241,26 @@ export const amazonClaims = pgTable(
     revokedByUserId: uuid("revoked_by_user_id"),
   },
   (table) => [unique("amazon_claims_order_product_unique").on(table.amazonOrderNumber, table.productId)]
+);
+
+// One "email me the claim link" request from the Buy on Amazon modal
+// (app/api/amazon-reminders). Kept only to limit how often an address, or a
+// visitor, can have us send it: no email address or IP is stored, only keyed
+// hashes of them (lib/commerce/amazonReminders.ts), and rows older than a
+// week are deleted as new ones arrive.
+export const amazonReminders = pgTable(
+  "amazon_reminders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    emailHash: text("email_hash").notNull(),
+    ipHash: text("ip_hash").notNull(),
+    productId: uuid("product_id").references(() => products.id, { onDelete: "cascade" }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("amazon_reminders_email_idx").on(table.emailHash, table.createdAt),
+    index("amazon_reminders_ip_idx").on(table.ipHash, table.createdAt),
+  ]
 );
 
 // A `products` row with type: "bundle" groups other existing products
