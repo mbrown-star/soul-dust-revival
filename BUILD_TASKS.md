@@ -450,7 +450,7 @@ the mode set.
       delivered through it. The user confirmed the email rate limit had already been
       raised (Authentication → Rate Limits). The Magic Link subject was changed to "Your
       Soul Dust Revival sign-in code" by the user (2026-11-12, not verified from here);
-      check the Confirm signup template's subject says "code" too.
+      the Confirm sign up subject already reads "Your Soul Dust Revival account code".
 - [x] **R2 bucket CORS rule** (2026-11-10). `GET`/`PUT` from both staging hosts and
       `souldustrevival.com`, `www.`, `app.`; headers `content-type`, `cache-control`.
       If production keeps this same bucket, nothing more is needed; a separate
