@@ -515,10 +515,10 @@ class Week:
                 self.word_study(ws)
                 def covers(st, xref):
                     """Does the station's passage include the cross-reference's verse?"""
-                    if book_of(st["ref"]) != book_of(xref):
+                    if book_of(station_ref(st)) != book_of(xref):
                         return False
                     try:
-                        start, end = ref_range(st["ref"])
+                        start, end = ref_range(station_ref(st))
                         verse, _ = ref_range(xref)
                     except (TypeError, ValueError):
                         return False
@@ -896,6 +896,12 @@ def chapter_of(ref):
     return int(m[1]) if m else None
 
 
+def station_ref(st):
+    """A station's reference for matching. The Ten Commandments labels its
+    stations "PASSAGE 1 · EXODUS 20:2–3": the reference after the number."""
+    return re.sub(r"^PASSAGE\s+\d+\s*·\s*", "", st["ref"])
+
+
 def book_of(ref):
     """'1 PETER 1:22' -> '1PETER'; 'Psalm 103:1' and 'PSALMS 103' -> 'PSALM'."""
     m = re.match(r"\s*((?:[123]\s*)?[A-Za-z]+(?:\s+of\s+[A-Za-z]+)?)", ref)
@@ -905,12 +911,13 @@ def book_of(ref):
 def finish(w):
     """Add the reader's derived fields (as build_study.py's enrich() does)."""
     for st in w["stations"]:
+        ref = station_ref(st)
         try:
-            a, b = ref_range(st["ref"])
+            a, b = ref_range(ref)
         except TypeError:
             a = b = None
         # A verse from another book is printed at the station, not in the passage.
-        mine = [v for v in w["passage"] if v.get("_b", book_of(w["passageRef"])) == book_of(st["ref"])
+        mine = [v for v in w["passage"] if v.get("_b", book_of(w["passageRef"])) == book_of(ref)
                 and a and a <= (v["c"], v["n"]) <= b]
         st["verseNums"] = [f"{v['c']}:{v['n']}" for v in mine]
         st["anchor"] = find_anchor(st, mine)

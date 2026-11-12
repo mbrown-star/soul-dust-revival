@@ -92,7 +92,12 @@ webhook/entitlement changes done.
     - 1 Peter's anastrophē now has its full gloss and cross-references.
     - All seven are still unpublished.
   - **Not checked on staging:** the in-app browser's Cloudflare Access session had expired, and signing in needs the user's emailed code. The same weeks were checked in the reader locally (Holy Spirit Week 4, Prayer Week 1).
-  - **Possible follow-up, not done:** the Ten Commandments has no underlined words in its Passage tab. Its station labels read "PASSAGE 1 · EXODUS 20:2–3", whose "book" doesn't match the passage's, so no anchor is computed. Each word study is reached by its own button instead. Matching on the reference after "·" would fix it (a parser change and a reload of that one study).
+  - **Ten Commandments' underlined words, on the user's "Yes, fix it":** its station labels read "PASSAGE 1 · EXODUS 20:2–3", so the parser never matched a station to the passage and computed no anchors.
+    - **Fix:** the new `station_ref()` matches on the reference after "PASSAGE N ·", in `finish()` and `covers()`.
+    - **Result:** 13 of 60 word studies are now underlined in the Passage tab. 41 stations quote verses outside the week's passage and keep their buttons; the rest have no matching English word in the WEB text (e.g. "before My face" against "before me").
+    - **Checked:** only `anchor` and `verseNums` changed. Colossians and the other 26 titles are identical.
+    - **Reloaded:** the one study with `--replace --apply` after a backup (`backup-before-tc-anchors.json` in the session scratchpad). 12 weeks, 0 problems; 13 anchors, no orphaned stations.
+    - No app code changed, so nothing was deployed.
 - **2026-11-12 (later) — Tabbed weeks for the six "Passage Walk" studies; stations on one verse kept apart.** Requested as "Now convert the Passage Walk studies", then "Yes, load them".
   - **Parser** (`parse_five_stations.py`). Ecclesiastes and Law and Gospel parsed almost as they were; Hebrews, Romans and the Sermon on the Mount had 52–65 warnings each, Part Four 12. Fixed:
     - The passage is printed under THE WORD (not THE PASSAGE), with an italic "World English Bible" line, which had also doubled Part Four's first verse.
