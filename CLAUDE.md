@@ -58,6 +58,22 @@ webhook/entitlement changes done.
 - **Scaffold code is in scope for both reviews.** Inherited code, dependencies, default configs, and seed data are reviewed too. Report scaffold-origin findings separately from new-code findings.
 - **On scaffold updates,** re-run both reviews against the whole updated scaffold, not just the diff.
 
+- **2026-11-12 (latest) — Small polish: study sheets keep Tab inside, /admin/users dates, www redirect, sign-in email subject; found the site served over plain http.** Requested by pasting the "Small polish" list.
+  - **Study reader sheets** (`components/study/Sheet.tsx`) now keep Tab and Shift+Tab inside, through the new shared `lib/ui/focusTrap.ts`, which the Buy on Amazon modal now uses too.
+  - **/admin/users Joined dates** are formatted in en-US and UTC on both server and browser (`formatJoined` in `UserRoleTable.tsx`), ending the hydration error #418 logged since 2026-11-11.
+  - **Tests:**
+    - Sheet: Tab stays in the dialog. Users page: run in en-GB and Asia/Tokyo, no hydration error, dates in one format. Both failed on the old code.
+    - `npm run verify` clean; `npm test` 817/817; full desktop QA 297/297; reader, users, Amazon and accessibility on mobile 50/50.
+    - ACCESSIBILITY.md updated.
+  - **Shipped** `6153659` (`npm run deploy -- both --yes`): **staging `32b6118b`**, **production `fa8aa8bb`**, every check passing. The Journey banner session then redeployed staging as `b481c7f6` with `9422e66`, built on top of this one.
+  - **www → apex:**
+    - Cloudflare Redirect Rule "www to souldustrevival.com" (wildcard `https://www.*` → `https://${1}`, 301, query kept), deployed by the user after this session's click on Deploy was refused by its permission check as a domain change.
+    - The dashboard warned the rule "may not apply" because `www` is a Worker custom domain; the user chose "Ignore and deploy", not a new DNS record.
+    - Checked live: `https://www.souldustrevival.com/blog?x=1` → 301 `https://souldustrevival.com/blog?x=1`.
+  - **Found while testing that, and fixed by the user:**
+    - Every host answered plain `http://` with the page itself: unencrypted first visits, and sign-in can't work there because the cookies are `Secure`.
+    - The user turned on **Always Use HTTPS** (SSL/TLS → Edge Certificates). Checked live: http on the apex, `www`, `app.` and staging each 301 to https; `http://www…` reaches the apex in two hops. Cloudflare's HSTS left off, since the app sends its own. SECURITY.md has a new "HTTPS and the www redirect" section; BUILD_TASKS updated.
+  - **Sign-in email subject:** the user changed the Supabase Magic Link subject to "Your Soul Dust Revival sign-in code" in their own browser. Not verified from here (the in-app browser had no Supabase session). The Confirm signup template's subject may still say "link".
 - **2026-11-12 (newest) — The Store opens with a featured Journey banner.** Requested as "a horizontal full width advertisement of The Journey for the Store page that sits at the top in its own featured section".
   - **Band** (`components/commerce/FeaturedJourneyBanner.tsx`): full-bleed `bg-ink mottle`, inner `max-w-5xl` like the homepage's dusk band. Cover on the left at its own shape; "Featured bundle", "The Journey", "Four studies, read as one road. One stop opens each week, 52 in all.", the four Parts with their week ranges (1–12, 13–24, 25–36, 37–48), "Digital $75.00 · Printed $90.00" and an "Explore The Journey" link to `/store/soul-dust-revival-the-journey`. Stacks under 640px.
   - **Data, not a hardcoded slug** (`lib/journey/featured.ts`): the oldest published Journey whose bundle is active, read through `loadJourneyMap`; week ranges skip each Part's introduction (`partWeekRanges`). Unpublishing the Journey or deactivating its bundle removes the banner.
