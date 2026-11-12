@@ -93,7 +93,12 @@ webhook/entitlement changes done.
     - Checked by screenshot at 375px and 1280px, no sideways scroll. Run in a worktree.
   - **Review:** no routes, auth or queries changed; new schema fields are admin-only, bounded, rendered as escaped text. No findings.
   - **Shipped** `2894fba` (`npm run deploy -- both --yes`): **staging `1bd5ed06`**, **production `cb1598e1`**, every check passing.
-  - **Not done, needs a yes (production data write):** loading the 168 weeks into the 14 draft studies with the loader's `--apply`. Drafts only, so no reader sees them until published.
+  - **Loaded, on the user's "Yes, load them":** the loader's `--apply` filled all 168 weeks of the 14 drafts (12 each, 0 problems).
+    - Checked by query afterward: each study has 12 tabbed weeks, still 0 published lessons, and 60 question blocks (none added). Every station points at a real block in its own lesson. Colossians unchanged.
+    - Checked on staging signed in as the user:
+      - 1 Peter Week 3 opens in five tabs: passage with verse numbers, five practices, prayer as printed.
+      - Genesis Part 2 Week 3: chapters 22–24 marked, "Open the Hebrew · nissāh", closing pull-quote with its reference, no console errors.
+    - Readers see none of it until a study is published.
 - **2026-11-12 — Images served from `media.souldustrevival.com` instead of the rate-limited `r2.dev` address.** Requested as "Yes, set it up", the follow-up from the image-caching entry below. The objects didn't move: R2 serves the same key at both addresses.
   - **Domain:** `media.souldustrevival.com` connected to bucket `soul-dust-revival` as an R2 custom domain (the user ran `wrangler r2 bucket domain add ... --min-tls 1.2` after this session's sandbox refused it as a DNS change). Active about 45 s later; same bytes (identical ETag), same `public, max-age=31536000, immutable`, ~60 ms. **Keep the `r2.dev` public access on**: old emails, rich text and anything copied earlier still point there.
   - **Both addresses accepted** (`bcac796`): optional `R2_LEGACY_PUBLIC_BASE_URL` (`lib/env.ts`, `.env.example`) adds the old host to `next.config.js`'s `images.remotePatterns`; the deploy script carries it into builds (`OPTIONAL_BUILD_TIME_PUBLIC_KEYS`, never reported missing, not treated as a secret). `.env.local` now has `R2_PUBLIC_BASE_URL=https://media.souldustrevival.com` and the legacy line. Remove the legacy setting only once nothing stored or sent points at `r2.dev`.
