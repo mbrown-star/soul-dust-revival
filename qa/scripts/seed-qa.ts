@@ -473,11 +473,19 @@ async function main() {
       sections: [{ heading: "", paras: ["This week opens straight into the essay, with no heading."] }],
       parts: [{ label: "PART ONE", heading: "THE FACE THAT SHINES", paras: ["Fixture paragraph for the only part."] }],
     },
-    passageRef: "Numbers 6:24–26",
+    // Gathered from two places that both print a verse 6:24, as the
+    // Gathered Passages books do (John 3:5 and Titus 3:5).
+    passageRef: "Numbers 6:24–26 · Deuteronomy 6:24",
     passage: [
-      { c: 6, n: 24, text: "Yahweh bless you, and keep you." },
+      { c: 6, n: 24, text: "Yahweh bless you, and keep you.", ref: "Numbers 6:24–26" },
       { c: 6, n: 25, text: "Yahweh make his face to shine on you, and be gracious to you." },
       { c: 6, n: 26, text: "Yahweh lift up his face toward you, and give you peace." },
+      {
+        c: 6,
+        n: 24,
+        text: "Yahweh commanded us to do all these statutes, to fear Yahweh our God, for our good always, that he might preserve us alive.",
+        ref: "Deuteronomy 6:24",
+      },
     ],
     stationsLabel: "THE WORD ON THE BLESSING",
     stationsIntro: "Read each passage slowly.",
@@ -495,7 +503,7 @@ async function main() {
         body: ["Fixture word study for a transliteration-only Hebrew word."],
         live: "Speak the blessing over one person this week.",
         verseNums: ["6:24"],
-        anchor: { v: "6:24", word: "bless" },
+        anchor: { v: "6:24", word: "bless", part: "Numbers 6:24–26" },
         pulls: ["The blessing comes before the obedience, never after it."],
       },
       {
@@ -511,7 +519,7 @@ async function main() {
         body: ["Fixture word study for a station quoting another book."],
         live: "Name what you are trying to guard yourself.",
         verseNums: [],
-        anchor: null,
+        anchor: { v: "6:24", word: "preserve", part: "Deuteronomy 6:24" },
       },
     ],
     lifeTitle: "Where This Meets Real Life",
@@ -623,7 +631,8 @@ async function main() {
     prayerLines: ["Father, my way is not working, and You already know it. Amen."],
     bottomLine: ["The crack in your life is not God walking away. It is God getting in."],
     benediction: ["Brother, if your facade is cracking right now, do not waste your strength hiding it."],
-    closingVerse: "The crack is not punishment. The crack is the door.",
+    // Signed rather than closed with a verse, as Prayer's benedictions are.
+    closingVerse: "",
     closingRef: "",
     carry: "What would you see if you stopped patching the crack?",
   };

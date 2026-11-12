@@ -23,7 +23,9 @@ export type StudyWeekContent = {
   passageRef: string;
   // Verse-by-verse WEB text for the week's whole passage range, embedded at
   // backfill time rather than fetched live -- see scripts/backfill-colossians-study-content.ts.
-  passage: { c: number; n: number; text: string }[];
+  // `ref` marks the first verse of each part of a gathered passage ("Luke
+  // 11:1–4; Matthew 6:9–10"); the reader shows it as a heading.
+  passage: { c: number; n: number; text: string; ref?: string }[];
   stationsLabel: string;
   stationsIntro: string;
   stations: StudyStation[];
@@ -128,7 +130,9 @@ export type StudyStation = {
   body: string[];
   live: string;
   verseNums: string[];
-  anchor: { v: string; word: string } | null;
+  // `part`: in a gathered passage, which part's "c:v" (the same chapter and
+  // verse can appear in two parts, e.g. John 3:5 and Titus 3:5).
+  anchor: { v: string; word: string; part?: string } | null;
   // Pull-quotes printed after this station.
   pulls?: string[];
   // Commentary printed between the verse and the question (the Journey).

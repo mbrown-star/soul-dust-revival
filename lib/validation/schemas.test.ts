@@ -854,6 +854,21 @@ describe("Study week media", () => {
       expect(parsed.lifePulls).toEqual(["Another pull-quote."]);
     });
 
+    it("keeps a gathered passage's part headings and an anchor's part", () => {
+      const week = {
+        ...base,
+        passageRef: "John 3:5 · Titus 3:5",
+        passage: [
+          { c: 3, n: 5, text: "Most certainly I tell you…", ref: "John 3:5" },
+          { c: 3, n: 5, text: "not by works of righteousness…", ref: "Titus 3:5" },
+        ],
+        stations: [{ ...station, anchor: { v: "3:5", word: "works", part: "Titus 3:5" } }],
+      };
+      const parsed = studyWeekContentSchema.parse(week);
+      expect(parsed.passage.map((v) => v.ref)).toEqual(["John 3:5", "Titus 3:5"]);
+      expect(parsed.stations[0]!.anchor).toEqual({ v: "3:5", word: "works", part: "Titus 3:5" });
+    });
+
     it("rejects a language other than Greek or Hebrew", () => {
       expect(studyWeekContentSchema.safeParse({ ...base, stations: [{ ...station, lang: "aramaic" }] }).success).toBe(false);
     });

@@ -293,17 +293,25 @@ export function PassagePanel({ content, change, issues }: PanelProps) {
         onChange={(passage) => change({ ...content, passage })}
         max={500}
         itemLabel={(v) => `verse ${v.c}:${v.n}`}
-        newItem={() => {
+        newItem={(): StudyWeekContent["passage"][number] => {
           const last = content.passage.at(-1);
           return { c: last?.c ?? 1, n: (last?.n ?? 0) + 1, text: "" };
         }}
         addLabel="+ Add verse"
         emptyText="No verses yet -- paste the passage above, or add verses one at a time."
         renderItem={(verse, update, i) => (
-          <div className="grid grid-cols-[4.5rem_4.5rem_1fr] gap-2 items-start">
-            <NumberField label="Ch." value={verse.c} onChange={(c) => update({ ...verse, c })} error={issues.byPath.get(`passage.${i}.c`)} />
-            <NumberField label="Verse" value={verse.n} onChange={(n) => update({ ...verse, n })} error={issues.byPath.get(`passage.${i}.n`)} />
-            <TextField label="Text" multiline rows={2} value={verse.text} onChange={(text) => update({ ...verse, text })} />
+          <div className="space-y-2">
+            <div className="grid grid-cols-[4.5rem_4.5rem_1fr] gap-2 items-start">
+              <NumberField label="Ch." value={verse.c} onChange={(c) => update({ ...verse, c })} error={issues.byPath.get(`passage.${i}.c`)} />
+              <NumberField label="Verse" value={verse.n} onChange={(n) => update({ ...verse, n })} error={issues.byPath.get(`passage.${i}.n`)} />
+              <TextField label="Text" multiline rows={2} value={verse.text} onChange={(text) => update({ ...verse, text })} />
+            </div>
+            <TextField
+              label="Starts a new part (optional heading, for a passage gathered from several places)"
+              value={verse.ref ?? ""}
+              onChange={(ref) => update({ ...verse, ref: ref.trim() ? ref : undefined })}
+              placeholder="Matthew 6:9–10"
+            />
           </div>
         )}
       />
@@ -375,12 +383,20 @@ function StationFields({ station, update, path, issues }: { station: StudyStatio
       </div>
       {station.anchor && (
         <div className="grid sm:grid-cols-2 gap-4 sm:pl-6">
-          <TextField label="Anchor verse" value={station.anchor.v} onChange={(v) => update({ ...station, anchor: { v, word: station.anchor?.word ?? "" } })} placeholder="1:2" />
+          <TextField label="Anchor verse" value={station.anchor.v} onChange={(v) => update({ ...station, anchor: { ...station.anchor!, v } })} placeholder="1:2" />
           <TextField
             label="Anchor word (as it appears in the passage)"
             value={station.anchor.word}
-            onChange={(word) => update({ ...station, anchor: { v: station.anchor?.v ?? "", word } })}
+            onChange={(word) => update({ ...station, anchor: { ...station.anchor!, word } })}
           />
+          {station.anchor.part !== undefined && (
+            <TextField
+              label="Anchor part (the passage part it's in)"
+              value={station.anchor.part}
+              onChange={(part) => update({ ...station, anchor: { ...station.anchor!, part } })}
+              placeholder="Titus 3:4–7"
+            />
+          )}
         </div>
       )}
       <WeekMediaEditor

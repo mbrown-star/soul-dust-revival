@@ -28,26 +28,43 @@ export function PassageTab({
   isDone: boolean;
   onSetDone: (done: boolean) => void;
 }) {
+  // An anchor in a gathered passage names its part too, since "3:5" can be
+  // printed twice (John 3:5 and Titus 3:5).
   const anchorByVerse = new Map<string, { stationId: string; word: string }>();
   for (const st of content.stations) {
-    if (st.anchor) anchorByVerse.set(st.anchor.v, { stationId: st.questionBlockId, word: st.anchor.word });
+    if (st.anchor) {
+      const key = st.anchor.part ? `${st.anchor.part}|${st.anchor.v}` : st.anchor.v;
+      anchorByVerse.set(key, { stationId: st.questionBlockId, word: st.anchor.word });
+    }
   }
 
   const matchedStationIds = new Set<string>();
-  const passageSpans = content.passage.map((v, i) => {
-    const key = `${v.c}:${v.n}`;
-    const anchor = anchorByVerse.get(key);
+  type Span = { v: StudyWeekContent["passage"][number]; showChapter: boolean; match: { stationId: string; word: string; idx: number } | null; startsPart: boolean };
+  const passageSpans: Span[] = [];
+  let part: string | undefined;
+  for (const [i, v] of content.passage.entries()) {
+    const startsPart = Boolean(v.ref);
+    part = v.ref ?? part;
+    const verseKey = `${v.c}:${v.n}`;
+    const anchor = (part && anchorByVerse.get(`${part}|${verseKey}`)) || anchorByVerse.get(verseKey);
     let match: { stationId: string; word: string; idx: number } | null = null;
-    if (anchor) {
+    if (anchor && !matchedStationIds.has(anchor.stationId)) {
       const idx = v.text.toLowerCase().indexOf(anchor.word.toLowerCase());
       if (idx !== -1) {
         match = { ...anchor, idx };
         matchedStationIds.add(anchor.stationId);
       }
     }
-    const showChapter = i === 0 || v.c !== content.passage[i - 1]!.c;
-    return { v, showChapter, match };
-  });
+    const showChapter = i === 0 || startsPart || v.c !== content.passage[i - 1]!.c;
+    passageSpans.push({ v, showChapter, match, startsPart });
+  }
+  // Consecutive verses form one paragraph; a gathered passage starts a new
+  // paragraph, under its own heading, at each part.
+  const paragraphs: { heading?: string; spans: typeof passageSpans }[] = [];
+  for (const span of passageSpans) {
+    if (span.startsPart || paragraphs.length === 0) paragraphs.push({ heading: span.v.ref, spans: [] });
+    paragraphs[paragraphs.length - 1]!.spans.push(span);
+  }
 
   const unmatchedStations = content.stations.filter((st) => hasWordStudy(st) && !matchedStationIds.has(st.questionBlockId));
   const readAloudText = content.passage.map((v) => v.text).join(" ");
@@ -60,15 +77,24 @@ export function PassageTab({
       </div>
 
       <div className="prose max-w-none font-serif text-lg leading-relaxed">
-        <p>
-          {passageSpans.map(({ v, showChapter, match }, i) => (
-            <span key={i}>
-              {showChapter && <sup className="font-sans font-semibold text-moss mr-0.5">{v.c}:</sup>}
-              <sup className="font-sans text-moss mr-0.5">{v.n}</sup>
-              {match ? <VerseTextWithAnchor text={v.text} match={match} onOpenGreek={onOpenGreek} /> : v.text}{" "}
-            </span>
-          ))}
-        </p>
+        {paragraphs.map((para, p) => (
+          <div key={p}>
+            {para.heading && (
+              <h3 className="not-prose font-sans text-xs font-semibold uppercase tracking-wide text-ember-700 mt-6 mb-1">
+                {para.heading}
+              </h3>
+            )}
+            <p className={para.heading ? "mt-0" : undefined}>
+              {para.spans.map(({ v, showChapter, match }, i) => (
+                <span key={i}>
+                  {showChapter && <sup className="font-sans font-semibold text-moss mr-0.5">{v.c}:</sup>}
+                  <sup className="font-sans text-moss mr-0.5">{v.n}</sup>
+                  {match ? <VerseTextWithAnchor text={v.text} match={match} onOpenGreek={onOpenGreek} /> : v.text}{" "}
+                </span>
+              ))}
+            </p>
+          </div>
+        ))}
       </div>
 
       {unmatchedStations.length > 0 && (

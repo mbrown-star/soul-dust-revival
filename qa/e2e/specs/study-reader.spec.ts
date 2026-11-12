@@ -157,9 +157,19 @@ test.describe("Interactive Study reader", () => {
     await page.getByRole("tab", { name: "Station 2" }).click();
     await expect(page.getByRole("button", { name: "Open the Hebrew · שָׁמַר" })).toBeVisible();
 
-    // Passage: the station quoting another book is reachable by its button.
+    // Passage: gathered from two places, each under its own heading. Both
+    // print a verse 6:24, and each word study is underlined in its own part.
     await page.getByRole("tab", { name: "Passage", exact: true }).click();
-    await expect(page.getByRole("button", { name: "שָׁמַר · PSALM 121:7" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Numbers 6:24–26" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Deuteronomy 6:24" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "bless", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "preserve", exact: true }).click();
+    await expect(page.getByRole("dialog")).toContainText("shamar");
+    // A modal sheet: focus moves into it, Escape closes it, focus goes back.
+    await expect(page.getByRole("dialog").getByRole("button", { name: "Close" })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "preserve", exact: true })).toBeFocused();
 
     // Live It: the printed prayer as lines, not the five-minute timer.
     await page.getByRole("tab", { name: "Live It" }).click();
@@ -217,6 +227,12 @@ test.describe("Interactive Study reader", () => {
     await expect(page.getByRole("heading", { name: "WHERE YOU ARE GOING" })).toBeVisible();
     await expect(page.getByText("FAST FROM ONE COPING MECHANISM")).toBeVisible();
     await expect(page.getByRole("heading", { name: "A SIMPLE DAILY PRAYER" })).toBeVisible();
+
+    // Lift Up: a benediction signed rather than closed with a verse shows no empty verse card.
+    await page.getByRole("tab", { name: "Lift Up" }).click();
+    await expect(page.getByText("What would you see if you stopped patching the crack?")).toBeVisible();
+    const liftUp = page.locator('[role="tabpanel"]:not([hidden])');
+    await expect(liftUp.locator("div.bg-white")).toHaveCount(0);
   });
 
   test("a week with saved progress reloads without a hydration mismatch", async ({ page }) => {

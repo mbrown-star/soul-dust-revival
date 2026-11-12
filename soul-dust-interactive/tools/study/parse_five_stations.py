@@ -18,6 +18,16 @@ Those print the passage under THE WORD, then 7 to 12 stations under "THE
 WORD ON …", with five word studies among them; their cross-references are
 in ordinary case, and some set a word's transliteration on its own line.
 
+And the "Gathered Passages" books (Prayer, The Gospel, The Holy Spirit, The Ten
+Commandments): a passage gathered from several places, each part under its
+own reference line (read part by part; the first verse of each part carries
+`ref`, and an anchor in such a passage names its `part`), a key verse that
+opens the study instead of the opener (which prints only ANCHOR · …), a
+MY ANSWER label after each question, and Prayer's own type: unbolded Greek,
+bold cross-references, practices in small capitals, unbolded pull-quotes,
+witness names, a benediction signed instead of closed with a verse.
+Control characters (ornaments that extract as NUL) are dropped.
+
 Unlike parse_study.py (written for Colossians alone), this goes by section
 labels and by each line's size relative to the book's own body text, since
 the titles are set in two type sizes, and it reads the passage text from
@@ -39,6 +49,7 @@ from build_study import PRAYER, find_anchor, parse_range  # noqa: E402
 
 GREEK = re.compile(r"[Ͱ-Ͽἀ-῿]")
 CITES = re.compile(r"(?:[1-3]\s)?[A-Z][a-z]+(?:\s(?:of\s)?[A-Z][a-z]+)*\s+\d+:\d+")  # a line opening with a reference
+CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 LATIN = re.compile("[A-Za-z\u00C0-\u024F\u1E00-\u1EFF\u02B0-\u02FF]")  # a transliteration's letters
 HEBREW = re.compile("[\u0590-\u05FF\uFB1D-\uFB4F]")  # includes presentation forms (U+FB2B, שׂ)
 LIVE = re.compile(r"^LIVE ?IT\s*:?\s*")
@@ -170,6 +181,9 @@ def load_lines(path):
     with pdfplumber.open(path) as pdf:
         for pi, pg in enumerate(pdf.pages):
             for l in pg.extract_text_lines(return_chars=True):
+                # Some ornaments extract as control characters (NUL in The Holy
+                # Spirit), which Postgres refuses in text: drop them first.
+                l = dict(l, chars=[c for c in l["chars"] if not CONTROL.search(c["text"])])
                 chars = [c for c in l["chars"] if c["text"].strip()]
                 if not chars:
                     continue
@@ -235,13 +249,18 @@ class Week:
         return l["bold"] and not l["ital"] and l["size"] >= self.body + 1.5 and not GREEK.search(l["t"]) and not HEBREW.search(l["t"])
 
     def pull(self, l):
-        return l["bold"] and l["ital"] and l["size"] >= self.body + 1
+        # Bold italic; Prayer sets them in larger italic without bold.
+        return l["ital"] and ((l["bold"] and l["size"] >= self.body + 1) or l["size"] >= self.body + 2)
 
     def word(self, l):
-        return l["bold"] and (GREEK.search(l["t"]) or HEBREW.search(l["t"])) and l["size"] >= self.body + 1
+        # Bold, or (Prayer) large without bold.
+        return (l["bold"] or l["size"] >= self.body + 3) and (GREEK.search(l["t"]) or HEBREW.search(l["t"])) \
+            and l["size"] >= self.body + 1
 
     def practice(self, l):
-        return l["bold"] and re.match(r"^\d+\.\s", l["t"]) and abs(l["size"] - self.body) <= 1.5
+        # Body size, or (Prayer) small capitals: "1. PRAY IT SLOWLY, ONE PHRASE A DAY".
+        return l["bold"] and re.match(r"^\d+\.\s", l["t"]) and (
+            abs(l["size"] - self.body) <= 1.5 or (self.label(l) and l["t"] == l["t"].upper()))
 
     # --- cursor helpers --------------------------------------------------------
     @property
@@ -283,9 +302,10 @@ class Week:
         # cross-reference line.
         # Capitals, a list of full references, or (the Passage Walk books) any
         # line that opens with a reference: "Hebrews 1:4; 7:19, 22".
-        xref_line = lambda x: not x["bold"] and x["size"] <= self.body - 1.0 and REF.search(x["t"]) and (
-            re.sub(r"\([^)]*\)", "", x["t"]) == re.sub(r"\([^)]*\)", "", x["t"]).upper() or ref_list(x["t"])
-            or CITES.match(x["t"]))
+        xref_line = lambda x: x["size"] <= self.body - 1.0 and REF.search(x["t"]) and (
+            (not x["bold"] and (re.sub(r"\([^)]*\)", "", x["t"]) == re.sub(r"\([^)]*\)", "", x["t"]).upper()
+                                or ref_list(x["t"]) or CITES.match(x["t"])))
+            or (x["bold"] and ref_list(x["t"])))  # Prayer sets them bold
         tl_lines = self.take(lambda x: x["ital"] and not x["bold"] and x["size"] >= self.body - 0.6
                              and not xref_line(x))
         if tl_lines and " — " not in tl_lines[0]["t"]:
@@ -293,6 +313,13 @@ class Week:
             if self.cur is not None and (self.cur["t"].startswith(("—", "“", "\""))
                                          or (nxt is not None and xref_line(nxt) and not xref_line(self.cur))):
                 tl_lines.append(self.cur); self.i += 1
+        if tl_lines and self.cur is not None and not xref_line(self.cur) \
+                and any(xref_line(x) for x in self.L[self.i:self.i + 4]):
+            # A gloss that wraps onto plain lines: run on, at its own size, to
+            # the cross-references that follow it.
+            gloss_size = tl_lines[-1]["size"]
+            tl_lines += self.take(lambda x: not xref_line(x) and not self.label(x)
+                                  and abs(x["size"] - gloss_size) <= 0.6)
         if inline_tl:
             gloss = tl_lines or self.take(lambda x: not x["bold"] and not xref_line(x) and x["size"] >= self.body - 0.6)
             st["translit"] = line_text(inline_tl).strip()
@@ -334,15 +361,26 @@ class Week:
         w["keyVerse"] = unquote(joined(kv))
         if self.cur is not None and self.label(self.cur) and REF.search(self.cur["t"]):
             w["keyRef"] = self.cur["t"]; self.i += 1
+        if w.get("keyRef", "").upper().startswith("ANCHOR"):
+            # The Gathered Passages books name the week's passages here
+            # ("ANCHOR · EPHESIANS 2:1–3"); their key verse opens the study below.
+            w["keyRef"], w["keyVerse"] = "", ""
 
         # Scripture Study · Dive
         if self.seek(lambda l: self.is_label(l, "SCRIPTURE STUDY") or (self.label(l) and l["t"] == "STUDY"),
                      "SCRIPTURE STUDY · DIVE"):
             self.i += 1
         self.take(self.heading)
-        self.take(lambda l: l["ital"] and not l["bold"] and (l["size"] > self.body - 0.5 or l["t"].startswith("—")))
+        epigraph = self.take(lambda l: l["ital"] and not l["bold"] and (l["size"] > self.body - 0.5 or l["t"].startswith("—")))
+        epigraph_ref = ""
         if self.cur is not None and self.label(self.cur) and REF.search(self.cur["t"]):
-            self.i += 1
+            epigraph_ref = self.cur["t"]; self.i += 1
+        if not w.get("keyVerse") and epigraph and epigraph_ref:
+            # No key verse in the opener: the verse that opens the study is it.
+            text = joined([l for l in epigraph if not l["t"].startswith("—")])
+            # Two quotations ("“Lord, teach us to pray” “Our Father…”") keep their marks.
+            w["keyVerse"] = text if text.count("“") > 1 else unquote(text)
+            w["keyRef"] = epigraph_ref
         cur, buf = None, []
 
         def flush():
@@ -364,6 +402,15 @@ class Week:
 
         while self.cur is not None and not study_ends(self.cur):
             l = self.cur
+            if self.label(l) and l["t"].startswith("—"):
+                self.i += 1  # a pull-quote's credit ("— THE SOUL DUST TEAM")
+                continue
+            if cur is not None and l["bold"] and not l["ital"] and not self.label(l) and not self.heading(l) \
+                    and re.match(r"[A-Z][A-Z .’'-]+ — \S", l["t"]) and not re.match(r"PART\s", l["t"]):
+                # A witness's name in Prayer's box ("AUGUSTINE — prayer as the exercise of desire").
+                buf.append({"head": l["t"]})
+                self.i += 1
+                continue
             if self.label(l) and not REF.search(l["t"]) and not re.match(r"PART\s", l["t"]):
                 # A small-capitals heading: a new section, or inside a Part, a sub-heading.
                 if cur is not None and "label" in cur:
@@ -415,10 +462,24 @@ class Week:
             w["passageRef"] = joined(self.take(self.heading))
             self.take(lambda l: self.is_label(l, "WORLD ENGLISH BIBLE")
                       or (l["ital"] and l["t"].strip().upper() == "WORLD ENGLISH BIBLE"))
-            plines = self.take(lambda l: not self.label(l))
+            parts = passage_parts(w["passageRef"])
+            if len(parts) > 1:
+                # Gathered passages ("Luke 11:1–4; Matthew 6:9–10"): each part is
+                # printed under its own reference, which may be a small-capitals
+                # label, so read through those labels.
+                plines = self.take(lambda l: not self.label(l)
+                                   or (PART_REF.fullmatch(l["t"].strip()) and "WEB" not in l["t"]))
+            else:
+                # Some print the reference again as a small label above the text.
+                self.take(lambda l: self.label(l) and PART_REF.fullmatch(l["t"].strip())
+                          and book_of(l["t"]) == book_of(w["passageRef"]))
+                plines = self.take(lambda l: not self.label(l))
             if self.cur is not None and self.label(self.cur) and "WEB" in self.cur["t"]:
                 self.i += 1
-            w["passage"] = verses_from_lines(plines, w["passageRef"], self.body, self.warn)
+            if len(parts) > 1:
+                w["passage"] = passage_in_parts(plines, parts, self.body, self.warn)
+            else:
+                w["passage"] = verses_from_lines(plines, w["passageRef"], self.body, self.warn)
             w["hasPassage"] = True
 
         # Working through the Word
@@ -429,6 +490,9 @@ class Week:
         pending = []  # word studies printed before the station they belong to
         while self.cur is not None and not self.is_label(self.cur, "LIFE APPLICATION"):
             l = self.cur
+            if self.label(l) and l["t"].replace(" ", "") == "MYANSWER":
+                self.i += 1  # the printed space to write in (the reader has its own box)
+                continue
             if self.pull(l):
                 q = unquote(joined(self.take(self.pull)))
                 if w["stations"]:
@@ -534,6 +598,8 @@ class Week:
                 st["question"] = joined(self.take(lambda x: not stop(x)))
             st["greek"] = st["translit"] = st["gloss"] = st["xref"] = st["live"] = ""
             st["body"] = []
+            if self.cur is not None and self.label(self.cur) and self.cur["t"].replace(" ", "") == "MYANSWER":
+                self.i += 1  # the printed space to write in
             if self.cur is not None and self.is_label(self.cur, "GOING DEEPER"):
                 self.word_study(st)
             for item in list(pending):
@@ -624,6 +690,10 @@ class Week:
         w["closingIsPull"] = bool(closing) and all(self.pull(l) for l in closing)
         if self.cur is not None and self.label(self.cur) and REF.search(self.cur["t"]):
             w["closingRef"] = self.cur["t"]; self.i += 1
+        elif not closing and self.cur is not None and self.label(self.cur) and self.cur["t"].startswith("—"):
+            # Signed instead of closed with a verse (Prayer: "— THE SOUL DUST TEAM").
+            w["closingSigned"] = True
+            self.i += 1
         if self.seek(lambda l: self.is_label(l, "QUIET QUESTION", "A QUIET QUESTION"), "QUIET QUESTION TO CARRY"):
             self.i += 1
         w["carry"] = joined(self.take(lambda l: not self.label(l)))
@@ -753,6 +823,79 @@ def verses_from_lines(lines, ref, body, warn):
     return out
 
 
+# A part's own reference line: "Romans 5:18–19", "JOHN 16:12–15", "EXODUS 20".
+PART_REF = re.compile(r"(?:[1-3]\s)?[A-Za-z]+(?:\s(?:of\s)?[A-Za-z]+)*\s+\d+"
+                      r"(?::\d+(?:\s*[–-]\s*\d+(?::\d+)?)?)?(?:\s*[–-]\s*\d+)?")
+
+
+def passage_parts(ref):
+    """The parts a passage heading lists, each with its book:
+    "John 15:26; 16:12–15; 1 Corinthians 12:3" -> ["John 15:26",
+    "John 16:12–15", "1 Corinthians 12:3"]. One part for an ordinary passage."""
+    out, book = [], None
+    for item in re.split(r"\s*[;·]\s*", ref):
+        item = item.strip()
+        m = re.match(r"((?:[1-3]\s)?[A-Za-z]+(?:\s(?:of\s)?[A-Za-z]+)*)\s+(\d.*)", item)
+        if m:
+            book, rest = m[1], m[2]
+        elif book and re.match(r"\d", item):
+            rest = item
+        else:
+            continue
+        # "14:15–17, 26" is two parts in one chapter: 14:15–17 and 14:26.
+        chap = None
+        for piece in re.split(r",\s*", rest):
+            if ":" in piece:
+                chap = piece.split(":")[0]
+            elif chap is not None:
+                piece = f"{chap}:{piece}"
+            out.append(f"{book} {piece}")
+    return out
+
+
+def passage_in_parts(lines, parts, body, warn):
+    """Read a gathered passage part by part. Each part's lines follow its
+    own reference line; that line is matched to the heading's part with the
+    same book (and chapter), so a part is read against its own range. The
+    first verse of each part carries `ref` (the reader shows it as a
+    heading); every verse carries `_b`, its book, until finish()."""
+    groups = [[None, []]]
+    for l in lines:
+        t = l["t"].strip()
+        if l["bold"] and PART_REF.fullmatch(t):
+            groups.append([t, []])
+        else:
+            groups[-1][1].append(l)
+    groups = [g for g in groups if g[1]]
+    used, out = set(), []
+    for label, glines in groups:
+        part = None
+        for i, cand in enumerate(parts):
+            if i in used:
+                continue
+            if label is None or (book_of(cand) == book_of(label) and chapter_of(cand) == chapter_of(label)):
+                part = i
+                break
+        if part is None:
+            warn(f"passage part {label!r} isn't in the heading")
+            continue
+        used.add(part)
+        vs = verses_from_lines(glines, parts[part], body, warn)
+        if vs:
+            vs[0]["ref"] = parts[part]
+            for v in vs:
+                v["_b"] = book_of(parts[part])
+        out += vs
+    if len(used) != len(parts):
+        warn(f"passage: read {len(used)} of {len(parts)} parts")
+    return out
+
+
+def chapter_of(ref):
+    m = re.search(r"\s(\d+)(?::|\s*$|\s*[–-])", ref.strip() + " ")
+    return int(m[1]) if m else None
+
+
 def book_of(ref):
     """'1 PETER 1:22' -> '1PETER'; 'Psalm 103:1' and 'PSALMS 103' -> 'PSALM'."""
     m = re.match(r"\s*((?:[123]\s*)?[A-Za-z]+(?:\s+of\s+[A-Za-z]+)?)", ref)
@@ -766,10 +909,22 @@ def finish(w):
             a, b = ref_range(st["ref"])
         except TypeError:
             a = b = None
-        if book_of(st["ref"]) != book_of(w["passageRef"]):
-            a = None  # a verse from another book: printed at the station, not in the passage
-        st["verseNums"] = [f"{v['c']}:{v['n']}" for v in w["passage"] if a and a <= (v["c"], v["n"]) <= b]
-        st["anchor"] = find_anchor(st, [v for v in w["passage"] if f"{v['c']}:{v['n']}" in st["verseNums"]])
+        # A verse from another book is printed at the station, not in the passage.
+        mine = [v for v in w["passage"] if v.get("_b", book_of(w["passageRef"])) == book_of(st["ref"])
+                and a and a <= (v["c"], v["n"]) <= b]
+        st["verseNums"] = [f"{v['c']}:{v['n']}" for v in mine]
+        st["anchor"] = find_anchor(st, mine)
+        if st["anchor"] and any(v.get("ref") for v in w["passage"]):
+            # A gathered passage can print the same chapter and verse twice
+            # (John 3:5 and Titus 3:5): name the part the anchor is in.
+            part = None
+            for v in w["passage"]:
+                part = v.get("ref") or part
+                if v in mine and f"{v['c']}:{v['n']}" == st["anchor"]["v"]:
+                    st["anchor"]["part"] = part
+                    break
+    for v in w["passage"]:
+        v.pop("_b", None)
     beats = PRAYER.findall(w["prayer"])
     if len(beats) == 3:
         w["prayerLead"] = w["prayer"][: w["prayer"].index(beats[0][0] + ",")].strip()
@@ -790,9 +945,11 @@ def check(w, warn):
         warn(f"{len(w['practices'])} practices")
     if len(w["study"]["parts"]) < 2:
         warn(f"{len(w['study']['parts'])} parts")
-    if not w.get("closingRef") and not w.get("closingIsPull"):
+    if not w.get("closingRef") and not w.get("closingIsPull") and not w.get("closingSigned"):
         warn("empty closingRef")
     for k in ("title", "keyVerse", "keyRef", "lifeTitle", "prayer", "closingVerse", "carry"):
+        if k == "closingVerse" and w.get("closingSigned"):
+            continue
         if not w.get(k):
             warn(f"empty {k}")
     for k in ("bottomLine", "benediction"):
@@ -801,8 +958,9 @@ def check(w, warn):
     if w.get("hasPassage") and not w["passage"]:
         warn("empty passage")
     vs = [(v["c"], v["n"]) for v in w.get("passage", [])]
-    for (c0, n0), (c1, n1) in zip(vs, vs[1:]):
-        if not ((c1 == c0 and n1 == n0 + 1) or (c1 == c0 + 1 and n1 == 1)):
+    starts = [bool(v.get("ref")) for v in w.get("passage", [])]
+    for ((c0, n0), (c1, n1)), new_part in zip(zip(vs, vs[1:]), starts[1:]):
+        if not new_part and not ((c1 == c0 and n1 == n0 + 1) or (c1 == c0 + 1 and n1 == 1)):
             warn(f"passage jumps from {c0}:{n0} to {c1}:{n1}")
     for st in w["stations"]:
         for k in ("verse", "question"):

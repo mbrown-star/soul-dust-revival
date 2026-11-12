@@ -391,7 +391,7 @@ const studyStationSchema = z.object({
   body: z.array(z.string().max(5000)).max(20),
   live: z.string().max(2000),
   verseNums: z.array(z.string().max(50)).max(50),
-  anchor: z.object({ v: z.string().max(50), word: z.string().max(100) }).nullable(),
+  anchor: z.object({ v: z.string().max(50), word: z.string().max(100), part: z.string().max(200).optional() }).nullable(),
   pulls: z.array(z.string().max(2000)).max(10).optional(),
   note: z.array(z.string().max(5000)).max(20).optional(),
   moreStudies: z.array(wordStudySchema).max(5).optional(),
@@ -431,7 +431,15 @@ export const studyWeekContentSchema = z.object({
   // Empty for a week that prints no passage.
   passageRef: z.string().max(200),
   passage: z
-    .array(z.object({ c: z.number().int().min(1), n: z.number().int().min(1), text: z.string().max(2000) }))
+    .array(
+      z.object({
+        c: z.number().int().min(1),
+        n: z.number().int().min(1),
+        text: z.string().max(2000),
+        // First verse of a part of a gathered passage: that part's reference.
+        ref: z.string().max(200).optional(),
+      })
+    )
     .max(500),
   stationsLabel: z.string().max(200),
   stationsIntro: z.string().max(2000),

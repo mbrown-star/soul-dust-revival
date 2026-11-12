@@ -93,12 +93,15 @@ export function LiftUpTab({
         ◆◆◆
       </p>
 
-      <div className="bg-white border border-dusk/10 rounded-xl p-6">
-        <p className="font-serif italic text-lg text-ink">{content.closingVerse}</p>
-        {content.closingRef && (
-          <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700 mt-3">{content.closingRef}</p>
-        )}
-      </div>
+      {/* Some weeks end the benediction with the authors' name instead of a verse (Prayer). */}
+      {content.closingVerse && (
+        <div className="bg-white border border-dusk/10 rounded-xl p-6">
+          <p className="font-serif italic text-lg text-ink">{content.closingVerse}</p>
+          {content.closingRef && (
+            <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700 mt-3">{content.closingRef}</p>
+          )}
+        </div>
+      )}
 
       <div className="bg-ink text-parchment rounded-xl p-6">
         <p className="font-sans text-xs font-semibold uppercase tracking-wide text-gold mb-2">Quiet Question to Carry</p>
