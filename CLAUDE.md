@@ -84,7 +84,15 @@ webhook/entitlement changes done.
     - Corrections: Prayer 60 and the Gospel 60, each removing only a glued "MY ANSWER"; the Holy Spirit 26, each removing only a page number ("1 3"); the Ten Commandments none.
     - 1 Peter, Galatians and Philippians `--replace`: 0 problems.
     - All seven are unpublished, with 0 saved answers.
-  - **Not done, needs a yes:** load the four studies, and reload 1 Peter, Galatians and Philippians with the repaired glosses.
+  - **Loaded, on the user's "Yes, load them":**
+    - Backup first (`backup-before-gathered.json` in the session scratchpad: 7 studies, 91 lessons, 420 question blocks).
+    - `--replace --apply` for all seven: 12 weeks each, 0 problems, 0 new blocks, 146 prompts corrected (exactly the dry run's).
+    - Checked by query: every station points at a block in its own lesson; still 420 blocks; 0 saved answers.
+    - Part headings in the database: Prayer 27, Gospel 20, Holy Spirit 39, Ten Commandments 22. Anchors naming a part: 31, 19, 35 and 0.
+    - 1 Peter's anastrophē now has its full gloss and cross-references.
+    - All seven are still unpublished.
+  - **Not checked on staging:** the in-app browser's Cloudflare Access session had expired, and signing in needs the user's emailed code. The same weeks were checked in the reader locally (Holy Spirit Week 4, Prayer Week 1).
+  - **Possible follow-up, not done:** the Ten Commandments has no underlined words in its Passage tab. Its station labels read "PASSAGE 1 · EXODUS 20:2–3", whose "book" doesn't match the passage's, so no anchor is computed. Each word study is reached by its own button instead. Matching on the reference after "·" would fix it (a parser change and a reload of that one study).
 - **2026-11-12 (later) — Tabbed weeks for the six "Passage Walk" studies; stations on one verse kept apart.** Requested as "Now convert the Passage Walk studies", then "Yes, load them".
   - **Parser** (`parse_five_stations.py`). Ecclesiastes and Law and Gospel parsed almost as they were; Hebrews, Romans and the Sermon on the Mount had 52–65 warnings each, Part Four 12. Fixed:
     - The passage is printed under THE WORD (not THE PASSAGE), with an italic "World English Bible" line, which had also doubled Part Four's first verse.
