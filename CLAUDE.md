@@ -58,7 +58,43 @@ webhook/entitlement changes done.
 - **Scaffold code is in scope for both reviews.** Inherited code, dependencies, default configs, and seed data are reviewed too. Report scaffold-origin findings separately from new-code findings.
 - **On scaffold updates,** re-run both reviews against the whole updated scaffold, not just the diff.
 
-- **2026-11-12 (newest) — Images served from `media.souldustrevival.com` instead of the rate-limited `r2.dev` address.** Requested as "Yes, set it up", the follow-up from the image-caching entry below. The objects didn't move: R2 serves the same key at both addresses.
+- **2026-11-12 (newest of all) — Tabbed weeks for the 15 "Five Stations" studies: parser, loader and reader built; data not loaded yet.** Requested as a layout analysis of every manuscript, then "Yes, start there".
+  - **Analysis:** read all 32 manuscripts in `Documents/Soul Dust Revival` with their typography.
+    - **Devotionals:** both use one day layout, which the reader already handles.
+    - **Studies:** all 28 twelve-week studies share one weekly skeleton that fits the five tabs, in four layouts. The split doesn't follow Book Study vs. Topical Study.
+      - A, Five Stations: 5 stations, each one question plus one word study. 15 titles: Colossians, 1 Peter, 1 Timothy, Ephesians, Galatians, Philippians, James, John 1–4, In Christ, Benedictions, Genesis 1 and 2.
+      - B, Passage Walk: 7–12 questions with 5 word studies. Hebrews, Romans, Sermon on the Mount, Ecclesiastes, Law and Gospel, Journey Part Four.
+      - C, Gathered Passages: several ranges across books. Prayer, The Gospel, The Holy Spirit, The Ten Commandments.
+      - D, No Passage: Journey Parts One–Three.
+    - Only Colossians has the timed Father/Son/Spirit prayer.
+  - **Parser:** `soul-dust-interactive/tools/study/parse_five_stations.py` (pdfplumber, run from a scratch venv).
+    - Goes by section labels and sizes relative to each book's body text (measured from the essay, since long printed passages outnumber it in Genesis 2).
+    - Reads passages from the manuscript's own superscript verse numbers: numbers on their own baseline, repeated numbers, "2:1" chapter markers, chapter headings, whole-chapter and one-chapter-book references. No outside Bible text needed.
+    - Handles both opener orders, transliteration-only Hebrew, pull-quotes (including ones with their own reference line), pull-quote closings, and unspaced justified paragraphs (Philippians).
+    - Checks every week and exits non-zero on any warning.
+    - **Result:** Colossians output identical to the verified live data (0 diffs, all 12 passages word for word). All 15 titles parse with 0 warnings. Every passage's verse count matches its range, e.g. Genesis 6–9 gives 97.
+    - Output for the 14 drafts is in `soul-dust-interactive/data/weeks/<slug>.json`.
+  - **Loader:** `scripts/backfill-study-content.ts --study <slug> --weeks <file> [--apply]`, dry run by default.
+    - Refuses a study with published lessons; skips weeks already filled.
+    - Validates each week with the builder's own schema.
+    - Reuses the importer's question blocks by prompt.
+    - Dry run: all 14 studies, 168 weeks, 0 problems. Every station matches an existing question block (0 new rows) and every lesson title matches.
+  - **Reader:**
+    - Word studies say Greek or Hebrew (`StudyStation.lang`), headed by the transliteration when no script is printed.
+    - A plain printed prayer (`prayerLines`) when there are no timed beats.
+    - Pull-quotes after a station (`pulls`) and in Life Application (`lifePulls`).
+    - An opening section may have no heading; no empty closing reference; Parts counted.
+  - **Admin builder:** language select, prayer lines, section heading optional. `studyWeekContentSchema` keeps the new fields (it would have stripped them on save).
+  - **Tests:**
+    - 5 new unit tests (schema, loader).
+    - New QA fixture lesson "Week 2: The Blessing Spoken" plus an e2e test; `library-entitlements` count updated for it.
+    - `npm run verify` clean, `npm test` 807/807.
+    - Full desktop QA 292/292; study-reader, accessibility (axe) and library on mobile pass.
+    - Checked by screenshot at 375px and 1280px, no sideways scroll. Run in a worktree.
+  - **Review:** no routes, auth or queries changed; new schema fields are admin-only, bounded, rendered as escaped text. No findings.
+  - **Shipped** `2894fba` (`npm run deploy -- both --yes`): **staging `1bd5ed06`**, **production `cb1598e1`**, every check passing.
+  - **Not done, needs a yes (production data write):** loading the 168 weeks into the 14 draft studies with the loader's `--apply`. Drafts only, so no reader sees them until published.
+- **2026-11-12 — Images served from `media.souldustrevival.com` instead of the rate-limited `r2.dev` address.** Requested as "Yes, set it up", the follow-up from the image-caching entry below. The objects didn't move: R2 serves the same key at both addresses.
   - **Domain:** `media.souldustrevival.com` connected to bucket `soul-dust-revival` as an R2 custom domain (the user ran `wrangler r2 bucket domain add ... --min-tls 1.2` after this session's sandbox refused it as a DNS change). Active about 45 s later; same bytes (identical ETag), same `public, max-age=31536000, immutable`, ~60 ms. **Keep the `r2.dev` public access on**: old emails, rich text and anything copied earlier still point there.
   - **Both addresses accepted** (`bcac796`): optional `R2_LEGACY_PUBLIC_BASE_URL` (`lib/env.ts`, `.env.example`) adds the old host to `next.config.js`'s `images.remotePatterns`; the deploy script carries it into builds (`OPTIONAL_BUILD_TIME_PUBLIC_KEYS`, never reported missing, not treated as a secret). `.env.local` now has `R2_PUBLIC_BASE_URL=https://media.souldustrevival.com` and the legacy line. Remove the legacy setting only once nothing stored or sent points at `r2.dev`.
   - **Deploy check** (`17d77d5`): the cover check refused a healthy build because every stored cover still used the old address; `runChecks` now takes `r2LegacyBaseUrl` and accepts either (regression test in `scripts/deploy/lib.test.ts`).
