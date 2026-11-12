@@ -58,7 +58,34 @@ webhook/entitlement changes done.
 - **Scaffold code is in scope for both reviews.** Inherited code, dependencies, default configs, and seed data are reviewed too. Report scaffold-origin findings separately from new-code findings.
 - **On scaffold updates,** re-run both reviews against the whole updated scaffold, not just the diff.
 
-- **2026-11-12 (latest) — Tabbed weeks for the six "Passage Walk" studies; stations on one verse kept apart.** Requested as "Now convert the Passage Walk studies", then "Yes, load them".
+- **2026-11-12 (latest) — Tabbed weeks for the four "Gathered Passages" studies: code shipped, data not loaded yet.** Requested as "Now convert the Gathered Passages studies". Prayer, The Gospel, The Holy Spirit and The Ten Commandments started with 48–244 warnings each.
+  - **Parser** (`parse_five_stations.py`):
+    - **Passages gathered from several places** ("Luke 11:1–4; Matthew 6:9–10", "John 14:15–17, 26; …") are read part by part under each part's own reference line (a small-capitals label, a bold line, or a chapter alone, "EXODUS 20"). The first verse of each part carries `ref`.
+    - **An anchor in such a passage names its `part`**, since a week can print the same chapter and verse twice: Holy Spirit Week 4 has John 3:5–7 and Titus 3:5–7.
+    - **Key verse:** the opener prints only "ANCHOR · …", so the verse that opens the study is used. Prayer's two-quotation verse keeps its quotation marks.
+    - **MY ANSWER** labels are skipped, both between stations and inside one. They had ended the stations after the first.
+    - **Prayer's type:** unbolded Greek, bold cross-reference lists, practices in small capitals, unbolded pull-quotes and their "— THE SOUL DUST TEAM" credit, witness names ("AUGUSTINE — …") as sub-headings, and a benediction signed instead of closed with a verse.
+    - **Control characters dropped:** the Holy Spirit's ornaments extract as NUL, which Postgres refuses (found when a test load failed).
+    - **Wrapped glosses:** a gloss that wraps onto plain lines now runs on to its cross-references in every book. This repaired 32 word studies in 1 Peter (1), Galatians (3) and Philippians (28): each had its gloss cut short and its cross-reference line glued to the front of its text, and two Philippians anchors are now found. Each change was checked to be exactly that.
+    - **Result:** all four parse with 0 warnings. Every word study is complete, and every passage part's verse count matches its range. Colossians still matches its live data; 20 of the other 22 loaded titles are identical, and the other three differ only by those repairs.
+  - **Reader:**
+    - The Passage tab shows each part under its heading and matches anchors by part.
+    - Lift Up shows no empty card when there's no closing verse.
+    - **The bottom sheets (word study, week picker) now act as modal dialogs:** focus moves in, Escape closes, focus returns (ACCESSIBILITY.md). Found because the test's Escape left the sheet open.
+    - Schema and types: passage `ref`, anchor `part` (optional, at most 200 characters). The builder keeps both and can edit them.
+  - **Tests:**
+    - The QA Five Stations-shaped week's passage is now two parts that both print 6:24, with an anchor in each. The QA Journey-shaped week has no closing verse. The e2e checks the headings, both anchors, the sheet's focus and Escape, and no empty card; it failed on the old reader. A new schema test covers both fields.
+    - `npm run verify` clean; `npm test` 810/810; full desktop QA 294/294; reader, Journey, library and accessibility on mobile 49/49.
+    - Holy Spirit Week 4 and Prayer Week 1, loaded into the local test DB, checked at 375px: four part headings with "anew" and "regeneration" each underlined in its own part; witness sub-headings; no closing card; no sideways scroll or console errors.
+  - **Review:** no routes or server input changed; the new fields are bounded and rendered as escaped text. No findings.
+  - **Shipped** `a6d4b1e` (`npm run deploy -- both --yes`): **staging `4bb0ab90`**, **production `4f9ced78`**, every check passing.
+  - **Dry run:**
+    - The four studies: 12 weeks each, 0 problems, 0 new blocks.
+    - Corrections: Prayer 60 and the Gospel 60, each removing only a glued "MY ANSWER"; the Holy Spirit 26, each removing only a page number ("1 3"); the Ten Commandments none.
+    - 1 Peter, Galatians and Philippians `--replace`: 0 problems.
+    - All seven are unpublished, with 0 saved answers.
+  - **Not done, needs a yes:** load the four studies, and reload 1 Peter, Galatians and Philippians with the repaired glosses.
+- **2026-11-12 (later) — Tabbed weeks for the six "Passage Walk" studies; stations on one verse kept apart.** Requested as "Now convert the Passage Walk studies", then "Yes, load them".
   - **Parser** (`parse_five_stations.py`). Ecclesiastes and Law and Gospel parsed almost as they were; Hebrews, Romans and the Sermon on the Mount had 52–65 warnings each, Part Four 12. Fixed:
     - The passage is printed under THE WORD (not THE PASSAGE), with an italic "World English Bible" line, which had also doubled Part Four's first verse.
     - Cross-references in ordinary case ("Hebrews 1:4; 7:19, 22") weren't recognised: 26 Hebrews, 32 Romans and 12 Part Four studies had the line run into their text, and 10 Sermon studies lost their gloss to it.
