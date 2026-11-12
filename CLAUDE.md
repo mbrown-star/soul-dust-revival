@@ -89,10 +89,21 @@ webhook/entitlement changes done.
     - Checked by screenshot at 375px, no sideways scroll. Run in a worktree.
   - **Review:** no routes, auth or queries changed beyond the loader's parameterized writes; admin-only bounded fields rendered as escaped text. No findings.
   - **Shipped** `d8b6f1c` (`npm run deploy -- both --yes`): **staging `e45bafc5`**, **production `9d2bbb19`**, every check passing.
-  - **Not done, needs a yes (production data writes):**
-    - Reload the 14 Five Stations drafts with `--replace` (picks up the fixes above).
-    - Stage the 36 Journey weeks as unpublished changes.
-    - Journey readers see nothing new until each lesson's changes are published.
+  - **Loaded, on the user's "Yes, both":**
+    - Backup first: every affected lesson's `studyContent`, snapshot and question prompts (17 studies, 221 lessons, 1,066 question blocks) saved to the session scratchpad as `backup-before-reload.json`. Not in git.
+    - `--replace --apply`: the 14 Five Stations drafts reloaded, and the 36 Journey weeks staged. All 17 studies: 12 weeks each, 0 problems, 0 new blocks.
+    - Checked by query afterward:
+      - every week is tabbed, and every station points at a question block in its own lesson;
+      - still 1,066 question blocks; exactly 21 prompts changed (Part Three);
+      - the 36 Journey weeks are flagged Unpublished changes. Their snapshots still hold the plain view (`studyContent` JSON null), so readers see no change. The snapshots were frozen before the prompts were corrected, so readers also still see the old prompts.
+      - Genesis Part 1's Hebrew now reads תֹּהוּ, אָמַר, צֶלֶם;
+      - 0 saved answers in any of these studies.
+    - Checked on staging signed in as the user:
+      - Part One Week 6 with `?draft=1`: the admin banner, four tabs, and the "Movement One Closing" essay leading Live It. Without it, the plain published view.
+      - Part Three Week 32: nine stations; one button opens both οἰκτιρμός and χρηστότης; Micah 6:8 reads "Open the Hebrew · חֶסֶד"; prompts carry no glued text.
+      - Genesis Part 1 Week 1: "Open the Hebrew · תֹּהוּ".
+      - No console errors.
+  - **Not done, needs a yes:** publishing the Journey's staged changes, through each lesson's Publish changes in the admin or all at once. Until then Journey readers keep the current version.
 - **2026-11-12 — Tabbed weeks for the 15 "Five Stations" studies: parser, loader and reader built; data not loaded yet.** Requested as a layout analysis of every manuscript, then "Yes, start there".
   - **Analysis:** read all 32 manuscripts in `Documents/Soul Dust Revival` with their typography.
     - **Devotionals:** both use one day layout, which the reader already handles.
