@@ -68,6 +68,26 @@ webhook/entitlement changes done.
     - the 377 lessons without one are the long-published Psalms devotional and Colossians, never edited since snapshots began (readers see their working copy, as designed).
   - **Not checked in a browser:** the in-app browser's Cloudflare Access session for staging had expired.
   - **Products unchanged:** 12 still say Coming soon. Publishing a study doesn't change its product's store state.
+  - **Checked on staging afterward, signed in as the user:** one published week of each layout shows the published version (no draft banner) in tabs, with no console errors:
+    - Holy Spirit Week 4: four part headings, four anchors in their parts.
+    - Ten Commandments Week 2: two parts, "worship" underlined.
+    - Prayer Week 1: no closing card.
+    - Hebrews Week 10: nine stations.
+    - The 365-Day Journey's Day 9: readings card, Today and The Year tabs.
+  - **Found there:** broken Hebrew words, e.g. Ten Commandments' "פָּנִי ם". A scan of every loaded word study found 16 entries:
+    - word breaks counted from the transliteration, so parentheticals, "/", "…" and a stuck-on gloss added false breaks or missed real ones;
+    - Genesis Part 1 and Journey Part One set multi-word Hebrew left to right, so "El Roi" came out reversed;
+    - "ə" wasn't counted as a transliteration letter ("b rît");
+    - the transliteration and gloss were split at the first dash anywhere, even one inside the gloss ("lēb “heart…", and in the Sermon "rhaka empty-head…", "apechō to have received…", "patēr Father").
+  - **Parser fixed (`hebrew_logical`):**
+    - Word breaks come from letter spacing: 0 inside a word, at least a quarter of the type size between words, true of all 196 Hebrew lines in the books.
+    - Word order is chosen by the transliteration's first consonants.
+    - "·" is kept as its own word.
+    - `LATIN` takes U+0250–U+02AF.
+    - A transliteration on its own line is split from the gloss at the line, not at a dash.
+    - **Result:** the only changes in all 31 titles are those fixes, in Genesis Part 1, Journey Parts One and Two, Hebrews, the Sermon on the Mount (plus two new anchors) and the Ten Commandments. Colossians is unchanged.
+    - Data files updated; reload dry run: 6 studies, 0 problems.
+    - **Not loaded yet:** all six are published, so a reload stages the corrections, and they reach readers when published.
 - **2026-11-12 (later) — Tabbed weeks for the four "Gathered Passages" studies: code shipped, data not loaded yet.** Requested as "Now convert the Gathered Passages studies". Prayer, The Gospel, The Holy Spirit and The Ten Commandments started with 48–244 warnings each.
   - **Parser** (`parse_five_stations.py`):
     - **Passages gathered from several places** ("Luke 11:1–4; Matthew 6:9–10", "John 14:15–17, 26; …") are read part by part under each part's own reference line (a small-capitals label, a bold line, or a chapter alone, "EXODUS 20"). The first verse of each part carries `ref`.

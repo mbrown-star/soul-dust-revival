@@ -813,8 +813,8 @@
     "verse": "You have heard that it was said to the ancient ones, ‘You shall not murder;’ and ‘Whoever murders will be in danger of the judgment.’ But I tell you that everyone who is angry with his brother without a cause will be in danger of the judgment. Whoever says to his brother, ‘Raca!’ will be in danger of the council. Whoever says, ‘You fool!’ will be in danger of the fire of Gehenna.",
     "question": "Jesus says my anger and contempt put me in danger of the judgment. Whose face comes to mind when I read this — and what does that reveal about my heart?",
     "greek": "ῥακά",
-    "translit": "rhaka empty-head, worthless one",
-    "gloss": "a word of contempt",
+    "translit": "rhaka",
+    "gloss": "empty-head, worthless one — a word of contempt",
     "xref": "Matthew 5:22",
     "live": "Notice the contempt you pass off as honesty — the people you have written off in your heart. Name it as the sin Jesus says it is, and bring it to the cross.",
     "body": [
@@ -1133,8 +1133,8 @@
     "ref": "JOB 31:1",
     "verse": "I made a covenant with my eyes, how then should I look lustfully at a young woman?",
     "question": "Job made a covenant with his eyes. What would it look like for me to make a deliberate, specific covenant with mine this week?",
-    "greek": "ə בְּרִית",
-    "translit": "b rît",
+    "greek": "בְּרִית",
+    "translit": "bərît",
     "gloss": "covenant, a binding pledge",
     "xref": "Job 31:1; Genesis 15:18; Jeremiah 31:31–33",
     "live": "Make a specific covenant with your eyes this week — name the screen, the hour, the place. Then pray it in the strength of the new covenant, not your own.",
@@ -2061,8 +2061,8 @@
     "verse": "Therefore when you do merciful deeds, don’t sound a trumpet before yourself, as the hypocrites do in the synagogues and in the streets, that they may get glory from men. Most certainly I tell you, they have received their reward. But when you do merciful deeds, don’t let your left hand know what your right hand does, so that your merciful deeds may be in secret, then your Father who sees in secret will reward you openly.",
     "question": "The performer is “paid in full” by the applause he sought. Have I been settling for the cheap wage of being noticed instead of the Father’s reward?",
     "greek": "ἀπέχω",
-    "translit": "apechō to have received in full, to be paid completely",
-    "gloss": "a receipt term",
+    "translit": "apechō",
+    "gloss": "to have received in full, to be paid completely — a receipt term",
     "xref": "Matthew 6:2, 5, 16",
     "live": "When you do a quiet good with no one watching, do not feel cheated of credit. You are trading the cheap, spent wage of applause for a reward your Father keeps in secret.",
     "body": [
@@ -2074,7 +2074,10 @@
      "6:3",
      "6:4"
     ],
-    "anchor": null
+    "anchor": {
+     "v": "6:2",
+     "word": "have"
+    }
    },
    {
     "ref": "MATTHEW 6:5–6",
@@ -2116,8 +2119,8 @@
     "verse": "Pray like this: ‘Our Father in heaven, may your name be kept holy. Let your Kingdom come. Let your will be done on earth as it is in heaven. Give us today our daily bread. Forgive us our debts, as we also forgive our debtors. Bring us not into temptation, but deliver us from the evil one. For yours is the Kingdom, the power, and the glory forever. Amen.’",
     "question": "This prayer begins with God’s name and kingdom, not my needs. Where is my own praying turned inward and self-centered, and how would this pattern reorder it?",
     "greek": "πατήρ",
-    "translit": "patēr Father",
-    "gloss": "the address of an adopted, welcomed child",
+    "translit": "patēr",
+    "gloss": "Father — the address of an adopted, welcomed child",
     "xref": "Matthew 6:9; Romans 8:15",
     "live": "Begin your prayers this week with the word the hypocrite never understood: Father. You are not auditioning for a hearing; you are a child already welcomed home.",
     "body": [
@@ -2131,7 +2134,10 @@
      "6:12",
      "6:13"
     ],
-    "anchor": null
+    "anchor": {
+     "v": "6:9",
+     "word": "Father"
+    }
    },
    {
     "ref": "MATTHEW 6:16–18",

@@ -50,7 +50,7 @@ from build_study import PRAYER, find_anchor, parse_range  # noqa: E402
 GREEK = re.compile(r"[Ͱ-Ͽἀ-῿]")
 CITES = re.compile(r"(?:[1-3]\s)?[A-Z][a-z]+(?:\s(?:of\s)?[A-Z][a-z]+)*\s+\d+:\d+")  # a line opening with a reference
 CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
-LATIN = re.compile("[A-Za-z\u00C0-\u024F\u1E00-\u1EFF\u02B0-\u02FF]")  # a transliteration's letters
+LATIN = re.compile("[A-Za-z\u00C0-\u02FF\u1E00-\u1EFF]")  # a transliteration's letters
 HEBREW = re.compile("[\u0590-\u05FF\uFB1D-\uFB4F]")  # includes presentation forms (U+FB2B, שׂ)
 LIVE = re.compile(r"^LIVE ?IT\s*:?\s*")
 ONE_CHAPTER = r"(?:JUDE|PHILEMON|OBADIAH|2 JOHN|3 JOHN)"
@@ -96,11 +96,23 @@ def title_case(s):
     return " ".join(out)
 
 
+# A transliteration's first consonant, as Hebrew letters it may stand for.
+TL_LETTER = {"ʾ": "א", "ʿ": "ע", "b": "ב", "ḇ": "ב", "v": "ב", "g": "ג", "ḡ": "ג", "d": "ד", "ḏ": "ד",
+             "h": "ה", "w": "ו", "z": "ז", "ḥ": "ח", "ṭ": "ט", "y": "י", "k": "כך", "ḵ": "כך", "l": "ל",
+             "m": "מם", "n": "נן", "s": "סש", "p": "פף", "f": "פף", "ṣ": "צץ", "q": "ק", "r": "ר",
+             "ś": "ש", "š": "ש", "t": "תט", "ṯ": "ת"}
+
+
 def hebrew_logical(lines, translit):
     """Hebrew is extracted in visual order: letters left to right, each
-    followed by its vowel points, with stray gaps. Rebuild it in reading
-    order: cluster each letter with its marks, reverse the clusters, and put
-    word breaks at the widest gaps (as many as the transliteration has)."""
+    followed by its vowel points. Rebuild it in reading order: cluster each
+    letter with its marks and reverse the clusters within each word.
+
+    Word breaks come from the spacing: between letters of one word the gap is
+    0, between words at least a quarter of the type size (true of every Hebrew
+    line in the books). Word order is right to left as printed, except that
+    some books set multi-word Hebrew left to right; the transliteration's
+    first consonants say which ("ʾēl rŏʾî" starts with aleph)."""
     chars = sorted((c for l in lines for c in l["chars"] if c["text"].strip()), key=lambda c: c["x0"])
     clusters = []
     for c in chars:
@@ -109,29 +121,31 @@ def hebrew_logical(lines, translit):
             if unicodedata.combining(ch) and clusters:
                 clusters[-1]["t"] += ch
             else:
-                clusters.append(dict(t=ch, x0=c["x0"], x1=c["x1"]))
+                clusters.append(dict(t=ch, x0=c["x0"], x1=c["x1"], size=c["size"]))
     if not clusters:
         return ""
-    gaps = sorted(((b["x0"] - a["x1"], i) for i, (a, b) in enumerate(zip(clusters, clusters[1:]))), reverse=True)
-    breaks = {i for _, i in gaps[: max(0, len(translit.split()) - 1)]}
-    visual = ""
-    for i, c in enumerate(clusters):
-        visual += c["t"] + (" " if i in breaks else "")
-    # Reverse cluster by cluster (marks stay after their letter).
-    out = []
-    for word in visual.split(" "):
-        cs, cur = [], ""
-        for ch in word:
-            if unicodedata.combining(ch) and cur:
-                cur += ch
-            else:
-                if cur:
-                    cs.append(cur)
-                cur = ch
-        if cur:
-            cs.append(cur)
-        out.append("".join(reversed(cs)))
-    return " ".join(reversed(out))
+    words = [[clusters[0]]]
+    for a, b in zip(clusters, clusters[1:]):
+        if b["t"] == "·" or a["t"] == "·" or b["x0"] - a["x1"] > 0.12 * b["size"]:
+            words.append([])
+        words[-1].append(b)
+    words = ["".join(c["t"] for c in reversed(w)) for w in words]
+    rtl, ltr = list(reversed(words)), words
+
+    firsts = []
+    for w in re.findall(r"[^\s/…]+", re.sub(r"\([^)]*\)", "", translit)):
+        m = re.search(r"[^\W\d_]|[ʾʿ]", unicodedata.normalize("NFC", w).lower())
+        if m:
+            firsts.append(TL_LETTER.get(m[0], TL_LETTER.get(unicodedata.normalize("NFD", m[0])[0], "")))
+
+    def score(order):
+        letters = [re.sub(r"[^\u05D0-\u05EA]", "", w)[:2] for w in order if w != "·"]
+        if not firsts or not letters:
+            return 0
+        hit = lambda f, w: bool(f) and any(ch in w for ch in f)
+        return hit(firsts[0], letters[0]) + (len(firsts) > 1 and len(letters) > 1 and hit(firsts[-1], letters[-1]))
+
+    return " ".join(ltr if score(ltr) > score(rtl) else rtl)
 
 
 def plain_text(line, body):
@@ -324,6 +338,11 @@ class Week:
             gloss = tl_lines or self.take(lambda x: not x["bold"] and not xref_line(x) and x["size"] >= self.body - 0.6)
             st["translit"] = line_text(inline_tl).strip()
             st["gloss"] = re.sub(r"^[—–]\s*", "", joined(gloss))
+        elif tl_lines and len(tl_lines) > 1 and not re.search(r"\s[—–]\s", tl_lines[0]["t"]):
+            # The transliteration on its own line, the gloss below: split there,
+            # not at a dash inside the gloss.
+            st["translit"] = tl_lines[0]["t"].strip()
+            st["gloss"] = re.sub(r"^[—–]\s*", "", joined(tl_lines[1:]))
         else:
             tl = re.sub(r"^(.*?)\s*[—–]\s*", r"\1 — ", joined(tl_lines), count=1)
             if " — " not in tl and len(tl_lines) > 1:
