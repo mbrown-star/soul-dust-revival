@@ -58,7 +58,13 @@ webhook/entitlement changes done.
 - **Scaffold code is in scope for both reviews.** Inherited code, dependencies, default configs, and seed data are reviewed too. Report scaffold-origin findings separately from new-code findings.
 - **On scaffold updates,** re-run both reviews against the whole updated scaffold, not just the diff.
 
-- **2026-11-12 (latest) — Cloudflare rate-limiting rule created.** Requested as "proceed to the cloudflare rate limiting rule".
+- **2026-11-12 (newest) — The Store opens with a featured Journey banner.** Requested as "a horizontal full width advertisement of The Journey for the Store page that sits at the top in its own featured section".
+  - **Band** (`components/commerce/FeaturedJourneyBanner.tsx`): full-bleed `bg-ink mottle`, inner `max-w-5xl` like the homepage's dusk band. Cover on the left at its own shape; "Featured bundle", "The Journey", "Four studies, read as one road. One stop opens each week, 52 in all.", the four Parts with their week ranges (1–12, 13–24, 25–36, 37–48), "Digital $75.00 · Printed $90.00" and an "Explore The Journey" link to `/store/soul-dust-revival-the-journey`. Stacks under 640px.
+  - **Data, not a hardcoded slug** (`lib/journey/featured.ts`): the oldest published Journey whose bundle is active, read through `loadJourneyMap`; week ranges skip each Part's introduction (`partWeekRanges`). Unpublishing the Journey or deactivating its bundle removes the banner.
+  - **Tests:** 3 for `partWeekRanges`. `npm run verify` clean; `npm test` 820/820 (in a worktree holding only this change). Checked against the real data at 800px, 375px (no sideways scroll) and 1440px; the link shows a parchment focus ring on Tab; no console errors. Not covered by QA e2e: the QA seed's Journey bundle is inactive, so QA pages never show the banner.
+  - **Review:** read-only query of public data (published Journey, active product), no new routes or input, text rendered escaped. No findings.
+  - **Shipped** `9422e66` (`npm run deploy -- both --yes`): **staging `b481c7f6`**, **production `4ee5cfba`**, every check passing. Confirmed on live staging's `/store`. Production's sneak-peek build closes `/store`, so it shows nowhere there yet.
+- **2026-11-12 — Cloudflare rate-limiting rule created.** Requested as "proceed to the cloudflare rate limiting rule".
   - **Plan limits:** the zone is on the Free plan: one rate-limiting rule, matched on the URI path only (no method or host), counted per IP, 10-second window, Block for 10 seconds (Cloudflare's docs, checked).
   - **Rule "Email, claims and checkout",** created in the dashboard (Security → Security rules) after the user approved the exact rule:
     - matches `/api/amazon-reminders`, `/api/contact`, `/api/amazon-claims`, `/api/checkout`, `/api/auth/login-recorded`;
