@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { keepTabInside } from "@/lib/ui/focusTrap";
 
 const buttonClass =
   "inline-block font-sans font-semibold bg-ink text-parchment rounded-lg px-6 py-3 hover:bg-dusk focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink";
@@ -60,21 +61,7 @@ export function AmazonBuyModal({
         return;
       }
       // Keep Tab inside the dialog while it's open.
-      if (e.key === "Tab" && dialogRef.current) {
-        const items = [...dialogRef.current.querySelectorAll<HTMLElement>("a[href], button, input")].filter(
-          (el) => !el.hasAttribute("disabled")
-        );
-        const first = items[0];
-        const last = items[items.length - 1];
-        if (!first || !last) return;
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
+      keepTabInside(e, dialogRef.current);
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);

@@ -167,6 +167,11 @@ test.describe("Interactive Study reader", () => {
     await expect(page.getByRole("dialog")).toContainText("shamar");
     // A modal sheet: focus moves into it, Escape closes it, focus goes back.
     await expect(page.getByRole("dialog").getByRole("button", { name: "Close" })).toBeFocused();
+    // Tab and Shift+Tab stay inside the open sheet.
+    for (const key of ["Tab", "Tab", "Tab", "Shift+Tab", "Shift+Tab", "Shift+Tab", "Shift+Tab"]) {
+      await page.keyboard.press(key);
+      expect(await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))).toBe(true);
+    }
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "preserve", exact: true })).toBeFocused();

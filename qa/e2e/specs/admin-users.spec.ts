@@ -15,6 +15,27 @@ test.describe("admin users & roles, as qa-admin", () => {
     await expect(adminRow).toContainText(/\badmin\b/i);
   });
 
+  test.describe("in a browser whose locale and time zone differ from the server's", () => {
+    test.use({ locale: "en-GB", timezoneId: "Asia/Tokyo" });
+
+    test("loads without a hydration mismatch, with Joined dates in one fixed format", async ({ page }) => {
+      // The Joined column was formatted in the server's and then the browser's
+      // own locale and time zone, which differ: React logged error #418.
+      const hydrationErrors: string[] = [];
+      const isHydration = (text: string) => /hydrat|#418|#423|#425|did not match/i.test(text);
+      page.on("console", (msg) => {
+        if (msg.type() === "error" && isHydration(msg.text())) hydrationErrors.push(msg.text());
+      });
+      page.on("pageerror", (err) => {
+        if (isHydration(err.message)) hydrationErrors.push(err.message);
+      });
+      await page.goto("/admin/users");
+      await expect(page.getByRole("columnheader", { name: "Joined" })).toBeVisible();
+      await expect(page.locator("tbody").getByText(/^[A-Z][a-z]{2} \d{1,2}, \d{4}$/).first()).toBeVisible();
+      expect(hydrationErrors).toEqual([]);
+    });
+  });
+
   test("the page states the self-role-change rule in copy", async ({ page }) => {
     await page.goto("/admin/users");
     await expect(page.getByText(/can't change your own role here/i)).toBeVisible();

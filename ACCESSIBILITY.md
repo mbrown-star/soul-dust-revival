@@ -161,9 +161,9 @@ The bottom sheets in the Study reader (a word study opened from the Passage tab,
 picker; `components/study/Sheet.tsx`) are `role="dialog"` with `aria-modal`, but didn't
 act like one: focus stayed on the page behind them and Escape did nothing. Now focus
 moves to the sheet's Close button when it opens, Escape closes it, and focus returns to
-whatever opened it (the underlined word, the breadcrumb). Covered by the Five Stations
-week test in `qa/e2e/specs/study-reader.spec.ts`. Not done: a full focus trap (Tab can
-still leave the sheet).
+whatever opened it (the underlined word, the breadcrumb). Tab and Shift+Tab stay inside
+it (`lib/ui/focusTrap.ts`, shared with the Buy on Amazon modal). Covered by the Five
+Stations week test in `qa/e2e/specs/study-reader.spec.ts`.
 
 **Manual keyboard-only pass (checkout + admin lesson authoring)**
 Driven by hand (Tab/Shift+Tab/Enter/Space/Arrow/Escape only, no mouse) against the local
