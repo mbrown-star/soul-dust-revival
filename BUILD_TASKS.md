@@ -448,8 +448,9 @@ the mode set.
       on when checked 2026-11-10:** host `smtp.resend.com`, port 465, sender
       `noreply@souldustrevival.com`; Resend's log shows Supabase's sign-in emails
       delivered through it. The user confirmed the email rate limit had already been
-      raised (Authentication → Rate Limits). Optional copy fix still open: the Magic
-      Link / Confirm signup subjects say "sign-in link" though the email holds a code.
+      raised (Authentication → Rate Limits). The Magic Link subject was changed to "Your
+      Soul Dust Revival sign-in code" by the user (2026-11-12, not verified from here);
+      check the Confirm signup template's subject says "code" too.
 - [x] **R2 bucket CORS rule** (2026-11-10). `GET`/`PUT` from both staging hosts and
       `souldustrevival.com`, `www.`, `app.`; headers `content-type`, `cache-control`.
       If production keeps this same bucket, nothing more is needed; a separate
@@ -489,8 +490,8 @@ the mode set.
       after deleting only the four Squarespace apex `A` records and the `www` CNAME to
       `ext-sq.squarespace.com` (MX `smtp.google.com` and the SPF/verification TXT
       records left alone). No Access on production — confirmed: every host answers
-      without an Access redirect. `www` serves the same site rather than redirecting
-      (fine for now; a redirect rule to the apex is optional). Resolvers that had cached
+      without an Access redirect. `www` now 301-redirects to the apex (Cloudflare
+      Redirect Rule "www to souldustrevival.com", 2026-11-12, keeps path and query). Resolvers that had cached
       the old answer (Squarespace, or "no such host" for `app.`) caught up within the
       SOA negative-cache window (1800s).
 - [x] (Live version as of 2026-11-10: `032be409`, built from `main` `887ffa8`, which

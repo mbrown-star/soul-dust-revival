@@ -488,6 +488,20 @@ dependency (e.g. Redis) for a concern the hosting platform already handles well:
   project level (configurable under Auth settings), which limits email-bombing abuse
   on `/login` independent of any Cloudflare rule.
 
+## HTTPS and the www redirect (Cloudflare, 2026-11-12)
+- **Always Use HTTPS** is on for the zone (SSL/TLS → Edge Certificates). Until then every
+  host also answered plain `http://` with the page itself: a first visit from an `http://`
+  link was unencrypted (HSTS only helps after one https visit), and the `Secure` sign-in
+  cookies are never set over http, so signing in there quietly failed. Now every http
+  request on every hostname (apex, `www`, `app.`, staging) gets a 301 to https. Checked
+  live. Cloudflare's own HSTS setting is left off: the app already sends
+  `Strict-Transport-Security: max-age=31536000; includeSubDomains` (next.config.js).
+- **`www` redirects to the apex:** Redirect Rule "www to souldustrevival.com" (wildcard
+  `https://www.*` → `https://${1}`, 301, query string kept). Deployed past the dashboard's
+  "may not apply to your traffic" warning, since `www` is a Worker custom domain whose DNS
+  record Cloudflare manages (a second record for it was not created). Checked live:
+  `https://www.souldustrevival.com/blog?x=1` → `https://souldustrevival.com/blog?x=1`.
+
 ## Security headers
 `next.config.js` sets `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
 `Strict-Transport-Security`, and a restrictive `Permissions-Policy` on every route (and
