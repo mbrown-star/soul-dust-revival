@@ -858,6 +858,35 @@ describe("Study week media", () => {
       expect(studyWeekContentSchema.safeParse({ ...base, stations: [{ ...station, lang: "aramaic" }] }).success).toBe(false);
     });
 
+    it("keeps the Journey's fields: sub-headings, station commentary, extra word studies, a closing essay, extra practicals", () => {
+      const week = {
+        ...base,
+        passageRef: "",
+        passage: [],
+        study: {
+          sections: [{ heading: "FROM DUST TO DAYBREAK", paras: ["…"] }],
+          parts: [{ label: "PART ONE", heading: "God's Mercy in the Crack", paras: ["a", "b"], heads: [{ at: 1, text: "WHEN THE CRACK IS OBVIOUS" }] }],
+        },
+        stations: [
+          {
+            ...station,
+            note: ["John writes this whole letter to people who already believe."],
+            moreStudies: [{ lang: "hebrew", greek: "שׁוּב", translit: "šûb", gloss: "to turn back", xref: "", body: [], live: "" }],
+          },
+          { ...station, ref: "ACTS 3:19", lang: undefined, greek: "", translit: "", gloss: "" },
+        ],
+        prayerLabel: "A SIMPLE DAILY PRAYER",
+        extraPracticals: [{ title: "THE WATCHMAN PRAYER", paras: ["Pray Psalm 141:3."] }],
+        interlude: { label: "MOVEMENT ONE CLOSING", heading: "Looking Back, Looking Forward", paras: ["Six weeks."], heads: [{ at: 0, text: "WHERE YOU HAVE BEEN" }] },
+      };
+      const parsed = studyWeekContentSchema.parse(week);
+      expect(parsed.study.parts[0]!.heads).toEqual([{ at: 1, text: "WHEN THE CRACK IS OBVIOUS" }]);
+      expect(parsed.stations[0]).toMatchObject({ note: [expect.any(String)], moreStudies: [{ translit: "šûb" }] });
+      expect(parsed.prayerLabel).toBe("A SIMPLE DAILY PRAYER");
+      expect(parsed.extraPracticals).toHaveLength(1);
+      expect(parsed.interlude?.heads).toEqual([{ at: 0, text: "WHERE YOU HAVE BEEN" }]);
+    });
+
     it("lets an opening section go without a heading, but not a Part", () => {
       const section = { heading: "", paras: ["Opens straight into the essay."] };
       expect(studyWeekContentSchema.safeParse({ ...base, study: { sections: [section], parts: [] } }).success).toBe(true);

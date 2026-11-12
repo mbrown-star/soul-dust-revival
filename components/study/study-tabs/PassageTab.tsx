@@ -1,6 +1,6 @@
 "use client";
 
-import { type StudyWeekContent, wordStudyHeadword } from "@/lib/study/studyContent";
+import { type StudyWeekContent, hasWordStudy, wordStudyHeadword } from "@/lib/study/studyContent";
 import { ReadAloudButton } from "@/components/devotional/ReadAloudButton";
 import { HideWordsSlider } from "@/components/devotional/HideWordsSlider";
 import { WeekMediaSlot } from "../WeekMediaSlot";
@@ -49,7 +49,7 @@ export function PassageTab({
     return { v, showChapter, match };
   });
 
-  const unmatchedStations = content.stations.filter((st) => !matchedStationRefs.has(st.ref));
+  const unmatchedStations = content.stations.filter((st) => hasWordStudy(st) && !matchedStationRefs.has(st.ref));
   const readAloudText = content.passage.map((v) => v.text).join(" ");
 
   return (

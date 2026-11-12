@@ -31,10 +31,10 @@ test.describe("My Library / entitlements", () => {
 
       // Information-consistency: progress fraction shown must match seeded state.
       await expect(continueSection.getByText("1/5")).toBeVisible(); // Day 1 completed of 5
-      // Week 1, Introduction, Week 2 (scoped to the card: the free-sample
-      // devotional under "Not started" also has three days).
+      // Week 1, Introduction, Week 2, Week 3 (scoped to the card: the
+      // free-sample devotional under "Not started" has its own count).
       await expect(
-        notStartedSection.locator("div.rounded-xl", { hasText: "QA Digital Study — Not Started" }).getByText("0/3")
+        notStartedSection.locator("div.rounded-xl", { hasText: "QA Digital Study — Not Started" }).getByText("0/4")
       ).toBeVisible();
       await expect(completedSection.getByText("1/1")).toBeVisible();
 

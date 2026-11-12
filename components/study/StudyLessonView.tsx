@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import type { StudyWeekContent } from "@/lib/study/studyContent";
+import { hasPassage, type StudyWeekContent } from "@/lib/study/studyContent";
 import { StudyTab } from "./study-tabs/StudyTab";
 import { PassageTab } from "./study-tabs/PassageTab";
 import { WorkTheWordTab } from "./study-tabs/WorkTheWordTab";
@@ -106,6 +106,13 @@ export function StudyLessonView({
   const { weekLabel, weekTitle } = splitLessonTitle(lessonTitle);
   const shortBookLabel = deriveBookLabel(bookLabel);
   const greekStation = content.stations.find((s) => s.ref === greekStationRef) ?? null;
+  const showPassage = hasPassage(content);
+  const tabs = TABS.filter((t) => showPassage || t.key !== "passage");
+  // A week with no passage has nothing to finish there: count that tab done,
+  // so the week's ring (and the week picker's) can still reach 100%.
+  useEffect(() => {
+    if (!showPassage && !done.has("passage")) setDone("passage", true);
+  }, [showPassage, done, setDone]);
 
   function goToStation(stationRef: string) {
     setGreekStationRef(null);
@@ -186,7 +193,7 @@ export function StudyLessonView({
       </div>
 
       <ScrollFadeTabs ariaLabel="Week sections">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.key}
             type="button"
@@ -222,14 +229,16 @@ export function StudyLessonView({
           onSetDone={(v) => setDone("study", v)}
         />
       </div>
-      <div role="tabpanel" hidden={tab !== "passage"}>
-        <PassageTab
-          content={content}
-          onOpenGreek={setGreekStationRef}
-          isDone={done.has("passage")}
-          onSetDone={(v) => setDone("passage", v)}
-        />
-      </div>
+      {showPassage && (
+        <div role="tabpanel" hidden={tab !== "passage"}>
+          <PassageTab
+            content={content}
+            onOpenGreek={setGreekStationRef}
+            isDone={done.has("passage")}
+            onSetDone={(v) => setDone("passage", v)}
+          />
+        </div>
+      )}
       <div role="tabpanel" hidden={tab !== "work"}>
         <WorkTheWordTab
           content={content}

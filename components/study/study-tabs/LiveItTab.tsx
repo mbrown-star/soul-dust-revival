@@ -4,6 +4,7 @@ import type { StudyWeekContent } from "@/lib/study/studyContent";
 import { useLocalProgress } from "../useLocalProgress";
 import { PrayerTimer } from "../PrayerTimer";
 import { WeekMediaSlot } from "../WeekMediaSlot";
+import { ParasWithHeads } from "./ParasWithHeads";
 
 export function LiveItTab({
   lessonId,
@@ -22,6 +23,20 @@ export function LiveItTab({
 
   return (
     <div className="space-y-8">
+      {content.interlude && (
+        // A capstone week's closing essay, printed after the stations.
+        <section className="border border-dusk/10 rounded-xl p-5 space-y-3">
+          <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700">{content.interlude.label}</p>
+          {content.interlude.heading && <h2 className="font-display font-bold text-xl text-ink">{content.interlude.heading}</h2>}
+          {content.interlude.pulls?.map((pull, i) => (
+            <blockquote key={i} className="border-l-4 border-ember bg-dusk/5 rounded-r-xl p-5 font-serif italic text-lg text-ink">
+              {pull}
+            </blockquote>
+          ))}
+          <ParasWithHeads paras={content.interlude.paras} heads={content.interlude.heads} />
+        </section>
+      )}
+
       <div>
         <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700">
           Life Application · {weekLabel}
@@ -61,13 +76,27 @@ export function LiveItTab({
         })}
       </ul>
 
+      {content.extraPracticals?.map((extra, i) => (
+        <div key={i} className="border border-dusk/10 rounded-xl p-5 space-y-2">
+          <h3 className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700">Extra Practical</h3>
+          <p className="font-sans font-semibold text-ink">{extra.title}</p>
+          {extra.paras.map((p, j) => (
+            <p key={j} className="font-serif text-ink">
+              {p}
+            </p>
+          ))}
+        </div>
+      ))}
+
       {content.prayerBeats.length > 0 ? (
         <PrayerTimer lead={content.prayerLead} beats={content.prayerBeats} close={content.prayerClose} />
       ) : content.prayerLines && content.prayerLines.length > 0 ? (
         // Every study but Colossians prints its prayer as plain lines, with
         // no timed Father/Son/Spirit beats.
         <div className="border border-dusk/10 rounded-xl p-5">
-          <h3 className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700">Daily Prayer</h3>
+          <h3 className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700">
+            {content.prayerLabel ?? "Daily Prayer"}
+          </h3>
           <div className="font-serif italic text-ink mt-3 space-y-1">
             {content.prayerLines.map((line, i) => (
               <p key={i}>{line}</p>

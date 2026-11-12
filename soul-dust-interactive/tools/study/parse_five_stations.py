@@ -22,7 +22,7 @@ in the shape scripts/backfill-study-content.ts loads.
 Every week is checked; anything missing or unexpected is printed as a
 warning and the script exits non-zero, so a bad parse never goes quietly.
 """
-import collections, json, re, sys
+import collections, json, re, sys, unicodedata
 from pathlib import Path
 
 import pdfplumber
@@ -31,10 +31,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_study import PRAYER, find_anchor, parse_range  # noqa: E402
 
 GREEK = re.compile(r"[Ͱ-Ͽἀ-῿]")
-HEBREW = re.compile(r"[֐-׿]")
+HEBREW = re.compile("[\u0590-\u05FF\uFB1D-\uFB4F]")  # includes presentation forms (U+FB2B, שׂ)
 LIVE = re.compile(r"^LIVE ?IT\s*:?\s*")
 ONE_CHAPTER = r"(?:JUDE|PHILEMON|OBADIAH|2 JOHN|3 JOHN)"
 REF = re.compile(r"\d+:\d+|^" + ONE_CHAPTER + r"\s+\d+", re.I)
+
+
+REF_ITEM = re.compile(r"(?:[123]\s?)?[A-Za-z]+(?:\s(?:of\s)?[A-Za-z]+)?\s\d+(?::\d+)?(?:\s?[–-]\s?\d+(?::\d+)?)?"
+                      r"(?:,\s?\d+(?:[–-]\d+)?)*(?:\s\([^)]*\))?")
+
+
+def ref_list(text):
+    """A word study's cross-reference line: references only, separated by
+    "; " or " · " ("1 John 2:1 · John 14:16", "PHILIPPIANS 1:10; 2 PETER 3:1")."""
+    items = [t.strip() for t in re.split(r";|·", text) if t.strip()]
+    return bool(items) and all(REF_ITEM.fullmatch(t) for t in items) and bool(REF.search(text))
 
 
 def ref_range(ref):
@@ -65,7 +76,61 @@ def title_case(s):
     return " ".join(out)
 
 
+def hebrew_logical(lines, translit):
+    """Hebrew is extracted in visual order: letters left to right, each
+    followed by its vowel points, with stray gaps. Rebuild it in reading
+    order: cluster each letter with its marks, reverse the clusters, and put
+    word breaks at the widest gaps (as many as the transliteration has)."""
+    chars = sorted((c for l in lines for c in l["chars"] if c["text"].strip()), key=lambda c: c["x0"])
+    clusters = []
+    for c in chars:
+        # Presentation forms (U+FB2B שׂ) become a letter plus its mark.
+        for ch in unicodedata.normalize("NFKC", c["text"]):
+            if unicodedata.combining(ch) and clusters:
+                clusters[-1]["t"] += ch
+            else:
+                clusters.append(dict(t=ch, x0=c["x0"], x1=c["x1"]))
+    if not clusters:
+        return ""
+    gaps = sorted(((b["x0"] - a["x1"], i) for i, (a, b) in enumerate(zip(clusters, clusters[1:]))), reverse=True)
+    breaks = {i for _, i in gaps[: max(0, len(translit.split()) - 1)]}
+    visual = ""
+    for i, c in enumerate(clusters):
+        visual += c["t"] + (" " if i in breaks else "")
+    # Reverse cluster by cluster (marks stay after their letter).
+    out = []
+    for word in visual.split(" "):
+        cs, cur = [], ""
+        for ch in word:
+            if unicodedata.combining(ch) and cur:
+                cur += ch
+            else:
+                if cur:
+                    cs.append(cur)
+                cur = ch
+        if cur:
+            cs.append(cur)
+        out.append("".join(reversed(cs)))
+    return " ".join(reversed(out))
+
+
+def plain_text(line, body):
+    """A line's text without its small superscript verse numbers."""
+    chars = [c for c in line["chars"] if not (c["text"].isdigit() and c["size"] < body - 1.5)]
+    return line_text(chars) if chars else ""
+
+
 def line_text(chars):
+    return fix_ligatures(_line_text(chars))
+
+
+def fix_ligatures(text):
+    """Journey Part One's font maps its "fi" ligature to "/": "will not /x
+    everything" is "will not fix everything". Only the standalone word."""
+    return re.sub(r"(?<![\w/])/x\b", "fix", text)
+
+
+def _line_text(chars):
     """Rebuild a line from its characters, undoing letter-spacing ("P A R T")."""
     chars = sorted(chars, key=lambda c: c["x0"])
     ink = [c for c in chars if c["text"].strip()]
@@ -111,17 +176,22 @@ def load_lines(path):
     sizes, inside = collections.Counter(), False
     for l in lines:
         u = l["t"].upper().replace(" ", "")
-        if l["bold"] and u.startswith("SCRIPTURESTUDY"):
+        if l["bold"] and (u.startswith("SCRIPTURESTUDY") or u == "STUDY"):
             inside = True
-        elif l["bold"] and u.startswith("THEPASSAGE"):
+        elif l["bold"] and (u.startswith("THEPASSAGE") or u == "REFLECTION" or u.startswith("THEWORDON")):
             inside = False
         elif inside and not l["bold"] and not l["ital"]:
             sizes[l["size"]] += 1
     if not sizes:
         sizes = collections.Counter(l["size"] for l in lines if not l["bold"])
     body = sizes.most_common(1)[0][0]
+    right = collections.defaultdict(float)
+    for l in lines:
+        if l["size"] == body and not l["bold"]:
+            right[l["page"]] = max(right[l["page"]], l["x1"])
     keep = []
     for l in lines:
+        l["right"] = right[l["page"]] or l["x1"]
         u = l["t"].upper().replace(" ", "")
         if l["size"] < body - 2.5 and "SOULDUSTREVIVAL" in u and not l["bold"]:
             continue  # running header
@@ -185,6 +255,42 @@ class Week:
             return False
         return True
 
+    def word_study(self, st):
+        """GOING DEEPER · THE GREEK/HEBREW: the word, transliteration, gloss,
+        cross-references, study and LIVE IT, read into station `st`."""
+        st["lang"] = "hebrew" if "HEBREW" in self.cur["t"].upper() else "greek"
+        self.i += 1
+        word_lines = self.take(self.word)
+        # Transliteration and gloss: one italic line ("eikōn — image, …"),
+        # or the transliteration on its own line and the gloss on the next
+        # ("— a campaign; warfare", or plain "counsellor"), up to the small
+        # cross-reference line.
+        xref_line = lambda x: not x["bold"] and x["size"] <= self.body - 1.0 and REF.search(x["t"]) and (
+            re.sub(r"\([^)]*\)", "", x["t"]) == re.sub(r"\([^)]*\)", "", x["t"]).upper() or ref_list(x["t"]))
+        tl_lines = self.take(lambda x: x["ital"] and not x["bold"] and x["size"] >= self.body - 0.6
+                             and not xref_line(x))
+        if tl_lines and " — " not in tl_lines[0]["t"]:
+            nxt = self.L[self.i + 1] if self.i + 1 < len(self.L) else None
+            if self.cur is not None and (self.cur["t"].startswith(("—", "“", "\""))
+                                         or (nxt is not None and xref_line(nxt) and not xref_line(self.cur))):
+                tl_lines.append(self.cur); self.i += 1
+        tl = re.sub(r"^(.*?)\s*[—–]\s*", r"\1 — ", joined(tl_lines), count=1)
+        if " — " not in tl and len(tl_lines) > 1:
+            tl = tl_lines[0]["t"] + " — " + joined(tl_lines[1:])
+        parts = [p.strip() for p in tl.split(" — ", 1)]
+        st["translit"], st["gloss"] = parts[0], (parts[1] if len(parts) > 1 else "")
+        st["greek"] = hebrew_logical(word_lines, st["translit"]) if st["lang"] == "hebrew" \
+            and HEBREW.search(joined(word_lines)) else joined(word_lines)
+        st["xref"] = joined(self.take(xref_line))
+        st["body"] = paragraphs(self.take(lambda x: not LIVE.match(x["t"]) and not self.label(x)
+                                          and not self.pull(x)), self.body)
+        lv = []
+        if self.cur is not None and LIVE.match(self.cur["t"]):
+            lv = [self.cur]; self.i += 1
+            lv += self.take(lambda x: not self.label(x) and not LIVE.match(x["t"]) and not self.pull(x)
+                            and not (x["bold"] and re.match(r"QUESTION\s+\S", x["t"])))
+        st["live"] = LIVE.sub("", joined(lv))
+
     # --- parse -----------------------------------------------------------------
     def parse(self):
         w = dict(study=dict(sections=[], parts=[]), stations=[], practices=[])
@@ -197,25 +303,52 @@ class Week:
         w["subtitle"] = joined(self.take(lambda l: l["ital"] and not l["bold"] and l["size"] == sub_size
                                          and not l["t"].startswith(("“", "\""))))
         self.take(lambda l: not l["t"].strip("◆◇•· "))
-        w["keyVerse"] = unquote(joined(self.take(lambda l: l["ital"] and not l["bold"] and not self.label(l))))
-        if self.cur is not None and self.label(self.cur):
+        kv = self.take(lambda l: l["ital"] and not l["bold"] and not self.label(l))
+        if kv and kv[-1]["t"].startswith("—"):
+            w["keyRef"] = kv[-1]["t"].lstrip("— ").strip()
+            kv = kv[:-1]
+        w["keyVerse"] = unquote(joined(kv))
+        if self.cur is not None and self.label(self.cur) and REF.search(self.cur["t"]):
             w["keyRef"] = self.cur["t"]; self.i += 1
 
         # Scripture Study · Dive
-        if self.seek(lambda l: self.is_label(l, "SCRIPTURE STUDY"), "SCRIPTURE STUDY · DIVE"):
+        if self.seek(lambda l: self.is_label(l, "SCRIPTURE STUDY") or (self.label(l) and l["t"] == "STUDY"),
+                     "SCRIPTURE STUDY · DIVE"):
             self.i += 1
         self.take(self.heading)
-        self.take(lambda l: l["ital"] and not l["bold"] and l["size"] > self.body - 0.5)
+        self.take(lambda l: l["ital"] and not l["bold"] and (l["size"] > self.body - 0.5 or l["t"].startswith("—")))
         if self.cur is not None and self.label(self.cur) and REF.search(self.cur["t"]):
             self.i += 1
         cur, buf = None, []
 
         def flush():
-            if cur is not None:
-                cur["paras"] = paragraphs(buf, self.body)
+            # buf holds lines and {"head": …} markers for a Part's sub-headings.
+            if cur is None:
+                return
+            paras, seg = [], []
+            for x in buf + [None]:
+                if x is None or "head" in x:
+                    paras += paragraphs(seg, self.body); seg = []
+                    if x is not None:
+                        cur.setdefault("heads", []).append(dict(at=len(paras), text=x["head"]))
+                else:
+                    seg.append(x)
+            cur["paras"] = paras
 
-        while self.cur is not None and not self.is_label(self.cur, "THE PASSAGE"):
+        def study_ends(l):
+            return self.is_label(l, "THE PASSAGE", "THE WORD ON") or (self.label(l) and l["t"] in ("REFLECTION", "THE WORD"))
+
+        while self.cur is not None and not study_ends(self.cur):
             l = self.cur
+            if self.label(l) and not REF.search(l["t"]) and not re.match(r"PART\s", l["t"]):
+                # A small-capitals heading: a new section, or inside a Part, a sub-heading.
+                if cur is not None and "label" in cur:
+                    buf.append({"head": l["t"]})
+                else:
+                    flush(); buf = []
+                    cur = dict(heading=l["t"]); w["study"]["sections"].append(cur)
+                self.i += 1
+                continue
             if self.heading(l):
                 flush(); buf = []
                 cur = dict(heading=joined(self.take(self.heading)))
@@ -246,20 +379,24 @@ class Week:
         flush()
         w["study"]["sections"] = [s for s in w["study"]["sections"] if s["heading"] or s["paras"]]
 
-        # The Passage
-        self.i += 1
-        w["passageRef"] = joined(self.take(self.heading))
-        self.take(lambda l: self.is_label(l, "WORLD ENGLISH BIBLE"))
-        plines = self.take(lambda l: not self.label(l))
-        if self.cur is not None and self.label(self.cur) and "WEB" in self.cur["t"]:
+        # The Passage (the Journey's Parts One–Three print none)
+        w["passageRef"], w["passage"] = "", []
+        if self.cur is not None and self.is_label(self.cur, "THE PASSAGE"):
             self.i += 1
-        w["passage"] = verses_from_lines(plines, w["passageRef"], self.body, self.warn)
+            w["passageRef"] = joined(self.take(self.heading))
+            self.take(lambda l: self.is_label(l, "WORLD ENGLISH BIBLE"))
+            plines = self.take(lambda l: not self.label(l))
+            if self.cur is not None and self.label(self.cur) and "WEB" in self.cur["t"]:
+                self.i += 1
+            w["passage"] = verses_from_lines(plines, w["passageRef"], self.body, self.warn)
+            w["hasPassage"] = True
 
         # Working through the Word
         if self.seek(lambda l: self.label(l) and not REF.search(l["t"]), "stations label"):
             w["stationsLabel"] = self.cur["t"]; self.i += 1
         self.take(self.heading)
         w["stationsIntro"] = joined(self.take(lambda l: not self.label(l) and not self.heading(l)))
+        pending = []  # word studies printed before the station they belong to
         while self.cur is not None and not self.is_label(self.cur, "LIFE APPLICATION"):
             l = self.cur
             if self.pull(l):
@@ -272,6 +409,68 @@ class Week:
                 is_ref = lambda x: x is not None and self.label(x) and REF.search(x["t"])
                 if is_ref(self.cur) and is_ref(nxt):
                     self.i += 1  # the pull-quote's own attribution
+                elif self.cur is not None and not self.cur["bold"] and self.cur["size"] <= self.body - 3 \
+                        and re.match(r"ON\s", self.cur["t"]):
+                    self.i += 1  # "ON 1 JOHN 1:9"
+                continue
+            if self.is_label(l, "GOING DEEPER") and w["stations"]:
+                # A word study printed away from its station (after a pull-quote,
+                # or two in a row): it belongs to the station without one whose
+                # reference its cross-references name, else the latest such.
+                ws = {}
+                self.word_study(ws)
+                def covers(st, xref):
+                    """Does the station's passage include the cross-reference's verse?"""
+                    if book_of(st["ref"]) != book_of(xref):
+                        return False
+                    try:
+                        start, end = ref_range(st["ref"])
+                        verse, _ = ref_range(xref)
+                    except (TypeError, ValueError):
+                        return False
+                    return start <= verse <= end
+                xrefs = [x.strip() for x in re.split(r"[;·]", ws.get("xref", "")) if x.strip()]
+                named = lambda st, xrefs=xrefs: any(covers(st, x) for x in xrefs)
+                open_ = [st for st in w["stations"] if not st.get("lang")]
+                target = next((st for st in reversed(open_) if named(st)), None)
+                if target is None:
+                    owner = next((st for st in reversed(w["stations"]) if named(st)), None)
+                    if owner is not None:  # a second word study on one verse
+                        owner.setdefault("moreStudies", []).append(ws)
+                        continue
+                    target = open_[-1] if open_ and not xrefs else None
+                if target is None:
+                    pending.append((ws, named))  # its station comes later on the page
+                else:
+                    target.update(ws)
+                continue
+            if self.label(l) and w["stations"] and not REF.search(l["t"]) \
+                    and not self.is_label(l, "QUESTION", "GOING DEEPER"):
+                # A capstone week's closing essay after its stations
+                # ("MOVEMENT ONE CLOSING · Looking Back, Looking Forward").
+                self.i += 1
+                inter = dict(label=l["t"], heading=joined(self.take(self.heading)))
+                buf = []
+                while self.cur is not None and not self.is_label(self.cur, "LIFE APPLICATION"):
+                    x = self.cur
+                    if self.label(x):
+                        buf.append({"head": x["t"]})
+                    elif self.pull(x):
+                        inter.setdefault("pulls", []).append(unquote(joined(self.take(self.pull))))
+                        continue
+                    else:
+                        buf.append(x)
+                    self.i += 1
+                paras, seg = [], []
+                for x in buf + [None]:
+                    if x is None or "head" in x:
+                        paras += paragraphs(seg, self.body); seg = []
+                        if x is not None:
+                            inter.setdefault("heads", []).append(dict(at=len(paras), text=x["head"]))
+                    else:
+                        seg.append(x)
+                inter["paras"] = paras
+                w["interlude"] = inter
                 continue
             if not (self.label(l) and REF.search(l["t"])):
                 if self.label(l) and l["t"].replace(" ", "") == "QUESTION" and w["stations"]:
@@ -285,34 +484,35 @@ class Week:
                 self.i += 1
                 continue
             st = dict(ref=l["t"]); self.i += 1
-            st["verse"] = unquote(joined(self.take(lambda x: not self.label(x))))
-            if self.cur is not None and self.is_label(self.cur, "QUESTION"):
-                self.i += 1
-            st["question"] = joined(self.take(lambda x: not self.label(x) and not self.word(x)))
+            q_inline = lambda x: x["bold"] and re.match(r"QUESTION\s+\S", x["t"])
+            stop = lambda x: self.label(x) or q_inline(x) or self.word(x) or self.pull(x)
+            # The verse (italic, or set apart in a smaller size), then any
+            # commentary in body text before the question.
+            verse = self.take(lambda x: not stop(x) and not (not x["ital"] and x["size"] == self.body))
+            st["verse"] = unquote(re.sub(r"\s+", " ", " ".join(plain_text(x, self.body) for x in verse)).strip())
+            note = self.take(lambda x: not stop(x))
+            if note:
+                st["note"] = paragraphs(note, self.body)
+            if self.cur is not None and q_inline(self.cur):
+                first = re.sub(r"^QUESTION\s+", "", self.cur["t"]); self.i += 1
+                st["question"] = (first + " " + joined(self.take(lambda x: not stop(x) and not LIVE.match(x["t"])))).strip()
+            else:
+                if self.cur is not None and self.is_label(self.cur, "QUESTION"):
+                    self.i += 1
+                st["question"] = joined(self.take(lambda x: not stop(x)))
+            st["greek"] = st["translit"] = st["gloss"] = st["xref"] = st["live"] = ""
+            st["body"] = []
             if self.cur is not None and self.is_label(self.cur, "GOING DEEPER"):
-                st["lang"] = "hebrew" if "HEBREW" in self.cur["t"].upper() else "greek"
-                self.i += 1
-            st["greek"] = joined(self.take(self.word))
-            # Transliteration and gloss: one italic line ("eikōn — image, …") or
-            # the transliteration on its own line and the gloss on the next
-            # ("— a campaign; warfare"), up to the small cross-reference line.
-            xref_line = lambda x: not x["bold"] and x["size"] <= self.body - 1.0 and REF.search(x["t"]) \
-                and x["t"] == x["t"].upper()
-            tl_lines = self.take(lambda x: x["ital"] and not x["bold"] and x["size"] >= self.body - 0.6
-                                 and not xref_line(x))
-            if tl_lines and " — " not in tl_lines[0]["t"]:
-                tl_lines += self.take(lambda x: not xref_line(x) and not self.label(x) and x["t"].startswith(("—", "“", "\"")))
-            tl = re.sub(r"^(.*?)\s*[—–]\s*", r"\1 — ", joined(tl_lines), count=1)
-            parts = [p.strip() for p in tl.split(" — ", 1)]
-            st["translit"], st["gloss"] = parts[0], (parts[1] if len(parts) > 1 else "")
-            st["xref"] = joined(self.take(xref_line))
-            st["body"] = paragraphs(self.take(lambda x: not LIVE.match(x["t"]) and not self.label(x)), self.body)
-            lv = []
-            if self.cur is not None and LIVE.match(self.cur["t"]):
-                lv = [self.cur]; self.i += 1
-                lv += self.take(lambda x: not self.label(x) and not LIVE.match(x["t"]) and not self.pull(x))
-            st["live"] = LIVE.sub("", joined(lv))
+                self.word_study(st)
+            for item in list(pending):
+                ws, named = item
+                if named(st):
+                    (st.setdefault("moreStudies", []).append(ws) if st.get("lang") else st.update(ws))
+                    pending.remove(item)
             w["stations"].append(st)
+
+        for ws, _ in pending:
+            self.warn(f"word study {ws.get('translit')!r} has no station to go with")
 
         # Life Application
         self.i += 1
@@ -327,14 +527,36 @@ class Week:
         w["lifePulls"] = pulls
         while self.cur is not None and self.practice(self.cur):
             m = re.match(r"(\d+)\.\s+(.+)", self.cur["t"]); self.i += 1
-            body = paragraphs(self.take(lambda l: not self.practice(l) and not self.label(l)), self.body)
-            w["practices"].append(dict(n=int(m[1]), title=m[2], body=" ".join(body)))
-        self.take(lambda l: not l["t"].strip("◆◇•· "))
-        if self.seek(lambda l: self.is_label(l, "DAILY PRAYER", "A PRAYER", "PRAYER"), "DAILY PRAYER"):
+            title, first = m[2], []
+            # "NAME THE LOOP — Confession here means…": the body runs on after the
+            # capitals. (A dash inside the capitals, "NAME YOURSELF — JACOB", stays.)
+            lower = re.search(r"[a-z]", title)
+            cut = title.rfind(" — ", 0, lower.start()) if lower else -1
+            if cut > 0 and title[:cut] == title[:cut].upper():
+                first = [dict(self.L[self.i - 1], t=title[cut + 3:])]
+                title = title[:cut]
+            body = paragraphs(first + self.take(lambda l: not self.practice(l) and not self.label(l)), self.body)
+            w["practices"].append(dict(n=int(m[1]), title=title, body=" ".join(body)))
+        while self.cur is not None and self.is_label(self.cur, "EXTRA PRACTICAL"):
+            title = re.sub(r"^EXTRA PRACTICAL\s*·?\s*", "", self.cur["t"]); self.i += 1
+            w.setdefault("extraPracticals", []).append(
+                dict(title=title, paras=paragraphs(self.take(lambda l: not self.label(l)), self.body)))
+        if self.seek(lambda l: self.label(l) and "PRAYER" in l["t"] and not l["t"].startswith("EXTRA"), "DAILY PRAYER"):
+            w["prayerLabel"] = self.cur["t"]
             self.i += 1
         prayer_lines = self.take(lambda l: not self.label(l))
         w["prayer"] = joined(prayer_lines)
-        w["prayerLines"] = [l["t"] for l in prayer_lines]
+        # Printed lines stay lines; prose that wraps to the margin is rejoined.
+        out = []
+        for l in prayer_lines:
+            if out and prev_full:
+                out[-1] += " " + l["t"]
+            else:
+                out.append(l["t"])
+            # Wrapped prose: reached the margin mid-phrase. A printed line ends
+            # with punctuation, however long it is.
+            prev_full = l["x1"] >= l["right"] - 30 and re.search(r"[A-Za-z’']$", l["t"]) is not None
+        w["prayerLines"] = out
         if self.seek(lambda l: self.is_label(l, "BOTTOM LINE"), "BOTTOM LINE"):
             self.i += 1
         w["bottomLine"] = paragraphs(self.take(lambda l: not self.label(l)), self.body)
@@ -355,6 +577,11 @@ class Week:
             starts = [j for j, l in enumerate(block) if l["t"].startswith(("“", "\""))
                       and all(x["ital"] and not x["bold"] for x in block[j:])]
             k = starts[0] if starts else len(block)
+        if k == len(block) and self.cur is not None and self.label(self.cur) and REF.search(self.cur["t"]):
+            # A closing verse printed without quotation marks: the italic lines
+            # right before its reference.
+            while k and block[k - 1]["ital"] and not block[k - 1]["bold"]:
+                k -= 1
         w["benediction"] = paragraphs(block[:k], self.body)
         closing = block[k:]
         w["closingVerse"] = unquote(joined(closing))
@@ -518,7 +745,10 @@ def finish(w):
 
 
 def check(w, warn):
-    if len(w["stations"]) != 5:
+    studied = sum(1 + len(st.get("moreStudies", [])) for st in w["stations"] if st.get("lang"))
+    if studied != 5:
+        warn(f"{studied} word studies")
+    if len(w["stations"]) < 5:
         warn(f"{len(w['stations'])} stations")
     if len(w["practices"]) != 5:
         warn(f"{len(w['practices'])} practices")
@@ -526,24 +756,30 @@ def check(w, warn):
         warn(f"{len(w['study']['parts'])} parts")
     if not w.get("closingRef") and not w.get("closingIsPull"):
         warn("empty closingRef")
-    for k in ("title", "keyVerse", "keyRef", "passageRef", "lifeTitle", "prayer", "closingVerse", "carry"):
+    for k in ("title", "keyVerse", "keyRef", "lifeTitle", "prayer", "closingVerse", "carry"):
         if not w.get(k):
             warn(f"empty {k}")
-    for k in ("bottomLine", "benediction", "passage"):
+    for k in ("bottomLine", "benediction"):
         if not w.get(k):
             warn(f"empty {k}")
+    if w.get("hasPassage") and not w["passage"]:
+        warn("empty passage")
     vs = [(v["c"], v["n"]) for v in w.get("passage", [])]
     for (c0, n0), (c1, n1) in zip(vs, vs[1:]):
         if not ((c1 == c0 and n1 == n0 + 1) or (c1 == c0 + 1 and n1 == 1)):
             warn(f"passage jumps from {c0}:{n0} to {c1}:{n1}")
     for st in w["stations"]:
-        if not st.get("greek") and st.get("lang") != "hebrew":
-            warn(f"station {st['ref']}: empty greek")
-        for k in ("verse", "question", "translit", "gloss", "live"):
+        for k in ("verse", "question"):
             if not st.get(k):
                 warn(f"station {st['ref']}: empty {k}")
-        if not st["body"]:
-            warn(f"station {st['ref']}: empty word study")
+        if st.get("lang"):
+            if not st.get("greek") and st.get("lang") != "hebrew":
+                warn(f"station {st['ref']}: empty greek")
+            for k in ("translit", "live"):
+                if not st.get(k):
+                    warn(f"station {st['ref']}: empty {k}")
+            if not st["body"]:
+                warn(f"station {st['ref']}: empty word study")
 
 
 def main(pdf_path, out_path):
@@ -557,7 +793,7 @@ def main(pdf_path, out_path):
     SPACED = wide > 0.02 * len(gaps)
     # A week opens with its roman numeral and "WEEK n", in either order.
     roman = lambda l: re.fullmatch(r"[IVXL]+", l["t"].replace(" ", "")) and l["size"] >= 30
-    weekl = lambda l: re.fullmatch(r"WEEK\s*\d+", l["t"].replace(" ", ""))
+    weekl = lambda l: re.fullmatch(r"WEEK\s*\d+(?:·[A-Z·\-]+)?", l["t"].replace(" ", ""))
     starts = []
     for j in range(len(L) - 1):
         if roman(L[j]) and weekl(L[j + 1]):

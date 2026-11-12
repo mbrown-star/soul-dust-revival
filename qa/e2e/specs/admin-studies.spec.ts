@@ -165,7 +165,8 @@ test.describe("admin studies list and editor, as qa-admin", () => {
 
     await expect(page.getByLabel("Subtitle")).toHaveValue("");
     await page.getByLabel("Subtitle").fill("A draft subtitle, not yet saved");
-    await expect(page.getByRole("status").filter({ hasText: /Not saved yet -- 3 fields need filling in/ })).toBeVisible();
+    // Key verse and its reference. (The passage is optional: a week may print none.)
+    await expect(page.getByRole("status").filter({ hasText: /Not saved yet -- 2 fields need filling in/ })).toBeVisible();
     await expect(page.getByRole("button", { name: "+ Add section" })).toBeVisible();
     await page.getByRole("tab", { name: /^Work the Word/ }).click();
     await expect(page.getByRole("button", { name: "+ Add station" })).toBeVisible();

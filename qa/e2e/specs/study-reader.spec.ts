@@ -173,6 +173,41 @@ test.describe("Interactive Study reader", () => {
     await expect(page.getByText("Your soul clings to the dust with your eyes cast down. Lift them up.")).toBeVisible();
   });
 
+  test("a Journey week: no Passage tab, sub-headings, commentary, a question with no word study, closing essay", async ({ page }) => {
+    // Lesson 4 "Week 3: The Crack Itself" is shaped like the Journey's Parts One to Three.
+    await page.goto("/studies/qa-study-not-started");
+    await page.getByRole("link", { name: /Week 3: The Crack Itself/ }).click();
+    await expect(page).toHaveURL(/\/studies\/qa-study-not-started\/[^/]+$/);
+
+    // No passage printed, so no Passage tab.
+    const tablist = page.getByRole("tablist", { name: "Week sections" });
+    await expect(tablist.getByRole("tab")).toHaveCount(4);
+    await expect(tablist.getByRole("tab", { name: "Passage", exact: true })).toHaveCount(0);
+
+    // Study: the key verse is Psalm 119:25, shown once; a Part's sub-heading.
+    await expect(page.getByText("My soul clings to the dust; Revive me according to Your word.")).toHaveCount(1);
+    await page.getByRole("button", { name: /God’s Mercy in the Crack/ }).click();
+    await expect(page.getByRole("heading", { name: "WHEN THE CRACK IS OBVIOUS" })).toBeVisible();
+
+    // Work the Word: commentary, then the question; two word studies on one station.
+    await page.getByRole("tab", { name: "Work the Word" }).click();
+    await expect(page.getByText("John writes this whole letter to people who already believe.")).toBeVisible();
+    await page.getByRole("button", { name: "Open the Greek · παράκλητος" }).click();
+    await expect(page.getByText("Going Deeper · The Hebrew")).toBeVisible();
+    await expect(page.getByText("Fixture second word study.")).toBeVisible();
+    // The second station only asks a question: no word study to open.
+    await page.getByRole("tab", { name: "Station 2" }).click();
+    await expect(page.getByText("Where do you need to turn back this week?")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Open the / })).toHaveCount(0);
+
+    // Live It: the closing essay, the Extra Practical box, the prayer's printed label.
+    await page.getByRole("tab", { name: "Live It" }).click();
+    await expect(page.getByText("MOVEMENT ONE CLOSING")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "WHERE YOU ARE GOING" })).toBeVisible();
+    await expect(page.getByText("FAST FROM ONE COPING MECHANISM")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "A SIMPLE DAILY PRAYER" })).toBeVisible();
+  });
+
   test("a study-kind lesson with no studyContent falls back to the plain reading view, not an error or empty tabs", async ({ page }) => {
     await page.goto("/studies/qa-study-not-started");
     await page.getByRole("link", { name: "Introduction" }).click();

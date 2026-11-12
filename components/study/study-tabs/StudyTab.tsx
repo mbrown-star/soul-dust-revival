@@ -5,6 +5,7 @@ import type { StudyWeekContent } from "@/lib/study/studyContent";
 import { HideWordsSlider } from "@/components/devotional/HideWordsSlider";
 import { ReadAloudButton } from "@/components/devotional/ReadAloudButton";
 import { useLocalProgress } from "../useLocalProgress";
+import { ParasWithHeads } from "./ParasWithHeads";
 import { WeekMediaSlot } from "../WeekMediaSlot";
 
 /**
@@ -52,9 +53,12 @@ export function StudyTab({
       <div className="bg-white border border-dusk/10 rounded-xl p-6">
         <HideWordsSlider verse={content.keyVerse} />
         <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700 mt-3">{content.keyRef}</p>
-        <p className="font-serif italic text-sm text-moss mt-3">
-          &ldquo;My soul clings to the dust; Revive me according to Your word.&rdquo; Psalm 119:25 (NKJV)
-        </p>
+        {/* The series verse, unless it is already this week's key verse (the Journey). */}
+        {!/119:25/.test(content.keyRef) && (
+          <p className="font-serif italic text-sm text-moss mt-3">
+            &ldquo;My soul clings to the dust; Revive me according to Your word.&rdquo; Psalm 119:25 (NKJV)
+          </p>
+        )}
         <p className="font-sans text-xs font-bold tracking-[0.2em] text-moss text-center mt-4">READ · REFLECT · RETURN</p>
       </div>
 
@@ -70,11 +74,7 @@ export function StudyTab({
               {pull}
             </blockquote>
           ))}
-          <div className="prose max-w-none font-serif">
-            {section.paras.map((p, j) => (
-              <p key={j}>{p}</p>
-            ))}
-          </div>
+          <ParasWithHeads paras={section.paras} heads={section.heads} />
           <WeekMediaSlot slot={`section:${i}`} className="pt-2" />
         </div>
       ))}
@@ -117,11 +117,7 @@ export function StudyTab({
                       {pull}
                     </blockquote>
                   ))}
-                  <div className="prose max-w-none font-serif">
-                    {part.paras.map((p, j) => (
-                      <p key={j}>{p}</p>
-                    ))}
-                  </div>
+                  <ParasWithHeads paras={part.paras} heads={part.heads} />
                   <WeekMediaSlot slot={`part:${i}`} className="pt-2" />
                 </div>
               )}

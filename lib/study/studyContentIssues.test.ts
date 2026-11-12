@@ -26,8 +26,14 @@ describe("studyContentIssues", () => {
     expect(issues.valid).toBe(false);
     expect(issues.byPath.get("keyVerse")).toBe("Required");
     expect(issues.byPath.get("keyRef")).toBe("Required");
+    // An empty passage is allowed: a week may print none (the Journey's Parts One to Three).
+    expect(issues.byPath.has("passageRef")).toBe(false);
+    expect(issues.countByTab).toEqual({ study: 2, passage: 0, work: 0, live: 0, lift: 0 });
+  });
+
+  it("requires the passage reference once the week has passage verses", () => {
+    const issues = studyContentIssues({ ...emptyStudyWeekContent(), keyVerse: "v", keyRef: "r", passage: [{ c: 1, n: 1, text: "t" }] });
     expect(issues.byPath.get("passageRef")).toBe("Required");
-    expect(issues.countByTab).toEqual({ study: 2, passage: 1, work: 0, live: 0, lift: 0 });
   });
 
   it("reports nested problems at their own path, so a card can show its own count", () => {

@@ -366,6 +366,18 @@ const weekMediaSchema = z
 
 const weekMediaListSchema = z.array(weekMediaSchema).max(10).optional();
 
+const subHeadingsSchema = z.array(z.object({ at: z.number().int().min(0), text: z.string().min(1).max(300) })).max(20).optional();
+
+const wordStudySchema = z.object({
+  lang: z.enum(["greek", "hebrew"]).optional(),
+  greek: z.string().max(100),
+  translit: z.string().max(100),
+  gloss: z.string().max(500),
+  xref: z.string().max(200),
+  body: z.array(z.string().max(5000)).max(20),
+  live: z.string().max(2000),
+});
+
 const studyStationSchema = z.object({
   ref: z.string().min(1).max(100),
   lang: z.enum(["greek", "hebrew"]).optional(),
@@ -381,6 +393,8 @@ const studyStationSchema = z.object({
   verseNums: z.array(z.string().max(50)).max(50),
   anchor: z.object({ v: z.string().max(50), word: z.string().max(100) }).nullable(),
   pulls: z.array(z.string().max(2000)).max(10).optional(),
+  note: z.array(z.string().max(5000)).max(20).optional(),
+  moreStudies: z.array(wordStudySchema).max(5).optional(),
   media: weekMediaListSchema,
 });
 
@@ -396,6 +410,7 @@ export const studyWeekContentSchema = z.object({
           heading: z.string().max(300),
           paras: z.array(z.string().max(5000)).max(50),
           pulls: z.array(z.string().max(2000)).max(20).optional(),
+          heads: subHeadingsSchema,
           media: weekMediaListSchema,
         })
       )
@@ -407,12 +422,14 @@ export const studyWeekContentSchema = z.object({
           heading: z.string().min(1).max(300),
           paras: z.array(z.string().max(5000)).max(50),
           pulls: z.array(z.string().max(2000)).max(20).optional(),
+          heads: subHeadingsSchema,
           media: weekMediaListSchema,
         })
       )
       .max(20),
   }),
-  passageRef: z.string().min(1).max(200),
+  // Empty for a week that prints no passage.
+  passageRef: z.string().max(200),
   passage: z
     .array(z.object({ c: z.number().int().min(1), n: z.number().int().min(1), text: z.string().max(2000) }))
     .max(500),
@@ -430,6 +447,17 @@ export const studyWeekContentSchema = z.object({
     .max(10),
   prayerClose: z.string().max(1000),
   prayerLines: z.array(z.string().max(1000)).max(40).optional(),
+  prayerLabel: z.string().max(100).optional(),
+  extraPracticals: z.array(z.object({ title: z.string().max(300), paras: z.array(z.string().max(5000)).max(20) })).max(5).optional(),
+  interlude: z
+    .object({
+      label: z.string().max(200),
+      heading: z.string().max(300),
+      paras: z.array(z.string().max(5000)).max(50),
+      pulls: z.array(z.string().max(2000)).max(10).optional(),
+      heads: subHeadingsSchema,
+    })
+    .optional(),
   lifePulls: z.array(z.string().max(2000)).max(10).optional(),
   bottomLine: z.array(z.string().max(2000)).max(20),
   benediction: z.array(z.string().max(2000)).max(20),
@@ -456,7 +484,12 @@ export const studyWeekContentSchema = z.object({
     ...Object.values(week.tabMedia ?? {}).flatMap((list) => list ?? []),
   ].map((m) => m.id);
   return new Set(ids).size === ids.length;
-}, "Two media items in this week share an id -- reload and try again.");
+}, "Two media items in this week share an id -- reload and try again.")
+  // A week may print no passage, but passage verses need their reference.
+  .refine((week) => week.passage.length === 0 || week.passageRef.trim() !== "", {
+    message: "Required",
+    path: ["passageRef"],
+  });
 
 export const lessonStudyContentUpdateSchema = z.object({
   id: z.string().uuid(),

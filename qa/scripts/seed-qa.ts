@@ -530,6 +530,103 @@ async function main() {
   };
   await pg.query(`UPDATE lessons SET study_content = $1 WHERE id = $2`, [JSON.stringify(hebrewWeek), s1lesson3.id]);
 
+  // A fourth lesson shaped like the Journey's Parts One to Three: no printed
+  // passage (so no Passage tab), Parts with sub-headings, commentary between a
+  // station's verse and its question, a station with no word study, a second
+  // word study on one station, a capstone closing essay, an Extra Practical
+  // box, and the prayer under its own printed label.
+  const [s1lesson4] = await db
+    .insert(schema.lessons)
+    .values({ studyId: s1.id, orderIndex: 4, title: "Week 3: The Crack Itself", published: true })
+    .returning();
+  if (!s1lesson4) throw new Error("QA seed: lesson insert returned no row.");
+  const crackQuestions = ["When you fail, do you act surprised and ashamed?", "Where do you need to turn back this week?"];
+  const crackBlocks: (typeof schema.contentBlocks.$inferSelect)[] = [];
+  for (const [i, prompt] of crackQuestions.entries()) {
+    const [block] = await db
+      .insert(schema.contentBlocks)
+      .values({ lessonId: s1lesson4.id, orderIndex: i + 1, type: "question", questionPrompt: prompt })
+      .returning();
+    if (!block) throw new Error("QA seed: content block insert returned no row.");
+    crackBlocks.push(block);
+  }
+  const crackWeek: StudyWeekContent = {
+    subtitle: "what it means when the facade gives way",
+    keyVerse: "My soul clings to the dust; Revive me according to Your word.",
+    keyRef: "Psalm 119:25 (NKJV)",
+    study: {
+      sections: [{ heading: "FROM DUST TO DAYBREAK", paras: ["Psalm 119:25 gives you words for where you actually live."] }],
+      parts: [
+        {
+          label: "PART ONE",
+          heading: "God’s Mercy in the Crack",
+          paras: ["God is kind enough not to leave you in the dust.", "For some men, the crack is unmistakable."],
+          heads: [{ at: 1, text: "WHEN THE CRACK IS OBVIOUS" }],
+        },
+      ],
+    },
+    passageRef: "",
+    passage: [],
+    stationsLabel: "REFLECTION",
+    stationsIntro: "When you come apart at the seams, run to God's Word.",
+    stations: [
+      {
+        ref: "1 JOHN 2:1",
+        lang: "greek",
+        verse: "My little children, I write these things to you so that you may not sin.",
+        note: ["John writes this whole letter to people who already believe."],
+        question: crackQuestions[0]!,
+        questionBlockId: crackBlocks[0]!.id,
+        greek: "παράκλητος",
+        translit: "paraklētos",
+        gloss: "counsellor",
+        xref: "1 John 2:1 · John 14:16",
+        body: ["Paraklētos — advocate, helper, one called alongside."],
+        live: "When the accusation starts this week, stop defending yourself.",
+        verseNums: [],
+        anchor: null,
+        moreStudies: [
+          { lang: "hebrew", greek: "שׁוּב", translit: "šûb", gloss: "to turn back, return", xref: "Joel 2:12–13", body: ["Fixture second word study."], live: "Turn back once a day." },
+        ],
+      },
+      {
+        ref: "ACTS 3:19",
+        verse: "Repent therefore, and turn again.",
+        question: crackQuestions[1]!,
+        questionBlockId: crackBlocks[1]!.id,
+        greek: "",
+        translit: "",
+        gloss: "",
+        xref: "",
+        body: [],
+        live: "",
+        verseNums: [],
+        anchor: null,
+      },
+    ],
+    interlude: {
+      label: "MOVEMENT ONE CLOSING",
+      heading: "Looking Back, Looking Forward",
+      paras: ["Six weeks. The first movement is finished.", "Movement Two is the building work."],
+      heads: [{ at: 1, text: "WHERE YOU ARE GOING" }],
+    },
+    lifeTitle: "Where the Crack Meets Real Life",
+    lifeIntro: "This week is where your strategies stop working.",
+    practices: [{ n: 1, title: "ADMIT THAT YOUR PLAN HAS FAILED", body: "You have tried more discipline." }],
+    extraPracticals: [{ title: "FAST FROM ONE COPING MECHANISM", paras: ["For three days this week, fast from one main coping tool."] }],
+    prayerLead: "",
+    prayerBeats: [],
+    prayerClose: "",
+    prayerLabel: "A SIMPLE DAILY PRAYER",
+    prayerLines: ["Father, my way is not working, and You already know it. Amen."],
+    bottomLine: ["The crack in your life is not God walking away. It is God getting in."],
+    benediction: ["Brother, if your facade is cracking right now, do not waste your strength hiding it."],
+    closingVerse: "The crack is not punishment. The crack is the door.",
+    closingRef: "",
+    carry: "What would you see if you stopped patching the crack?",
+  };
+  await pg.query(`UPDATE lessons SET study_content = $1 WHERE id = $2`, [JSON.stringify(crackWeek), s1lesson4.id]);
+
   // qa-user: entitled, zero lesson_progress -> "Not started" bucket in My Library.
   await db.insert(schema.entitlements).values({ userId: userIds.user, productId: pNotStarted.id, source: "admin_grant" });
 

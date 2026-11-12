@@ -4,26 +4,35 @@
 // The general form of backfill-colossians-study-content.ts.
 //
 //   npx tsx --env-file=.env.local scripts/backfill-study-content.ts \
-//     --study <slug> --weeks <file.json> [--apply]
+//     --study <slug> --weeks <file.json> [--replace] [--apply]
 //
 // Dry run by default: matches each parsed week to its lesson ("Week N: …"),
 // checks every week against the same schema the admin builder saves with,
 // and prints what it would do. --apply writes each week in its own
 // transaction.
 //
-// Refuses a study with any published lesson: a published lesson's readers
-// see its snapshot (lib/lessons/publishedContent.ts), which this doesn't
-// maintain. Skips a lesson that already has studyContent, so a re-run never
-// duplicates anything.
+// A published lesson is staged, never changed under its readers: its current
+// content is frozen as the published snapshot first (ensureSnapshot, as the
+// admin builder does on its first edit), so readers keep seeing what they see
+// now and the admin sees "Unpublished changes" with Publish / Discard. A draft
+// lesson is written directly.
+//
+// Skips a lesson that already has studyContent unless --replace is given (to
+// reload a week after a parser fix); question blocks are reused either way,
+// so a re-run never duplicates anything.
 //
 // Each station's answer needs a "question" content block. The importer
 // already made one per printed question, so a station reuses the block whose
-// prompt matches its question; only a station with no match gets a new one.
+// prompt matches its question. The importer sometimes glued the text after a
+// question onto it (a pull-quote, or a whole Life Application section in the
+// Journey's Part Three); such a block is reused too and its prompt corrected.
+// Only a station with no block at all gets a new one.
 import { readFileSync } from "fs";
 import { eq, and, max } from "drizzle-orm";
 import { getDb } from "../lib/db/client";
 import { studies, lessons, contentBlocks } from "../lib/db/schema";
 import type { StudyWeekContent, StudyStation } from "../lib/study/studyContent";
+import { ensureSnapshot } from "../lib/lessons/publishedContent";
 import { studyWeekContentSchema } from "../lib/validation/schemas";
 
 type ParsedWeek = Omit<StudyWeekContent, "stations"> & {
@@ -62,6 +71,9 @@ export function toWeekContent(week: ParsedWeek, stations: StudyStation[]): Study
     prayerBeats: week.prayerBeats,
     prayerClose: week.prayerClose,
     ...(week.prayerBeats.length === 0 && week.prayerLines?.length ? { prayerLines: week.prayerLines } : {}),
+    ...(week.prayerLabel ? { prayerLabel: week.prayerLabel } : {}),
+    ...(week.extraPracticals?.length ? { extraPracticals: week.extraPracticals } : {}),
+    ...(week.interlude ? { interlude: week.interlude } : {}),
     bottomLine: week.bottomLine,
     benediction: week.benediction,
     closingVerse: week.closingVerse,
@@ -85,6 +97,8 @@ function stationFields(st: Omit<StudyStation, "questionBlockId">): Omit<StudySta
     verseNums: st.verseNums,
     anchor: st.anchor,
     ...(st.pulls?.length ? { pulls: st.pulls } : {}),
+    ...(st.note?.length ? { note: st.note } : {}),
+    ...(st.moreStudies?.length ? { moreStudies: st.moreStudies } : {}),
   };
 }
 
@@ -92,6 +106,7 @@ async function main() {
   const slug = arg("--study");
   const file = arg("--weeks");
   const apply = process.argv.includes("--apply");
+  const replace = process.argv.includes("--replace");
   if (!slug || !file) throw new Error("Usage: --study <slug> --weeks <file.json> [--apply]");
 
   const weeks: ParsedWeek[] = JSON.parse(readFileSync(file, "utf-8"));
@@ -99,9 +114,6 @@ async function main() {
   const study = await db.query.studies.findFirst({ where: eq(studies.slug, slug) });
   if (!study) throw new Error(`Study not found: ${slug}`);
   const studyLessons = await db.select().from(lessons).where(eq(lessons.studyId, study.id));
-  if (studyLessons.some((l) => l.published)) {
-    throw new Error(`${slug} has published lessons; this script only loads drafts.`);
-  }
 
   const byWeek = new Map<number, (typeof studyLessons)[number]>();
   for (const l of studyLessons) {
@@ -120,7 +132,7 @@ async function main() {
       problems.push(`Week ${week.week}: no lesson titled "Week ${week.week}: …"`);
       continue;
     }
-    if (lesson.studyContent) {
+    if (lesson.studyContent && !replace) {
       skipped++;
       console.log(`  Week ${week.week}: already has tabbed content, skipped`);
       continue;
@@ -131,10 +143,16 @@ async function main() {
       .from(contentBlocks)
       .where(and(eq(contentBlocks.lessonId, lesson.id), eq(contentBlocks.type, "question")));
     const free = new Map(blocks.map((b) => [promptKey(b.prompt ?? ""), b.id]));
+    const corrected = new Set<string>();
     const reuse = week.stations.map((st) => {
       const key = promptKey(st.question);
-      const id = free.get(key) ?? null;
-      if (id) free.delete(key);
+      let found = free.has(key) ? key : null;
+      // A prompt the importer extended with text that follows the question.
+      if (!found && key.length >= 20) found = [...free.keys()].find((k) => k.startsWith(key)) ?? null;
+      if (!found) return null;
+      const id = free.get(found)!;
+      free.delete(found);
+      if (found !== key) corrected.add(id);
       return id;
     });
 
@@ -151,17 +169,26 @@ async function main() {
     const titleNote = lesson.title === `Week ${week.week}: ${week.title}` ? "" : `  (lesson title "${lesson.title}")`;
     console.log(
       `  Week ${week.week}: ${week.title} — ${week.stations.length} stations ` +
-        `(${reuse.filter(Boolean).length} reuse a question block, ${reuse.filter((r) => !r).length} new), ` +
-        `${week.passage.length} verses${titleNote}`
+        `(${reuse.filter(Boolean).length} reuse a question block${corrected.size ? `, ${corrected.size} with its prompt corrected` : ""}, ` +
+        `${reuse.filter((r) => !r).length} new), ` +
+        `${week.passage.length} verses${lesson.published ? ", staged as unpublished changes" : ""}${titleNote}`
     );
     if (!apply) continue;
 
     await db.transaction(async (tx) => {
+      // Freeze what readers see now before touching a published lesson.
+      if (lesson.published) await ensureSnapshot(tx, lesson.id);
       const [row] = await tx.select({ value: max(contentBlocks.orderIndex) }).from(contentBlocks).where(eq(contentBlocks.lessonId, lesson.id));
       let nextOrder = (row?.value ?? -1) + 1;
       const stations: StudyStation[] = [];
       for (const [i, st] of week.stations.entries()) {
         let id = reuse[i];
+        if (id && corrected.has(id)) {
+          await tx
+            .update(contentBlocks)
+            .set({ questionPrompt: st.question })
+            .where(and(eq(contentBlocks.id, id), eq(contentBlocks.lessonId, lesson.id)));
+        }
         if (!id) {
           const [block] = await tx
             .insert(contentBlocks)
@@ -172,11 +199,10 @@ async function main() {
         }
         stations.push({ ...stationFields(st), questionBlockId: id });
       }
-      // Only fill a lesson that is still empty, in case another write got there first.
       const updated = await tx
         .update(lessons)
         .set({ studyContent: toWeekContent(week, stations) })
-        .where(and(eq(lessons.id, lesson.id), eq(lessons.published, false)))
+        .where(and(eq(lessons.id, lesson.id), eq(lessons.studyId, study.id)))
         .returning({ id: lessons.id });
       if (updated.length !== 1) throw new Error(`Week ${week.week}: lesson changed underneath; nothing written`);
     });

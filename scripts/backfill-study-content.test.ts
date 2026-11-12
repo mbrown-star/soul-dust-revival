@@ -48,6 +48,21 @@ describe("backfill-study-content", () => {
     expect(content.prayerLines).toEqual(["Lord, I am grass,", "Amen."]);
     expect(studyWeekContentSchema.safeParse(content).success).toBe(true);
 
+    const journey = toWeekContent(
+      {
+        ...week,
+        passageRef: "",
+        passage: [],
+        prayerLabel: "A SIMPLE DAILY PRAYER",
+        extraPracticals: [{ title: "THE WATCHMAN PRAYER", paras: ["…"] }],
+        interlude: { label: "MOVEMENT ONE CLOSING", heading: "Looking Back", paras: ["…"] },
+      },
+      []
+    );
+    expect(journey).toMatchObject({ prayerLabel: "A SIMPLE DAILY PRAYER", interlude: { label: "MOVEMENT ONE CLOSING" } });
+    expect(journey.extraPracticals).toHaveLength(1);
+    expect(studyWeekContentSchema.safeParse(journey).success).toBe(true);
+
     const timed = toWeekContent(
       { ...week, prayerBeats: [{ person: "Father", verb: "receive", words: "…" }], prayerLead: "Keep it to five minutes." },
       []

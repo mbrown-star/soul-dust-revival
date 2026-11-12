@@ -252,10 +252,13 @@ export function PassagePanel({ content, change, issues }: PanelProps) {
 
   return (
     <>
-      <PinnedCard icon="passage" title="Passage" description="The full text readers read and memorize from.">
+      <PinnedCard
+        icon="passage"
+        title="Passage"
+        description="The full text readers read and memorize from. Leave both empty for a week that prints no passage; readers then see no Passage tab."
+      >
         <TextField
           label="Passage reference"
-          required
           value={content.passageRef}
           onChange={(passageRef) => change({ ...content, passageRef })}
           error={issues.byPath.get("passageRef")}

@@ -15,9 +15,11 @@ export type StudyWeekContent = {
   keyVerse: string;
   keyRef: string;
   study: {
-    sections: { heading: string; paras: string[]; pulls?: string[]; media?: WeekMedia[] }[];
-    parts: { label: string; heading: string; paras: string[]; pulls?: string[]; media?: WeekMedia[] }[];
+    sections: { heading: string; paras: string[]; pulls?: string[]; heads?: SubHeading[]; media?: WeekMedia[] }[];
+    parts: { label: string; heading: string; paras: string[]; pulls?: string[]; heads?: SubHeading[]; media?: WeekMedia[] }[];
   };
+  // Empty, with an empty `passage`, for a week that prints no passage (the
+  // Journey's Parts One to Three); the reader then has no Passage tab.
   passageRef: string;
   // Verse-by-verse WEB text for the week's whole passage range, embedded at
   // backfill time rather than fetched live -- see scripts/backfill-colossians-study-content.ts.
@@ -39,6 +41,13 @@ export type StudyWeekContent = {
   // timed Father/Son/Spirit form above (every study but Colossians). The
   // reader shows these when prayerBeats is empty.
   prayerLines?: string[];
+  // The prayer's label as printed ("A SIMPLE DAILY PRAYER"); "Daily Prayer" when absent.
+  prayerLabel?: string;
+  // Boxes printed after the practices ("EXTRA PRACTICAL · THE WATCHMAN PRAYER").
+  extraPracticals?: { title: string; paras: string[] }[];
+  // A capstone week's closing essay, printed between the stations and Life
+  // Application ("MOVEMENT ONE CLOSING · Looking Back, Looking Forward").
+  interlude?: { label: string; heading: string; paras: string[]; pulls?: string[]; heads?: SubHeading[] };
   // Pull-quotes printed in the Life Application section.
   lifePulls?: string[];
   bottomLine: string[];
@@ -52,6 +61,30 @@ export type StudyWeekContent = {
 };
 
 export type WeekTabId = "study" | "passage" | "work" | "live" | "lift";
+
+/** A small-capitals sub-heading printed before paragraph `at` of a section or Part. */
+export type SubHeading = { at: number; text: string };
+
+/** One Greek or Hebrew word study. A station has at most one of its own, plus any `moreStudies`. */
+export type WordStudy = {
+  lang?: "greek" | "hebrew";
+  greek: string;
+  translit: string;
+  gloss: string;
+  xref: string;
+  body: string[];
+  live: string;
+};
+
+/** Does this station open a word study? (Some Journey and topical stations only ask a question.) */
+export function hasWordStudy(station: Pick<StudyStation, "lang" | "greek" | "translit">): boolean {
+  return !!(station.lang || station.greek || station.translit);
+}
+
+/** Does this week print its passage? */
+export function hasPassage(content: Pick<StudyWeekContent, "passage">): boolean {
+  return content.passage.length > 0;
+}
 
 /**
  * An image, video, audio, or callout placed inside a week -- after a
@@ -98,6 +131,10 @@ export type StudyStation = {
   anchor: { v: string; word: string } | null;
   // Pull-quotes printed after this station.
   pulls?: string[];
+  // Commentary printed between the verse and the question (the Journey).
+  note?: string[];
+  // A second (or third) word study on the same verse.
+  moreStudies?: WordStudy[];
   media?: WeekMedia[];
 };
 
