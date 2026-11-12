@@ -103,7 +103,13 @@ webhook/entitlement changes done.
       - Part Three Week 32: nine stations; one button opens both οἰκτιρμός and χρηστότης; Micah 6:8 reads "Open the Hebrew · חֶסֶד"; prompts carry no glued text.
       - Genesis Part 1 Week 1: "Open the Hebrew · תֹּהוּ".
       - No console errors.
-  - **Not done, needs a yes:** publishing the Journey's staged changes, through each lesson's Publish changes in the admin or all at once. Until then Journey readers keep the current version.
+  - **Published, on the user's "Yes, publish them":**
+    - All 36 staged Journey weeks, through `publishChanges` (the admin's Publish changes call), one transaction per lesson. A one-off script did it and was deleted after use; it refused to run unless exactly 36 lessons were flagged.
+    - Checked by query: 0 pending, and Parts One–Three each have 12 tabbed snapshots. Part Three's published question prompts all match the corrected ones. Part Four is unchanged (Passage Walk, not yet converted).
+    - Checked on staging as a reader (no `?draft=1`):
+      - Part One Week 6 opens in Study / Work the Word / Live It / Lift Up.
+      - Part Three Week 32 opens in the same four tabs with nine stations.
+  - **Seen, not caused by this:** React hydration error #418 (text mismatch) in the console on tabbed weeks, including Colossians Week 2, which has been live since before today. The pages work. Not investigated yet.
 - **2026-11-12 — Tabbed weeks for the 15 "Five Stations" studies: parser, loader and reader built; data not loaded yet.** Requested as a layout analysis of every manuscript, then "Yes, start there".
   - **Analysis:** read all 32 manuscripts in `Documents/Soul Dust Revival` with their typography.
     - **Devotionals:** both use one day layout, which the reader already handles.
