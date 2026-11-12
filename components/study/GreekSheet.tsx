@@ -1,6 +1,6 @@
 "use client";
 
-import type { StudyStation } from "@/lib/study/studyContent";
+import { type StudyStation, wordStudyHeadword, wordStudyLanguage } from "@/lib/study/studyContent";
 import { Sheet } from "./Sheet";
 
 /**
@@ -19,10 +19,16 @@ export function GreekSheet({
   onGoToStation: () => void;
 }) {
   return (
-    <Sheet label={`Greek word study: ${station.greek}`} onClose={onClose}>
+    <Sheet label={`${wordStudyLanguage(station)} word study: ${wordStudyHeadword(station)}`} onClose={onClose}>
       <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700">{station.ref}</p>
       <p className="font-serif text-2xl text-ink">
-        {station.greek} <span className="text-moss text-lg">({station.translit})</span>
+        {station.greek ? (
+          <>
+            {station.greek} <span className="text-moss text-lg">({station.translit})</span>
+          </>
+        ) : (
+          <span className="italic">{station.translit}</span>
+        )}
       </p>
       <p className="font-serif text-ink">{station.gloss}</p>
       {station.body.map((p, i) => (

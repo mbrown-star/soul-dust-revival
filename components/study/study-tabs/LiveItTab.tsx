@@ -30,6 +30,12 @@ export function LiveItTab({
         <p className="font-serif text-ink mt-2">{content.lifeIntro}</p>
       </div>
 
+      {content.lifePulls?.map((pull, i) => (
+        <blockquote key={i} className="border-l-4 border-ember bg-dusk/5 rounded-r-xl p-5 font-serif italic text-lg text-ink">
+          {pull}
+        </blockquote>
+      ))}
+
       <ul className="space-y-3">
         {content.practices.map((practice, i) => {
           const isDone = completed.has(i);
@@ -55,8 +61,23 @@ export function LiveItTab({
         })}
       </ul>
 
-      {(content.prayerLead || content.prayerBeats.length > 0 || content.prayerClose) && (
+      {content.prayerBeats.length > 0 ? (
         <PrayerTimer lead={content.prayerLead} beats={content.prayerBeats} close={content.prayerClose} />
+      ) : content.prayerLines && content.prayerLines.length > 0 ? (
+        // Every study but Colossians prints its prayer as plain lines, with
+        // no timed Father/Son/Spirit beats.
+        <div className="border border-dusk/10 rounded-xl p-5">
+          <h3 className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700">Daily Prayer</h3>
+          <div className="font-serif italic text-ink mt-3 space-y-1">
+            {content.prayerLines.map((line, i) => (
+              <p key={i}>{line}</p>
+            ))}
+          </div>
+        </div>
+      ) : (
+        (content.prayerLead || content.prayerClose) && (
+          <PrayerTimer lead={content.prayerLead} beats={content.prayerBeats} close={content.prayerClose} />
+        )
       )}
 
       {content.bottomLine.length > 0 && (

@@ -444,6 +444,92 @@ async function main() {
       "<h2>Foreword</h2>\n<p>A QA fixture lesson with no structured studyContent, to exercise the plain reading fallback.</p>\n<h2>Preface</h2>\n<p>The QA study's preface.</p>",
   });
 
+  // A third lesson in the shape most other studies take (see
+  // soul-dust-interactive/tools/study/parse_five_stations.py): a Hebrew word
+  // study printed as a transliteration only, a station quoting another book,
+  // a plain printed prayer (no timed beats), pull-quotes after a station and
+  // in Life Application, an opening section with no heading, and a week that
+  // closes on a pull-quote with no reference.
+  const [s1lesson3] = await db
+    .insert(schema.lessons)
+    .values({ studyId: s1.id, orderIndex: 3, title: "Week 2: The Blessing Spoken", published: true })
+    .returning();
+  if (!s1lesson3) throw new Error("QA seed: lesson insert returned no row.");
+  const hebrewQuestions = ["Whose blessing are you still waiting to earn?", "Where do you need God to keep you this week?"];
+  const hebrewBlocks: (typeof schema.contentBlocks.$inferSelect)[] = [];
+  for (const [i, prompt] of hebrewQuestions.entries()) {
+    const [block] = await db
+      .insert(schema.contentBlocks)
+      .values({ lessonId: s1lesson3.id, orderIndex: i + 1, type: "question", questionPrompt: prompt })
+      .returning();
+    if (!block) throw new Error("QA seed: content block insert returned no row.");
+    hebrewBlocks.push(block);
+  }
+  const hebrewWeek: StudyWeekContent = {
+    subtitle: "from dust to the spoken blessing",
+    keyVerse: "Yahweh bless you, and keep you.",
+    keyRef: "NUMBERS 6:24",
+    study: {
+      sections: [{ heading: "", paras: ["This week opens straight into the essay, with no heading."] }],
+      parts: [{ label: "PART ONE", heading: "THE FACE THAT SHINES", paras: ["Fixture paragraph for the only part."] }],
+    },
+    passageRef: "Numbers 6:24–26",
+    passage: [
+      { c: 6, n: 24, text: "Yahweh bless you, and keep you." },
+      { c: 6, n: 25, text: "Yahweh make his face to shine on you, and be gracious to you." },
+      { c: 6, n: 26, text: "Yahweh lift up his face toward you, and give you peace." },
+    ],
+    stationsLabel: "THE WORD ON THE BLESSING",
+    stationsIntro: "Read each passage slowly.",
+    stations: [
+      {
+        ref: "NUMBERS 6:24",
+        lang: "hebrew",
+        verse: "Yahweh bless you, and keep you.",
+        question: hebrewQuestions[0]!,
+        questionBlockId: hebrewBlocks[0]!.id,
+        greek: "",
+        translit: "bārak",
+        gloss: "to bless; to speak good over another",
+        xref: "NUMBERS 6:24; GENESIS 12:2",
+        body: ["Fixture word study for a transliteration-only Hebrew word."],
+        live: "Speak the blessing over one person this week.",
+        verseNums: ["6:24"],
+        anchor: { v: "6:24", word: "bless" },
+        pulls: ["The blessing comes before the obedience, never after it."],
+      },
+      {
+        ref: "PSALM 121:7",
+        lang: "hebrew",
+        verse: "Yahweh will keep you from all evil. He will keep your soul.",
+        question: hebrewQuestions[1]!,
+        questionBlockId: hebrewBlocks[1]!.id,
+        greek: "שָׁמַר",
+        translit: "shamar",
+        gloss: "to keep, to guard",
+        xref: "PSALM 121:7; NUMBERS 6:24",
+        body: ["Fixture word study for a station quoting another book."],
+        live: "Name what you are trying to guard yourself.",
+        verseNums: [],
+        anchor: null,
+      },
+    ],
+    lifeTitle: "Where This Meets Real Life",
+    lifeIntro: "A QA fixture life-application intro.",
+    lifePulls: ["You cannot bless the families of the earth without the current running through you first."],
+    practices: [{ n: 1, title: "PRAY THE BLESSING OVER YOURSELF", body: "Read Numbers 6:24–26 aloud each morning." }],
+    prayerLead: "",
+    prayerBeats: [],
+    prayerClose: "",
+    prayerLines: ["Father, Your first word over me was a blessing.", "Speak it over me again today.", "In Jesus' name, amen."],
+    bottomLine: ["The blessing was always a gift for the empty."],
+    benediction: ["Lift up your eyes to the face that shines on you."],
+    closingVerse: "Your soul clings to the dust with your eyes cast down. Lift them up.",
+    closingRef: "",
+    carry: "Where are you still assuming God's face is frowning?",
+  };
+  await pg.query(`UPDATE lessons SET study_content = $1 WHERE id = $2`, [JSON.stringify(hebrewWeek), s1lesson3.id]);
+
   // qa-user: entitled, zero lesson_progress -> "Not started" bucket in My Library.
   await db.insert(schema.entitlements).values({ userId: userIds.user, productId: pNotStarted.id, source: "admin_grant" });
 

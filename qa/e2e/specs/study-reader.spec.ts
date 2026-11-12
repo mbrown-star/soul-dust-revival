@@ -137,6 +137,42 @@ test.describe("Interactive Study reader", () => {
     await expect(page.getByText("Quiet Question to Carry")).toBeVisible();
   });
 
+  test("a Five Stations week: Hebrew word study, plain prayer, pull-quotes, no closing reference", async ({ page }) => {
+    // Lesson 3 "Week 2: The Blessing Spoken" is shaped like the studies
+    // parsed by soul-dust-interactive/tools/study/parse_five_stations.py.
+    await page.goto("/studies/qa-study-not-started");
+    await page.getByRole("link", { name: /Week 2: The Blessing Spoken/ }).click();
+    await expect(page).toHaveURL(/\/studies\/qa-study-not-started\/[^/]+$/);
+
+    // Study: an opening section with no heading shows its text without an empty heading.
+    await expect(page.getByText("This week opens straight into the essay, with no heading.")).toBeVisible();
+    await expect(page.getByText("One Part", { exact: true })).toBeVisible();
+
+    // Work the Word: the word study is labelled Hebrew, headed by its
+    // transliteration when no Hebrew script is printed.
+    await page.getByRole("tab", { name: "Work the Word" }).click();
+    await page.getByRole("button", { name: "Open the Hebrew · bārak" }).click();
+    await expect(page.getByText("Going Deeper · The Hebrew")).toBeVisible();
+    await expect(page.getByText("The blessing comes before the obedience, never after it.")).toBeVisible();
+    await page.getByRole("tab", { name: "Station 2" }).click();
+    await expect(page.getByRole("button", { name: "Open the Hebrew · שָׁמַר" })).toBeVisible();
+
+    // Passage: the station quoting another book is reachable by its button.
+    await page.getByRole("tab", { name: "Passage", exact: true }).click();
+    await expect(page.getByRole("button", { name: "שָׁמַר · PSALM 121:7" })).toBeVisible();
+
+    // Live It: the printed prayer as lines, not the five-minute timer.
+    await page.getByRole("tab", { name: "Live It" }).click();
+    await expect(page.getByRole("heading", { name: "Daily Prayer" })).toBeVisible();
+    await expect(page.getByText("Speak it over me again today.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Start the prayer" })).toHaveCount(0);
+    await expect(page.getByText("You cannot bless the families of the earth without the current running through you first.")).toBeVisible();
+
+    // Lift Up: a pull-quote closing with no reference line under it.
+    await page.getByRole("tab", { name: "Lift Up" }).click();
+    await expect(page.getByText("Your soul clings to the dust with your eyes cast down. Lift them up.")).toBeVisible();
+  });
+
   test("a study-kind lesson with no studyContent falls back to the plain reading view, not an error or empty tabs", async ({ page }) => {
     await page.goto("/studies/qa-study-not-started");
     await page.getByRole("link", { name: "Introduction" }).click();

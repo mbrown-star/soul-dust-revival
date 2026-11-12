@@ -35,6 +35,12 @@ export type StudyWeekContent = {
   prayerLead: string;
   prayerBeats: { person: "Father" | "Son" | "Spirit"; verb: string; words: string }[];
   prayerClose: string;
+  // The prayer as printed, line by line, for a week whose prayer isn't the
+  // timed Father/Son/Spirit form above (every study but Colossians). The
+  // reader shows these when prayerBeats is empty.
+  prayerLines?: string[];
+  // Pull-quotes printed in the Life Application section.
+  lifePulls?: string[];
   bottomLine: string[];
   benediction: string[];
   closingVerse: string;
@@ -71,12 +77,17 @@ export type WeekMedia = {
 
 export type StudyStation = {
   ref: string;
+  // Which language the word study opens (GOING DEEPER · THE GREEK / THE
+  // HEBREW). Absent on weeks loaded before this existed, which were all Greek.
+  lang?: "greek" | "hebrew";
   verse: string;
   question: string;
   // Real content_blocks row (type "question") created at backfill time, so
   // the station's answer reuses the existing QuestionBlock/responses
   // save-per-user plumbing unchanged rather than a parallel mechanism.
   questionBlockId: string;
+  // The original-language word (Greek or Hebrew, despite the name). Empty
+  // when the manuscript prints only the transliteration.
   greek: string;
   translit: string;
   gloss: string;
@@ -85,5 +96,20 @@ export type StudyStation = {
   live: string;
   verseNums: string[];
   anchor: { v: string; word: string } | null;
+  // Pull-quotes printed after this station.
+  pulls?: string[];
   media?: WeekMedia[];
 };
+
+/** "The Greek" or "The Hebrew", as the manuscript labels the station's word study. */
+export function wordStudyLanguage(station: Pick<StudyStation, "lang">): "Greek" | "Hebrew" {
+  return station.lang === "hebrew" ? "Hebrew" : "Greek";
+}
+
+/**
+ * The word a station's study turns on: the original-language word, or, where
+ * the manuscript prints only the transliteration (some Hebrew studies), that.
+ */
+export function wordStudyHeadword(station: Pick<StudyStation, "greek" | "translit">): string {
+  return station.greek || station.translit;
+}

@@ -15,6 +15,8 @@ import { WeekMediaSlot } from "../WeekMediaSlot";
  * row, and its study_template.html, which marks a part's <details> read on
  * its "toggle" event rather than via a separate click).
  */
+const PART_COUNT_WORDS: Record<number, string> = { 1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six" };
+
 export function StudyTab({
   lessonId,
   content,
@@ -62,7 +64,7 @@ export function StudyTab({
 
       {content.study.sections.map((section, i) => (
         <div key={i} className="space-y-3">
-          <h2 className="font-display font-bold text-xl text-ink">{section.heading}</h2>
+          {section.heading && <h2 className="font-display font-bold text-xl text-ink">{section.heading}</h2>}
           {section.pulls?.map((pull, j) => (
             <blockquote key={j} className="border-l-4 border-ember bg-dusk/5 rounded-r-xl p-5 font-serif italic text-lg text-ink">
               {pull}
@@ -79,7 +81,9 @@ export function StudyTab({
 
       {content.study.parts.length > 0 && (
       <div className="space-y-3">
-        <p className="font-sans text-xs font-semibold uppercase tracking-wide text-moss">Four Parts</p>
+        <p className="font-sans text-xs font-semibold uppercase tracking-wide text-moss">
+          {PART_COUNT_WORDS[content.study.parts.length] ?? content.study.parts.length} Part{content.study.parts.length === 1 ? "" : "s"}
+        </p>
         {content.study.parts.map((part, i) => {
           const isOpen = openPart === i;
           const isRead = readParts.has(i);

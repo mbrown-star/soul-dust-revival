@@ -31,7 +31,11 @@ test.describe("My Library / entitlements", () => {
 
       // Information-consistency: progress fraction shown must match seeded state.
       await expect(continueSection.getByText("1/5")).toBeVisible(); // Day 1 completed of 5
-      await expect(notStartedSection.getByText("0/2")).toBeVisible();
+      // Week 1, Introduction, Week 2 (scoped to the card: the free-sample
+      // devotional under "Not started" also has three days).
+      await expect(
+        notStartedSection.locator("div.rounded-xl", { hasText: "QA Digital Study — Not Started" }).getByText("0/3")
+      ).toBeVisible();
       await expect(completedSection.getByText("1/1")).toBeVisible();
 
       // Button labels follow completed-count, not just bucket name.

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { StudyWeekContent } from "@/lib/study/studyContent";
+import { type StudyWeekContent, wordStudyHeadword, wordStudyLanguage } from "@/lib/study/studyContent";
 import { QuestionBlock } from "../QuestionBlock";
 import { WeekMediaSlot } from "../WeekMediaSlot";
 
@@ -91,7 +91,7 @@ export function WorkTheWordTab({
     <div className="space-y-4">
       <div>
         <h2 className="font-display font-bold text-xl text-ink">{content.stationsLabel}</h2>
-        <p className="font-serif text-ink mt-2">{content.stationsIntro} Answer first; the Greek opens after.</p>
+        <p className="font-serif text-ink mt-2">{content.stationsIntro} Answer first; the word study opens after.</p>
       </div>
 
       <div className="flex gap-1.5" role="tablist" aria-label="Stations">
@@ -139,10 +139,16 @@ export function WorkTheWordTab({
                 bg-dusk/5-vs-ember-700 contrast gap as LiveItTab's "Bottom
                 Line" label (4.47:1, under WCAG AA's 4.5:1) -- moss clears it. */}
             <p className="font-sans text-xs font-semibold uppercase tracking-wide text-moss">
-              Going Deeper · The Greek
+              Going Deeper · The {wordStudyLanguage(station)}
             </p>
             <p className="font-serif text-xl text-ink">
-              {station.greek} <span className="text-moss text-base">({station.translit})</span>
+              {station.greek ? (
+                <>
+                  {station.greek} <span className="text-moss text-base">({station.translit})</span>
+                </>
+              ) : (
+                <span className="italic">{station.translit}</span>
+              )}
             </p>
             <p className="font-serif text-ink">{station.gloss}</p>
             {station.body.map((p, i) => (
@@ -162,9 +168,15 @@ export function WorkTheWordTab({
             onClick={revealGreek}
             className="w-full min-h-[44px] rounded-xl border-2 border-dashed border-ember-700 text-ember-700 font-sans font-semibold text-sm"
           >
-            Open the Greek · {station.greek}
+            Open the {wordStudyLanguage(station)} · {wordStudyHeadword(station)}
           </button>
         )}
+
+        {station.pulls?.map((pull, i) => (
+          <blockquote key={i} className="border-l-4 border-ember bg-dusk/5 rounded-r-xl p-5 font-serif italic text-lg text-ink">
+            {pull}
+          </blockquote>
+        ))}
       </div>
 
       <WeekMediaSlot slot={`station:${current}`} />

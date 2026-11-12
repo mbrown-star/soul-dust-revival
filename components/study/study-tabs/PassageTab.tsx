@@ -1,6 +1,6 @@
 "use client";
 
-import type { StudyWeekContent } from "@/lib/study/studyContent";
+import { type StudyWeekContent, wordStudyHeadword } from "@/lib/study/studyContent";
 import { ReadAloudButton } from "@/components/devotional/ReadAloudButton";
 import { HideWordsSlider } from "@/components/devotional/HideWordsSlider";
 import { WeekMediaSlot } from "../WeekMediaSlot";
@@ -56,7 +56,7 @@ export function PassageTab({
     <div className="space-y-6">
       <div>
         <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700">{content.passageRef}</p>
-        <p className="font-sans text-xs text-moss mt-1">World English Bible. Tap an underlined word to open the Greek.</p>
+        <p className="font-sans text-xs text-moss mt-1">World English Bible. Tap an underlined word to open its word study.</p>
       </div>
 
       <div className="prose max-w-none font-serif text-lg leading-relaxed">
@@ -80,7 +80,7 @@ export function PassageTab({
               onClick={() => onOpenGreek(st.ref)}
               className="min-h-[44px] px-4 rounded-full border border-dusk/20 text-sm font-sans font-semibold text-ink hover:border-moss/50"
             >
-              {st.greek} · {st.ref}
+              {wordStudyHeadword(st)} · {st.ref}
             </button>
           ))}
         </div>

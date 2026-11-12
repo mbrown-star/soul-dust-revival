@@ -24,7 +24,8 @@ type PrayerBeat = StudyWeekContent["prayerBeats"][number];
 
 // Mirrors studyWeekContentSchema's array caps, so "Add" stops before the
 // server would reject the week.
-const MAX = { sections: 20, parts: 20, paras: 50, pulls: 20, stations: 20, body: 20, verseNums: 50, practices: 20, beats: 10, lines: 20 };
+const LANGUAGES = ["Greek", "Hebrew"] as const;
+const MAX = { sections: 20, parts: 20, paras: 50, pulls: 20, stations: 20, body: 20, verseNums: 50, practices: 20, beats: 10, lines: 20, prayerLines: 40 };
 
 function preview(text: string, length = 70) {
   const t = text.trim();
@@ -125,7 +126,8 @@ function TextSectionFields({
         {withLabel && "label" in item && (
           <TextField label="Label" required value={item.label} onChange={(label) => update({ ...item, label })} error={issues.byPath.get(`${path}.label`)} />
         )}
-        <TextField label="Heading" required value={item.heading} onChange={(heading) => update({ ...item, heading })} error={issues.byPath.get(`${path}.heading`)} />
+        {/* A Part needs its heading; an opening section may have none. */}
+        <TextField label="Heading" required={withLabel} value={item.heading} onChange={(heading) => update({ ...item, heading })} error={issues.byPath.get(`${path}.heading`)} />
       </div>
       <LineList
         label="Paragraph"
@@ -329,9 +331,17 @@ function StationFields({ station, update, path, issues }: { station: StudyStatio
         hint="Readers answer this in their own words; answers are saved to their account."
       />
       <fieldset className="border border-moss/10 rounded-lg p-3 space-y-4">
-        <legend className="text-xs font-semibold text-ember-700 uppercase tracking-wide px-1">Going deeper -- the Greek</legend>
-        <div className="grid sm:grid-cols-3 gap-4">
-          <TextField label="Greek word" value={station.greek} onChange={(greek) => update({ ...station, greek })} />
+        <legend className="text-xs font-semibold text-ember-700 uppercase tracking-wide px-1">
+          Going deeper -- the {station.lang === "hebrew" ? "Hebrew" : "Greek"}
+        </legend>
+        <div className="grid sm:grid-cols-4 gap-4">
+          <SelectField
+            label="Language"
+            value={station.lang === "hebrew" ? "Hebrew" : "Greek"}
+            options={LANGUAGES}
+            onChange={(language) => update({ ...station, lang: language === "Hebrew" ? "hebrew" : "greek" })}
+          />
+          <TextField label="Word" value={station.greek} onChange={(greek) => update({ ...station, greek })} />
           <TextField label="Transliteration" value={station.translit} onChange={(translit) => update({ ...station, translit })} />
           <TextField label="Gloss" value={station.gloss} onChange={(gloss) => update({ ...station, gloss })} />
         </div>
@@ -469,7 +479,21 @@ export function LiveItPanel({ content, change, issues }: PanelProps) {
         )}
       />
 
-      <PinnedCard icon="prayer" title="Five-minute prayer" description="The guided prayer timer walks through these in order.">
+      <PinnedCard
+        icon="prayer"
+        title="Daily prayer"
+        description="Lead-in, beats and close make the guided five-minute prayer timer. A week with no beats shows its prayer lines as printed."
+      >
+        <LineList
+          label="Prayer line"
+          items={content.prayerLines ?? []}
+          onChange={(prayerLines) => change({ ...content, prayerLines: prayerLines.length ? prayerLines : undefined })}
+          max={MAX.prayerLines}
+          multiline={false}
+          pathPrefix="prayerLines"
+          issues={issues}
+          addLabel="+ Add prayer line"
+        />
         <TextField label="Lead-in" multiline rows={2} value={content.prayerLead} onChange={(prayerLead) => change({ ...content, prayerLead })} />
         <SortableList<PrayerBeat>
           variant="compact"

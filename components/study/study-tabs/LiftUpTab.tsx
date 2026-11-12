@@ -95,7 +95,9 @@ export function LiftUpTab({
 
       <div className="bg-white border border-dusk/10 rounded-xl p-6">
         <p className="font-serif italic text-lg text-ink">{content.closingVerse}</p>
-        <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700 mt-3">{content.closingRef}</p>
+        {content.closingRef && (
+          <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700 mt-3">{content.closingRef}</p>
+        )}
       </div>
 
       <div className="bg-ink text-parchment rounded-xl p-6">

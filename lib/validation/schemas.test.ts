@@ -823,4 +823,46 @@ describe("Study week media", () => {
   it("accepts media at the end of a tab", () => {
     expect(studyWeekContentSchema.safeParse({ ...base, tabMedia: { lift: [{ id, type: "audio", mediaUrl: "https://example.com/a.mp3" }] } }).success).toBe(true);
   });
+
+  describe("Five Stations weeks (parse_five_stations.py)", () => {
+    const station = {
+      ref: "NUMBERS 6:24",
+      verse: "Yahweh bless you, and keep you.",
+      question: "Whose blessing are you waiting to earn?",
+      questionBlockId: id,
+      greek: "",
+      translit: "bārak",
+      gloss: "to bless",
+      xref: "",
+      body: [],
+      live: "",
+      verseNums: ["6:24"],
+      anchor: null,
+    };
+
+    it("keeps a station's language and pull-quotes, a printed prayer, and Life Application pull-quotes", () => {
+      const week = {
+        ...base,
+        stations: [{ ...station, lang: "hebrew", pulls: ["A pull-quote."] }],
+        prayerLines: ["Father, bless me.", "Amen."],
+        lifePulls: ["Another pull-quote."],
+      };
+      const parsed = studyWeekContentSchema.parse(week);
+      // Not stripped on save: the admin builder saves through this schema.
+      expect(parsed.stations[0]).toMatchObject({ lang: "hebrew", pulls: ["A pull-quote."] });
+      expect(parsed.prayerLines).toEqual(["Father, bless me.", "Amen."]);
+      expect(parsed.lifePulls).toEqual(["Another pull-quote."]);
+    });
+
+    it("rejects a language other than Greek or Hebrew", () => {
+      expect(studyWeekContentSchema.safeParse({ ...base, stations: [{ ...station, lang: "aramaic" }] }).success).toBe(false);
+    });
+
+    it("lets an opening section go without a heading, but not a Part", () => {
+      const section = { heading: "", paras: ["Opens straight into the essay."] };
+      expect(studyWeekContentSchema.safeParse({ ...base, study: { sections: [section], parts: [] } }).success).toBe(true);
+      const part = { label: "PART ONE", heading: "", paras: [] };
+      expect(studyWeekContentSchema.safeParse({ ...base, study: { sections: [], parts: [part] } }).success).toBe(false);
+    });
+  });
 });

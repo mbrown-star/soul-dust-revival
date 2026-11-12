@@ -368,6 +368,7 @@ const weekMediaListSchema = z.array(weekMediaSchema).max(10).optional();
 
 const studyStationSchema = z.object({
   ref: z.string().min(1).max(100),
+  lang: z.enum(["greek", "hebrew"]).optional(),
   verse: z.string().min(1).max(2000),
   question: z.string().min(1).max(2000),
   questionBlockId: z.string().uuid().or(z.literal("")),
@@ -379,6 +380,7 @@ const studyStationSchema = z.object({
   live: z.string().max(2000),
   verseNums: z.array(z.string().max(50)).max(50),
   anchor: z.object({ v: z.string().max(50), word: z.string().max(100) }).nullable(),
+  pulls: z.array(z.string().max(2000)).max(10).optional(),
   media: weekMediaListSchema,
 });
 
@@ -390,7 +392,8 @@ export const studyWeekContentSchema = z.object({
     sections: z
       .array(
         z.object({
-          heading: z.string().min(1).max(300),
+          // May be empty: some weeks open their essay without a heading.
+          heading: z.string().max(300),
           paras: z.array(z.string().max(5000)).max(50),
           pulls: z.array(z.string().max(2000)).max(20).optional(),
           media: weekMediaListSchema,
@@ -426,6 +429,8 @@ export const studyWeekContentSchema = z.object({
     .array(z.object({ person: z.enum(["Father", "Son", "Spirit"]), verb: z.string().max(100), words: z.string().max(1000) }))
     .max(10),
   prayerClose: z.string().max(1000),
+  prayerLines: z.array(z.string().max(1000)).max(40).optional(),
+  lifePulls: z.array(z.string().max(2000)).max(10).optional(),
   bottomLine: z.array(z.string().max(2000)).max(20),
   benediction: z.array(z.string().max(2000)).max(20),
   closingVerse: z.string().max(2000),

@@ -28,6 +28,8 @@ const TAB_OF_FIELD: Record<Exclude<keyof StudyWeekContent, "tabMedia">, StudyTab
   prayerLead: "live",
   prayerBeats: "live",
   prayerClose: "live",
+  prayerLines: "live",
+  lifePulls: "live",
   bottomLine: "live",
   benediction: "lift",
   closingVerse: "lift",
