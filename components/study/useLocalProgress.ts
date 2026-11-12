@@ -1,49 +1,31 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
+import { useStoredSet } from "@/lib/hooks/useStoredSet";
 
 /**
  * Tracks a set of completed indexes (which of a week's 4 parts have been
  * read, which of its 5 practices are checked off) in localStorage, scoped
  * per lesson. This is UI chrome, not data the app reports on or needs to
  * sync across devices the way a saved answer or lesson completion is --
- * unlike those, it doesn't need a server round trip. Every read/write is
- * wrapped in try/catch since localStorage can throw (private browsing,
- * disabled storage), in which case this silently behaves as if nothing is
- * marked yet rather than breaking the page.
+ * unlike those, it doesn't need a server round trip. The first render
+ * shows nothing marked, as the server does; saved marks appear right after
+ * (useStoredSet). If localStorage is unavailable, marks still work for the
+ * visit and just aren't remembered.
  */
 export function useLocalProgress(storageKey: string): [Set<number>, (index: number) => void] {
-  // Lazy initializer instead of an effect-driven setState: this still reads
-  // localStorage only on the client (the window check), but does it once,
-  // synchronously, during the first render of this component instance --
-  // callers that need a fresh read per lesson should key the component by
-  // lessonId (see StudyLessonView's usage) rather than relying on this
-  // hook to react to a changed storageKey on an already-mounted instance.
-  const [done, setDone] = useState<Set<number>>(() => {
-    if (typeof window === "undefined") return new Set();
-    try {
-      const raw = window.localStorage.getItem(storageKey);
-      return raw ? new Set(JSON.parse(raw)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
+  const [done, update] = useStoredSet<number>(storageKey);
 
   const toggle = useCallback(
     (index: number) => {
-      setDone((prev) => {
-        const next = new Set(prev);
+      update((current) => {
+        const next = new Set(current);
         if (next.has(index)) next.delete(index);
         else next.add(index);
-        try {
-          window.localStorage.setItem(storageKey, JSON.stringify([...next]));
-        } catch {
-          // ignore -- best-effort persistence only
-        }
         return next;
       });
     },
-    [storageKey]
+    [update]
   );
 
   return [done, toggle];

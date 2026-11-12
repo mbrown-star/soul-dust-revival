@@ -208,6 +208,39 @@ test.describe("Interactive Study reader", () => {
     await expect(page.getByRole("heading", { name: "A SIMPLE DAILY PRAYER" })).toBeVisible();
   });
 
+  test("a week with saved progress reloads without a hydration mismatch", async ({ page }) => {
+    // Progress (tabs done, parts read, practices checked) lives only in the
+    // browser. The server can't know it, so the first render has to match
+    // the server's "nothing done" and pick saved progress up afterward;
+    // reading it during that first render made React throw error #418.
+    const hydrationErrors: string[] = [];
+    const isHydration = (text: string) => /hydrat|#418|#423|#425|did not match/i.test(text);
+    page.on("console", (msg) => {
+      if (msg.type() === "error" && isHydration(msg.text())) hydrationErrors.push(msg.text());
+    });
+    page.on("pageerror", (err) => {
+      if (isHydration(err.message)) hydrationErrors.push(err.message);
+    });
+
+    await openLesson1(page);
+    await page.getByRole("button", { name: /Part 1/ }).click();
+    await expect(page.getByText("1 of 2 parts read")).toBeVisible();
+    await page.getByRole("button", { name: "Finished the study" }).click();
+    await expect(page.getByRole("button", { name: "✓ Finished the study" })).toBeVisible();
+    await page.getByRole("tab", { name: "Live It" }).click();
+    await page.getByRole("checkbox").first().check();
+
+    hydrationErrors.length = 0;
+    await page.reload();
+    // Saved progress still shows once the page has loaded.
+    await expect(page.getByText("1 of 2 parts read")).toBeVisible();
+    await expect(page.getByRole("button", { name: "✓ Finished the study" })).toBeVisible();
+    await expect(page.getByText("20%")).toBeVisible();
+    await page.getByRole("tab", { name: "Live It" }).click();
+    await expect(page.getByRole("checkbox").first()).toBeChecked();
+    expect(hydrationErrors).toEqual([]);
+  });
+
   test("a study-kind lesson with no studyContent falls back to the plain reading view, not an error or empty tabs", async ({ page }) => {
     await page.goto("/studies/qa-study-not-started");
     await page.getByRole("link", { name: "Introduction" }).click();
