@@ -502,7 +502,7 @@ the mode set.
       `NEXT_PUBLIC_SUPABASE_*`/`R2_PUBLIC_BASE_URL`, placeholders for everything else.
       A `.souldustrevival.com` cookie is also sent to the staging hosts — acceptable,
       since both use the same Supabase project and staging stays Access-gated.
-- [ ] Cloudflare rate-limiting rule on `/api/auth/*` and `/sneak-peek`.
+- [x] Cloudflare rate-limiting rule (2026-11-12): covers `/api/auth/login-recorded`; `/sneak-peek` is a page, and sign-in codes go from the browser straight to Supabase, which throttles them per address. See SECURITY.md "Rate limiting".
 - [ ] After deploy: one real signup from a fresh email end to end (code arrives, a
       `users` row exists, the sample opens, a locked lesson stays locked), and confirm
       `/books`, `/checkout` redirect home and `/api/checkout` returns 404. **Mostly done
@@ -606,8 +606,10 @@ deployment before treating any of it as launch-ready:
 - [ ] Test on at least one real phone and one real tablet, not just DevTools' device toolbar
 
 **Security**
-- [ ] Configure Cloudflare Rate Limiting Rules for `/api/checkout`, `/api/responses`,
-      `/api/progress`, `/login` (see SECURITY.md — not built into the app itself)
+- [x] Cloudflare rate-limiting rule (2026-11-12, the Free plan's one rule) on `/api/checkout`,
+      `/api/contact`, `/api/amazon-claims`, `/api/amazon-reminders` and `/api/auth/login-recorded`.
+      `/api/responses` and `/api/progress` are left out on purpose, and `/login` is a page (see
+      SECURITY.md "Rate limiting").
 
 ## 7. Known gaps worth deciding on, not yet built
 - [ ] The Journey is switched on (2026-11-11: 52 lessons published, Journey published). Still to do: walk it on staging as a non-admin test buyer (begin, a week's pacing, a threshold's look-back).

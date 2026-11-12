@@ -247,8 +247,8 @@ approval or a code printed in the book). What limits abuse:
   `PATCH /api/admin/amazon-claims`, `requireAdmin`), which deletes exactly the entitlement
   the claim created and marks the claim revoked.
 - Accepted (Low): the 409 for a used order number tells a signed-in caller that someone has
-  claimed that title with that number; it reveals nothing about who. Add `/api/amazon-claims`
-  to the Cloudflare rate-limiting rule.
+  claimed that title with that number; it reveals nothing about who. `/api/amazon-claims` is
+  in the Cloudflare rate-limiting rule (see "Rate limiting").
 
 ## "Email me the claim link" from the Buy on Amazon modal (2026-11-12)
 On a printed book that has a digital edition, "Buy on Amazon" opens a modal
@@ -274,7 +274,7 @@ keeps it from being used to email strangers:
   spoofed header could only change which hash a visitor's requests count against, and the
   per-address limits still hold.
 - Accepted (Low): someone can still have us send one fixed email per title per day to an
-  address they don't own. Add `/api/amazon-reminders` to the Cloudflare rate-limiting rule.
+  address they don't own. `/api/amazon-reminders` is in the Cloudflare rate-limiting rule (see "Rate limiting").
 
 ## Webhook idempotency
 Stripe redelivers webhook events (retries, at-least-once delivery). The checkout webhook
@@ -455,15 +455,35 @@ which the route emails to `admin@souldustrevival.com` (`CONTACT_INBOX` in
   differs from the signed-in account's email, the email says which account sent it.
 - A Resend refusal is a 502 to the person ("didn't send"), never a false success; the log
   line carries only Resend's error text, never the message or the person's details.
-- **Not rate-limited in the app**: a signed-in account could send many messages. Add
-  `/api/contact` to the Cloudflare rate-limiting rule below.
+- **Not rate-limited in the app**: a signed-in account could send many messages.
+  `/api/contact` is in the Cloudflare rate-limiting rule below (5 per 10 seconds per IP).
 
 ## Rate limiting (not built into the app — configure at the platform level)
 No custom rate limiter is built into the app code, to avoid adding a stateful
 dependency (e.g. Redis) for a concern the hosting platform already handles well:
-- **Cloudflare** (already your host) — set Rate Limiting Rules in the dashboard for
-  `/api/checkout`, `/api/responses`, `/api/progress`, `/api/contact`, `/api/amazon-claims`, and `/login`. This is free-tier
-  available and requires no code changes.
+- **Cloudflare rule "Email, claims and checkout"** (Security → Security rules, zone
+  souldustrevival.com, created 2026-11-12). The zone is on the Free plan: one rate-limiting
+  rule, matched on the URI path only, counted per IP over 10 seconds, Block for 10 seconds.
+  It applies to every hostname in the zone (production, `app.`, staging); the
+  `.workers.dev` preview links aren't in the zone, so they aren't covered.
+  - Expression: `(http.request.uri.path in {"/api/amazon-reminders" "/api/contact"
+    "/api/amazon-claims" "/api/checkout" "/api/auth/login-recorded"})`
+  - More than 5 requests in 10 seconds from one IP, across all five paths together, is
+    blocked (429) for 10 seconds. These are one-at-a-time human actions, so only scripts
+    hit it. Checked live: invalid requests to `/api/amazon-reminders` on production got
+    400 six times, then 429, and went through again after the 10 seconds (Cloudflare's
+    counts can let a request or two over the limit while its data centres catch up).
+  - **Left out on purpose:** `/api/responses` and `/api/progress` fire on every saved
+    answer and opened week. A group studying on one church Wi-Fi shares an IP, and the
+    Free plan's single shared limit could block real readers mid-study. Both already
+    require sign-in and ownership.
+  - `/login`, `/signup` and `/sneak-peek` are pages; the sign-in code is requested from
+    the browser straight to Supabase, so a Cloudflare rule on our domain can't throttle it
+    (Supabase does, below).
+  - The app's own limits still apply underneath (`/api/amazon-reminders` per address and
+    per visitor, `/api/amazon-claims` 10 per account per day).
+  - A paid plan (Pro: two rules, windows up to an hour) would allow a separate, generous
+    rule for reader saves and a longer block.
 - **Supabase Auth** already throttles magic-link requests per email address at the
   project level (configurable under Auth settings), which limits email-bombing abuse
   on `/login` independent of any Cloudflare rule.

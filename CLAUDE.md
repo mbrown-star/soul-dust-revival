@@ -58,7 +58,18 @@ webhook/entitlement changes done.
 - **Scaffold code is in scope for both reviews.** Inherited code, dependencies, default configs, and seed data are reviewed too. Report scaffold-origin findings separately from new-code findings.
 - **On scaffold updates,** re-run both reviews against the whole updated scaffold, not just the diff.
 
-- **2026-11-12 (latest) — Buy on Amazon explains the digital edition and emails the claim link.** Requested as a modal before going to Amazon; the user chose "option 1" (explain, offer to email the `/claim` link, then Amazon) over granting access on click.
+- **2026-11-12 (latest) — Cloudflare rate-limiting rule created.** Requested as "proceed to the cloudflare rate limiting rule".
+  - **Plan limits:** the zone is on the Free plan: one rate-limiting rule, matched on the URI path only (no method or host), counted per IP, 10-second window, Block for 10 seconds (Cloudflare's docs, checked).
+  - **Rule "Email, claims and checkout",** created in the dashboard (Security → Security rules) after the user approved the exact rule:
+    - matches `/api/amazon-reminders`, `/api/contact`, `/api/amazon-claims`, `/api/checkout`, `/api/auth/login-recorded`;
+    - more than 5 requests in 10 seconds per IP blocks for 10 seconds;
+    - Active on every hostname in the zone.
+  - **Left out:**
+    - `/api/responses` and `/api/progress`: a group on one church Wi-Fi shares an IP, and the single shared limit could block real readers. Both require sign-in and ownership.
+    - `/login`, `/signup`, `/sneak-peek`: pages; sign-in codes go from the browser straight to Supabase, which throttles them.
+  - **Checked live:** eight invalid POSTs to production's `/api/amazon-reminders` (no email sent) got 400 ×6 then 429 ×2, then 400 again after 12 s; the homepage stayed 200. SECURITY.md "Rate limiting" and BUILD_TASKS updated.
+  - **Noticed:** the dashboard's page wrote to the user's clipboard during one of the menu clicks; the user was told to check it before pasting.
+- **2026-11-12 (later) — Buy on Amazon explains the digital edition and emails the claim link.** Requested as a modal before going to Amazon; the user chose "option 1" (explain, offer to email the `/claim` link, then Amazon) over granting access on click.
   - **Why not an email at checkout:** Amazon's checkout isn't ours, and Amazon gives authors no buyer details and no purchase notification. Its affiliate reports are totals by title and day only. So an email given before going to Amazon says who clicked, not who bought, and the order number on `/claim` stays the check. Our own checkout already requires an account and unlocks the digital edition with a printed book.
   - **Modal** (`components/commerce/AmazonBuyModal.tsx`, used by `AmazonPurchase` when the title has a digital edition and a live link, on the product page and bundle component rows):
     - Explains the claim step and has an email field, filled in for a signed-in reader.
