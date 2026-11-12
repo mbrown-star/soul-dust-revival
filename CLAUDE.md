@@ -58,7 +58,42 @@ webhook/entitlement changes done.
 - **Scaffold code is in scope for both reviews.** Inherited code, dependencies, default configs, and seed data are reviewed too. Report scaffold-origin findings separately from new-code findings.
 - **On scaffold updates,** re-run both reviews against the whole updated scaffold, not just the diff.
 
-- **2026-11-12 (newest of all) — Tabbed weeks for the 15 "Five Stations" studies: parser, loader and reader built; data not loaded yet.** Requested as a layout analysis of every manuscript, then "Yes, start there".
+- **2026-11-12 (latest) — Tabbed weeks for the Journey's Parts One to Three, and Hebrew in reading order; code shipped, data not loaded yet.** Requested as "No Passage (Journey)".
+  - **Found:** Parts One and Two share one layout and Part Three another.
+    - **One and Two:** no printed passage; STUDY/REFLECTION labels; small-capitals section headings and Part sub-headings; commentary between each verse and its question; "A SIMPLE DAILY PRAYER"; Extra Practical boxes; capstone weeks (6, 12, 18, 24) close with a "Movement … Closing" essay.
+    - **Three:** Passage Walk without a passage: 8–10 inline questions, 5 word studies, some printed after a pull-quote, two in a row, or before their station; Week 32 and Week 36 put 2–3 word studies on one verse.
+  - **Also found (bugs):**
+    - The PDF gives Hebrew in visual order, so all 42 of Genesis Part 1's loaded Hebrew words were back to front (a draft, unseen by readers).
+    - The original Journey import glued pull-quotes and in places a whole Life Application section onto 21 of Part Three's live question prompts.
+  - **Parser** (`parse_five_stations.py`) now reads all of the above:
+    - Hebrew rebuilt in reading order: clusters reversed, word breaks from the transliteration, presentation forms (שׂ) handled.
+    - Word studies matched to their station by cross-reference range.
+    - Wrapped prose prayers rejoined; printed lines kept.
+    - Part Three's run-in practice titles split; Part One's broken "fi" ligature ("/x" → "fix") corrected.
+    - **Result:** all 18 titles parse with 0 warnings; Colossians still identical to its live data. The 14 Five Stations drafts' new parse differs from what's loaded only by fixes: Hebrew order (Genesis 1), rejoined prayers, Galatians' opening heading, and Philippians' cross-references.
+  - **Reader:**
+    - No Passage tab for a week without one; that tab counts as done, so the ring still reaches 100%.
+    - Sub-headings (`heads`), station commentary (`note`), extra word studies (`moreStudies`).
+    - Questions with no word study (done once answered); the capstone essay (`interlude`), Extra Practical boxes, and the printed prayer label in Live It.
+    - The duplicate Psalm 119:25 line is hidden when it's the key verse.
+    - Schema: the new fields; the passage reference is required only when there are passage verses.
+  - **Loader:**
+    - A published lesson is staged, not changed under its readers: `ensureSnapshot` first, then the working copy, so readers keep the current view and the admin sees Unpublished changes.
+    - `--replace` reloads.
+    - A glued question prompt is reused and corrected.
+    - **Dry run:** all 17 studies, 0 problems, 0 new blocks; Part Three corrects 21 prompts. No Journey part has any saved answers.
+  - **Tests:**
+    - New schema, issues and loader tests; a Journey-shaped QA week plus an e2e test; two existing assertions updated for the deliberate changes.
+    - `npm run verify` clean, `npm test` 809/809.
+    - Full desktop QA 293/293; reader, accessibility and library on mobile 42/42.
+    - Checked by screenshot at 375px, no sideways scroll. Run in a worktree.
+  - **Review:** no routes, auth or queries changed beyond the loader's parameterized writes; admin-only bounded fields rendered as escaped text. No findings.
+  - **Shipped** `d8b6f1c` (`npm run deploy -- both --yes`): **staging `e45bafc5`**, **production `9d2bbb19`**, every check passing.
+  - **Not done, needs a yes (production data writes):**
+    - Reload the 14 Five Stations drafts with `--replace` (picks up the fixes above).
+    - Stage the 36 Journey weeks as unpublished changes.
+    - Journey readers see nothing new until each lesson's changes are published.
+- **2026-11-12 — Tabbed weeks for the 15 "Five Stations" studies: parser, loader and reader built; data not loaded yet.** Requested as a layout analysis of every manuscript, then "Yes, start there".
   - **Analysis:** read all 32 manuscripts in `Documents/Soul Dust Revival` with their typography.
     - **Devotionals:** both use one day layout, which the reader already handles.
     - **Studies:** all 28 twelve-week studies share one weekly skeleton that fits the five tabs, in four layouts. The split doesn't follow Book Study vs. Topical Study.
