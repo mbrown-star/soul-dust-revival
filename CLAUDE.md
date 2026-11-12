@@ -58,7 +58,17 @@ webhook/entitlement changes done.
 - **Scaffold code is in scope for both reviews.** Inherited code, dependencies, default configs, and seed data are reviewed too. Report scaffold-origin findings separately from new-code findings.
 - **On scaffold updates,** re-run both reviews against the whole updated scaffold, not just the diff.
 
-- **2026-11-12 (latest) — Tabbed weeks for the four "Gathered Passages" studies: code shipped, data not loaded yet.** Requested as "Now convert the Gathered Passages studies". Prayer, The Gospel, The Holy Spirit and The Ten Commandments started with 48–244 warnings each.
+- **2026-11-12 (latest) — Every study and devotional published.** Requested as "Publish all the studies on staging".
+  - **Asked first, because staging and production share one database:** the user chose "Publish all 24" after being told it publishes on souldustrevival.com too.
+  - **Checked before publishing:** none of the 24 had an owner, an Amazon claim or a sample lesson. So under sneak peek nothing changes for visitors or sample readers on production. Only someone who claims one of these titles through `/claim` from now on would open it there.
+  - **Published:** the 23 tabbed studies and A 365-Day Journey Through the Bible (366 days), through `publishAllInStudy` (the admin's Publish all, which writes each lesson's snapshot) plus `studies.published`, one transaction per study. A one-off script did it, refusing unless exactly 24 were unpublished, and was deleted after use.
+  - **Checked by query:**
+    - 0 unpublished studies or lessons, 0 pending changes;
+    - every lesson of the 24 has a snapshot, and every tabbed week's snapshot carries its tabs;
+    - the 377 lessons without one are the long-published Psalms devotional and Colossians, never edited since snapshots began (readers see their working copy, as designed).
+  - **Not checked in a browser:** the in-app browser's Cloudflare Access session for staging had expired.
+  - **Products unchanged:** 12 still say Coming soon. Publishing a study doesn't change its product's store state.
+- **2026-11-12 (later) — Tabbed weeks for the four "Gathered Passages" studies: code shipped, data not loaded yet.** Requested as "Now convert the Gathered Passages studies". Prayer, The Gospel, The Holy Spirit and The Ten Commandments started with 48–244 warnings each.
   - **Parser** (`parse_five_stations.py`):
     - **Passages gathered from several places** ("Luke 11:1–4; Matthew 6:9–10", "John 14:15–17, 26; …") are read part by part under each part's own reference line (a small-capitals label, a bold line, or a chapter alone, "EXODUS 20"). The first verse of each part carries `ref`.
     - **An anchor in such a passage names its `part`**, since a week can print the same chapter and verse twice: Holy Spirit Week 4 has John 3:5–7 and Titus 3:5–7.
