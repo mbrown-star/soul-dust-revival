@@ -11,6 +11,13 @@ stations (QUESTION, GOING DEEPER · THE GREEK/HEBREW, LIVE IT), LIFE
 APPLICATION (five practices), DAILY PRAYER, BOTTOM LINE, BENEDICTION, a
 closing verse and QUIET QUESTION TO CARRY.
 
+It also reads the Journey's Parts One to Three (no printed passage) and the
+"Passage Walk" books: Dusty and Holy (Hebrews), Dusty but Hopeful (Romans),
+The Sermon on the Mount, Ecclesiastes, Law and Gospel and Journey Part Four.
+Those print the passage under THE WORD, then 7 to 12 stations under "THE
+WORD ON …", with five word studies among them; their cross-references are
+in ordinary case, and some set a word's transliteration on its own line.
+
 Unlike parse_study.py (written for Colossians alone), this goes by section
 labels and by each line's size relative to the book's own body text, since
 the titles are set in two type sizes, and it reads the passage text from
@@ -31,6 +38,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_study import PRAYER, find_anchor, parse_range  # noqa: E402
 
 GREEK = re.compile(r"[Ͱ-Ͽἀ-῿]")
+CITES = re.compile(r"(?:[1-3]\s)?[A-Z][a-z]+(?:\s(?:of\s)?[A-Z][a-z]+)*\s+\d+:\d+")  # a line opening with a reference
+LATIN = re.compile("[A-Za-z\u00C0-\u024F\u1E00-\u1EFF\u02B0-\u02FF]")  # a transliteration's letters
 HEBREW = re.compile("[\u0590-\u05FF\uFB1D-\uFB4F]")  # includes presentation forms (U+FB2B, שׂ)
 LIVE = re.compile(r"^LIVE ?IT\s*:?\s*")
 ONE_CHAPTER = r"(?:JUDE|PHILEMON|OBADIAH|2 JOHN|3 JOHN)"
@@ -261,12 +270,22 @@ class Week:
         st["lang"] = "hebrew" if "HEBREW" in self.cur["t"].upper() else "greek"
         self.i += 1
         word_lines = self.take(self.word)
+        # Some books set the transliteration on the word's own line
+        # ("ארָבָּ bārāʾ"), with the gloss on the plain line below.
+        inline_tl = [c for l in word_lines for c in l["chars"] if LATIN.search(c["text"])]
+        if inline_tl:
+            word_lines = [dict(l, chars=[c for c in l["chars"] if not LATIN.search(c["text"])]) for l in word_lines]
+            for l in word_lines:
+                l["t"] = line_text(l["chars"]).strip()
         # Transliteration and gloss: one italic line ("eikōn — image, …"),
         # or the transliteration on its own line and the gloss on the next
         # ("— a campaign; warfare", or plain "counsellor"), up to the small
         # cross-reference line.
+        # Capitals, a list of full references, or (the Passage Walk books) any
+        # line that opens with a reference: "Hebrews 1:4; 7:19, 22".
         xref_line = lambda x: not x["bold"] and x["size"] <= self.body - 1.0 and REF.search(x["t"]) and (
-            re.sub(r"\([^)]*\)", "", x["t"]) == re.sub(r"\([^)]*\)", "", x["t"]).upper() or ref_list(x["t"]))
+            re.sub(r"\([^)]*\)", "", x["t"]) == re.sub(r"\([^)]*\)", "", x["t"]).upper() or ref_list(x["t"])
+            or CITES.match(x["t"]))
         tl_lines = self.take(lambda x: x["ital"] and not x["bold"] and x["size"] >= self.body - 0.6
                              and not xref_line(x))
         if tl_lines and " — " not in tl_lines[0]["t"]:
@@ -274,11 +293,16 @@ class Week:
             if self.cur is not None and (self.cur["t"].startswith(("—", "“", "\""))
                                          or (nxt is not None and xref_line(nxt) and not xref_line(self.cur))):
                 tl_lines.append(self.cur); self.i += 1
-        tl = re.sub(r"^(.*?)\s*[—–]\s*", r"\1 — ", joined(tl_lines), count=1)
-        if " — " not in tl and len(tl_lines) > 1:
-            tl = tl_lines[0]["t"] + " — " + joined(tl_lines[1:])
-        parts = [p.strip() for p in tl.split(" — ", 1)]
-        st["translit"], st["gloss"] = parts[0], (parts[1] if len(parts) > 1 else "")
+        if inline_tl:
+            gloss = tl_lines or self.take(lambda x: not x["bold"] and not xref_line(x) and x["size"] >= self.body - 0.6)
+            st["translit"] = line_text(inline_tl).strip()
+            st["gloss"] = re.sub(r"^[—–]\s*", "", joined(gloss))
+        else:
+            tl = re.sub(r"^(.*?)\s*[—–]\s*", r"\1 — ", joined(tl_lines), count=1)
+            if " — " not in tl and len(tl_lines) > 1:
+                tl = tl_lines[0]["t"] + " — " + joined(tl_lines[1:])
+            parts = [p.strip() for p in tl.split(" — ", 1)]
+            st["translit"], st["gloss"] = parts[0], (parts[1] if len(parts) > 1 else "")
         st["greek"] = hebrew_logical(word_lines, st["translit"]) if st["lang"] == "hebrew" \
             and HEBREW.search(joined(word_lines)) else joined(word_lines)
         st["xref"] = joined(self.take(xref_line))
@@ -360,7 +384,9 @@ class Week:
                 self.i += 1
                 head = m[2].strip()
                 if not head:  # "PART ONE" on its own, heading on the next line
-                    head = joined(self.take(self.heading))
+                    # (Law and Gospel sets it only half a point above the body)
+                    head = joined(self.take(lambda x: self.heading(x) or (
+                        x["bold"] and not x["ital"] and not self.label(x) and x["size"] > self.body + 0.25)))
                 cur = dict(label="PART " + m[1].upper(), heading=head)
                 w["study"]["parts"].append(cur)
                 continue
@@ -381,10 +407,14 @@ class Week:
 
         # The Passage (the Journey's Parts One–Three print none)
         w["passageRef"], w["passage"] = "", []
-        if self.cur is not None and self.is_label(self.cur, "THE PASSAGE"):
+        # Labelled THE PASSAGE, or in the Passage Walk books THE WORD (with the
+        # stations' own label, "THE WORD ON …", after it).
+        if self.cur is not None and (self.is_label(self.cur, "THE PASSAGE")
+                                     or (self.label(self.cur) and self.cur["t"] == "THE WORD")):
             self.i += 1
             w["passageRef"] = joined(self.take(self.heading))
-            self.take(lambda l: self.is_label(l, "WORLD ENGLISH BIBLE"))
+            self.take(lambda l: self.is_label(l, "WORLD ENGLISH BIBLE")
+                      or (l["ital"] and l["t"].strip().upper() == "WORLD ENGLISH BIBLE"))
             plines = self.take(lambda l: not self.label(l))
             if self.cur is not None and self.label(self.cur) and "WEB" in self.cur["t"]:
                 self.i += 1
@@ -440,7 +470,9 @@ class Week:
                         continue
                     target = open_[-1] if open_ and not xrefs else None
                 if target is None:
-                    pending.append((ws, named))  # its station comes later on the page
+                    # Its station may come later on the page; if none does, it
+                    # stays with the station it was printed under.
+                    pending.append((ws, named, w["stations"][-1]))
                 else:
                     target.update(ws)
                 continue
@@ -505,14 +537,18 @@ class Week:
             if self.cur is not None and self.is_label(self.cur, "GOING DEEPER"):
                 self.word_study(st)
             for item in list(pending):
-                ws, named = item
+                ws, named, _ = item
                 if named(st):
                     (st.setdefault("moreStudies", []).append(ws) if st.get("lang") else st.update(ws))
                     pending.remove(item)
             w["stations"].append(st)
 
-        for ws, _ in pending:
-            self.warn(f"word study {ws.get('translit')!r} has no station to go with")
+        for ws, _, under in pending:
+            # No station's verses include it (a word from a verse the week
+            # doesn't print as a station): a second study on the station
+            # it was printed under.
+            under.setdefault("moreStudies", []).append(ws)
+            print(f"   note: word study {ws.get('translit')!r} kept with {under['ref']}, the station it follows")
 
         # Life Application
         self.i += 1

@@ -590,8 +590,10 @@ async function main() {
         ],
       },
       {
-        ref: "ACTS 3:19",
-        verse: "Repent therefore, and turn again.",
+        // The same reference as the station before, as the manuscripts often
+        // do (two questions on one verse): the reader must keep them apart.
+        ref: "1 JOHN 2:1",
+        verse: "My little children, I write these things to you so that you may not sin.",
         question: crackQuestions[1]!,
         questionBlockId: crackBlocks[1]!.id,
         greek: "",

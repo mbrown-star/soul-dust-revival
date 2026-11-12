@@ -98,14 +98,15 @@ export function StudyLessonView({
   };
 }) {
   const [tab, setTab] = useState<TabKey>("study");
-  const [greekStationRef, setGreekStationRef] = useState<string | null>(null);
+  // Stations are identified by their question block: two can quote the same verse.
+  const [greekStationId, setGreekStationId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [workStationIndex, setWorkStationIndex] = useState(0);
   const { done, setDone, percent } = useTabProgress(lessonId);
 
   const { weekLabel, weekTitle } = splitLessonTitle(lessonTitle);
   const shortBookLabel = deriveBookLabel(bookLabel);
-  const greekStation = content.stations.find((s) => s.ref === greekStationRef) ?? null;
+  const greekStation = content.stations.find((s) => s.questionBlockId === greekStationId) ?? null;
   const showPassage = hasPassage(content);
   const tabs = TABS.filter((t) => showPassage || t.key !== "passage");
   // A week with no passage has nothing to finish there: count that tab done,
@@ -114,13 +115,13 @@ export function StudyLessonView({
     if (!showPassage && !done.has("passage")) setDone("passage", true);
   }, [showPassage, done, setDone]);
 
-  function goToStation(stationRef: string) {
-    setGreekStationRef(null);
-    const index = content.stations.findIndex((s) => s.ref === stationRef);
+  function goToStation(stationId: string) {
+    setGreekStationId(null);
+    const index = content.stations.findIndex((s) => s.questionBlockId === stationId);
     if (index !== -1) setWorkStationIndex(index);
     setTab("work");
     requestAnimationFrame(() => {
-      document.getElementById(`station-${stationRef}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.getElementById(`station-${stationId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
 
@@ -233,7 +234,7 @@ export function StudyLessonView({
         <div role="tabpanel" hidden={tab !== "passage"}>
           <PassageTab
             content={content}
-            onOpenGreek={setGreekStationRef}
+            onOpenGreek={setGreekStationId}
             isDone={done.has("passage")}
             onSetDone={(v) => setDone("passage", v)}
           />
@@ -274,8 +275,8 @@ export function StudyLessonView({
       {greekStation && (
         <GreekSheet
           station={greekStation}
-          onClose={() => setGreekStationRef(null)}
-          onGoToStation={() => goToStation(greekStation.ref)}
+          onClose={() => setGreekStationId(null)}
+          onGoToStation={() => goToStation(greekStation.questionBlockId)}
         />
       )}
 

@@ -7,6 +7,7 @@ export function QuestionBlock({
   prompt,
   initialAnswer,
   onSaved,
+  onAnswerChange,
 }: {
   contentBlockId: string;
   prompt: string;
@@ -15,6 +16,10 @@ export function QuestionBlock({
    * caller (e.g. the Study reader's Work the Word stepper) track which
    * stations have been answered without this component needing to know why. */
   onSaved?: (answerText: string) => void;
+  /** Fired on every edit, so a caller that remounts this block (Work the
+   * Word's stepper, moving between stations) can hand the text back as
+   * initialAnswer instead of the one the page was loaded with. */
+  onAnswerChange?: (answerText: string) => void;
 }) {
   const [answer, setAnswer] = useState(initialAnswer ?? "");
   const [saved, setSaved] = useState(false);
@@ -51,6 +56,7 @@ export function QuestionBlock({
         onChange={(e) => {
           setAnswer(e.target.value);
           setSaved(false);
+          onAnswerChange?.(e.target.value);
         }}
         onBlur={save}
         rows={4}

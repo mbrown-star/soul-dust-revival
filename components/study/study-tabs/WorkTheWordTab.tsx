@@ -34,6 +34,9 @@ export function WorkTheWordTab({
   onAdvanceToLive: () => void;
 }) {
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
+  // Text typed this visit, by question block: the answer box remounts on each
+  // station change and would otherwise reopen with the page-load answer.
+  const [typed, setTyped] = useState<Record<string, string>>({});
   const [answered, setAnswered] = useState<Set<string>>(
     () => new Set(content.stations.filter((st) => (initialAnswers[st.questionBlockId] ?? "").trim()).map((st) => st.questionBlockId))
   );
@@ -58,12 +61,12 @@ export function WorkTheWordTab({
       </div>
     );
   }
-  const stationRef = station.ref;
-  const isGreekOpen = revealed.has(stationRef);
+  const stationId = station.questionBlockId;
+  const isGreekOpen = revealed.has(stationId);
 
   function checkAllDone(nextRevealed: Set<string>, nextAnswered: Set<string>) {
     const allDone = content.stations.every(
-      (st) => (!hasWordStudy(st) || nextRevealed.has(st.ref)) && nextAnswered.has(st.questionBlockId)
+      (st) => (!hasWordStudy(st) || nextRevealed.has(st.questionBlockId)) && nextAnswered.has(st.questionBlockId)
     );
     if (allDone) onAllStationsDone();
   }
@@ -81,7 +84,7 @@ export function WorkTheWordTab({
   function revealGreek() {
     setRevealed((prev) => {
       const next = new Set(prev);
-      next.add(stationRef);
+      next.add(stationId);
       checkAllDone(next, answered);
       return next;
     });
@@ -96,18 +99,20 @@ export function WorkTheWordTab({
         <p className="font-serif text-ink mt-2">{content.stationsIntro} Answer first; the word study opens after.</p>
       </div>
 
-      <div className="flex gap-1.5" role="tablist" aria-label="Stations">
+      {/* As many columns as fit at 2.5rem or more: up to 12 stations wrap
+          into even rows on a phone instead of shrinking past a touch target. */}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(2.5rem,1fr))] gap-1.5" role="tablist" aria-label="Stations">
         {content.stations.map((st, i) => {
-          const isOk = (!hasWordStudy(st) || revealed.has(st.ref)) && answered.has(st.questionBlockId);
+          const isOk = (!hasWordStudy(st) || revealed.has(st.questionBlockId)) && answered.has(st.questionBlockId);
           return (
             <button
-              key={st.ref}
+              key={st.questionBlockId}
               type="button"
               role="tab"
               aria-current={i === current}
               aria-label={`Station ${i + 1}`}
               onClick={() => onCurrentChange(i)}
-              className={`flex-1 h-9 rounded-lg border text-sm font-sans font-bold tabular-nums ${
+              className={`h-10 rounded-lg border text-sm font-sans font-bold tabular-nums ${
                 isOk
                   ? "bg-moss border-moss text-white"
                   : i === current
@@ -121,7 +126,7 @@ export function WorkTheWordTab({
         })}
       </div>
 
-      <div id={`station-${station.ref}`} className="space-y-4 scroll-mt-4">
+      <div id={`station-${station.questionBlockId}`} className="space-y-4 scroll-mt-4">
         <div>
           <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700">{station.ref}</p>
           <blockquote className="font-serif italic text-lg text-ink mt-1">{station.verse}</blockquote>
@@ -134,10 +139,11 @@ export function WorkTheWordTab({
         ))}
 
         <QuestionBlock
-          key={station.ref}
+          key={station.questionBlockId}
           contentBlockId={station.questionBlockId}
           prompt={station.question}
-          initialAnswer={initialAnswers[station.questionBlockId]}
+          initialAnswer={typed[station.questionBlockId] ?? initialAnswers[station.questionBlockId]}
+          onAnswerChange={(text) => setTyped((prev) => ({ ...prev, [station.questionBlockId]: text }))}
           onSaved={(text) => handleAnswered(station.questionBlockId, text)}
         />
 

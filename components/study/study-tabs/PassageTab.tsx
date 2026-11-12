@@ -24,32 +24,32 @@ export function PassageTab({
   onSetDone,
 }: {
   content: StudyWeekContent;
-  onOpenGreek: (stationRef: string) => void;
+  onOpenGreek: (stationId: string) => void;
   isDone: boolean;
   onSetDone: (done: boolean) => void;
 }) {
-  const anchorByVerse = new Map<string, { stationRef: string; word: string }>();
+  const anchorByVerse = new Map<string, { stationId: string; word: string }>();
   for (const st of content.stations) {
-    if (st.anchor) anchorByVerse.set(st.anchor.v, { stationRef: st.ref, word: st.anchor.word });
+    if (st.anchor) anchorByVerse.set(st.anchor.v, { stationId: st.questionBlockId, word: st.anchor.word });
   }
 
-  const matchedStationRefs = new Set<string>();
+  const matchedStationIds = new Set<string>();
   const passageSpans = content.passage.map((v, i) => {
     const key = `${v.c}:${v.n}`;
     const anchor = anchorByVerse.get(key);
-    let match: { stationRef: string; word: string; idx: number } | null = null;
+    let match: { stationId: string; word: string; idx: number } | null = null;
     if (anchor) {
       const idx = v.text.toLowerCase().indexOf(anchor.word.toLowerCase());
       if (idx !== -1) {
         match = { ...anchor, idx };
-        matchedStationRefs.add(anchor.stationRef);
+        matchedStationIds.add(anchor.stationId);
       }
     }
     const showChapter = i === 0 || v.c !== content.passage[i - 1]!.c;
     return { v, showChapter, match };
   });
 
-  const unmatchedStations = content.stations.filter((st) => hasWordStudy(st) && !matchedStationRefs.has(st.ref));
+  const unmatchedStations = content.stations.filter((st) => hasWordStudy(st) && !matchedStationIds.has(st.questionBlockId));
   const readAloudText = content.passage.map((v) => v.text).join(" ");
 
   return (
@@ -75,9 +75,9 @@ export function PassageTab({
         <div className="flex flex-wrap gap-2">
           {unmatchedStations.map((st) => (
             <button
-              key={st.ref}
+              key={st.questionBlockId}
               type="button"
-              onClick={() => onOpenGreek(st.ref)}
+              onClick={() => onOpenGreek(st.questionBlockId)}
               className="min-h-[44px] px-4 rounded-full border border-dusk/20 text-sm font-sans font-semibold text-ink hover:border-moss/50"
             >
               {wordStudyHeadword(st)} · {st.ref}
@@ -117,8 +117,8 @@ function VerseTextWithAnchor({
   onOpenGreek,
 }: {
   text: string;
-  match: { stationRef: string; word: string; idx: number };
-  onOpenGreek: (stationRef: string) => void;
+  match: { stationId: string; word: string; idx: number };
+  onOpenGreek: (stationId: string) => void;
 }) {
   const before = text.slice(0, match.idx);
   const matchedText = text.slice(match.idx, match.idx + match.word.length);
@@ -129,7 +129,7 @@ function VerseTextWithAnchor({
       {before}
       <button
         type="button"
-        onClick={() => onOpenGreek(match.stationRef)}
+        onClick={() => onOpenGreek(match.stationId)}
         className="underline decoration-ember decoration-2 underline-offset-2 text-ink font-semibold"
       >
         {matchedText}

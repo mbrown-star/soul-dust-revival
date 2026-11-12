@@ -200,6 +200,17 @@ test.describe("Interactive Study reader", () => {
     await expect(page.getByText("Where do you need to turn back this week?")).toBeVisible();
     await expect(page.getByRole("button", { name: /^Open the / })).toHaveCount(0);
 
+    // Both stations quote 1 John 2:1. An answer typed in one stays with that
+    // one: the second station's box starts empty, and the first keeps its own.
+    await page.getByRole("tab", { name: "Station 1" }).click();
+    const box = page.getByRole("textbox");
+    await box.fill("Answer for the first station.");
+    await page.getByRole("tab", { name: "Station 2" }).click();
+    await expect(page.getByText("Where do you need to turn back this week?")).toBeVisible();
+    await expect(page.getByRole("textbox")).toHaveValue("");
+    await page.getByRole("tab", { name: "Station 1" }).click();
+    await expect(page.getByRole("textbox")).toHaveValue("Answer for the first station.");
+
     // Live It: the closing essay, the Extra Practical box, the prayer's printed label.
     await page.getByRole("tab", { name: "Live It" }).click();
     await expect(page.getByText("MOVEMENT ONE CLOSING")).toBeVisible();
