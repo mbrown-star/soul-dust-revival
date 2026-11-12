@@ -87,7 +87,12 @@ webhook/entitlement changes done.
     - A transliteration on its own line is split from the gloss at the line, not at a dash.
     - **Result:** the only changes in all 31 titles are those fixes, in Genesis Part 1, Journey Parts One and Two, Hebrews, the Sermon on the Mount (plus two new anchors) and the Ten Commandments. Colossians is unchanged.
     - Data files updated; reload dry run: 6 studies, 0 problems.
-    - **Not loaded yet:** all six are published, so a reload stages the corrections, and they reach readers when published.
+    - **Reloaded and published, on the user's "Yes, reload and publish":**
+      - Backup first (`backup-before-hebrew-fix.json` in the session scratchpad: 6 studies, 78 lessons).
+      - `--replace --apply`: 72 weeks staged, 0 problems.
+      - All 72 published through `publishChanges`. A one-off script did it, refusing unless exactly 72 were staged, and was deleted after use.
+      - Checked by query: 0 pending; every snapshot equals its working copy; the published Hebrew reads אֵל רֳאִי, פָּנִים, יהוה.
+      - Checked on staging: Ten Commandments Week 2 shows "פָּנִים · PASSAGE 1 · EXODUS 20:2–3" from the published version, with no console errors.
 - **2026-11-12 (later) — Tabbed weeks for the four "Gathered Passages" studies: code shipped, data not loaded yet.** Requested as "Now convert the Gathered Passages studies". Prayer, The Gospel, The Holy Spirit and The Ten Commandments started with 48–244 warnings each.
   - **Parser** (`parse_five_stations.py`):
     - **Passages gathered from several places** ("Luke 11:1–4; Matthew 6:9–10", "John 14:15–17, 26; …") are read part by part under each part's own reference line (a small-capitals label, a bold line, or a chapter alone, "EXODUS 20"). The first verse of each part carries `ref`.
