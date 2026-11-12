@@ -207,12 +207,15 @@ export async function runChecks({
   baseUrl,
   target,
   r2PublicBaseUrl,
+  r2LegacyBaseUrl,
   fetchFn = fetch,
   pauseMs,
 }: {
   baseUrl: string;
   target: TargetConfig;
   r2PublicBaseUrl: string;
+  /** The bucket's old address; stored covers may still point there mid-move. */
+  r2LegacyBaseUrl?: string;
   fetchFn?: Fetch;
   pauseMs?: number;
 }): Promise<CheckResult[]> {
@@ -278,11 +281,13 @@ export async function runChecks({
   const coverPage = sneakPeek ? "/sneak-peek" : "/store";
   const page = await get(coverPage);
   const html = page instanceof Error || page.status !== 200 ? "" : await page.text();
-  const encodedR2 = encodeURIComponent(r2PublicBaseUrl.replace(/\/$/, ""));
+  const imagePrefixes = [r2PublicBaseUrl, r2LegacyBaseUrl]
+    .filter((u): u is string => Boolean(u))
+    .map((u) => `/_next/image?url=${encodeURIComponent(u.replace(/\/$/, ""))}`);
   const imagePath = html
     .match(/\/_next\/image\?url=[^"'\s]+/g)
     ?.map((src) => src.replace(/&amp;/g, "&"))
-    .find((src) => src.startsWith(`/_next/image?url=${encodedR2}`));
+    .find((src) => imagePrefixes.some((prefix) => src.startsWith(prefix)));
   if (!imagePath) {
     results.push({ name: `a cover image on ${coverPage} loads`, ok: false, detail: `no R2 cover image found on ${coverPage}` });
   } else {

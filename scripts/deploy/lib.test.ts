@@ -200,6 +200,20 @@ describe("runChecks", () => {
     expect((await check(routes)).find((r) => r.name.startsWith("a cover image"))?.ok).toBe(false);
   });
 
+  it("mid-move to a new image address, still finds covers stored under the old one", async () => {
+    const run = (r2LegacyBaseUrl?: string) =>
+      runChecks({
+        baseUrl: "https://preview.example",
+        target: TARGETS.production,
+        r2PublicBaseUrl: "https://media.example.com",
+        r2LegacyBaseUrl,
+        fetchFn: fakeSite(healthyProduction()),
+        pauseMs: 0,
+      }).then((results) => results.find((r) => r.name.startsWith("a cover image"))?.ok);
+    expect(await run(R2)).toBe(true);
+    expect(await run()).toBe(false);
+  });
+
   it("fails if the store opens on the sneak-peek site, or admin routes open to guests", async () => {
     const routes = healthyProduction();
     routes["GET /store"] = { status: 200 };

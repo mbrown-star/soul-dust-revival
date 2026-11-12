@@ -193,7 +193,8 @@ async function ship(target: Target, sha: string): Promise<Shipped> {
 
     step("Checking the preview");
     const r2 = realEnv.get("R2_PUBLIC_BASE_URL")!;
-    if (!printChecks(await runChecks({ baseUrl: previewUrl, target: config, r2PublicBaseUrl: r2 }))) {
+    const r2Legacy = realEnv.get("R2_LEGACY_PUBLIC_BASE_URL") || undefined;
+    if (!printChecks(await runChecks({ baseUrl: previewUrl, target: config, r2PublicBaseUrl: r2, r2LegacyBaseUrl: r2Legacy }))) {
       throw new DeployError(`The new version failed its checks on the preview link. Live traffic was not touched (still ${previous}).`);
     }
 
@@ -208,7 +209,7 @@ async function ship(target: Target, sha: string): Promise<Shipped> {
 
     step(`Checking live at ${config.liveUrl}`);
     await new Promise((resolve) => setTimeout(resolve, 3000));
-    if (!printChecks(await runChecks({ baseUrl: config.liveUrl, target: config, r2PublicBaseUrl: r2 }))) {
+    if (!printChecks(await runChecks({ baseUrl: config.liveUrl, target: config, r2PublicBaseUrl: r2, r2LegacyBaseUrl: r2Legacy }))) {
       if (!previous) throw new DeployError("Live checks failed and the previous version is unknown, so it couldn't be rolled back. Roll back by hand now.");
       step(`Rolling back to ${previous}`);
       run(`${target}-rollback`, "npx", ["wrangler", "versions", "deploy", `${previous}@100%`, "--name", config.worker, "-y", "--message", `Roll back ${versionId.slice(0, 8)}: live checks failed`]);
