@@ -4,6 +4,7 @@ import { useState, useId, useRef, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { BLOCKED_EMAIL_MESSAGE } from "@/lib/auth/blockedMessage";
+import { postWithRetry } from "@/lib/auth/postWithRetry";
 
 // "sneak_peek": embedded on /sneak-peek under that page's own h1 -- creates
 // an account for a new email and simply signs in an existing one, since
@@ -116,9 +117,11 @@ export function AuthForm({
     // verifyOtp runs in the browser, so the server never sees this sign-in
     // on its own -- this is what creates the account's own `users` row (and
     // its login event). Without it a new account can sign in but can't save
-    // progress or answers.
+    // progress or answers. Retried quietly on a network failure or 5xx (see
+    // postWithRetry): on a phone, the first POST after switching back from
+    // the mail app can go out on a stale connection and fail.
     try {
-      const res = await fetch("/api/auth/login-recorded", { method: "POST" });
+      const res = await postWithRetry("/api/auth/login-recorded");
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as { error?: string; blocked?: boolean } | null;
         setLoading(false);
