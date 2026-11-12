@@ -88,9 +88,12 @@ webhook/entitlement changes done.
     - 1 Peter Week 3: opening ἁγνίζω on station 1 leaves station 2's ἐκτενῶς closed.
     - Part Four Week 38: readers see the plain view; `?draft=1` shows the tabbed week.
     - No console errors.
-  - **Not done:**
-    - Publishing Part Four's staged weeks (the Journey's other Parts are published).
-    - Layout C, Gathered Passages: Prayer, The Gospel, The Holy Spirit, The Ten Commandments.
+  - **Published, on the user's "Yes, publish them":**
+    - Part Four's 12 staged weeks, through `publishChanges` (one transaction each). A one-off script did it, refusing unless exactly 12 were flagged, and was deleted after use.
+    - Checked by query: 0 pending, 12 tabbed snapshots, and the published prompts match the corrected ones.
+    - Checked on staging as a reader: Week 38 opens in five tabs, with James 1:2–8 and ten stations; no console errors.
+    - All four Journey Parts now read in tabs.
+  - **Not done:** layout C, Gathered Passages: Prayer, The Gospel, The Holy Spirit, The Ten Commandments.
 - **2026-11-12 (later still) — Study weeks no longer throw React error #418 on load.** Found after publishing the Journey weeks (entry below), then "Yes, fix it".
   - **Cause:** three things in a tabbed week come from the browser's localStorage:
     - the progress ring;
