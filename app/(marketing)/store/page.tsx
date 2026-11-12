@@ -5,6 +5,8 @@ import Link from "next/link";
 import { productEyebrowLabel } from "@/lib/commerce/productEyebrow";
 import { CoverThumbnail } from "@/components/commerce/CoverThumbnail";
 import { CatalogBrowser } from "@/components/catalog/CatalogBrowser";
+import { FeaturedJourneyBanner } from "@/components/commerce/FeaturedJourneyBanner";
+import { loadFeaturedJourney } from "@/lib/journey/featured";
 import { normalizeSearchText, parseCatalogFilters, type CatalogSearchParams } from "@/lib/catalog/filter";
 
 // Rendered dynamically per-request rather than statically at build time —
@@ -25,58 +27,62 @@ export default async function BooksPage({ searchParams }: { searchParams: Promis
     .from(products)
     .where(eq(products.active, true))
     .orderBy(desc(products.createdAt));
+  const featuredJourney = await loadFeaturedJourney(db);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16">
-      <h1 className="font-display font-bold text-3xl sm:text-4xl text-ink mb-2">
-        Books &amp; Studies
-      </h1>
-      <p className="font-serif text-moss mb-10 max-w-xl">
-        Printed books ship to your door. Studies unlock in the web app the moment you buy.
-      </p>
+    <>
+      {featuredJourney && <FeaturedJourneyBanner featured={featuredJourney} />}
+      <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16">
+        <h1 className="font-display font-bold text-3xl sm:text-4xl text-ink mb-2">
+          Books &amp; Studies
+        </h1>
+        <p className="font-serif text-moss mb-10 max-w-xl">
+          Printed books ship to your door. Studies unlock in the web app the moment you buy.
+        </p>
 
-      {allProducts.length === 0 ? (
-        <p className="font-serif text-moss">New studies and books are on the way.</p>
-      ) : (
-        <CatalogBrowser
-          initial={initialFilters}
-          showSort
-          noun="titles"
-          searchPlaceholder="Search books, studies and devotionals"
-          gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 items-start"
-          items={allProducts.map((p) => {
-            const eyebrow = productEyebrowLabel({ type: p.type, kind: p.kind, format: p.format });
-            return {
-              id: p.id,
-              kind: p.kind,
-              createdAt: p.createdAt?.getTime(),
-              comingSoon: p.comingSoon,
-              searchText: normalizeSearchText(`${p.title} ${p.description ?? ""} ${eyebrow}`),
-              node: (
-                <Link
-                  href={`/store/${p.slug}`}
-                  className="group block focus:outline-none focus:ring-2 focus:ring-ink rounded-lg"
-                >
-                  <div className="mb-3">
-                    <CoverThumbnail
-                      imageUrl={p.imageUrl}
-                      imageAlt={p.imageAlt}
-                      imageWidth={p.imageWidth}
-                      imageHeight={p.imageHeight}
-                      sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                    />
-                  </div>
-                  <p className="font-sans text-xs uppercase tracking-wide text-moss mb-1">{eyebrow}</p>
-                  <h2 className="font-display font-semibold text-ink group-hover:text-moss">{p.title}</h2>
-                  <p className="font-sans text-sm text-moss mt-1">
-                    {p.comingSoon ? "Coming soon" : `$${(p.priceCents / 100).toFixed(2)}`}
-                  </p>
-                </Link>
-              ),
-            };
-          })}
-        />
-      )}
-    </div>
+        {allProducts.length === 0 ? (
+          <p className="font-serif text-moss">New studies and books are on the way.</p>
+        ) : (
+          <CatalogBrowser
+            initial={initialFilters}
+            showSort
+            noun="titles"
+            searchPlaceholder="Search books, studies and devotionals"
+            gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 items-start"
+            items={allProducts.map((p) => {
+              const eyebrow = productEyebrowLabel({ type: p.type, kind: p.kind, format: p.format });
+              return {
+                id: p.id,
+                kind: p.kind,
+                createdAt: p.createdAt?.getTime(),
+                comingSoon: p.comingSoon,
+                searchText: normalizeSearchText(`${p.title} ${p.description ?? ""} ${eyebrow}`),
+                node: (
+                  <Link
+                    href={`/store/${p.slug}`}
+                    className="group block focus:outline-none focus:ring-2 focus:ring-ink rounded-lg"
+                  >
+                    <div className="mb-3">
+                      <CoverThumbnail
+                        imageUrl={p.imageUrl}
+                        imageAlt={p.imageAlt}
+                        imageWidth={p.imageWidth}
+                        imageHeight={p.imageHeight}
+                        sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                      />
+                    </div>
+                    <p className="font-sans text-xs uppercase tracking-wide text-moss mb-1">{eyebrow}</p>
+                    <h2 className="font-display font-semibold text-ink group-hover:text-moss">{p.title}</h2>
+                    <p className="font-sans text-sm text-moss mt-1">
+                      {p.comingSoon ? "Coming soon" : `$${(p.priceCents / 100).toFixed(2)}`}
+                    </p>
+                  </Link>
+                ),
+              };
+            })}
+          />
+        )}
+      </div>
+    </>
   );
 }
