@@ -58,7 +58,33 @@ webhook/entitlement changes done.
 - **Scaffold code is in scope for both reviews.** Inherited code, dependencies, default configs, and seed data are reviewed too. Report scaffold-origin findings separately from new-code findings.
 - **On scaffold updates,** re-run both reviews against the whole updated scaffold, not just the diff.
 
-- **2026-11-12 (latest) — Every study and devotional published.** Requested as "Publish all the studies on staging".
+- **2026-11-12 (latest) — Buy on Amazon explains the digital edition and emails the claim link.** Requested as a modal before going to Amazon; the user chose "option 1" (explain, offer to email the `/claim` link, then Amazon) over granting access on click.
+  - **Why not an email at checkout:** Amazon's checkout isn't ours, and Amazon gives authors no buyer details and no purchase notification. Its affiliate reports are totals by title and day only. So an email given before going to Amazon says who clicked, not who bought, and the order number on `/claim` stays the check. Our own checkout already requires an account and unlocks the digital edition with a printed book.
+  - **Modal** (`components/commerce/AmazonBuyModal.tsx`, used by `AmazonPurchase` when the title has a digital edition and a live link, on the product page and bundle component rows):
+    - Explains the claim step and has an email field, filled in for a signed-in reader.
+    - "Email me the link and continue to Amazon" is a real link that opens Amazon in a new tab, so a popup blocker never stops it. The email request goes out in the same click, and the tab then confirms it, or shows the claim address if sending failed.
+    - "Continue to Amazon without the email" and "Already ordered? Claim it now".
+    - Accessible dialog: labelled, focus starts in the email field and stays inside, Escape or Close returns focus to the button.
+    - A title without a digital edition keeps the plain link.
+  - **Route** (`POST /api/amazon-reminders`, `lib/commerce/amazonReminders.ts`, `sendAmazonClaimReminderEmail`): no sign-in, strict Zod, claimable titles only.
+    - Limits: one email per title per address per day, three per address per day, ten requests per visitor (IP) per hour (429 after that).
+    - Blocked addresses get nothing. The response is `{status: "ok"}` either way; a failed send answers 502 and isn't counted.
+    - The email is fixed; only the admin-set title and the link vary.
+  - **Table** `amazon_reminders` (migration `0019_quick_santa_claus.sql`, additive): only HMAC-SHA256 hashes of the email and IP, keyed with a sub-key derived from `TOKEN_ENCRYPTION_KEY`; rows older than a week are deleted as new ones arrive. SECURITY.md and PRIVACY.md updated.
+  - **Tests:**
+    - 7 route tests on the real test DB: sends and stores no address or IP; refuses bad input and titles without a digital edition or link; per-title and per-address limits silent; IP limit 429; blocked address silent; a failed send is retried; old rows purged.
+    - 3 e2e tests in `amazon-claim.spec.ts` (modal with the email stubbed and Amazon in a new tab, Escape and focus return, axe), plus the no-study title keeps a plain link.
+    - `npm run verify` clean; `npm test` 817/817; full desktop QA 296/296; Amazon, store, reader and accessibility on mobile 60/60.
+    - Checked by screenshot at 375px (bottom sheet) and 1280px (centred).
+  - **Review:** the new unauthenticated email route is the main risk. It's covered by the fixed content, limits, identical responses, hashed storage and short retention. Accepted (Low): one fixed email per title per day can be sent to an address someone doesn't own. Add `/api/amazon-reminders` to the Cloudflare rate-limit rule. No other findings.
+  - **Shipped on the user's "Yes, migrate and ship":**
+    - Migration `0019` applied to the real database first (20 migrations recorded; all 5 columns, both indexes; 0 rows).
+    - `6921f9b` deployed (`npm run deploy -- both --yes`): **staging `0e0affca`**, **production `ef52de4f`**, every check passing.
+    - Checked live:
+      - Production answers bad input with 400.
+      - On staging, signed in as the user, 1 Peter's Buy on Amazon opens the modal with the email filled in and focused, and the Amazon link points to the real listing.
+    - **No real reminder email sent yet.** Under sneak peek the store is closed on production, so the modal shows only on staging for now.
+- **2026-11-12 (later still) — Every study and devotional published.** Requested as "Publish all the studies on staging".
   - **Asked first, because staging and production share one database:** the user chose "Publish all 24" after being told it publishes on souldustrevival.com too.
   - **Checked before publishing:** none of the 24 had an owner, an Amazon claim or a sample lesson. So under sneak peek nothing changes for visitors or sample readers on production. Only someone who claims one of these titles through `/claim` from now on would open it there.
   - **Published:** the 23 tabbed studies and A 365-Day Journey Through the Bible (366 days), through `publishAllInStudy` (the admin's Publish all, which writes each lesson's snapshot) plus `studies.published`, one transaction per study. A one-off script did it, refusing unless exactly 24 were unpublished, and was deleted after use.
