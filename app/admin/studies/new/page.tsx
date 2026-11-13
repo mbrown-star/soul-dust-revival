@@ -3,6 +3,10 @@ import { products } from "@/lib/db/schema";
 import { or, eq } from "drizzle-orm";
 import { NewStudyTabs } from "@/components/admin/NewStudyTabs";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "New study" };
+
 export default async function NewStudyPage() {
   const db = await getDb();
   // A format "both" product's digital side grants an entitlement exactly

@@ -3,6 +3,10 @@ import { products } from "@/lib/db/schema";
 import { and, eq, ne } from "drizzle-orm";
 import { BundleForm } from "@/components/admin/BundleForm";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "New bundle" };
+
 export default async function NewBundlePage() {
   const db = await getDb();
   const candidates = await db

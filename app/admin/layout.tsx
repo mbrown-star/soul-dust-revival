@@ -2,6 +2,11 @@ import { requireAdmin } from "@/lib/admin/guard";
 import { redirect } from "next/navigation";
 import { SiteHeaderShell } from "@/components/marketing/SiteHeaderShell";
 import { AdminNav } from "@/components/admin/AdminNav";
+import type { Metadata } from "next";
+
+// Each admin tab names its page ("Products — Admin", "Edit: Colossians — Admin");
+// every admin tab used to read just "Soul Dust Revival" (staging audit, 2026-11-13).
+export const metadata: Metadata = { title: { template: "%s — Admin", default: "Admin" } };
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await requireAdmin();

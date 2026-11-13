@@ -3,6 +3,7 @@
 import { type StudyWeekContent, hasWordStudy, wordStudyHeadword } from "@/lib/study/studyContent";
 import { ReadAloudButton } from "@/components/devotional/ReadAloudButton";
 import { HideWordsSlider } from "@/components/devotional/HideWordsSlider";
+import { displayVerseRef } from "@/lib/study/verseRef";
 import { WeekMediaSlot } from "../WeekMediaSlot";
 
 /**
@@ -117,7 +118,7 @@ export function PassageTab({
       <div className="pt-4 border-t border-dusk/10">
         <h2 className="font-display font-bold text-xl text-ink">Hide It in Your Heart</h2>
         <p className="font-sans text-sm text-moss mt-1">
-          {content.keyRef}, this week&apos;s key verse. Slide to hide words; tap a blank to peek.
+          {displayVerseRef(content.keyRef)}, this week&apos;s key verse. Slide to hide words; tap a blank to peek.
         </p>
         <HideWordsSlider verse={content.keyVerse} />
       </div>

@@ -163,7 +163,7 @@ function StatusBadge({ status }: { status: "connected" | "disconnected" | "error
   };
   return (
     <span className={`text-xs px-2 py-1 rounded-full ${styles[status]}`}>
-      {status}
+      {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   );
 }

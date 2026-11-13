@@ -4,6 +4,15 @@ import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { LeaderResourceForm } from "@/components/admin/LeaderResourceForm";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { title: "Edit" };
+  const db = await getDb();
+  const [row] = await db.select({ title: leaderResources.title }).from(leaderResources).where(eq(leaderResources.id, id)).limit(1);
+  return { title: row ? `Edit: ${row.title}` : "Edit" };
+}
 
 export default async function EditLeaderResourcePage({
   params,

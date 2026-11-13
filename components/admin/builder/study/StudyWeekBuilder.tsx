@@ -135,7 +135,7 @@ export function StudyWeekBuilder({
             >
               {!issues.valid ? (
                 <StatusPill tone="error">
-                  Not saved yet -- {totalIssues}{" "}
+                  Not saved yet — {totalIssues}{" "}
                   {totalIssues === 1 ? "field needs" : "fields need"} filling in
                 </StatusPill>
               ) : autosave.status === "saving" ||

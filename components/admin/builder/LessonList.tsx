@@ -189,7 +189,7 @@ export function LessonList({ studyId, initialLessons }: { studyId: string; initi
                       <label className="flex items-center gap-2 text-sm text-moss">
                         <input type="checkbox" checked={lesson.published} onChange={() => void togglePublished(lesson)} />
                         <span>{lesson.published ? "Published" : "Draft"}</span>
-                        <span className="sr-only"> -- {lesson.title}</span>
+                        <span className="sr-only">: {lesson.title}</span>
                       </label>
                       {!lesson.published && (
                         <button

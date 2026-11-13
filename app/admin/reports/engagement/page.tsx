@@ -4,6 +4,10 @@ import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
 import { formatDateTime } from "@/lib/format/date";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Engagement" };
+
 export const dynamic = "force-dynamic";
 
 export default async function EngagementReportPage() {

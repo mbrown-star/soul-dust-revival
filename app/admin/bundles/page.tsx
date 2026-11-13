@@ -5,6 +5,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { priceSummary } from "@/lib/commerce/priceSummary";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Bundles" };
+
 export default async function AdminBundlesPage() {
   const db = await getDb();
   const allBundles = await db

@@ -6,6 +6,15 @@ import { BundleForm } from "@/components/admin/BundleForm";
 import { JourneyPanel } from "@/components/admin/JourneyPanel";
 import { appUrl } from "@/lib/domains";
 import { journeyHref } from "@/lib/journey/load";
+import type { Metadata } from "next";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { title: "Edit" };
+  const db = await getDb();
+  const [row] = await db.select({ title: products.title }).from(products).where(eq(products.id, id)).limit(1);
+  return { title: row ? `Edit: ${row.title}` : "Edit" };
+}
 
 export default async function EditBundlePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

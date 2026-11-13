@@ -1,16 +1,29 @@
 import { getDb } from "@/lib/db/client";
-import { studies } from "@/lib/db/schema";
-import { desc } from "drizzle-orm";
+import { lessons, studies } from "@/lib/db/schema";
+import { count, desc, inArray } from "drizzle-orm";
 import Link from "next/link";
 import Image from "next/image";
 import { CreateMenu } from "@/components/admin/CreateMenu";
 import { studyKindLabel } from "@/lib/study/studyKindLabel";
+
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Studies" };
 
 export default async function AdminStudiesPage() {
   const db = await getDb();
   // Safety cap, not real pagination -- this list is admin-curated and
   // realistically stays in the dozens, but nothing should fetch unbounded.
   const allStudies = await db.select().from(studies).orderBy(desc(studies.createdAt)).limit(100);
+  const lessonCounts =
+    allStudies.length === 0
+      ? []
+      : await db
+          .select({ studyId: lessons.studyId, n: count() })
+          .from(lessons)
+          .where(inArray(lessons.studyId, allStudies.map((s) => s.id)))
+          .groupBy(lessons.studyId);
+  const lessonCountByStudy = new Map(lessonCounts.map((r) => [r.studyId, r.n]));
 
   return (
     <div className="space-y-6">
@@ -68,9 +81,18 @@ export default async function AdminStudiesPage() {
                 >
                   {studyKindLabel(s.kind)}
                 </span>
+                <span
+                  data-testid="study-status-badge"
+                  className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                    s.published ? "bg-success/10 text-success" : "bg-gold/20 text-ink"
+                  }`}
+                >
+                  {s.published ? "Published" : "Draft"}
+                </span>
               </div>
               <p className="text-sm text-moss">
-                /{s.slug} {!s.published && "· draft"}
+                /{s.slug} · {lessonCountByStudy.get(s.id) ?? 0}{" "}
+                {(lessonCountByStudy.get(s.id) ?? 0) === 1 ? "lesson" : "lessons"}
               </p>
             </div>
           </Link>

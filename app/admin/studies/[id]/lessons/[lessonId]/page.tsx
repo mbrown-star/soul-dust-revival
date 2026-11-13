@@ -7,6 +7,15 @@ import Link from "next/link";
 import { appUrl } from "@/lib/domains";
 import { LessonHeader } from "@/components/admin/builder/LessonHeader";
 import { LessonEditorBody } from "@/components/admin/builder/LessonEditorBody";
+import type { Metadata } from "next";
+
+export async function generateMetadata({ params }: { params: Promise<{ lessonId: string }> }): Promise<Metadata> {
+  const { lessonId } = await params;
+  if (!/^[0-9a-f-]{36}$/i.test(lessonId)) return { title: "Edit lesson" };
+  const db = await getDb();
+  const [row] = await db.select({ title: lessons.title }).from(lessons).where(eq(lessons.id, lessonId)).limit(1);
+  return { title: row ? `Edit: ${row.title}` : "Edit lesson" };
+}
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +55,7 @@ export default async function LessonEditorPage({
 
       <LessonEditorBody
         lessonId={lesson.id}
+        lessonTitle={lesson.title}
         isStudyKind={isStudyKind}
         studyKind={study.kind}
         initialStudyContent={lesson.studyContent}

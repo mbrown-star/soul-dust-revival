@@ -4,6 +4,10 @@ import { desc, inArray } from "drizzle-orm";
 import Link from "next/link";
 import { PLATFORM_LABELS } from "@/lib/data/socialPlatforms";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Social" };
+
 export const dynamic = "force-dynamic";
 
 // FIXED (axe-core, qa/e2e/specs/accessibility.spec.ts): "scheduled" used

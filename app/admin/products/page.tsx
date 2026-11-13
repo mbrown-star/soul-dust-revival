@@ -7,6 +7,10 @@ import { CreateMenu } from "@/components/admin/CreateMenu";
 import { priceSummary } from "@/lib/commerce/priceSummary";
 import { studyKindLabel } from "@/lib/study/studyKindLabel";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Products" };
+
 export default async function AdminProductsPage() {
   const db = await getDb();
   // Safety cap, not real pagination -- this list is admin-curated and

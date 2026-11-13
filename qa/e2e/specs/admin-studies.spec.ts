@@ -22,6 +22,17 @@ test.describe("admin studies list and editor, as qa-admin", () => {
     await expect(devotionalRow.getByTestId("study-kind-badge")).toHaveText("Devotional");
   });
 
+  // Audit 2026-11-13: no published/draft state or lesson count on the list.
+  test("each study row shows Published or Draft and its lesson count", async ({ page }) => {
+    await page.goto("/admin/studies");
+    const row = page.getByRole("link", { name: /QA Colossians-Shaped Study/i });
+    await expect(row.getByTestId("study-status-badge")).toHaveText("Published");
+    await expect(row).toContainText(/\d+ lessons?/);
+    const draftRow = page.getByRole("link", { name: /QA Draft Book/i });
+    await expect(draftRow.getByTestId("study-status-badge")).toHaveText("Draft");
+    await expect(page).toHaveTitle(/^Studies — Admin$/);
+  });
+
   test("editing a study shows its real Kind as a radio selection", async ({ page }) => {
     await page.goto("/admin/studies");
     await page.getByRole("link", { name: /QA Devotional Fixture/i }).click();
@@ -145,6 +156,9 @@ test.describe("admin studies list and editor, as qa-admin", () => {
 
   test("the plain fallback lesson (no studyContent) offers to start a week, and keeps its block canvas", async ({ page }) => {
     await openLesson(page, /QA Colossians-Shaped Study/i, /^Introduction$/i);
+    // On an Introduction the offer is folded away (audit 2026-11-13).
+    await expect(page.getByRole("button", { name: "Start building this week" })).toBeHidden();
+    await page.getByText("Build this as a week instead").click();
     await expect(page.getByRole("button", { name: "Start building this week" })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Add a block" })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "Text block" })).toContainText(/QA fixture lesson with no structured studyContent/i);
@@ -161,12 +175,13 @@ test.describe("admin studies list and editor, as qa-admin", () => {
   // "falls back to the plain reading view" test, so it must stay unsaved.
   test("starting a week shows an empty builder that reports what's still required", async ({ page }) => {
     await openLesson(page, /QA Colossians-Shaped Study/i, /^Introduction$/i);
+    await page.getByText("Build this as a week instead").click();
     await page.getByRole("button", { name: "Start building this week" }).click();
 
     await expect(page.getByLabel("Subtitle")).toHaveValue("");
     await page.getByLabel("Subtitle").fill("A draft subtitle, not yet saved");
     // Key verse and its reference. (The passage is optional: a week may print none.)
-    await expect(page.getByRole("status").filter({ hasText: /Not saved yet -- 2 fields need filling in/ })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: /Not saved yet — 2 fields need filling in/ })).toBeVisible();
     await expect(page.getByRole("button", { name: "+ Add section" })).toBeVisible();
     await page.getByRole("tab", { name: /^Work the Word/ }).click();
     await expect(page.getByRole("button", { name: "+ Add station" })).toBeVisible();

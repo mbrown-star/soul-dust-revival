@@ -4,6 +4,10 @@ import { requireAdmin } from "@/lib/admin/guard";
 import { redirect } from "next/navigation";
 import { FacebookPagePickerForm } from "@/components/admin/FacebookPagePickerForm";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Choose a Facebook Page" };
+
 export default async function FacebookPagePickerPage() {
   const session = await requireAdmin();
   if (!session) redirect("/login?next=/admin/settings/connections");

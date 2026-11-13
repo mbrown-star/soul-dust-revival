@@ -1,5 +1,9 @@
 import Link from "next/link";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Reports" };
+
 export default function ReportsIndexPage() {
   return (
     <div className="space-y-4">

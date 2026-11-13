@@ -16,6 +16,7 @@ import type { StudyKind } from "./blockEditors";
  */
 export function LessonEditorBody({
   lessonId,
+  lessonTitle,
   isStudyKind,
   studyKind,
   initialStudyContent,
@@ -23,6 +24,7 @@ export function LessonEditorBody({
   r2PublicBaseUrl,
 }: {
   lessonId: string;
+  lessonTitle: string;
   isStudyKind: boolean;
   studyKind: StudyKind;
   initialStudyContent: StudyWeekContent | null;
@@ -36,6 +38,7 @@ export function LessonEditorBody({
       {isStudyKind && (
         <StudyWeekGate
           lessonId={lessonId}
+          lessonTitle={lessonTitle}
           initialContent={initialStudyContent}
           r2PublicBaseUrl={r2PublicBaseUrl}
           onFirstSave={() => setHasWeek(true)}

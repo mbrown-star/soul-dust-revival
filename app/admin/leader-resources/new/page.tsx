@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { NewLeaderResourceForm } from "@/components/admin/NewLeaderResourceForm";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "New leader resource" };
+
 export default function NewLeaderResourcePage() {
   return (
     <div className="space-y-6">

@@ -7,6 +7,15 @@ import { LessonList } from "@/components/admin/builder/LessonList";
 import { PublishAllLessonsButton } from "@/components/admin/PublishAllLessonsButton";
 import { ReimportStudyForm } from "@/components/admin/ReimportStudyForm";
 import { StudyResourcesPanel } from "@/components/admin/StudyResourcesPanel";
+import type { Metadata } from "next";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { title: "Edit" };
+  const db = await getDb();
+  const [row] = await db.select({ title: studies.title }).from(studies).where(eq(studies.id, id)).limit(1);
+  return { title: row ? `Edit: ${row.title}` : "Edit" };
+}
 
 export default async function StudyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -64,7 +73,7 @@ export default async function StudyDetailPage({ params }: { params: Promise<{ id
     <div className="space-y-10">
       <div>
         <h1 className="text-xl font-semibold mb-4">Edit study</h1>
-        {study.sourceFileName && (
+        {study.sourceFileName && studyLessons.some((l) => !l.published) && (
           <p className="text-sm text-moss mb-4">
             Imported from{" "}
             <a href={study.sourceFileUrl ?? "#"} className="underline" target="_blank">

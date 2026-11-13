@@ -2,6 +2,11 @@ import { getDb } from "@/lib/db/client";
 import { posts } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 import Link from "next/link";
+import { formatDate } from "@/lib/format/date";
+
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Blog" };
 
 export default async function AdminBlogPage() {
   const db = await getDb();
@@ -26,7 +31,14 @@ export default async function AdminBlogPage() {
             <span>{p.title}</span>
             <span className="flex items-center gap-2 text-sm text-moss">
               {p.sourceType === "ai_suggested" && <span className="text-xs bg-moss/10 px-2 py-0.5 rounded-full">AI</span>}
-              {!p.published && "draft"}
+              <span
+                className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  p.published ? "bg-success/10 text-success" : "bg-gold/20 text-ink"
+                }`}
+              >
+                {p.published ? "Published" : "Draft"}
+              </span>
+              {p.published && p.publishedAt ? formatDate(p.publishedAt) : p.createdAt ? `Started ${formatDate(p.createdAt)}` : null}
             </span>
           </Link>
         ))}

@@ -4,6 +4,10 @@ import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
 import { formatDate } from "@/lib/format/date";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Sales" };
+
 export const dynamic = "force-dynamic"; // always reflects the latest orders, never a stale build-time snapshot
 
 export default async function SalesReportPage() {

@@ -5,6 +5,10 @@ import Link from "next/link";
 import { RevokeClaimButton } from "@/components/admin/RevokeClaimButton";
 import { formatDate } from "@/lib/format/date";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Amazon claims" };
+
 export const dynamic = "force-dynamic";
 
 /**

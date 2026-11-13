@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { StudyWeekContent } from "@/lib/study/studyContent";
 import { HideWordsSlider } from "@/components/devotional/HideWordsSlider";
+import { displayVerseRef } from "@/lib/study/verseRef";
 import { ReadAloudButton } from "@/components/devotional/ReadAloudButton";
 import { useLocalProgress } from "../useLocalProgress";
 import { ParasWithHeads } from "./ParasWithHeads";
@@ -52,7 +53,7 @@ export function StudyTab({
     <div className="space-y-8">
       <div className="bg-white border border-dusk/10 rounded-xl p-6">
         <HideWordsSlider verse={content.keyVerse} />
-        <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700 mt-3">{content.keyRef}</p>
+        <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700 mt-3">{displayVerseRef(content.keyRef)}</p>
         {/* The series verse, unless it is already this week's key verse (the Journey). */}
         {!/119:25/.test(content.keyRef) && (
           <p className="font-serif italic text-sm text-moss mt-3">

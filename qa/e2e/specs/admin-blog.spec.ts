@@ -9,8 +9,10 @@ test.describe("admin blog list, as qa-admin", () => {
     const draft = page.getByRole("link", { name: /QA Fixture: Draft Post/i });
     await expect(published).toBeVisible();
     await expect(draft).toBeVisible();
-    await expect(draft).toContainText("draft");
-    await expect(published).not.toContainText("draft");
+    await expect(draft).toContainText("Draft");
+    await expect(published).toContainText("Published");
+    // Audit 2026-11-13: each row shows its date too.
+    await expect(published).toContainText(/[A-Z][a-z]+ \d{1,2}, \d{4}/);
   });
 
   test("opening the published post's editor shows its real sanitized-but-rich body", async ({ page }) => {
