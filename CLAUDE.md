@@ -58,7 +58,45 @@ webhook/entitlement changes done.
 - **Scaffold code is in scope for both reviews.** Inherited code, dependencies, default configs, and seed data are reviewed too. Report scaffold-origin findings separately from new-code findings.
 - **On scaffold updates,** re-run both reviews against the whole updated scaffold, not just the diff.
 
-- **2026-11-13 (newest) — A book reader for study kind "book" (Revive Me): code shipped, the book not loaded yet.** Requested on the audit's Revive Me item: "Revive Me is a Book and it needs its own Reader for digital … a way for a user to answer those questions and see their Journal answers … leave the Store option for both as is."
+- **2026-11-13 (newest of all) — Five more rounds of staging-audit fixes: /privacy date, admin product lists and forms, /admin, devotionals, tabbed study weeks, /account, bundle form, Leader Resources, Reports.** Each requested on its own section or item in the audit's comment threads ("fix please", "Fix please", "fix", "Fix" ×3).
+  - **/privacy** (`e392828`): "Last updated" is a fixed `POLICY_LAST_UPDATED` ("November 13, 2026") at the top of the page, not `new Date()`. **Shipped:** staging `e56f800e`, production `02c9af02`.
+  - **Admin Products section** (`3b598a0`):
+    - The Products and Bundles lists read "Printed $20.00 · Digital $15.00" (`lib/commerce/priceSummary.ts`).
+    - Every product row has a kind badge, Book included.
+    - Kind is listed Book, Devotional, Study on the product, study and import forms, labelled from `STUDY_KIND_OPTION_LABELS` (`lib/study/studyKindLabel.ts`).
+    - **Study cover alt text is now optional, matching products** (the audit's "same rule on both"; products were made optional by the user's 2026-11-05 decision). Upload still fills it from the title, and My Library falls back to "{title} — Front cover". ACCESSIBILITY.md updated.
+    - **Shipped:** staging `be21a2bf`, production `06ceb06b`.
+  - **/admin** (`743536e`): `app/admin/page.tsx` redirects to /admin/products; the admin layout still sends a guest to sign in. **Shipped:** staging `dae689f2`, production `14723772`.
+  - **Devotionals** (`1575deb`):
+    - A paragraph that opens with a bare citation ("(Genesis 18:14). A year later…") joins the quotation before it. This is done at render (`parseDevotionalHtml`'s `pushToSection`) for the 35 stored breaks (18 Journey, 17 Psalms; no data written), and the importer (`paragraphsToHtml`) no longer splits them. Shared check: `lib/import/bareCitation.ts`. Three studies (Ecclesiastes, Law and Gospel, Promise Struggle Exile Providence) have one each, not touched.
+    - A devotional's Introduction offers "Mark as read" / "Day 1 is next".
+    - Day tabs read "Day 1: Two Trees, Two Soils" (`lib/devotional/dayTabTitle.ts`, from the published snapshot when there is one).
+    - **Seen, not fixed:** Psalms Day 9's title is stored inside its key-verse quote; offered in the thread.
+    - **Shipped:** staging `7c1031d5`, production `2dab609e`.
+  - **Tabbed study week** (`421f2ec`):
+    - The week picker counts "Week N" lessons only.
+    - Wording: "Done with the reading"; "Answer first, then open the word study."
+    - Every reader's back link is "← {study}" (`lib/study/shortStudyTitle.ts` replaces three local copies).
+    - Underlined words are named "Word study: grace (χάρις)"; the sheet shows "The Greek · 1:2"; `wordStudyLanguage` takes the language from the word's script when `lang` is missing (Colossians).
+    - The prayer timer's Begin step reads "Be still. Come to the Father as you are, through the Son, in the Spirit." (wording Claude wrote; offered to change).
+    - Under 640px the week title has its own row.
+    - **Shipped:** staging `17bfcccc`, production `ab253337`.
+  - **/account** (`86397e8`):
+    - One date style site-wide, "November 5, 2026" in UTC (`lib/format/date.ts`): account orders, blog, Sales, Social, Amazon claims, Users (replaces `formatJoined`), blocked emails; Engagement adds the time with "UTC". Ends /account's hydration error #418.
+    - Checkouts unpaid for over a day are left out.
+    - A "Bought on Amazon" list of claims and a "Go to My Library →" link.
+    - **Shipped:** staging `71988162`, production `b57b9036`.
+  - **Bundle form** (`0b66373`): each part in What's included shows its Kind and both prices, or "Coming soon" (was "Book" and one price). **Shipped:** staging `29670eee`, production `2a06badb`.
+  - **Leader Resources** (`0854a00`):
+    - /leader renders inside `SiteHeader`; leaders and admins get a "Leader Resources" Profile item (`SiteNav`'s new `isLeader`, display only; `/leader` still checks the role itself).
+    - Admin: heading "Leader Resources"; "+ New resource" links to `app/admin/leader-resources/new` (`NewLeaderResourceForm`; the prompt-based `NewLeaderResourceButton` is removed); the edit form has Save and Delete and shows save errors.
+    - **Not done:** the leftover "Test" draft is still in the shared database for the user to delete with the new button.
+    - **Shipped:** staging `4eaab866`, production `0c9311a1`.
+  - **Reports** (`6bfa58d`): the Social analytics note says numbers refresh once a day and when they last did ("Not refreshed yet." while the daily job is still unscheduled), instead of "see SOCIAL.md". Dates were done in the /account round. **Shipped:** staging `71b4ff52`, production `4b7705e9`.
+    - **Waiting on the user:** Engagement's "Avg. session" (one account averages 962 min, one sign-in ran 77 h): a sign-in lasts days and pings keep extending it. Offered (1, recommended) an additive `login_events` active-time column, each ping adding at most 2 min (a migration, so it needs a yes), or (2) a new visit row after 30 min of quiet, renaming Sign-ins to Visits.
+  - **Tests:** new unit tests for `priceSummary`, `dayTabTitle`, the citation join (parser and importer) and `formatDate`; e2e added or updated in public-marketing, admin-products, admin-access-control, devotional-bible-journey, study-reader, account (with a new 3-day-old abandoned order in `seed-qa.ts`), amazon-claim and admin-users. `npm run verify` clean; `npm test` 840/840 before the account round; each round's e2e passed on desktop and mobile (study, book, journey, devotional and accessibility 58/58 each; account, claim, users and marketing 47/47 mobile).
+  - **Review:** no new routes, input or schema. The account page's new claims query is keyed on the session's user; dates and labels render as escaped text. No findings.
+- **2026-11-13 (earlier) — A book reader for study kind "book" (Revive Me): code shipped, the book not loaded yet.** Requested on the audit's Revive Me item: "Revive Me is a Book and it needs its own Reader for digital … a way for a user to answer those questions and see their Journal answers … leave the Store option for both as is."
   - **The manuscript** (`Documents/Soul Dust Revival/Soul Dust Revival Materials/Soul_Dust_Revival _Book.pdf`, 234 pages): Foreword, Preface, six Parts, 26 chapters and an Epilogue. Each chapter: CHAPTER N, title, a "from … to …" line, an opening verse, text with sub-headings, TO SIT WITH (two questions), BENEDICTION "Lift Up Your Eyes".
   - **Stored as ordinary blocks, no migration:** per chapter, a text block whose opener has one fixed shape (`<p><strong>Part One · The Dust</strong></p><h2>title</h2><p><em>from …</em></p><blockquote>verse — ref</blockquote>`, written by `buildBookChapterOpener` and read back by `parseBookChapterHtml`, `lib/book/chapterHtml.ts`), one question block per question, and the blessing as a callout. Lesson titles "Chapter N: Title", "Epilogue: Title", "Introduction".
   - **Splitter** (`lib/import/splitBookChapters.ts`) reads `pdftotext -layout -nopgbrk` output, since layout mode keeps the indent that starts each paragraph (pdf-parse drops it). Handles this font's "f" coming out as a form feed, hyphenated line breaks, page numbers and running headers, sub-headings, indented Scripture quotes ending in a capitals reference, wrapped questions, and blank-spaced blessing and Foreword paragraphs (the signature keeps its line break). On the real book: 0 warnings, 27 chapters, 2 questions each, 35 quotes all with references, every sub-heading genuine.
