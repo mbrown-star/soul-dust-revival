@@ -58,6 +58,11 @@ webhook/entitlement changes done.
 - **Scaffold code is in scope for both reviews.** Inherited code, dependencies, default configs, and seed data are reviewed too. Report scaffold-origin findings separately from new-code findings.
 - **On scaffold updates,** re-run both reviews against the whole updated scaffold, not just the diff.
 
+- **2026-11-13 — The footer shows App and Account to signed-in visitors.** Found by the 2026-11-13 staging audit (it offered Log in and Sign up to people already signed in); the user replied "ok fix the bug" on the audit's comment thread.
+  - `app/(marketing)/layout.tsx` reads the session once and passes it to `SiteHeader` (new optional `session` prop; the study-app layout still lets it read its own) and to `SiteFooter` (`loggedIn`). Signed out: Log in, Sign up. Signed in: App (`appUrl("/library")`), Account (`appUrl("/account")`), matching the header.
+  - **Tests:** 2 new e2e in `public-marketing.spec.ts` ("Footer account links", guest and qa-user, desktop and mobile). `npm run verify` clean; public-marketing, accessibility and coming-soon 51/51 desktop; footer and nav 10/10 on both projects.
+  - **Review:** display only, no routes or input changed. No findings.
+  - **Shipped** `53b8998` (`npm run deploy -- both --yes`): **staging `eda02774`**, **production `79aa07fa`**, every check passing. Checked live: signed in on staging, the footer reads App and Account; as a guest on production, Log in and Sign up.
 - **2026-11-12 (latest) — Small polish: study sheets keep Tab inside, /admin/users dates, www redirect, sign-in email subject; found the site served over plain http.** Requested by pasting the "Small polish" list.
   - **Study reader sheets** (`components/study/Sheet.tsx`) now keep Tab and Shift+Tab inside, through the new shared `lib/ui/focusTrap.ts`, which the Buy on Amazon modal now uses too.
   - **/admin/users Joined dates** are formatted in en-US and UTC on both server and browser (`formatJoined` in `UserRoleTable.tsx`), ending the hydration error #418 logged since 2026-11-11.
