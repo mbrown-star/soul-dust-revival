@@ -1,13 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { CartLink } from "./CartLink";
 import { logOut } from "@/lib/auth/logOut";
-import { marketingUrl, appUrl } from "@/lib/domains";
+import { marketingUrl, appUrl, pathMatchesPrefix } from "@/lib/domains";
+import { activeNavLinkClass } from "@/lib/ui/navStyles";
 import { isSneakPeek } from "@/lib/launchMode";
 
-type NavItem = { label: string; href: string };
+// `paths`: the sections that count as this item's page, for the current-
+// section mark (the href itself may be an absolute cross-domain URL).
+type NavItem = { label: string; href: string; paths: string[] };
 
 // No ring/box around a focused or just-clicked item -- focus is still
 // visible (WCAG 2.4.7), just via the same text-color change already used
@@ -79,9 +83,9 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
   const sneakPeek = isSneakPeek();
   const publicItems: NavItem[] = [
     sneakPeek
-      ? { label: "Try a sample", href: marketingUrl("/sneak-peek") }
-      : { label: "Store", href: marketingUrl("/store") },
-    { label: "Blog", href: marketingUrl("/blog") },
+      ? { label: "Try a sample", href: marketingUrl("/sneak-peek"), paths: ["/sneak-peek"] }
+      : { label: "Store", href: marketingUrl("/store"), paths: ["/store"] },
+    { label: "Blog", href: marketingUrl("/blog"), paths: ["/blog"] },
   ];
   // "App" (was "My Library") -- the one link into the gated reading app
   // (library, studies, devotionals), named generically since it's the same
@@ -89,9 +93,12 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
   // "Contact" -- comments, feedback and issue reports, emailed to the site's
   // inbox (app/(marketing)/contact). Signed-in only, like the page itself.
   const loggedInItems: NavItem[] = [
-    { label: "App", href: appUrl("/library") },
-    { label: "Contact", href: marketingUrl("/contact") },
+    { label: "App", href: appUrl("/library"), paths: ["/library", "/studies", "/journey"] },
+    { label: "Contact", href: marketingUrl("/contact"), paths: ["/contact"] },
   ];
+
+  const pathname = usePathname();
+  const isCurrent = (item: NavItem) => item.paths.some((p) => pathMatchesPrefix(pathname, p));
 
   return (
     <nav aria-label="Primary" className="flex items-center font-sans text-sm font-medium min-w-0">
@@ -105,7 +112,12 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
           style={{ scrollbarWidth: "none" }}
         >
           {publicItems.map((item) => (
-            <Link key={item.href} href={item.href} className={linkClass}>
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={isCurrent(item) ? "page" : undefined}
+              className={isCurrent(item) ? `${linkClass} ${activeNavLinkClass}` : linkClass}
+            >
               {item.label}
             </Link>
           ))}
@@ -119,7 +131,12 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
             <>
               <div aria-hidden="true" className="w-px h-5 bg-parchment/20 flex-shrink-0" />
               {loggedInItems.map((item) => (
-                <Link key={item.href} href={item.href} className={linkClass}>
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={isCurrent(item) ? "page" : undefined}
+                  className={isCurrent(item) ? `${linkClass} ${activeNavLinkClass}` : linkClass}
+                >
                   {item.label}
                 </Link>
               ))}
@@ -230,8 +247,9 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
                 key={item.href}
                 href={item.href}
                 role="menuitem"
+                aria-current={isCurrent(item) ? "page" : undefined}
                 onClick={() => setMobileMenuOpen(false)}
-                className={menuItemClass}
+                className={isCurrent(item) ? `${menuItemClass} text-gold` : menuItemClass}
               >
                 {item.label}
               </Link>
@@ -257,8 +275,9 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
                     key={item.href}
                     href={item.href}
                     role="menuitem"
+                    aria-current={isCurrent(item) ? "page" : undefined}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={menuItemClass}
+                    className={isCurrent(item) ? `${menuItemClass} text-gold` : menuItemClass}
                   >
                     {item.label}
                   </Link>

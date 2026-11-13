@@ -1,4 +1,7 @@
 import { Resend } from "resend";
+import { CONTACT_INBOX } from "@/lib/contact/inbox";
+
+export { CONTACT_INBOX };
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -153,8 +156,6 @@ export async function sendBundleShipmentNotificationEmail(params: BundleShipment
   });
 }
 
-/** Where the Contact page's messages go. */
-export const CONTACT_INBOX = "admin@souldustrevival.com";
 
 type ContactMessageParams = {
   name: string;

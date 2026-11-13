@@ -14,8 +14,8 @@ export function SiteFooter({ loggedIn }: { loggedIn: boolean }) {
           Soul Dust <span className="text-gold">Revival</span>
         </p>
         <p className="font-serif italic text-sm text-parchment/70 mb-8 max-w-md">
-          &ldquo;My soul cleaves to the dust; Revive me according to Your word.&rdquo;
-          {" "}— Psalm 119:25, NASB
+          &ldquo;My soul clings to the dust; Revive me according to Your word.&rdquo;
+          {" "}— Psalm 119:25, NKJV
         </p>
 
         <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2 font-sans text-sm">
@@ -24,7 +24,7 @@ export function SiteFooter({ loggedIn }: { loggedIn: boolean }) {
             href={isSneakPeek() ? "/sneak-peek" : "/store"}
             className={linkClass}
           >
-            {isSneakPeek() ? "Try a sample" : "Books & Studies"}
+            {isSneakPeek() ? "Try a sample" : "Store"}
           </Link>
           {/* Open on both sites: Amazon sells the printed books whether or not
               our own store is. */}
@@ -33,6 +33,11 @@ export function SiteFooter({ loggedIn }: { loggedIn: boolean }) {
           </Link>
           <Link href="/blog" className={linkClass}>
             Blog
+          </Link>
+          {/* For everyone: a guest's Contact page gives the email address,
+              since the form itself needs an account. */}
+          <Link href="/contact" className={linkClass}>
+            Contact
           </Link>
           <Link href="/privacy" className={linkClass}>
             Privacy

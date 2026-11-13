@@ -162,6 +162,53 @@ test.describe("/privacy", () => {
   });
 });
 
+// Audit 2026-11-13 fixes: the footer named the Store "Books & Studies" and
+// had no Contact link; unknown URLs showed Next's bare 404; the public nav
+// had no mark on the current section.
+test.describe("Footer links", () => {
+  test("names the Store as the nav does and links Contact for everyone", async ({ page }) => {
+    await page.goto("/blog");
+    const footer = page.getByRole("navigation", { name: "Footer" });
+    await expect(footer.getByRole("link", { name: "Store" })).toHaveAttribute("href", "/store");
+    await expect(footer.getByRole("link", { name: "Books & Studies" })).toHaveCount(0);
+    await expect(footer.getByRole("link", { name: "Contact" })).toHaveAttribute("href", "/contact");
+    await expect(page.locator("footer")).toContainText("My soul clings to the dust");
+  });
+});
+
+test.describe("Not-found page", () => {
+  test("an unknown address keeps the site header and offers a way back", async ({ page }) => {
+    const res = await page.goto("/no-such-page-anywhere");
+    expect(res?.status()).toBe(404);
+    await expect(page).toHaveTitle(/Page not found/);
+    await expect(page.getByRole("heading", { name: "We couldn't find that page" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Footer" })).toBeVisible();
+    await expect(page.locator("main").getByRole("link", { name: "Home" })).toBeVisible();
+  });
+
+  test("an unknown product does too", async ({ page }) => {
+    const res = await page.goto("/store/does-not-exist");
+    expect(res?.status()).toBe(404);
+    await expect(page.getByRole("heading", { name: "We couldn't find that page" })).toBeVisible();
+  });
+});
+
+test.describe("Nav current section", () => {
+  test("marks the section being viewed", async ({ page }, testInfo) => {
+    await page.goto("/blog");
+    const nav = page.getByRole("navigation", { name: "Primary" });
+    if (testInfo.project.name === "mobile-chromium") {
+      await nav.getByRole("button", { name: "Open menu" }).click();
+      await expect(page.getByRole("menuitem", { name: "Blog" })).toHaveAttribute("aria-current", "page");
+      await expect(page.getByRole("menuitem", { name: "Store" })).not.toHaveAttribute("aria-current", "page");
+    } else {
+      await expect(nav.getByRole("link", { name: "Blog" })).toHaveAttribute("aria-current", "page");
+      await expect(nav.getByRole("link", { name: "Store" })).not.toHaveAttribute("aria-current", "page");
+    }
+  });
+});
+
 test.describe("Footer account links", () => {
   test("guest sees Log in and Sign up, not App or Account", async ({ page }) => {
     await page.goto("/blog");

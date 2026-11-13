@@ -1,3 +1,5 @@
+import { CONTACT_INBOX } from "@/lib/contact/inbox";
+
 export const metadata = {
   title: "Privacy Policy",
 };
@@ -64,7 +66,8 @@ export default function PrivacyPage() {
         <h2>Questions</h2>
         <p>
           If you have questions about this policy or want help with a data request
-          beyond what the account page offers, reach out and we will help directly.
+          beyond what the account page offers, email us at{" "}
+          <a href={`mailto:${CONTACT_INBOX}`}>{CONTACT_INBOX}</a> and we will help directly.
         </p>
 
         <p className="text-sm text-moss italic">

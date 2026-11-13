@@ -10,9 +10,18 @@ import { formatViolations, runAxe } from "../fixtures/axe";
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
 
 test.describe("Contact page", () => {
-  test("guest is sent to log in", async ({ page }) => {
+  // Audit 2026-11-13: guests had no way to reach us. The footer links here
+  // for everyone; a guest gets the email address and a way to log in.
+  test("guest sees the email address and a log-in link, not the form", async ({ page }) => {
     await page.goto("/contact");
-    await expect(page).toHaveURL(/\/login\?next=\/contact/);
+    await expect(page).toHaveURL(/\/contact$/);
+    const main = page.locator("main");
+    await expect(main.getByRole("link", { name: "admin@souldustrevival.com" })).toHaveAttribute(
+      "href",
+      "mailto:admin@souldustrevival.com",
+    );
+    await expect(main.locator('a[href="/login?next=/contact"]')).toHaveText("Log in");
+    await expect(main.getByRole("textbox")).toHaveCount(0);
   });
 
   test("guest's nav has no Contact link", async ({ page }, testInfo) => {

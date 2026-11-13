@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { logOut } from "@/lib/auth/logOut";
 import { pathMatchesPrefix } from "@/lib/domains";
+import { activeNavLinkClass } from "@/lib/ui/navStyles";
 
 // Same focus/hover treatment as the public SiteNav's linkClass -- no ring,
 // just a color change, so the two nav bars read as one system.
@@ -12,7 +13,7 @@ const linkClass = "text-parchment/80 hover:text-gold focus:outline-none focus:te
 // REAL FIX (qa/findings/FINDINGS_2026-11-07.md #10): the admin nav had no
 // active-section indicator at all -- an admin on, say, /admin/blog had no
 // visual confirmation of which section they were in.
-const activeLinkClass = "text-gold border-b-2 border-gold";
+const activeLinkClass = activeNavLinkClass;
 
 const ADMIN_LINKS = [
   { label: "Products", href: "/admin/products" },

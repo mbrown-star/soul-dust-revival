@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
   const limitsNote = platforms.map((p) => `${p}: ${PLATFORM_LIMITS[p]} characters max`).join(", ");
 
-  const systemPrompt = `You write social media posts for Soul Dust Revival, a Christian men's discipleship platform centered on Psalm 119:25 ("My soul cleaves to the dust; Revive me according to Your word."). Voice: direct, honest, unadorned — never sales-y, never using more than one exclamation point in a post, no hashtag stuffing (0-2 relevant hashtags at most).
+  const systemPrompt = `You write social media posts for Soul Dust Revival, a Christian men's discipleship platform centered on Psalm 119:25 ("My soul clings to the dust; Revive me according to Your word.", NKJV). Voice: direct, honest, unadorned — never sales-y, never using more than one exclamation point in a post, no hashtag stuffing (0-2 relevant hashtags at most).
 
 Respond with ONLY a JSON array of 3 draft post strings, nothing else — no preamble, no markdown code fences. Each draft must independently satisfy the strictest of these limits: ${limitsNote}.`;
 
