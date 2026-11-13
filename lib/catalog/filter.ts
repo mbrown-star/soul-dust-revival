@@ -6,7 +6,8 @@
  * offered on the Store.
  */
 
-export const KIND_FILTERS = ["all", "book", "devotional", "study"] as const;
+// "bundle" is offered only where the list has bundles (the Store).
+export const KIND_FILTERS = ["all", "book", "devotional", "study", "bundle"] as const;
 export type KindFilter = (typeof KIND_FILTERS)[number];
 
 export const STATUS_FILTERS = ["all", "in_progress", "not_started", "completed"] as const;
@@ -40,6 +41,7 @@ export const KIND_FILTER_LABEL: Record<KindFilter, string> = {
   book: "Books",
   devotional: "Devotionals",
   study: "Studies",
+  bundle: "Bundles",
 };
 
 export const STATUS_FILTER_LABEL: Record<StatusFilter, string> = {

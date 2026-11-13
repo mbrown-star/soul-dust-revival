@@ -9,6 +9,7 @@ import { FeaturedJourneyBanner } from "@/components/commerce/FeaturedJourneyBann
 import { loadFeaturedJourney } from "@/lib/journey/featured";
 import { normalizeSearchText, parseCatalogFilters, type CatalogSearchParams } from "@/lib/catalog/filter";
 import { storePriceLine } from "@/lib/commerce/priceSummary";
+import { bundleTitlesByComponent, productIdsWithDigitalEdition } from "@/lib/commerce/digitalEdition";
 
 // Rendered dynamically per-request rather than statically at build time —
 // this reads live product/post data an admin can change anytime, and a
@@ -29,6 +30,10 @@ export default async function BooksPage({ searchParams }: { searchParams: Promis
     .where(eq(products.active, true))
     .orderBy(desc(products.createdAt));
   const featuredJourney = await loadFeaturedJourney(db);
+  const [withDigitalEdition, bundleNames] = await Promise.all([
+    productIdsWithDigitalEdition(db, allProducts.map((p) => p.id)),
+    bundleTitlesByComponent(db),
+  ]);
 
   return (
     <>
@@ -52,13 +57,19 @@ export default async function BooksPage({ searchParams }: { searchParams: Promis
             searchPlaceholder="Search books, studies and devotionals"
             gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 items-start"
             items={allProducts.map((p) => {
-              const eyebrow = productEyebrowLabel({ type: p.type, kind: p.kind, format: p.format });
+              const eyebrow = productEyebrowLabel({
+                type: p.type,
+                kind: p.kind,
+                format: p.format,
+                includesDigitalEdition: withDigitalEdition.has(p.id),
+              });
               return {
                 id: p.id,
-                kind: p.kind,
+                kind: p.type === "bundle" ? ("bundle" as const) : p.kind,
                 createdAt: p.createdAt?.getTime(),
                 comingSoon: p.comingSoon,
-                searchText: normalizeSearchText(`${p.title} ${p.description ?? ""} ${eyebrow}`),
+                // A Part is found by its bundle's name too ("journey" finds Parts One–Four).
+                searchText: normalizeSearchText(`${p.title} ${p.description ?? ""} ${eyebrow} ${(bundleNames.get(p.id) ?? []).join(" ")}`),
                 node: (
                   <Link
                     href={`/store/${p.slug}`}

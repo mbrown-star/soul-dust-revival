@@ -37,7 +37,9 @@ describe("parseCatalogFilters", () => {
   });
 
   it("falls back to all for unknown or repeated values", () => {
-    expect(parseCatalogFilters({ type: "bundle", status: ["done", "completed"] })).toEqual(ALL);
+    expect(parseCatalogFilters({ type: "magazine", status: ["done", "completed"] })).toEqual(ALL);
+    // Bundles are their own type on the Store (audit 2026-11-13).
+    expect(parseCatalogFilters({ type: "bundle" }).kind).toBe("bundle");
     expect(parseCatalogFilters({ type: ["book", "study"] }).kind).toBe("book");
   });
 

@@ -40,4 +40,13 @@ describe("productEyebrowLabel", () => {
       "Bundle - Devotionals & Digital"
     );
   });
+
+  // Audit 2026-11-13: Parts One to Four read "Study" while their pages promise
+  // the digital edition too.
+  it("adds & Digital for a printed title that comes with its digital edition", () => {
+    expect(productEyebrowLabel({ type: "book", kind: "study", format: "physical", includesDigitalEdition: true })).toBe(
+      "Study & Digital"
+    );
+    expect(productEyebrowLabel({ type: "book", kind: "book", format: "physical", includesDigitalEdition: false })).toBe("Book");
+  });
 });

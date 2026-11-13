@@ -125,7 +125,8 @@ export function CatalogBrowser({
 
         <FilterGroup
           label="Type"
-          options={KIND_FILTERS.map((kind) => ({
+          // Bundles only where there are some (the Store, not My Library).
+          options={KIND_FILTERS.filter((kind) => kind !== "bundle" || items.some((item) => item.kind === "bundle")).map((kind) => ({
             value: kind,
             label: KIND_FILTER_LABEL[kind],
             count: kindCounts.get(kind) ?? 0,

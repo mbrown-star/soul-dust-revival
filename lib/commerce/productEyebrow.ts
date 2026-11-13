@@ -22,20 +22,23 @@ const BUNDLE_KIND_LABEL: Record<ProductKind, string> = {
  *
  * Always the product's `kind` as a plain word (Book / Study / Devotional),
  * with " & Digital" appended whenever it's available digitally (format
- * "digital" or "both"). A bundle gets a "Bundle - " prefix and the plural
- * kind word, e.g. "Bundle - Studies & Digital".
+ * "digital" or "both"), or when a printed title comes with its digital
+ * edition (a linked study, claimed on /claim for an Amazon copy). A bundle
+ * gets a "Bundle - " prefix and the plural kind word, e.g. "Bundle - Studies & Digital".
  */
 export function productEyebrowLabel({
   type,
   kind,
   format,
+  includesDigitalEdition = false,
 }: {
   type: ProductType;
   kind: ProductKind;
   format: ProductFormat;
+  includesDigitalEdition?: boolean;
 }): string {
   const isBundle = type === "bundle";
   const kindWord = isBundle ? BUNDLE_KIND_LABEL[kind] : KIND_LABEL[kind];
-  const label = format === "physical" ? kindWord : `${kindWord} & Digital`;
+  const label = format === "physical" && !includesDigitalEdition ? kindWord : `${kindWord} & Digital`;
   return isBundle ? `Bundle - ${label}` : label;
 }

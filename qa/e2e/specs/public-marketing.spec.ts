@@ -185,6 +185,11 @@ test.describe("Store and product wording", () => {
     await expect(page.getByText("You'll sign in or create an account at checkout.")).toBeVisible();
   });
 
+  test("a printed title with a digital edition says so on its tile", async ({ page }) => {
+    await page.goto("/store");
+    await expect(page.getByRole("link", { name: /QA Printed Study — On Amazon/ })).toContainText("Study & Digital");
+  });
+
   test("an empty cart links back to the Store", async ({ page }) => {
     await page.goto("/checkout");
     await expect(page.getByText("Your cart is empty.")).toBeVisible();

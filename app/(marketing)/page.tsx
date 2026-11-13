@@ -8,6 +8,7 @@ import { CoverThumbnail } from "@/components/commerce/CoverThumbnail";
 import { isSneakPeek } from "@/lib/launchMode";
 import { formatDate } from "@/lib/format/date";
 import { storePriceLine } from "@/lib/commerce/priceSummary";
+import { productIdsWithDigitalEdition } from "@/lib/commerce/digitalEdition";
 
 // The homepage's "Featured content" section -- an admin picks up to this
 // many products as "featured" (enforced in app/api/admin/products/route.ts);
@@ -30,6 +31,7 @@ export default async function HomePage() {
     .where(and(eq(products.active, true), eq(products.featured, true)))
     .orderBy(desc(products.createdAt))
     .limit(MAX_FEATURED_PRODUCTS);
+  const withDigitalEdition = await productIdsWithDigitalEdition(db, featuredProducts.map((p) => p.id));
 
   const recentPosts = await db
     .select()
@@ -80,6 +82,7 @@ export default async function HomePage() {
                         type: p.type,
                         kind: p.kind,
                         format: p.format,
+                        includesDigitalEdition: withDigitalEdition.has(p.id),
                       })}
                     </p>
                     <h3 className="font-display font-semibold text-ink group-hover:text-moss group-focus:text-moss">

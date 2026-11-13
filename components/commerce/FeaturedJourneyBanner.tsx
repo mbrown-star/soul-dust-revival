@@ -33,9 +33,9 @@ export function FeaturedJourneyBanner({ featured }: { featured: FeaturedJourney 
 
   return (
     <section aria-labelledby="featured-journey-heading" className="bg-ink text-parchment mottle">
-      <div className="max-w-5xl mx-auto px-4 py-10 sm:py-14 grid grid-cols-1 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-8 sm:gap-12 items-center">
+      <div className="max-w-5xl mx-auto px-4 py-8 sm:py-14 grid grid-cols-1 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-6 sm:gap-12 items-center">
         <div
-          className="relative w-full max-w-[15rem] sm:max-w-none mx-auto rounded-xl overflow-hidden shadow-2xl ring-1 ring-gold/30 bg-dusk"
+          className="relative w-full max-w-[9rem] sm:max-w-none mx-auto rounded-xl overflow-hidden shadow-2xl ring-1 ring-gold/30 bg-dusk"
           style={{ aspectRatio: coverAspectRatio(product.imageWidth, product.imageHeight) }}
         >
           {product.imageUrl && (
@@ -63,7 +63,9 @@ export function FeaturedJourneyBanner({ featured }: { featured: FeaturedJourney 
           </p>
 
           {parts.length > 0 && (
-            <ol className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 mb-8">
+            // The Parts list shows from 640px up; on a phone the band stays short
+            // enough to leave the Store heading and search on the first screen.
+            <ol className="hidden sm:grid grid-cols-2 gap-x-6 gap-y-3 mb-8">
               {parts.map((part) => {
                 const [head, name] = part.label.split(" — ");
                 return (

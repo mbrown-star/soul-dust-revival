@@ -84,3 +84,18 @@ export async function findClaimableProduct(
     .groupBy(products.id, products.slug, products.title);
   return row ?? null;
 }
+
+/**
+ * Each active bundle's title, by the products inside it, so the Store's search
+ * finds a Part by its bundle's name ("journey" finds Parts One to Four).
+ */
+export async function bundleTitlesByComponent(db: Db): Promise<Map<string, string[]>> {
+  const rows = await db
+    .select({ componentId: bundleItems.componentProductId, title: products.title })
+    .from(bundleItems)
+    .innerJoin(products, eq(products.id, bundleItems.bundleProductId))
+    .where(eq(products.active, true));
+  const byComponent = new Map<string, string[]>();
+  for (const row of rows) byComponent.set(row.componentId, [...(byComponent.get(row.componentId) ?? []), row.title]);
+  return byComponent;
+}
