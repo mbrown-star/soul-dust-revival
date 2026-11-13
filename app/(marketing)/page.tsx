@@ -6,6 +6,7 @@ import { DustHero } from "@/components/marketing/DustHero";
 import { productEyebrowLabel } from "@/lib/commerce/productEyebrow";
 import { CoverThumbnail } from "@/components/commerce/CoverThumbnail";
 import { isSneakPeek } from "@/lib/launchMode";
+import { formatDate } from "@/lib/format/date";
 
 // The homepage's "Featured content" section -- an admin picks up to this
 // many products as "featured" (enforced in app/api/admin/products/route.ts);
@@ -166,11 +167,7 @@ export default async function HomePage() {
                 </h3>
                 {post.publishedAt && (
                   <p className="font-sans text-xs text-moss">
-                    {new Date(post.publishedAt).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
+                    {formatDate(post.publishedAt)}
                   </p>
                 )}
               </Link>

@@ -2,6 +2,7 @@ import { getDb } from "@/lib/db/client";
 import { loginEvents, users } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
+import { formatDateTime } from "@/lib/format/date";
 
 export const dynamic = "force-dynamic";
 
@@ -84,7 +85,7 @@ export default async function EngagementReportPage() {
                 <td className="py-3 pr-4">{row.email ?? row.userId}</td>
                 <td className="py-3 pr-4">{row.logins}</td>
                 <td className="py-3 pr-4 text-moss">
-                  {row.lastLogin ? row.lastLogin.toLocaleString() : "—"}
+                  {row.lastLogin ? formatDateTime(row.lastLogin) : "—"}
                 </td>
                 <td className="py-3">{row.avgMinutes.toFixed(1)} min</td>
               </tr>

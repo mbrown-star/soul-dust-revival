@@ -2,6 +2,8 @@
 
 import { useState, useId } from "react";
 import { logOut } from "@/lib/auth/logOut";
+import { appUrl } from "@/lib/domains";
+import { formatDate } from "@/lib/format/date";
 
 export type OrderSummary = {
   id: string;
@@ -9,6 +11,13 @@ export type OrderSummary = {
   totalCents: number;
   createdAt: string | null;
   itemLabels: string[];
+};
+
+export type ClaimSummary = {
+  id: string;
+  title: string;
+  amazonOrderNumber: string;
+  createdAt: string | null;
 };
 
 const STATUS_LABEL: Record<OrderSummary["status"], string> = {
@@ -20,9 +29,11 @@ const STATUS_LABEL: Record<OrderSummary["status"], string> = {
 export default function AccountPageClient({
   email,
   orders,
+  claims,
 }: {
   email: string;
   orders: OrderSummary[];
+  claims: ClaimSummary[];
 }) {
   const [confirmText, setConfirmText] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
@@ -64,6 +75,9 @@ export default function AccountPageClient({
       <div>
         <h1 className="font-display font-bold text-2xl text-ink">Your account</h1>
         <p className="text-moss mt-1">{email}</p>
+        <a href={appUrl("/library")} className="inline-block mt-2 text-sm text-moss hover:text-ink underline underline-offset-2">
+          Go to My Library →
+        </a>
       </div>
 
       <div className="border rounded-lg p-4">
@@ -82,7 +96,7 @@ export default function AccountPageClient({
                         review: the old unconditional "{date} · Order #" left an
                         orphaned leading "· " with no date before it if it ever
                         were null. */}
-                    {order.createdAt && `${new Date(order.createdAt).toLocaleDateString()} · `}
+                    {order.createdAt && `${formatDate(order.createdAt)} · `}
                     Order #{order.id.slice(0, 8)}
                   </p>
                 </div>
@@ -99,6 +113,23 @@ export default function AccountPageClient({
           </ul>
         )}
       </div>
+
+      {claims.length > 0 && (
+        <section aria-labelledby="claims-heading" className="border rounded-lg p-4">
+          <h2 id="claims-heading" className="font-medium mb-1">Bought on Amazon</h2>
+          <p className="text-sm text-moss mb-2">Digital editions you unlocked with an Amazon order number.</p>
+          <ul className="divide-y">
+            {claims.map((claim) => (
+              <li key={claim.id} className="py-3">
+                <p className="text-sm text-ink">{claim.title}</p>
+                <p className="text-xs text-moss">
+                  {claim.createdAt && `${formatDate(claim.createdAt)} · `}Amazon order {claim.amazonOrderNumber}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="border rounded-lg p-4">
         <h2 className="font-medium mb-1">Export your data</h2>

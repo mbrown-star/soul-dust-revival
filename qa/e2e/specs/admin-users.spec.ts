@@ -31,7 +31,7 @@ test.describe("admin users & roles, as qa-admin", () => {
       });
       await page.goto("/admin/users");
       await expect(page.getByRole("columnheader", { name: "Joined" })).toBeVisible();
-      await expect(page.locator("tbody").getByText(/^[A-Z][a-z]{2} \d{1,2}, \d{4}$/).first()).toBeVisible();
+      await expect(page.locator("tbody").getByText(/^[A-Z][a-z]+ \d{1,2}, \d{4}$/).first()).toBeVisible();
       expect(hydrationErrors).toEqual([]);
     });
   });

@@ -2,6 +2,7 @@ import { getDb } from "@/lib/db/client";
 import { orders, orderItems, products, users } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
+import { formatDate } from "@/lib/format/date";
 
 export const dynamic = "force-dynamic"; // always reflects the latest orders, never a stale build-time snapshot
 
@@ -85,7 +86,7 @@ export default async function SalesReportPage() {
             {paidOrders.map((order) => (
               <tr key={order.id} className="border-b border-moss/20">
                 <td className="py-3 pr-4 text-moss">
-                  {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "—"}
+                  {order.createdAt ? formatDate(order.createdAt) : "—"}
                 </td>
                 <td className="py-3 pr-4">{order.userEmail ?? order.guestEmail ?? "—"}</td>
                 <td className="py-3 pr-4">{order.country}</td>

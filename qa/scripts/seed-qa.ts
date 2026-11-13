@@ -1136,6 +1136,22 @@ async function main() {
   if (pendingOrder) {
     await db.insert(schema.orderItems).values({ orderId: pendingOrder.id, productId: pAmazonAndStripe.id, quantity: 1 });
   }
+  // A checkout abandoned three days ago: /account leaves it out (audit
+  // 2026-11-13), while the fresh pending one above still shows.
+  const [abandonedOrder] = await db
+    .insert(schema.orders)
+    .values({
+      userId: userIds.user,
+      country: "US",
+      status: "pending",
+      totalCents: pInProgress.priceCents,
+      requiresShipping: false,
+      createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+    })
+    .returning();
+  if (abandonedOrder) {
+    await db.insert(schema.orderItems).values({ orderId: abandonedOrder.id, productId: pInProgress.id, quantity: 1 });
+  }
 
   // A fixed, well-known id -- qa/e2e/specs/checkout.spec.ts navigates
   // directly to /checkout/success?orderId=<this> to exercise the "both"-

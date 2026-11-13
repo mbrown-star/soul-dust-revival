@@ -5,6 +5,7 @@ import { COUNTRIES } from "@/lib/data/countries";
 import { Button } from "@/components/ui/Button";
 import { AddUserForm } from "./AddUserForm";
 import { BlockedEmailsPanel, type BlockedEmail } from "./BlockedEmailsPanel";
+import { formatDate } from "@/lib/format/date";
 
 type UserRow = {
   id: string;
@@ -351,7 +352,7 @@ export function UserRoleTable({
                   </td>
                   <td className="py-3 pr-4 font-sans text-sm text-moss">{u.country ?? "—"}</td>
                   <td className="py-3 pr-4 font-sans text-sm text-moss">
-                    {u.createdAt ? formatJoined(u.createdAt) : "—"}
+                    {u.createdAt ? formatDate(u.createdAt) : "—"}
                   </td>
                   <td className="py-3 pr-4">
                     {u.id === currentUserId ? (
@@ -416,13 +417,4 @@ export function UserRoleTable({
       />
     </div>
   );
-}
-
-/**
- * The Joined date, formatted the same on the server and in the browser (a
- * fixed locale and UTC); the browser's own locale and time zone made the
- * server-rendered text differ, and React logged hydration error #418.
- */
-function formatJoined(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
 }

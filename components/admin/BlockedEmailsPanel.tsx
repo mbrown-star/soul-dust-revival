@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { formatDate } from "@/lib/format/date";
 
 export type BlockedEmail = {
   id: string;
@@ -163,7 +164,7 @@ export function BlockedEmailsPanel({
                   <td className="py-3 pr-4 font-sans text-sm">{b.email}</td>
                   <td className="py-3 pr-4 font-sans text-sm text-moss">{b.reason ?? "—"}</td>
                   <td className="py-3 pr-4 font-sans text-sm text-moss">
-                    {b.createdAt ? new Date(b.createdAt).toLocaleDateString() : "—"}
+                    {b.createdAt ? formatDate(b.createdAt) : "—"}
                   </td>
                   <td className="py-3">
                     <button

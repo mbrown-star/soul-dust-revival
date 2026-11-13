@@ -2,6 +2,7 @@ import { getDb } from "@/lib/db/client";
 import { posts } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
+import { formatDate } from "@/lib/format/date";
 
 // Rendered dynamically per-request rather than statically at build time —
 // this reads live product/post data an admin can change anytime, and a
@@ -38,11 +39,7 @@ export default async function BlogPage() {
               </Link>
               {post.publishedAt && (
                 <p className="font-sans text-xs text-moss">
-                  {new Date(post.publishedAt).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
+                  {formatDate(post.publishedAt)}
                 </p>
               )}
             </article>

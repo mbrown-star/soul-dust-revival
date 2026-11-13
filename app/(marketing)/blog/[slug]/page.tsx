@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { sanitizeHtml } from "@/lib/sanitize/html";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { formatDate } from "@/lib/format/date";
 
 // Rendered dynamically per-request rather than statically at build time —
 // this reads live product/post data an admin can change anytime, and a
@@ -49,11 +50,7 @@ export default async function BlogPostPage({
       </h1>
       {post.publishedAt && (
         <p className="font-sans text-sm text-moss mb-8">
-          {new Date(post.publishedAt).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
+          {formatDate(post.publishedAt)}
         </p>
       )}
 

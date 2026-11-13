@@ -3,6 +3,7 @@ import { socialPostTargets, socialPosts, socialPostMetrics } from "@/lib/db/sche
 import { eq, desc, inArray } from "drizzle-orm";
 import Link from "next/link";
 import { PLATFORM_LABELS } from "@/lib/data/socialPlatforms";
+import { formatDate } from "@/lib/format/date";
 
 export const dynamic = "force-dynamic";
 
@@ -91,7 +92,7 @@ export default async function SocialAnalyticsPage() {
                   <td className="py-3 pr-4 max-w-xs truncate">{t.body}</td>
                   <td className="py-3 pr-4">{PLATFORM_LABELS[t.platform]}</td>
                   <td className="py-3 pr-4 text-moss">
-                    {t.publishedAt ? new Date(t.publishedAt).toLocaleDateString() : "—"}
+                    {t.publishedAt ? formatDate(t.publishedAt) : "—"}
                   </td>
                   <td className="py-3 pr-4">{m?.likes ?? "—"}</td>
                   <td className="py-3 pr-4">{m?.comments ?? "—"}</td>

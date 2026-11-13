@@ -109,6 +109,12 @@ test.describe("/claim", () => {
 
       await page.goto("/library");
       await expect(page.locator("body")).toContainText("QA Printed Study — On Amazon");
+
+      // Audit 2026-11-13: the claim is listed on /account too.
+      await page.goto("/account");
+      const claims = page.getByRole("region", { name: "Bought on Amazon" });
+      await expect(claims).toContainText("QA Printed Study — On Amazon");
+      await expect(claims).toContainText("Amazon order 113-7654321-7654321");
     });
 
     test("has no axe violations", async ({ page }) => {

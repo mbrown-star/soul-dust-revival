@@ -36,6 +36,30 @@ test.describe("Account page", () => {
       const amazonBookRow = page.getByRole("listitem").filter({ hasText: "QA Physical Book — Amazon + Stripe" });
       await expect(amazonBookRow.getByText("$16.99")).toBeVisible();
       await expect(amazonBookRow.getByText("Pending", { exact: true })).toBeVisible();
+
+      // Audit 2026-11-13: a checkout abandoned days ago isn't listed, and every
+      // date reads in full, in UTC (it used the browser's own format and zone).
+      await expect(page.getByRole("listitem").filter({ hasText: "QA Devotional — In Progress" })).toHaveCount(0);
+      await expect(digitalStudyRow.getByText(/^[A-Z][a-z]+ \d{1,2}, \d{4} · Order #/)).toBeVisible();
+      await expect(page.getByRole("link", { name: "Go to My Library →" })).toHaveAttribute("href", /\/library$/);
+    });
+
+    test("loads without a hydration mismatch in another locale and time zone", async ({ browser }) => {
+      const context = await browser.newContext({
+        storageState: "qa/.auth/user.json",
+        locale: "en-GB",
+        timezoneId: "Asia/Tokyo",
+      });
+      const page = await context.newPage();
+      const errors: string[] = [];
+      page.on("pageerror", (err) => errors.push(err.message));
+      page.on("console", (msg) => {
+        if (msg.type() === "error" && /hydrat|#418/i.test(msg.text())) errors.push(msg.text());
+      });
+      await page.goto("/account");
+      await expect(page.getByRole("heading", { name: "Your orders" })).toBeVisible();
+      expect(errors.filter((e) => /hydrat|#418/i.test(e))).toEqual([]);
+      await context.close();
     });
 
     test("data export endpoint returns a JSON file covering the areas the UI promises", async ({ request }) => {

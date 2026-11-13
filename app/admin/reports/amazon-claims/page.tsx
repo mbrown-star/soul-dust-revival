@@ -3,6 +3,7 @@ import { amazonClaims, products, users } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
 import { RevokeClaimButton } from "@/components/admin/RevokeClaimButton";
+import { formatDate } from "@/lib/format/date";
 
 export const dynamic = "force-dynamic";
 
@@ -72,13 +73,13 @@ export default async function AmazonClaimsReportPage() {
             <tbody>
               {claims.map((c) => (
                 <tr key={c.id} className="border-b align-top">
-                  <td className="py-2 pr-4 whitespace-nowrap">{c.createdAt ? c.createdAt.toLocaleDateString() : ""}</td>
+                  <td className="py-2 pr-4 whitespace-nowrap">{c.createdAt ? formatDate(c.createdAt) : ""}</td>
                   <td className="py-2 pr-4">{c.userEmail}</td>
                   <td className="py-2 pr-4">{c.productTitle}</td>
                   <td className="py-2 pr-4 font-mono whitespace-nowrap">{c.orderNumber}</td>
                   <td className="py-2 pr-4">
                     {c.revokedAt ? (
-                      <span className="text-moss">Revoked {c.revokedAt.toLocaleDateString()}</span>
+                      <span className="text-moss">Revoked {formatDate(c.revokedAt)}</span>
                     ) : (
                       <RevokeClaimButton claimId={c.id} label={`${c.productTitle} for ${c.userEmail}`} />
                     )}

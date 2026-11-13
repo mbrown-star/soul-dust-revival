@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/client";
-import { orders, orderItems, products } from "@/lib/db/schema";
-import { eq, inArray, desc } from "drizzle-orm";
-import AccountPageClient, { type OrderSummary } from "./AccountPageClient";
+import { amazonClaims, orders, orderItems, products } from "@/lib/db/schema";
+import { and, eq, gte, inArray, isNull, desc, ne, or } from "drizzle-orm";
+import AccountPageClient, { type ClaimSummary, type OrderSummary } from "./AccountPageClient";
 import type { Metadata } from "next";
 
 // Needed for the nonce-based CSP in proxy.ts: nonces require a fresh
@@ -33,9 +33,33 @@ export default async function AccountPage() {
   // seen in the account UI at all. A fixed few rows per customer, not a
   // paginated-scale query -- ordered newest first like the admin sales
   // report already does.
-  const myOrders = await getOrdersForAccount(session.userId);
+  const [myOrders, myClaims] = await Promise.all([
+    getOrdersForAccount(session.userId),
+    getClaimsForAccount(session.userId),
+  ]);
 
-  return <AccountPageClient email={session.email} orders={myOrders} />;
+  return <AccountPageClient email={session.email} orders={myOrders} claims={myClaims} />;
+}
+
+function abandonedBefore(): Date {
+  return new Date(Date.now() - 24 * 60 * 60 * 1000);
+}
+
+/** Digital editions unlocked with an Amazon order number on /claim (not revoked). */
+async function getClaimsForAccount(userId: string): Promise<ClaimSummary[]> {
+  const db = await getDb();
+  const rows = await db
+    .select({
+      id: amazonClaims.id,
+      title: products.title,
+      amazonOrderNumber: amazonClaims.amazonOrderNumber,
+      createdAt: amazonClaims.createdAt,
+    })
+    .from(amazonClaims)
+    .innerJoin(products, eq(products.id, amazonClaims.productId))
+    .where(and(eq(amazonClaims.userId, userId), isNull(amazonClaims.revokedAt)))
+    .orderBy(desc(amazonClaims.createdAt));
+  return rows.map((r) => ({ ...r, createdAt: r.createdAt?.toISOString() ?? null }));
 }
 
 async function getOrdersForAccount(userId: string): Promise<OrderSummary[]> {
@@ -48,7 +72,10 @@ async function getOrdersForAccount(userId: string): Promise<OrderSummary[]> {
       createdAt: orders.createdAt,
     })
     .from(orders)
-    .where(eq(orders.userId, userId))
+    // A checkout left unpaid for over a day was abandoned (Stripe's own
+    // checkout links expire in 24 hours): leave it out rather than list it
+    // as Pending forever. Admin → Sales already leaves these out.
+    .where(and(eq(orders.userId, userId), or(ne(orders.status, "pending"), gte(orders.createdAt, abandonedBefore()))))
     .orderBy(desc(orders.createdAt));
 
   const orderIds = myOrders.map((o) => o.id);
