@@ -15,7 +15,7 @@ export async function SiteHeader({ session: given }: { session?: Session | null 
 
   return (
     <SiteHeaderShell>
-      <SiteNav loggedIn={!!session} isAdmin={role === "admin"} />
+      <SiteNav loggedIn={!!session} isAdmin={role === "admin"} isLeader={role === "leader" || role === "admin"} />
     </SiteHeaderShell>
   );
 }

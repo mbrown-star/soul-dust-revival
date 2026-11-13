@@ -2,7 +2,6 @@ import { getDb } from "@/lib/db/client";
 import { leaderResources } from "@/lib/db/schema";
 import { asc } from "drizzle-orm";
 import Link from "next/link";
-import { NewLeaderResourceButton } from "@/components/admin/NewLeaderResourceButton";
 
 export default async function AdminLeaderResourcesPage() {
   const db = await getDb();
@@ -13,8 +12,10 @@ export default async function AdminLeaderResourcesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-        <h1 className="text-xl font-semibold">Leader resources</h1>
-        <NewLeaderResourceButton />
+        <h1 className="text-xl font-semibold">Leader Resources</h1>
+        <Link href="/admin/leader-resources/new" className="inline-block bg-ink text-white rounded-lg px-4 py-2 text-center">
+          + New resource
+        </Link>
       </div>
 
       <div className="divide-y border rounded-lg">

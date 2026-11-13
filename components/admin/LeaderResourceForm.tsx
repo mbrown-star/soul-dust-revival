@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
 import { RichTextEditor } from "./RichTextEditor";
 import { UploadError, uploadFileToR2 } from "@/lib/r2/browserUpload";
 import { RESOURCE_PDF_UPLOAD_MAX_BYTES } from "@/lib/uploads/limits";
@@ -19,16 +21,55 @@ export function LeaderResourceForm({ initial }: { initial: ResourceFormValues })
   const [values, setValues] = useState(initial);
   const [uploading, setUploading] = useState(false);
   const { saved, markSaved } = useSavedIndicator();
+  const router = useRouter();
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function save(patch: Partial<ResourceFormValues>) {
+  // Saves as you go (a field on blur, the body as you type); Save sends
+  // everything at once, like the other admin forms' Save buttons.
+  async function save(patch: Partial<ResourceFormValues>): Promise<boolean> {
     const updated = { ...values, ...patch };
     setValues(updated);
-    await fetch("/api/admin/leader-resources", {
-      method: "PATCH",
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/leader-resources", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: values.id, ...patch }),
+      });
+      if (!res.ok) throw new Error();
+      markSaved();
+      return true;
+    } catch {
+      setError("Couldn't save. Please try again.");
+      return false;
+    }
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    await save({ title: values.title, body: values.body, published: values.published });
+    setSaving(false);
+    router.refresh();
+  }
+
+  async function handleDelete() {
+    if (!window.confirm(`Delete "${values.title || "this resource"}"? This can't be undone.`)) return;
+    setDeleting(true);
+    setError(null);
+    const res = await fetch("/api/admin/leader-resources", {
+      method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: values.id, ...patch }),
-    });
-    markSaved();
+      body: JSON.stringify({ id: values.id }),
+    }).catch(() => null);
+    if (!res?.ok) {
+      setError("Couldn't delete this resource. Please try again.");
+      setDeleting(false);
+      return;
+    }
+    router.push("/admin/leader-resources");
+    router.refresh();
   }
 
   async function uploadFile(file: File) {
@@ -92,9 +133,23 @@ export function LeaderResourceForm({ initial }: { initial: ResourceFormValues })
         <span className="text-sm">Published (visible to leaders)</span>
       </label>
 
-      <p role="status" aria-live="polite" className="text-sm text-moss h-5">
-        {saved ? "Saved" : ""}
-      </p>
+      {error && (
+        <p role="alert" className="text-sm text-error">
+          {error}
+        </p>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="button" onClick={handleSave} disabled={saving || deleting || !values.title.trim()}>
+          {saving ? "Saving..." : "Save"}
+        </Button>
+        <Button type="button" variant="danger" onClick={handleDelete} disabled={saving || deleting}>
+          {deleting ? "Deleting..." : "Delete resource"}
+        </Button>
+        <p role="status" aria-live="polite" className="text-sm text-moss">
+          {saved ? "Saved" : ""}
+        </p>
+      </div>
     </div>
   );
 }

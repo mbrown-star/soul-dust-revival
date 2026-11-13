@@ -54,7 +54,16 @@ function useDismissibleMenu(open: boolean, setOpen: (open: boolean) => void) {
   return ref;
 }
 
-export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAdmin?: boolean }) {
+export function SiteNav({
+  loggedIn,
+  isAdmin = false,
+  isLeader = false,
+}: {
+  loggedIn: boolean;
+  isAdmin?: boolean;
+  // Leaders and admins: shows Leader Resources in the Profile menu.
+  isLeader?: boolean;
+}) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -181,6 +190,16 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
                 >
                   Account
                 </Link>
+                {isLeader && (
+                  <Link
+                    href={appUrl("/leader")}
+                    role="menuitem"
+                    onClick={() => setProfileOpen(false)}
+                    className={menuItemClass}
+                  >
+                    Leader Resources
+                  </Link>
+                )}
                 {isAdmin && (
                   <Link
                     href={marketingUrl("/admin/products")}
@@ -290,6 +309,16 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
                 >
                   Account
                 </Link>
+                {isLeader && (
+                  <Link
+                    href={appUrl("/leader")}
+                    role="menuitem"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={menuItemClass}
+                  >
+                    Leader Resources
+                  </Link>
+                )}
                 {isAdmin && (
                   <Link
                     href={marketingUrl("/admin/products")}
