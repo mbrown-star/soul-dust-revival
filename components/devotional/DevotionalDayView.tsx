@@ -202,7 +202,19 @@ export function DevotionalDayView({
 
       {extraContent}
 
-      <WalkedToggle lessonId={lessonId} initialWalked={initialWalked} nextDayLabel={nextHref ? "Tomorrow" : null} />
+      {/* The Introduction isn't a day to walk: it reads as front matter
+          that leads into Day 1. */}
+      {dayLabel.trim().toLowerCase() === "introduction" ? (
+        <WalkedToggle
+          lessonId={lessonId}
+          initialWalked={initialWalked}
+          nextDayLabel={nextHref ? "Day 1" : null}
+          actionLabel="Mark as read"
+          doneLabel="✓ Read"
+        />
+      ) : (
+        <WalkedToggle lessonId={lessonId} initialWalked={initialWalked} nextDayLabel={nextHref ? "Tomorrow" : null} />
+      )}
     </div>
   );
 }

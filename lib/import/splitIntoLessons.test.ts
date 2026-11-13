@@ -916,3 +916,18 @@ describe("splitStudyPlainTextByHeadings", () => {
     expect(lessons[0]!.title).toBe("Imported Content");
   });
 });
+
+// Staging audit 2026-11-13: a quotation ending "?”" ended its paragraph, so
+// its citation on the next line started a new one.
+describe("paragraph breaks around a quotation's citation", () => {
+  it("keeps the citation with the quotation it belongs to", () => {
+    const text = [
+      "Day 1",
+      "God asks, “Is anything too hard for Yahweh?”",
+      "(1 John 1:9). A year later the laugh is real.",
+      "A new sentence starts a new paragraph.",
+    ].join("\n");
+    const html = splitPlainTextByHeadings(text)[0]!.bodyHtml;
+    expect(html).toContain("<p>God asks, “Is anything too hard for Yahweh?” (1 John 1:9). A year later the laugh is real.</p>");
+  });
+});

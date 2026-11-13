@@ -1,4 +1,5 @@
 import { htmlToPlainText } from "@/lib/content/plainText";
+import { startsWithBareCitation } from "@/lib/import/bareCitation";
 
 export type ParsedDevotionalDay = {
   title: string;
@@ -177,8 +178,18 @@ function pushToSection(
   section: "title" | "keyVerse" | "citation" | "body" | "lift" | "question" | "prayer",
   text: string
 ) {
-  if (section === "lift") result.liftUpParagraphs.push(text);
-  else if (section === "question") result.questionParagraphs.push(text);
-  else if (section === "prayer") result.prayerParagraphs.push(text);
-  else result.bodyParagraphs.push(text);
+  const list =
+    section === "lift"
+      ? result.liftUpParagraphs
+      : section === "question"
+        ? result.questionParagraphs
+        : section === "prayer"
+          ? result.prayerParagraphs
+          : result.bodyParagraphs;
+  // Days imported before the importer kept a quotation's citation with it
+  // have "(Genesis 18:14). A year later…" as a paragraph of its own: join it
+  // back onto the quotation it belongs to.
+  const previous = list.length - 1;
+  if (previous >= 0 && startsWithBareCitation(text)) list[previous] = `${list[previous]} ${text}`;
+  else list.push(text);
 }

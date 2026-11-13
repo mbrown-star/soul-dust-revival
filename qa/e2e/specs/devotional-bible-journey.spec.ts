@@ -17,6 +17,8 @@ test.describe("A day-by-day Bible devotional", () => {
   test("a day shows its title, readings, Lift Up and prayer as separate parts", async ({ page }) => {
     await openDay(page, "DAY 1 · JANUARY 1");
     await expect(page.getByRole("heading", { name: "In the Beginning", level: 1 })).toBeVisible();
+    // Audit 2026-11-13: the tab read "DAY 1 · JANUARY 1 — Soul Dust Revival".
+    await expect(page).toHaveTitle(/^Day 1: In the Beginning — /);
     await expect(page.getByText("Today's Readings")).toBeVisible();
     await expect(page.getByText("Genesis 1–2 · Matthew 1:1–12 · Psalm 1", { exact: true })).toBeVisible();
     await expect(page.getByText("A QA reading for day 1.")).toBeVisible();

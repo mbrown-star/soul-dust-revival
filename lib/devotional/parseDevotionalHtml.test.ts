@@ -140,3 +140,27 @@ describe("parseDevotionalHtml, a day that opens with its readings", () => {
     expect(parseDevotionalHtml(DAY_1_HTML).prayerParagraphs).toEqual([]);
   });
 });
+
+// Staging audit 2026-11-13: 35 devotional days had a quotation's citation
+// in a paragraph of its own (Journey Day 9).
+describe("parseDevotionalHtml, a citation split from its quotation", () => {
+  const SPLIT_DAY = [
+    "<p><strong>GENESIS 17–18 · MATTHEW 6:18–34 · PSALM 9</strong></p>",
+    "<p><strong>Is Anything Too Hard?</strong></p>",
+    "<p>God asks, “Is anything too hard for Yahweh?”</p>",
+    "<p>(Genesis 18:14). A year later the tired laugh becomes a real one.</p>",
+    "<p>(This aside is not a citation.)</p>",
+    "<p><strong>LIFT UP YOUR EYES</strong></p>",
+    "<p>Jesus asks, “Where is your faith?”</p>",
+    "<p>(Luke 8:25).</p>",
+  ].join("\n");
+
+  it("joins the citation back onto the quotation, in any section", () => {
+    const parsed = parseDevotionalHtml(SPLIT_DAY);
+    expect(parsed.bodyParagraphs).toEqual([
+      "God asks, “Is anything too hard for Yahweh?” (Genesis 18:14). A year later the tired laugh becomes a real one.",
+      "(This aside is not a citation.)",
+    ]);
+    expect(parsed.liftUpParagraphs).toEqual(["Jesus asks, “Where is your faith?” (Luke 8:25)."]);
+  });
+});

@@ -16,6 +16,7 @@ import { weekMediaBySlot } from "@/lib/study/weekMedia";
 import { DevotionalAppView } from "@/components/devotional/DevotionalAppView";
 import { formatReadings, parseDayLabel, todaysDateLabel } from "@/lib/devotional/parseDayLabel";
 import { isReadingsLine } from "@/lib/devotional/parseDevotionalHtml";
+import { devotionalDayTabTitle } from "@/lib/devotional/dayTabTitle";
 import { htmlToPlainText } from "@/lib/content/plainText";
 import { getDisplayStudyTitle } from "@/lib/study/displayTitle";
 import type { YearDay } from "@/components/devotional/YearView";
@@ -67,6 +68,22 @@ export async function generateMetadata({
 
   const access = await getLessonAccess(session, study, lesson);
   if (!access.allowed || (!access.isAdminPreview && (!lesson.published || !study.published))) return { title: "Studies" };
+  if (study.kind === "devotional" && parseDayLabel(lesson.title)) {
+    // The day's own title is in its text block: the published snapshot's
+    // when there is one (what readers see), else the working copy.
+    const snapshotText = lesson.publishedContent?.blocks.find((b) => b.type === "text")?.body;
+    const dayHtml =
+      snapshotText ??
+      (
+        await db
+          .select({ body: contentBlocks.body })
+          .from(contentBlocks)
+          .where(and(eq(contentBlocks.lessonId, lesson.id), eq(contentBlocks.type, "text"), isNull(contentBlocks.removedAt)))
+          .orderBy(asc(contentBlocks.orderIndex))
+          .limit(1)
+      )[0]?.body;
+    return { title: devotionalDayTabTitle(lesson.title, dayHtml) };
+  }
   return { title: lesson.title };
 }
 

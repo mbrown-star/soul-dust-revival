@@ -1,3 +1,5 @@
+import { startsWithBareCitation } from "./bareCitation";
+
 export type ImportedLesson = {
   title: string;
   bodyHtml: string;
@@ -367,7 +369,9 @@ function paragraphsToHtml(lines: string[], forcedHeadingIndex: number | null = n
       continue;
     }
     buffer.push(line);
-    if (SENTENCE_END.test(line)) flush();
+    // A quotation's own "?”" ends a sentence, but its citation on the next
+    // line still belongs to it: "…too hard for Yahweh?”" / "(Genesis 18:14).…"
+    if (SENTENCE_END.test(line) && !startsWithBareCitation(lines[index + 1] ?? "")) flush();
   }
   flush();
 
