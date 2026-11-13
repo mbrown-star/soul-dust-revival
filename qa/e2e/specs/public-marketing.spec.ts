@@ -149,6 +149,9 @@ test.describe("/blog", () => {
     await page.goto("/blog");
     await expect(page.locator("body")).toContainText("QA Fixture: Published Post");
     await expect(page.locator("body")).not.toContainText("QA Fixture: Draft Post");
+    // Audit 2026-11-13: a one-line excerpt under each title, as plain text.
+    const article = page.locator("article", { hasText: "QA Fixture: Published Post" });
+    await expect(article).toContainText("A QA fixture blog post with bold and a link to check rich-text rendering");
   });
 
   test("a published post renders sanitized rich text", async ({ page }) => {

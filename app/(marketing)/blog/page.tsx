@@ -3,6 +3,7 @@ import { posts } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
 import { formatDate } from "@/lib/format/date";
+import { postExcerpt } from "@/lib/content/postExcerpt";
 
 // Rendered dynamically per-request rather than statically at build time —
 // this reads live product/post data an admin can change anytime, and a
@@ -42,6 +43,7 @@ export default async function BlogPage() {
                   {formatDate(post.publishedAt)}
                 </p>
               )}
+              {postExcerpt(post.body) && <p className="font-serif text-ink/80 mt-2">{postExcerpt(post.body)}</p>}
             </article>
           ))}
         </div>
