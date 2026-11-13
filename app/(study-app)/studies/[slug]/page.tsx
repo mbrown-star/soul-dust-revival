@@ -71,10 +71,13 @@ export default async function StudyPage({
     if (journey && (await getJourneyAccess(session, journey)).allowed) redirect(journeyHref(journey));
   }
 
+  // An admin previewing an unpublished study sees its draft lessons too, so
+  // a freshly imported study can be read through in order before publishing.
+  const showDrafts = !study.published && access.isAdminPreview;
   const studyLessons = await db
     .select()
     .from(lessons)
-    .where(and(eq(lessons.studyId, study.id), eq(lessons.published, true)))
+    .where(showDrafts ? eq(lessons.studyId, study.id) : and(eq(lessons.studyId, study.id), eq(lessons.published, true)))
     .orderBy(asc(lessons.orderIndex));
 
   // Not owned, but the study has a free sample: show every lesson, with only

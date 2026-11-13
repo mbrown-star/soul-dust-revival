@@ -973,6 +973,32 @@ async function main() {
     ]);
   }
 
+  // An unpublished copy of the book with draft lessons: an admin previewing it
+  // can list and step through them; nobody else can open it.
+  const [pDraftBook] = await db
+    .insert(schema.products)
+    .values({ type: "book", format: "digital", kind: "book", title: "QA Draft Book", slug: "qa-draft-book", priceCents: 2000, active: false })
+    .returning();
+  if (!pDraftBook) throw new Error("QA seed: product insert returned no row.");
+  const [sDraftBook] = await db
+    .insert(schema.studies)
+    .values({ productId: pDraftBook.id, title: "QA Draft Book", slug: "qa-draft-book", kind: "book", published: false })
+    .returning();
+  if (!sDraftBook) throw new Error("QA seed: study insert returned no row.");
+  for (const n of [1, 2]) {
+    const [lesson] = await db
+      .insert(schema.lessons)
+      .values({ studyId: sDraftBook.id, orderIndex: n, title: `Chapter ${n}: QA Draft Chapter ${n}`, published: false })
+      .returning();
+    if (!lesson) throw new Error("QA seed: draft book lesson insert returned no row.");
+    await db.insert(schema.contentBlocks).values({
+      lessonId: lesson.id,
+      orderIndex: 0,
+      type: "text",
+      body: buildBookChapterOpener({ part: "Part One · The Dust", title: `QA Draft Chapter ${n}`, subtitle: null, epigraph: null }) + `<p>Draft text ${n}.</p>`,
+    });
+  }
+
   // ---------- The Journey: two Parts read as one road, owned by qa-leader ----------
   // qa-leader has walked all of Part One (with one written answer, for Part
   // Two's look-back) and Part Two's threshold is this week's stop; Week 3

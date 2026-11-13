@@ -125,10 +125,13 @@ export default async function LessonPage({
 
   // Needed for previous/next navigation and the "back to contents" link --
   // same published-only ordering the study's own listing page uses.
+  // An admin previewing an unpublished study steps through its draft lessons
+  // too (see the study page), so an imported study can be reviewed in order.
+  const showDrafts = !study.published && access.isAdminPreview;
   const studyLessons = await db
     .select({ id: lessons.id, title: lessons.title, orderIndex: lessons.orderIndex, isSample: lessons.isSample })
     .from(lessons)
-    .where(and(eq(lessons.studyId, study.id), eq(lessons.published, true)))
+    .where(showDrafts ? eq(lessons.studyId, study.id) : and(eq(lessons.studyId, study.id), eq(lessons.published, true)))
     .orderBy(asc(lessons.orderIndex));
   // A free-sample reader sees the whole study's lesson list, but only its
   // sample lessons are links; navigation never leads into a locked one.

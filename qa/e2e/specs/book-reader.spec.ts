@@ -87,3 +87,28 @@ test.describe("The book reader", () => {
     }
   });
 });
+
+// Fixture: qa-draft-book, an unpublished study whose two lessons are drafts.
+test.describe("Reviewing a draft study", () => {
+  test.describe("as qa-admin", () => {
+    test.use({ storageState: "qa/.auth/admin.json" });
+    test("lists the draft lessons and steps between them", async ({ page }) => {
+      await page.goto("/studies/qa-draft-book");
+      await page.getByRole("link", { name: /Chapter 1: QA Draft Chapter 1/ }).first().click();
+      await expect(page.getByText("Admin preview: this study is a draft")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "QA Draft Chapter 1", level: 2 })).toBeVisible();
+      await page.getByRole("link", { name: "Chapter 2 →" }).click();
+      await expect(page.getByRole("heading", { name: "QA Draft Chapter 2", level: 2 })).toBeVisible();
+      await page.getByRole("tab", { name: "Contents" }).click();
+      await expect(page.getByRole("link", { name: /Chapter 1\s*QA Draft Chapter 1/ })).toBeVisible();
+    });
+  });
+
+  test.describe("as qa-user", () => {
+    test.use({ storageState: "qa/.auth/user.json" });
+    test("can't open it", async ({ page }) => {
+      await page.goto("/studies/qa-draft-book");
+      await expect(page).not.toHaveURL(/qa-draft-book/);
+    });
+  });
+});
