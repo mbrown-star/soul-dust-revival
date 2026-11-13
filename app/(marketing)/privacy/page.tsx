@@ -28,9 +28,14 @@ export default function PrivacyPage() {
           <li><strong>Email address</strong> — to create your account and send order confirmations.</li>
           <li><strong>Country</strong> — collected at checkout for every order, so we can apply the right data-protection rules for where you are.</li>
           <li><strong>Shipping address</strong> — only if you buy a physical book, collected securely through our payment processor.</li>
-          <li><strong>Study answers</strong> — the responses you write inside a study, saved so you can pick up where you left off.</li>
+          <li><strong>Your answers</strong> — what you write to the questions in a study, devotional or book, saved so you can pick up where you left off and see them in your Journal.</li>
           <li><strong>Sign-in activity</strong> — when you sign in and roughly how long you are active, so we can understand how the app is used. We do not log your IP address or precise location for this.</li>
           <li><strong>Purchase history</strong> — what you have bought, so we can grant access to digital studies you have purchased.</li>
+          <li><strong>Amazon order numbers</strong> — if you claim a book&apos;s digital edition on the claim page, the order number you enter, kept with the claim so it can&apos;t be used twice.</li>
+          <li><strong>Reminder emails</strong> — if you ask us to email you the claim link before buying on Amazon, we keep a scrambled (hashed) form of your email and connection for a week, only to limit how many we send. We don&apos;t keep the address itself.</li>
+          <li><strong>Contact messages</strong> — what you send through the Contact form, including any screenshots, goes to our inbox by email. We don&apos;t store it on the site.</li>
+          <li><strong>The Journey&apos;s schedule</strong> — if you begin The Journey, the day of the week you chose and your time zone, so each week opens on your day.</li>
+          <li><strong>Blocked emails</strong> — if an email address is blocked from signing in, we keep that address, so the block holds.</li>
         </ul>
 
         <h2>Why we collect it</h2>
@@ -46,15 +51,15 @@ export default function PrivacyPage() {
           We use a small number of service providers to run this platform, each of whom
           only sees the data needed to do their part: Supabase (accounts and database),
           Stripe (payments), Cloudflare (hosting, video, file storage), and Resend
-          (order emails). Each has its own privacy and security practices.
+          (sign-in codes, order emails and contact messages). Each has its own privacy and security practices.
         </p>
 
         <h2>Your choices</h2>
         <p>
           If you have an account, visit <a href="/account">your account page</a> to
           download a copy of everything we have on file for you, or to permanently
-          delete your account. Deleting your account removes your study answers and
-          login history immediately. Order records are kept for financial
+          delete your account. Deleting your account removes your answers and
+          sign-in history immediately. Order records are kept for financial
           record-keeping, with your personal details removed from them first.
         </p>
 

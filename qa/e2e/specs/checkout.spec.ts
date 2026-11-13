@@ -5,7 +5,7 @@ import { Client } from "pg";
 // query against the isolated local test database -- needed only for the
 // Amazon-only API-level guard test below, where the UI deliberately never
 // renders a productId anywhere in the DOM for a sellOnStripe:false product
-// (there's no Buy Now button to click), so the only way to exercise the
+// (there's no Add to cart button to click), so the only way to exercise the
 // server-side guard is to call /api/checkout directly with a crafted body.
 async function productIdBySlug(slug: string): Promise<string> {
   const connectionString = process.env.TEST_DATABASE_URL;
@@ -30,8 +30,8 @@ test.describe("Checkout — logged-in digital purchase ('both' format bundle)", 
 
   test("adding both the physical and digital lines of a 'both' product shows two distinct line items and prices", async ({ page }) => {
     await page.goto("/store/qa-bundle-both-formats");
-    await page.getByRole("button", { name: /Buy the book/i }).click();
-    await page.getByRole("button", { name: /Buy digital access/i }).click();
+    await page.getByRole("button", { name: /Add printed book to cart/i }).click();
+    await page.getByRole("button", { name: /Add digital edition to cart/i }).click();
 
     await page.goto("/checkout");
     const cartList = page.getByRole("list", { name: "Cart items" });
@@ -49,10 +49,10 @@ test.describe("Checkout — logged-in digital purchase ('both' format bundle)", 
     await expect(page.locator("body")).not.toContainText("requires an account");
     await expect(page.getByLabel(/Email \(for order confirmation\)/)).toHaveCount(0);
 
-    // Country is required before the button is enabled.
+    // Country comes prefilled from qa-user's earlier orders (US), so the
+    // button is ready (audit 2026-11-13).
     const submit = page.getByRole("button", { name: /Proceed to payment/i });
-    await expect(submit).toBeDisabled();
-    await page.getByLabel(/Country/).selectOption("US");
+    await expect(page.getByLabel(/Country/)).toHaveValue("US");
     await expect(submit).toBeEnabled();
 
     // Clicking submits to the real Stripe test-mode API and redirects to
@@ -69,7 +69,7 @@ test.describe("Checkout — guest with a printed book", () => {
   // now needs an account: no guest-email checkout any more.
   test("asks them to sign up or sign in first, and explains why", async ({ page }) => {
     await page.goto("/store/qa-physical-amazon-and-stripe");
-    await page.getByRole("button", { name: /Buy Now/i }).click();
+    await page.getByRole("button", { name: /^Add to cart$/i }).click();
 
     await page.goto("/checkout");
     await expect(page.locator("body")).toContainText("comes with its digital edition");

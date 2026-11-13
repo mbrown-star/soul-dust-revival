@@ -83,13 +83,13 @@ test.describe("/store listing", () => {
     await expect(page.getByText("QA Physical Book — Amazon + Stripe")).toBeVisible();
   });
 
-  test("Sort brings Coming Soon or Available Now titles to the top and stays in the URL", async ({ page }) => {
+  test("Sort brings Coming soon or Available now titles to the top and stays in the URL", async ({ page }) => {
     await page.goto("/store");
     const sort = page.getByRole("group", { name: "Sort" });
     const titles = page.locator("main h2");
     await expect(sort.getByRole("button", { name: "New" })).toHaveAttribute("aria-pressed", "true");
 
-    await sort.getByRole("button", { name: "Coming Soon" }).click();
+    await sort.getByRole("button", { name: "Coming soon" }).click();
     await expect(titles.first()).toHaveText("QA Coming Soon Book");
     await expect(page).toHaveURL(/sort=coming_soon/);
     // Sorting reorders; it doesn't hide anything or count as a filter.
@@ -97,10 +97,10 @@ test.describe("/store listing", () => {
     await expect(page.getByText(/Showing \d+ of/)).toHaveCount(0);
 
     await page.reload();
-    await expect(sort.getByRole("button", { name: "Coming Soon" })).toHaveAttribute("aria-pressed", "true");
+    await expect(sort.getByRole("button", { name: "Coming soon" })).toHaveAttribute("aria-pressed", "true");
     await expect(titles.first()).toHaveText("QA Coming Soon Book");
 
-    await sort.getByRole("button", { name: "Available Now" }).click();
+    await sort.getByRole("button", { name: "Available now" }).click();
     await expect(titles.last()).toHaveText("QA Coming Soon Book");
     await expect(page).toHaveURL(/sort=available/);
   });
@@ -114,32 +114,33 @@ test.describe("/store listing", () => {
 test.describe("/store/[slug] detail page — purchase routing per format", () => {
   test("Amazon + Stripe physical book shows both buttons", async ({ page }) => {
     await page.goto("/store/qa-physical-amazon-and-stripe");
-    await expect(page.getByRole("button", { name: /Buy Now/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Add to cart$/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /Buy on Amazon/i })).toBeVisible();
   });
 
   test("Amazon-only physical book shows only the Amazon button, no Stripe add-to-cart", async ({ page }) => {
     await page.goto("/store/qa-physical-amazon-only");
     await expect(page.getByRole("link", { name: /Buy on Amazon/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Buy Now/i })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Add to cart$/i })).toHaveCount(0);
   });
 
   test("'both' format bundle shows two independent purchase options with distinct prices", async ({ page }) => {
     await page.goto("/store/qa-bundle-both-formats");
     const body = page.locator("body");
     await expect(body).toContainText("Printed book");
-    await expect(body).toContainText("Digital access");
+    await expect(body).toContainText("Digital edition");
     // Physical price ($24.99) and digital price ($15.99) are independent --
     // both must render, and must not be equal to each other.
     await expect(body).toContainText("$24.99");
     await expect(body).toContainText("$15.99");
-    await expect(page.getByRole("button", { name: /Buy the book/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Buy digital access/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Add printed book to cart/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Add digital edition to cart/i })).toBeVisible();
   });
 
-  test("digital-only study shows the digital account-required copy", async ({ page }) => {
+  test("digital-only study tells a guest they'll sign in at checkout", async ({ page }) => {
     await page.goto("/store/qa-digital-study-not-started");
-    await expect(page.locator("body")).toContainText("Digital studies require an account");
+    await expect(page.getByRole("heading", { name: "Digital edition", level: 2 })).toBeVisible();
+    await expect(page.locator("body")).toContainText("You'll sign in or create an account at checkout.");
   });
 });
 
@@ -162,6 +163,42 @@ test.describe("/blog", () => {
   test("a draft post 404s for a logged-out visitor by direct URL", async ({ page }) => {
     const res = await page.goto("/blog/qa-fixture-draft-post");
     expect(res?.status()).toBe(404);
+  });
+});
+
+// Audit 2026-11-13, marketing copy: one word for each thing, and no promises
+// the site doesn't keep.
+test.describe("Store and product wording", () => {
+  test("the hero links to the Store, and the Store is called Store", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("link", { name: "Visit the Store" }).click();
+    await expect(page).toHaveURL(/\/store$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Store" })).toBeVisible();
+    await expect(page).toHaveTitle(/^Store — /);
+    await expect(page.getByText("Printed books ship from Amazon and include the digital edition.")).toBeVisible();
+  });
+
+  test("a title sold both ways labels its boxes Printed book and Digital edition", async ({ page }) => {
+    await page.goto("/store/qa-bundle-both-formats");
+    await expect(page.getByRole("heading", { name: "Printed book", level: 2 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Digital edition", level: 2 })).toBeVisible();
+    await expect(page.getByText("You'll sign in or create an account at checkout.")).toBeVisible();
+  });
+
+  test("an empty cart links back to the Store", async ({ page }) => {
+    await page.goto("/checkout");
+    await expect(page.getByText("Your cart is empty.")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Browse the Store" })).toHaveAttribute("href", "/store");
+  });
+});
+
+test.describe("Store wording, signed in", () => {
+  test.use({ storageState: "qa/.auth/user.json" });
+
+  test("leaves out the account note for someone already signed in", async ({ page }) => {
+    await page.goto("/store/qa-bundle-both-formats");
+    await expect(page.getByRole("heading", { name: "Digital edition", level: 2 })).toBeVisible();
+    await expect(page.getByText(/sign in or create an account/)).toHaveCount(0);
   });
 });
 

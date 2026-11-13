@@ -126,8 +126,9 @@ export default async function HomePage() {
               <p className="font-display font-black text-4xl text-gold mb-2">2</p>
               <h3 className="font-sans font-semibold mb-1">Read it, alone or together</h3>
               <p className="font-serif text-parchment/80 text-sm">
-                Each lesson mixes short readings, video, and Scripture — built for a
-                single sitting or a group discussion.
+                Each week sets out the passage, word studies in the Greek or Hebrew,
+                questions to answer, practices for the week and a guided prayer — built
+                for one sitting or a group discussion.
               </p>
             </div>
             <div>

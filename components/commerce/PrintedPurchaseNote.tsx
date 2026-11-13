@@ -61,7 +61,7 @@ export function PrintedPurchaseNote({
             )}
           </div>
         ) : (
-          <p>Bought on Amazon, the {thing} ships from Amazon.</p>
+          <p>Sold and shipped by Amazon.</p>
         ))}
     </div>
   );

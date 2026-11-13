@@ -137,7 +137,7 @@ export default async function BookDetailPage({
             <div className="space-y-6">
               <div className="border border-moss/20 rounded-lg p-4">
                 <h2 className="font-sans text-sm font-semibold uppercase tracking-wide text-moss mb-2">
-                  {product.type === "bundle" ? "Ships to you" : "Printed book"}
+                  {product.type === "bundle" ? "Printed books" : "Printed book"}
                 </h2>
                 <p className="font-sans text-xl font-semibold text-ink mb-3">
                   ${(product.priceCents / 100).toFixed(2)}
@@ -150,7 +150,7 @@ export default async function BookDetailPage({
                       priceCents={product.priceCents}
                       format="physical"
                       variant="physical"
-                      label={product.type === "bundle" ? "Buy the bundle" : "Buy the book"}
+                      label={product.type === "bundle" ? "Add printed books to cart" : "Add printed book to cart"}
                     />
                   )}
                   <AmazonPurchase
@@ -165,7 +165,7 @@ export default async function BookDetailPage({
 
               <div className="border border-moss/20 rounded-lg p-4">
                 <h2 className="font-sans text-sm font-semibold uppercase tracking-wide text-moss mb-2">
-                  Digital access
+                  Digital edition
                 </h2>
                 <p className="font-sans text-xl font-semibold text-ink mb-3">
                   ${((product.digitalPriceCents ?? 0) / 100).toFixed(2)}
@@ -176,18 +176,21 @@ export default async function BookDetailPage({
                   priceCents={product.digitalPriceCents ?? 0}
                   format="digital"
                   variant="digital"
-                  label="Buy digital access"
+                  label="Add digital edition to cart"
                 />
                 <p className="font-sans text-sm text-moss mt-3">
                   {includesDigital
                     ? "The digital edition on its own, without the printed copy. "
                     : ""}
-                  Digital access requires an account — you&apos;ll be prompted to sign up during checkout.
+                  {session ? "" : "You'll sign in or create an account at checkout."}
                 </p>
               </div>
             </div>
           ) : (
             <>
+              <h2 className="font-sans text-sm font-semibold uppercase tracking-wide text-moss mb-2">
+                {product.format === "digital" ? "Digital edition" : product.type === "bundle" ? "Printed books" : "Printed book"}
+              </h2>
               <p className="font-sans text-2xl font-semibold text-ink mb-6">
                 ${(product.priceCents / 100).toFixed(2)}
               </p>
@@ -213,7 +216,9 @@ export default async function BookDetailPage({
                 <p className="font-sans text-sm text-moss mt-6">
                   {product.type === "bundle"
                     ? "One purchase, everything below included."
-                    : "Digital studies require an account — you'll be prompted to sign up during checkout."}
+                    : session
+                    ? ""
+                    : "You'll sign in or create an account at checkout."}
                 </p>
               ) : (
                 <>
@@ -279,7 +284,7 @@ export default async function BookDetailPage({
                           priceCents={component.priceCents}
                           format="physical"
                           variant="physical"
-                          label="Buy printed"
+                          label="Add printed book to cart"
                         />
                       )}
                       <AddToCartButton
@@ -288,7 +293,7 @@ export default async function BookDetailPage({
                         priceCents={component.digitalPriceCents ?? 0}
                         format="digital"
                         variant="digital"
-                        label="Buy digital"
+                        label="Add digital edition to cart"
                       />
                     </>
                   ) : (

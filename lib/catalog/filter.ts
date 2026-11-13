@@ -21,8 +21,8 @@ export type CatalogSort = (typeof SORT_OPTIONS)[number];
 
 export const SORT_LABEL: Record<CatalogSort, string> = {
   new: "New",
-  coming_soon: "Coming Soon",
-  available: "Available Now",
+  coming_soon: "Coming soon",
+  available: "Available now",
 };
 
 export type CatalogKind = Exclude<KindFilter, "all">;

@@ -47,7 +47,7 @@ export function CatalogBrowser({
   items: CatalogBrowserItem[];
   initial: CatalogFilterState;
   showStatus?: boolean;
-  /** Offer the New / Coming Soon / Available Now sort (Store only). */
+  /** Offer the New / Coming soon / Available now sort (Store only). */
   showSort?: boolean;
   /** Render matching items in titled sections by status, in this order. */
   groups?: { status: CatalogStatus; title: string }[];

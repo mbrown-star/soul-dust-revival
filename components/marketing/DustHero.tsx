@@ -64,7 +64,7 @@ export function DustHero() {
               href="/store"
               className="font-sans font-semibold bg-ink text-parchment rounded-lg px-6 py-3 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gold focus:ring-ink"
             >
-              Explore studies &amp; books
+              Visit the Store
             </Link>
             <Link
               href="/blog"

@@ -32,8 +32,8 @@ export default async function ClaimPage({ searchParams }: { searchParams: Promis
       <h1 className="font-display font-bold text-3xl sm:text-4xl text-ink mb-4">Claim your digital edition</h1>
       <p className="font-serif text-moss max-w-2xl mb-10">
         Every Soul Dust Revival printed book comes with its digital edition in the app: the passages, the word
-        studies, and room to write your answers. Sign in, choose your book, and enter the order number from your
-        Amazon order.
+        studies, and room to write your answers. {session ? "Choose" : "Sign in, choose"} your book, and enter the
+        order number from your Amazon order.
       </p>
 
       {titles.length === 0 ? (

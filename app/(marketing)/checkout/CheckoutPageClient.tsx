@@ -16,9 +16,16 @@ import Link from "next/link";
 // find the prior refresh token already consumed. Trusting the single
 // server-verified value removes the race entirely, matching how /account
 // already does this (see AccountPageClient.tsx).
-export default function CheckoutPageClient({ initialLoggedIn }: { initialLoggedIn: boolean }) {
+export default function CheckoutPageClient({
+  initialLoggedIn,
+  initialCountry = "",
+}: {
+  initialLoggedIn: boolean;
+  // The account's own country, when it has one, so it needn't be picked again.
+  initialCountry?: string;
+}) {
   const { items, totalCents, hasDigital, removeItem } = useCart();
-  const [country, setCountry] = useState("");
+  const [country, setCountry] = useState(initialCountry);
   const loggedIn = initialLoggedIn;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,6 +60,9 @@ export default function CheckoutPageClient({ initialLoggedIn }: { initialLoggedI
       <div className="max-w-xl mx-auto px-4 py-16 sm:py-20 text-center">
         <h1 className="font-display font-bold text-2xl text-ink mb-2">Checkout</h1>
         <p className="font-serif text-ink">Your cart is empty.</p>
+        <Link href="/store" className="inline-block mt-4 font-sans text-sm underline text-moss hover:text-ink">
+          Browse the Store
+        </Link>
       </div>
     );
   }
@@ -102,7 +112,7 @@ export default function CheckoutPageClient({ initialLoggedIn }: { initialLoggedI
             <div>
               <p className="font-sans font-medium text-ink">{item.title}</p>
               <p className="font-sans text-sm text-moss">
-                Qty {item.quantity} · {item.format}
+                Qty {item.quantity} · {item.format === "digital" ? "Digital edition" : "Printed book"}
               </p>
             </div>
             <div className="flex items-center gap-3">

@@ -73,7 +73,7 @@ test.describe("Product page: printed book on Amazon", () => {
 
   test("a printed book with nothing to read in the app makes no such promise", async ({ page }) => {
     await page.goto("/store/qa-physical-amazon-only");
-    await expect(page.locator("body")).toContainText("ships from Amazon");
+    await expect(page.locator("body")).toContainText("Sold and shipped by Amazon.");
     await expect(page.locator("body")).not.toContainText("You get both");
     // So Buy on Amazon is a plain link, no modal.
     await expect(page.getByRole("link", { name: "Buy on Amazon" })).toBeVisible();

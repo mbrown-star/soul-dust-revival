@@ -17,7 +17,7 @@ import { storePriceLine } from "@/lib/commerce/priceSummary";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Books & Studies",
+  title: "Store",
 };
 
 export default async function BooksPage({ searchParams }: { searchParams: Promise<CatalogSearchParams> }) {
@@ -35,10 +35,11 @@ export default async function BooksPage({ searchParams }: { searchParams: Promis
       {featuredJourney && <FeaturedJourneyBanner featured={featuredJourney} />}
       <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16">
         <h1 className="font-display font-bold text-3xl sm:text-4xl text-ink mb-2">
-          Books &amp; Studies
+          Store
         </h1>
         <p className="font-serif text-moss mb-10 max-w-xl">
-          Printed books ship to your door. Studies unlock in the web app the moment you buy.
+          Printed books ship from Amazon and include the digital edition. Digital editions open in the
+          App as soon as you buy.
         </p>
 
         {allProducts.length === 0 ? (

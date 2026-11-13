@@ -57,7 +57,9 @@ export function FeaturedJourneyBanner({ featured }: { featured: FeaturedJourney 
           </h2>
           <p className="font-serif text-parchment/85 text-lg mb-6 max-w-prose">
             {parts.length > 1 ? `${countWord(parts.length)} studies, read as one road. ` : ""}
-            {stopCount > 0 ? `One stop opens each week, ${stopCount} in all.` : ""}
+            {stopCount > 0
+              ? `One opens each week: ${stopCount - parts.length} weeks and ${parts.length} Part introductions.`
+              : ""}
           </p>
 
           {parts.length > 0 && (

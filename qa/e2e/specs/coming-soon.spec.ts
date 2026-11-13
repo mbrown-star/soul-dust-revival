@@ -27,10 +27,10 @@ test.describe("Coming soon titles, as a visitor", () => {
 });
 
 test.describe("A printed book whose Amazon link isn't known yet", () => {
-  test("shows its price, Buy Now, and Coming soon on Amazon instead of the Amazon button", async ({ page }) => {
+  test("shows its price, Add to cart, and Coming soon on Amazon instead of the Amazon button", async ({ page }) => {
     await page.goto("/store/qa-amazon-link-pending");
     await expect(page.getByText("$18.99")).toBeVisible();
-    await expect(page.getByRole("button", { name: /buy now/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Add to cart$/i })).toBeVisible();
     await expect(page.getByText("Coming soon on Amazon")).toBeVisible();
     await expect(page.getByRole("link", { name: "Buy on Amazon" })).toHaveCount(0);
   });
@@ -76,7 +76,7 @@ test.describe("The product form, as qa-admin", () => {
 
     await page.goto("/store/qa-amazon-link-pending");
     await expect(page.getByText("Coming soon", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: /buy now/i })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Add to cart$/i })).toHaveCount(0);
 
     // Put it back on sale.
     await openProduct(page, /QA Amazon Link Pending/);
