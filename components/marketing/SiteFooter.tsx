@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { isSneakPeek } from "@/lib/launchMode";
+import { appUrl } from "@/lib/domains";
 
-export function SiteFooter() {
+const linkClass = "hover:text-gold focus:outline-none focus:ring-2 focus:ring-gold rounded p-1 -m-1";
+
+/** `loggedIn` decides the account links, matching the header's: Log in and
+ *  Sign up when signed out, App and Account when signed in. */
+export function SiteFooter({ loggedIn }: { loggedIn: boolean }) {
   return (
     <footer className="bg-ink text-parchment mt-20 mottle no-print">
       <div className="max-w-5xl mx-auto px-4 py-12">
@@ -17,27 +22,40 @@ export function SiteFooter() {
           {/* The store is closed on the sneak-peek site (lib/launchMode.ts). */}
           <Link
             href={isSneakPeek() ? "/sneak-peek" : "/store"}
-            className="hover:text-gold focus:outline-none focus:ring-2 focus:ring-gold rounded p-1 -m-1"
+            className={linkClass}
           >
             {isSneakPeek() ? "Try a sample" : "Books & Studies"}
           </Link>
           {/* Open on both sites: Amazon sells the printed books whether or not
               our own store is. */}
-          <Link href="/claim" className="hover:text-gold focus:outline-none focus:ring-2 focus:ring-gold rounded p-1 -m-1">
+          <Link href="/claim" className={linkClass}>
             Bought on Amazon? Claim your digital edition
           </Link>
-          <Link href="/blog" className="hover:text-gold focus:outline-none focus:ring-2 focus:ring-gold rounded p-1 -m-1">
+          <Link href="/blog" className={linkClass}>
             Blog
           </Link>
-          <Link href="/privacy" className="hover:text-gold focus:outline-none focus:ring-2 focus:ring-gold rounded p-1 -m-1">
+          <Link href="/privacy" className={linkClass}>
             Privacy
           </Link>
-          <Link href="/login" className="hover:text-gold focus:outline-none focus:ring-2 focus:ring-gold rounded p-1 -m-1">
-            Log in
-          </Link>
-          <Link href="/signup" className="hover:text-gold focus:outline-none focus:ring-2 focus:ring-gold rounded p-1 -m-1">
-            Sign up
-          </Link>
+          {loggedIn ? (
+            <>
+              <Link href={appUrl("/library")} className={linkClass}>
+                App
+              </Link>
+              <Link href={appUrl("/account")} className={linkClass}>
+                Account
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className={linkClass}>
+                Log in
+              </Link>
+              <Link href="/signup" className={linkClass}>
+                Sign up
+              </Link>
+            </>
+          )}
         </nav>
 
         <p className="font-sans text-xs text-parchment/50 mt-8">

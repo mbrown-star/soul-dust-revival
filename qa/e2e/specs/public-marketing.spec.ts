@@ -162,6 +162,31 @@ test.describe("/privacy", () => {
   });
 });
 
+test.describe("Footer account links", () => {
+  test("guest sees Log in and Sign up, not App or Account", async ({ page }) => {
+    await page.goto("/blog");
+    const footer = page.getByRole("navigation", { name: "Footer" });
+    await expect(footer.getByRole("link", { name: "Log in" })).toBeVisible();
+    await expect(footer.getByRole("link", { name: "Sign up" })).toBeVisible();
+    await expect(footer.getByRole("link", { name: "App" })).toHaveCount(0);
+    await expect(footer.getByRole("link", { name: "Account" })).toHaveCount(0);
+  });
+
+  test.describe("as qa-user", () => {
+    test.use({ storageState: "qa/.auth/user.json" });
+    // Audit 2026-11-13: the footer offered Log in and Sign up to people
+    // already signed in.
+    test("sees App and Account, not Log in or Sign up", async ({ page }) => {
+      await page.goto("/blog");
+      const footer = page.getByRole("navigation", { name: "Footer" });
+      await expect(footer.getByRole("link", { name: "App" })).toBeVisible();
+      await expect(footer.getByRole("link", { name: "Account" })).toBeVisible();
+      await expect(footer.getByRole("link", { name: "Log in" })).toHaveCount(0);
+      await expect(footer.getByRole("link", { name: "Sign up" })).toHaveCount(0);
+    });
+  });
+});
+
 test.describe("Nav bar", () => {
   // SiteNav.tsx renders two genuinely different structures depending on
   // viewport (hidden sm:flex / sm:hidden, not just a CSS reflow of the same
