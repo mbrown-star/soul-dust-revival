@@ -8,6 +8,8 @@ import { readImageDimensions } from "@/lib/images/readImageDimensions";
 import { UploadError, uploadFileToR2 } from "@/lib/r2/browserUpload";
 import { IMAGE_UPLOAD_MAX_BYTES } from "@/lib/uploads/limits";
 import { useSavedIndicator } from "@/lib/hooks/useSavedIndicator";
+import { priceSummary } from "@/lib/commerce/priceSummary";
+import { studyKindLabel } from "@/lib/study/studyKindLabel";
 
 // Sanitizes a price input the same way ProductForm.tsx's own price fields
 // do -- lets an admin type freely (including an in-progress "12." or a
@@ -27,6 +29,8 @@ export type BundleCandidate = {
   priceCents: number;
   digitalPriceCents: number | null;
   imageUrl: string | null;
+  kind: "study" | "devotional" | "book";
+  comingSoon: boolean;
 };
 
 type BundleFormValues = {
@@ -464,7 +468,6 @@ export function BundleForm({
         </p>
         <div className="space-y-2 max-h-96 overflow-y-auto">
           {candidates.map((c) => {
-            const price = c.format === "both" ? c.digitalPriceCents ?? c.priceCents : c.priceCents;
             const checked = values.componentProductIds.includes(c.id);
             return (
               <label
@@ -483,7 +486,8 @@ export function BundleForm({
                 <div className="flex-1">
                   <p className="text-sm font-medium">{c.title}</p>
                   <p className="text-xs text-moss">
-                    {c.type === "study_access" ? "Study" : "Book"} · ${(price / 100).toFixed(2)}
+                    {/* Kind and both prices, as the Store and the Products list show them. */}
+                    {studyKindLabel(c.kind)} · {c.comingSoon ? "Coming soon" : priceSummary(c)}
                   </p>
                 </div>
               </label>

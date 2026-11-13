@@ -33,6 +33,8 @@ export default async function EditBundlePage({ params }: { params: Promise<{ id:
       priceCents: products.priceCents,
       digitalPriceCents: products.digitalPriceCents,
       imageUrl: products.imageUrl,
+      kind: products.kind,
+      comingSoon: products.comingSoon,
     })
     .from(products)
     .where(

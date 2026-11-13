@@ -14,6 +14,8 @@ export default async function NewBundlePage() {
       priceCents: products.priceCents,
       digitalPriceCents: products.digitalPriceCents,
       imageUrl: products.imageUrl,
+      kind: products.kind,
+      comingSoon: products.comingSoon,
     })
     .from(products)
     .where(and(ne(products.type, "bundle"), eq(products.active, true)));

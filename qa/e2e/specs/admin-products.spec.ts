@@ -40,6 +40,16 @@ test.describe("admin products list and form, as qa-admin", () => {
     await expect(studyRow).toContainText("Digital $19.00");
   });
 
+  // Audit 2026-11-13: the bundle form's part list called every product "Book"
+  // and showed one price, $0.00 for a Coming soon title.
+  test("a bundle's part list shows each part's Kind and its prices", async ({ page }) => {
+    await page.goto("/admin/bundles/new");
+    const part = (title: RegExp) => page.locator("label").filter({ hasText: title });
+    await expect(part(/QA Digital Study — Not Started/)).toContainText("Study · Digital $19.00");
+    await expect(part(/QA Bundle — Both Formats/)).toContainText("Book · Printed $24.99 · Digital $15.99");
+    await expect(part(/QA Coming Soon Book/)).toContainText("Book · Coming soon");
+  });
+
   // Audit 2026-11-13: Study and Devotional had a kind badge and Book had none.
   test("every row has a kind badge, Book included", async ({ page }) => {
     await page.goto("/admin/products");
