@@ -4,6 +4,8 @@ import { desc, eq, ne } from "drizzle-orm";
 import Link from "next/link";
 import Image from "next/image";
 import { CreateMenu } from "@/components/admin/CreateMenu";
+import { priceSummary } from "@/lib/commerce/priceSummary";
+import { studyKindLabel } from "@/lib/study/studyKindLabel";
 
 export default async function AdminProductsPage() {
   const db = await getDb();
@@ -62,20 +64,20 @@ export default async function AdminProductsPage() {
             <div className="flex-1">
               <p className="font-medium flex items-center gap-2">
                 {p.title}
-                {/* Same differentiator the Study list already has (and the
-                    same accessible-contrast tokens) -- a plain book has
-                    nothing to distinguish, so it gets no badge at all rather
-                    than a redundant "Book" pill. */}
-                {p.kind !== "book" && (
-                  <span
-                    data-testid="product-kind-badge"
-                    className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                      p.kind === "study" ? "bg-ember-700/10 text-ink" : "bg-moss/10 text-moss"
-                    }`}
-                  >
-                    {p.kind === "study" ? "Study" : "Devotional"}
-                  </span>
-                )}
+                {/* Same badge and contrast-checked colors as the Study list.
+                    Every kind gets one, Book included. */}
+                <span
+                  data-testid="product-kind-badge"
+                  className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                    p.kind === "study"
+                      ? "bg-ember-700/10 text-ink"
+                      : p.kind === "devotional"
+                        ? "bg-moss/10 text-moss"
+                        : "bg-dusk/10 text-ink"
+                  }`}
+                >
+                  {studyKindLabel(p.kind)}
+                </span>
                 {p.featured && (
                   <span className="text-xs font-medium bg-gold/20 text-gold-700 rounded-full px-2 py-0.5">
                     Featured
@@ -88,8 +90,7 @@ export default async function AdminProductsPage() {
                 )}
               </p>
               <p className="text-sm text-moss">
-                {p.format} · ${(p.priceCents / 100).toFixed(2)}
-                {p.format === "both" && p.digitalPriceCents != null && ` / $${(p.digitalPriceCents / 100).toFixed(2)} digital`}
+                {priceSummary(p)}
                 {" · "}
                 {[p.sellOnStripe && "Stripe", p.sellOnAmazon && (p.amazonUrl ? "Amazon" : "Amazon (link pending)")]
                   .filter(Boolean)

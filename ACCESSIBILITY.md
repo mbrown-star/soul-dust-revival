@@ -43,8 +43,12 @@ are outside what code can determine.
   (WCAG 2.4.3).
 
 **Images**
-- `alt` text is a **required field in the admin UI** for study cover images and
-  in-lesson image blocks — the save button is disabled until it's filled in, rather
+- **Study cover images follow the product rule below (optional), as of 2026-11-13**,
+  so the product and study forms agree (staging audit). Uploading a cover fills
+  its alt text with "{title} — Front cover", which the admin can edit; a cover
+  saved with none reads as "{title} — Front cover" on its My Library card.
+- `alt` text is a **required field in the admin UI** for in-lesson image blocks —
+  the save button is disabled until it's filled in, rather
   than defaulting to an empty `alt=""` and hoping someone fills it in later
   (WCAG 1.1.1). Also enforced at the API layer so a direct API call can't skip the
   UI's guard — this specific gap (alt text shipped unwired) happened twice before per

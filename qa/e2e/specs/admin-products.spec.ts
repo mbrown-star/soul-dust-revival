@@ -28,12 +28,40 @@ test.describe("admin products list and form, as qa-admin", () => {
     await expect(amazonOnlyRow.getByText("Featured")).toHaveCount(0);
   });
 
-  test("list shows format and price, including the digital price for a 'both' product", async ({ page }) => {
+  // Audit 2026-11-13: the Products list, the Bundles list and the Store named
+  // the same prices three ways. Both lists now read "Printed … · Digital …".
+  test("list shows each price as Printed and Digital, as the Store does", async ({ page }) => {
     await page.goto("/admin/products");
     const bundleRow = page.getByRole("link", { name: /QA Bundle — Both Formats/i });
-    await expect(bundleRow).toContainText("both");
-    await expect(bundleRow).toContainText("$24.99");
-    await expect(bundleRow).toContainText("$15.99 digital");
+    await expect(bundleRow).toContainText("Printed $24.99 · Digital $15.99");
+    const amazonOnlyRow = page.getByRole("link", { name: /QA Physical Book — Amazon Only/i });
+    await expect(amazonOnlyRow).toContainText("Printed $14.99");
+    const studyRow = page.getByRole("link", { name: /QA Digital Study — Not Started/i });
+    await expect(studyRow).toContainText("Digital $19.00");
+  });
+
+  // Audit 2026-11-13: Study and Devotional had a kind badge and Book had none.
+  test("every row has a kind badge, Book included", async ({ page }) => {
+    await page.goto("/admin/products");
+    const bookRow = page.getByRole("link", { name: /QA Book: A Journey Out of the Dust/i });
+    await expect(bookRow.getByTestId("product-kind-badge")).toHaveText("Book");
+    const devotionalRow = page.getByRole("link", { name: /QA Bible Journey/i });
+    await expect(devotionalRow.getByTestId("product-kind-badge")).toHaveText("Devotional");
+  });
+
+  // Audit 2026-11-13: the two forms listed Kind in different orders, and the
+  // study form required cover alt text while the product form didn't.
+  test("product and study forms list Kind in the same order, with alt text optional on both", async ({ page }) => {
+    const kindOrder = async () =>
+      (await page.getByRole("group", { name: "Kind" }).getByRole("radio").evaluateAll((els) =>
+        els.map((el) => el.closest("label")?.textContent?.trim().split(" ")[0])
+      ));
+    await page.goto("/admin/products/new");
+    expect(await kindOrder()).toEqual(["Book", "Devotional", "Study"]);
+    await expect(page.getByRole("radio", { name: /^Devotional \(daily readings, one question a day\)$/ })).toBeVisible();
+    await page.goto("/admin/studies/new");
+    expect(await kindOrder()).toEqual(["Book", "Devotional", "Study"]);
+    await expect(page.getByText("Alt text is required")).toHaveCount(0);
   });
 
   test("Amazon-only product's list row shows only 'Amazon', not 'Stripe'", async ({ page }) => {

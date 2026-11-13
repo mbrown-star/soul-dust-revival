@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { defaultCoverAltText } from "@/lib/images/coverAltText";
 import { CoverUploadError, uploadBookCoverPdf } from "@/lib/images/uploadBookCover";
 import { useSavedIndicator } from "@/lib/hooks/useSavedIndicator";
+import { STUDY_KIND_OPTION_LABELS } from "@/lib/study/studyKindLabel";
 
 type StudyFormValues = {
   id?: string;
@@ -49,8 +50,6 @@ export function StudyForm({
   const [error, setError] = useState<string | null>(null);
   const { saved, markSaved } = useSavedIndicator();
 
-  const altTextMissing = !!values.coverImageUrl && values.coverImageAlt.trim().length === 0;
-
   // Same facility as the Products cover-PDF uploader (a full-wrap back +
   // spine + front cover PDF, auto-cropped) -- a study has no back-cover
   // concept, so only the front crop is kept. This replaces a plain
@@ -80,7 +79,6 @@ export function StudyForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (altTextMissing) return;
     setSaving(true);
     setError(null);
 
@@ -169,7 +167,16 @@ export function StudyForm({
 
       <fieldset>
         <legend className="block text-sm font-medium mb-1">Kind</legend>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="kind"
+              checked={values.kind === "book"}
+              onChange={() => setValues((v) => ({ ...v, kind: "book" }))}
+            />
+            <span className="text-sm">{STUDY_KIND_OPTION_LABELS.book}</span>
+          </label>
           <label className="flex items-center gap-2">
             <input
               type="radio"
@@ -177,7 +184,7 @@ export function StudyForm({
               checked={values.kind === "devotional"}
               onChange={() => setValues((v) => ({ ...v, kind: "devotional" }))}
             />
-            <span className="text-sm">Devotional (reader-only)</span>
+            <span className="text-sm">{STUDY_KIND_OPTION_LABELS.devotional}</span>
           </label>
           <label className="flex items-center gap-2">
             <input
@@ -186,22 +193,14 @@ export function StudyForm({
               checked={values.kind === "study"}
               onChange={() => setValues((v) => ({ ...v, kind: "study" }))}
             />
-            <span className="text-sm">Study (interactive, saves answers)</span>
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="radio"
-              name="kind"
-              checked={values.kind === "book"}
-              onChange={() => setValues((v) => ({ ...v, kind: "book" }))}
-            />
-            <span className="text-sm">Book (no interactions)</span>
+            <span className="text-sm">{STUDY_KIND_OPTION_LABELS.study}</span>
           </label>
         </div>
         <p className="text-xs text-moss mt-1">
-          A Devotional is pure reading, no saved input. A Study has written-response questions
-          whose answers are saved per user. &quot;Book&quot; mirrors the Product Kind field&apos;s own
-          plain-reading option, for a study with no interactive content at all.
+          Decides which reader it opens in. A Book reads chapter by chapter, with each
+          chapter&apos;s questions; a Devotional is a year of daily readings with one question a
+          day; a Study is weekly lessons with written-response questions. Every answer is saved
+          to the reader&apos;s account.
         </p>
       </fieldset>
 
@@ -280,24 +279,15 @@ export function StudyForm({
         {values.coverImageUrl && (
           <div className="mt-2">
             <label htmlFor={altId} className="block text-sm font-medium mb-1">
-              Alt text <span aria-hidden="true" className="text-error">*</span>
-              <span className="sr-only"> (required)</span>
+              Alt text <span className="text-moss font-normal">(optional)</span>
             </label>
             <input
               id={altId}
-              required
-              aria-invalid={altTextMissing}
-              aria-describedby={altTextMissing ? `${altId}-error` : undefined}
               className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-ink"
               placeholder="Describe the cover image for screen reader users"
               value={values.coverImageAlt}
               onChange={(e) => setValues((v) => ({ ...v, coverImageAlt: e.target.value }))}
             />
-            {altTextMissing && (
-              <p id={`${altId}-error`} className="text-sm text-error mt-1">
-                Alt text is required whenever an image is attached (WCAG 1.1.1).
-              </p>
-            )}
           </div>
         )}
       </div>
@@ -318,7 +308,7 @@ export function StudyForm({
       )}
 
       <div className="flex items-center gap-3">
-        <Button type="submit" disabled={saving || deleting || uploading || altTextMissing}>
+        <Button type="submit" disabled={saving || deleting || uploading}>
           {saving ? "Saving..." : "Save study"}
         </Button>
 

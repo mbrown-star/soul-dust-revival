@@ -47,7 +47,8 @@ export function LibraryCard({
         {study.coverImageUrl ? (
           <Image
             src={study.coverImageUrl}
-            alt={study.coverImageAlt || "Untitled cover"}
+            // Cover alt text is optional (as on products), so fall back to the title.
+            alt={study.coverImageAlt || `${study.title} — Front cover`}
             width={0}
             height={0}
             sizes="128px"

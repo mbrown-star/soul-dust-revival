@@ -9,6 +9,7 @@ import { CoverUploadError, uploadBookCoverPdf, type UploadedBookCover } from "@/
 import { UploadError, uploadFileToR2 } from "@/lib/r2/browserUpload";
 import { IMAGE_UPLOAD_MAX_BYTES } from "@/lib/uploads/limits";
 import { useSavedIndicator } from "@/lib/hooks/useSavedIndicator";
+import { STUDY_KIND_OPTION_LABELS } from "@/lib/study/studyKindLabel";
 
 // Keeps only digits and at most one decimal point -- lets an admin type a
 // price freely (including an in-progress "12." or a backspaced "") without
@@ -363,7 +364,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
               checked={values.kind === "book"}
               onChange={() => setValues((v) => ({ ...v, kind: "book" }))}
             />
-            <span className="text-sm">Book (no interactions)</span>
+            <span className="text-sm">{STUDY_KIND_OPTION_LABELS.book}</span>
           </label>
           <label className="flex items-center gap-2">
             <input
@@ -372,7 +373,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
               checked={values.kind === "devotional"}
               onChange={() => setValues((v) => ({ ...v, kind: "devotional" }))}
             />
-            <span className="text-sm">Devotional (reader-only)</span>
+            <span className="text-sm">{STUDY_KIND_OPTION_LABELS.devotional}</span>
           </label>
           <label className="flex items-center gap-2">
             <input
@@ -381,13 +382,13 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValues> 
               checked={values.kind === "study"}
               onChange={() => setValues((v) => ({ ...v, kind: "study" }))}
             />
-            <span className="text-sm">Study (interactive, saves answers)</span>
+            <span className="text-sm">{STUDY_KIND_OPTION_LABELS.study}</span>
           </label>
         </div>
         <p className="text-xs text-moss mt-1">
-          What this product&apos;s companion content actually is, shown in its own storefront
-          eyebrow — independent of Format above (which is about how it&apos;s sold/delivered).
-          &quot;Book&quot; is the right choice whenever there&apos;s no linked study at all.
+          What this product&apos;s companion content is, shown in its storefront eyebrow —
+          independent of Format above (which is about how it&apos;s sold and delivered). Choose
+          the same Kind as its linked study, or Book when there&apos;s no study.
         </p>
       </fieldset>
 

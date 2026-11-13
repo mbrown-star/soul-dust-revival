@@ -12,3 +12,13 @@ export function studyKindLabel(kind: StudyKind): string {
   if (kind === "book") return "Book";
   return "Devotional";
 }
+
+/**
+ * The Kind choices on the admin's product and study forms, in the one order
+ * both list them (Book, Devotional, Study). Each says what the reader gets.
+ */
+export const STUDY_KIND_OPTION_LABELS: Record<StudyKind, string> = {
+  book: "Book (chapters, with questions to answer)",
+  devotional: "Devotional (daily readings, one question a day)",
+  study: "Study (weekly lessons, saves answers)",
+};

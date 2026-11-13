@@ -3,6 +3,7 @@ import { products } from "@/lib/db/schema";
 import { desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import Image from "next/image";
+import { priceSummary } from "@/lib/commerce/priceSummary";
 
 export default async function AdminBundlesPage() {
   const db = await getDb();
@@ -40,11 +41,7 @@ export default async function AdminBundlesPage() {
                 )}
               </p>
               <p className="text-sm text-moss">
-                {b.format === "physical"
-                  ? `Ships · $${(b.priceCents / 100).toFixed(2)}`
-                  : b.format === "digital"
-                  ? `Digital access · $${(b.priceCents / 100).toFixed(2)}`
-                  : `Ships $${(b.priceCents / 100).toFixed(2)} · Digital $${((b.digitalPriceCents ?? 0) / 100).toFixed(2)}`}
+                {priceSummary(b)}
                 {!b.active && " · inactive"}
               </p>
             </div>

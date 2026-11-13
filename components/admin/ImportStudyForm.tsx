@@ -98,6 +98,15 @@ export function ImportStudyForm({
             <input
               type="radio"
               name="import-kind"
+              checked={kind === "book"}
+              onChange={() => setKind("book")}
+            />
+            <span className="text-sm">Book</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="import-kind"
               checked={kind === "devotional"}
               onChange={() => setKind("devotional")}
             />
@@ -111,15 +120,6 @@ export function ImportStudyForm({
               onChange={() => setKind("study")}
             />
             <span className="text-sm">Study</span>
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="radio"
-              name="import-kind"
-              checked={kind === "book"}
-              onChange={() => setKind("book")}
-            />
-            <span className="text-sm">Book</span>
           </label>
         </div>
         <p className="text-xs text-moss mt-1">
