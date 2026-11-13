@@ -31,6 +31,12 @@ import { JourneyNextStopNote } from "@/components/journey/JourneyNextStopNote";
 import { IntroTabs } from "@/components/study/IntroTabs";
 import { splitIntroSections } from "@/lib/study/introSections";
 import { sanitizeHtml } from "@/lib/sanitize/html";
+import { BookAppView } from "@/components/book/BookAppView";
+import { BookChapterView } from "@/components/book/BookChapterView";
+import { BookContents } from "@/components/book/BookContents";
+import { BookJournal } from "@/components/book/BookJournal";
+import { bookChapterParts, loadBookOverview } from "@/lib/book/loadBookReader";
+import { parseBookLessonTitle } from "@/lib/book/chapterHtml";
 import type { Metadata } from "next";
 import { z } from "zod";
 
@@ -195,10 +201,21 @@ export default async function LessonPage({
       ? `${studyHref}/${nextLesson.id}`
       : null;
   const isDevotional = study.kind === "devotional";
+  // A book (Revive Me) reads in its own shell: Read / Contents / Journal.
+  const isBook = study.kind === "book";
   // A Study-kind lesson without studyContent (the "Introduction" lesson, or
   // any lesson imported before the interactive Study reader existed) falls
   // back to the plain content-block reading view below.
-  const hasCustomHeader = isDevotional || !!studyContent;
+  const hasCustomHeader = isDevotional || isBook || !!studyContent;
+  const bookOverview = isBook
+    ? await loadBookOverview(db, {
+        lessons: studyLessons,
+        userId: session.userId,
+        studyHref,
+        currentLessonId: lesson.id,
+        isLocked,
+      })
+    : null;
 
   // The devotional's own 4-view app shell (Today / The Year / Journal / Six
   // Faces of the Dust -- see DevotionalAppView) needs every day's own
@@ -387,6 +404,49 @@ export default async function LessonPage({
   // The lesson's other blocks, without the one the tabs already show.
   const blocksBesideIntro = introTabs ? blocks.filter((block) => block.id !== introBlock?.id) : blocks;
 
+  // A book chapter's opener, text, questions and blessing (see
+  // lib/book/chapterHtml.ts); the Introduction reads as its Foreword/Preface tabs.
+  function renderBookChapter() {
+    const label = parseBookLessonTitle(lesson!.title);
+    const isChapter = label?.kind === "chapter" || label?.kind === "epilogue";
+    const parts = bookChapterParts(blocks);
+    const chapter = isChapter ? parts.chapter : null;
+    const navFor = (l: (typeof studyLessons)[number] | undefined) =>
+      l && !isLocked(l) ? { href: `${studyHref}/${l.id}`, label: parseBookLessonTitle(l.title)?.label ?? l.title } : null;
+    return (
+      <BookChapterView
+        key={lesson!.id}
+        label={label?.label ?? lesson!.title}
+        chapter={chapter ? { ...chapter, bodyHtml: sanitizeHtml(chapter.bodyHtml) } : null}
+        html={sanitizeHtml(parts.textBlock?.body ?? "")}
+        introContent={label?.kind === "introduction" ? introTabs ?? undefined : undefined}
+        questions={parts.questions.map((q) => ({
+          id: q.id,
+          prompt: q.questionPrompt ?? "",
+          initialAnswer: answerByBlockId.get(q.id),
+        }))}
+        blessing={
+          parts.blessing
+            ? { title: parts.blessing.calloutTitle || "Lift Up Your Eyes", html: sanitizeHtml(parts.blessing.body ?? "") }
+            : null
+        }
+        extraContent={
+          parts.extra.length > 0 ? (
+            <div className="space-y-8">
+              {parts.extra.map((block) => (
+                <LessonBlock key={block.id} block={block} initialAnswer={answerByBlockId.get(block.id)} />
+              ))}
+            </div>
+          ) : undefined
+        }
+        lessonId={lesson!.id}
+        initialRead={progressRow?.status === "completed"}
+        previous={navFor(previousLesson)}
+        next={navFor(nextLesson)}
+      />
+    );
+  }
+
   // A devotional day's printed parts come from its first text block (and its
   // "question to sit with" answer block); anything else the admin added is
   // shown after them, in the builder's order.
@@ -446,6 +506,16 @@ export default async function LessonPage({
                 </div>
               ) : null,
           }}
+        />
+      ) : isBook && bookOverview ? (
+        <BookAppView
+          title={displayStudyTitle}
+          studyHref={studyHref}
+          chaptersRead={bookOverview.chaptersRead}
+          totalChapters={bookOverview.totalChapters}
+          read={renderBookChapter()}
+          contents={<BookContents rows={bookOverview.contents} />}
+          journal={bookOverview.hasQuestions ? <BookJournal chapters={bookOverview.journal} /> : null}
         />
       ) : studyContent ? (
         <StudyLessonView

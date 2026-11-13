@@ -15,10 +15,15 @@ export function WalkedToggle({
   lessonId,
   initialWalked,
   nextDayLabel,
+  actionLabel = "I walked today",
+  doneLabel = "✓ Walked",
 }: {
   lessonId: string;
   initialWalked: boolean;
   nextDayLabel: string | null;
+  // The book reader's chapters say "Finished this chapter" / "✓ Read".
+  actionLabel?: string;
+  doneLabel?: string;
 }) {
   const [walked, setWalked] = useState(initialWalked);
   const [saving, setSaving] = useState(false);
@@ -53,7 +58,7 @@ export function WalkedToggle({
           walked ? "bg-moss text-white" : "bg-ink text-parchment"
         }`}
       >
-        {saving ? "Saving…" : walked ? "✓ Walked" : "I walked today"}
+        {saving ? "Saving…" : walked ? doneLabel : actionLabel}
       </button>
       {!walked && nextDayLabel && (
         <span className="font-sans text-sm text-moss">{nextDayLabel} is next whenever you&apos;re ready.</span>

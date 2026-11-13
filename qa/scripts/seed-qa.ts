@@ -20,6 +20,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { eq } from "drizzle-orm";
 import * as schema from "../../lib/db/schema";
 import type { StudyWeekContent } from "../../lib/study/studyContent";
+import { buildBookChapterOpener } from "../../lib/book/chapterHtml";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 if (!TEST_DATABASE_URL) {
@@ -911,6 +912,66 @@ async function main() {
   await db
     .insert(schema.lessonProgress)
     .values({ userId: userIds.admin, lessonId: s6LessonIds[0]!, status: "completed", completedAt: new Date() });
+
+  // ---------- A book (Revive Me's shape), read in the book reader ----------
+  // Introduction (Foreword and Preface), two chapters in Part One, and an
+  // Epilogue, each chapter with two To Sit With questions and a Lift Up Your
+  // Eyes blessing. Owned by nobody; qa-admin reads it (admins can open any
+  // published study), so no other fixture's counts change. Inactive product.
+  console.log("Seeding QA book...");
+  const [pBook] = await db
+    .insert(schema.products)
+    .values({ type: "book", format: "digital", kind: "book", title: "QA Book: A Journey Out of the Dust", slug: "qa-book", priceCents: 2000, active: false })
+    .returning();
+  if (!pBook) throw new Error("QA seed: product insert returned no row.");
+  const [sBook] = await db
+    .insert(schema.studies)
+    .values({ productId: pBook.id, title: "QA Book: A Journey Out of the Dust", slug: "qa-book", kind: "book", published: true })
+    .returning();
+  if (!sBook) throw new Error("QA seed: study insert returned no row.");
+  const bookLessons: { title: string; text: string; questions: string[]; blessing?: string }[] = [
+    {
+      title: "Introduction",
+      text: "<h2>Foreword</h2><p><em>A Word Before the First Page</em></p><p>A QA foreword.</p><h2>Preface</h2><p><em>Before You Begin</em></p><p>A QA preface.</p>",
+      questions: [],
+    },
+    ...[1, 2].map((n) => ({
+      title: `Chapter ${n}: QA Chapter ${n}`,
+      text:
+        buildBookChapterOpener({
+          part: "Part One · The Dust",
+          title: `QA Chapter ${n}`,
+          subtitle: `from dust to chapter ${n}`,
+          epigraph: { text: `“A QA verse for chapter ${n}.”`, reference: `Genesis 2:${n}` },
+        }) +
+        `<h3>A QA sub-heading ${n}</h3><p>The text of QA chapter ${n}.</p>` +
+        `<blockquote><p>A QA quotation.</p><p>— Hosea 2:19</p></blockquote>`,
+      questions: [`QA question one for chapter ${n}?`, `QA question two for chapter ${n}?`],
+      blessing: `<p>A QA blessing for chapter ${n}.</p>`,
+    })),
+    {
+      title: "Epilogue: QA Ending",
+      text:
+        buildBookChapterOpener({ part: null, title: "QA Ending", subtitle: "from dust to glory", epigraph: null }) +
+        "<p>The text of the QA epilogue.</p>",
+      questions: ["QA question for the epilogue?"],
+      blessing: "<p>A QA blessing for the epilogue.</p>",
+    },
+  ];
+  for (const [i, l] of bookLessons.entries()) {
+    const [lesson] = await db
+      .insert(schema.lessons)
+      .values({ studyId: sBook.id, orderIndex: i, title: l.title, published: true })
+      .returning();
+    if (!lesson) throw new Error("QA seed: book lesson insert returned no row.");
+    await db.insert(schema.contentBlocks).values([
+      { lessonId: lesson.id, orderIndex: 0, type: "text", body: l.text },
+      ...l.questions.map((q, j) => ({ lessonId: lesson.id, orderIndex: j + 1, type: "question" as const, questionPrompt: q })),
+      ...(l.blessing
+        ? [{ lessonId: lesson.id, orderIndex: l.questions.length + 1, type: "callout" as const, calloutTitle: "Lift Up Your Eyes", body: l.blessing }]
+        : []),
+    ]);
+  }
 
   // ---------- The Journey: two Parts read as one road, owned by qa-leader ----------
   // qa-leader has walked all of Part One (with one written answer, for Part
