@@ -62,6 +62,11 @@ export const loginEvents = pgTable("login_events", {
   userId: uuid("user_id").references(() => users.id).notNull(),
   loginAt: timestamp("login_at", { withTimezone: true }).defaultNow(),
   lastActiveAt: timestamp("last_active_at", { withTimezone: true }).defaultNow(),
+  // Time actually spent on the site under this sign-in: each activity ping
+  // adds the gap since the last one, at most ACTIVE_PING_CAP_SECONDS. A
+  // sign-in stays valid for days, so lastActiveAt - loginAt measured days
+  // between visits, not time on the site (staging audit, 2026-11-13).
+  activeSeconds: integer("active_seconds").notNull().default(0),
   userAgent: text("user_agent"),
 });
 

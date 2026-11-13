@@ -24,7 +24,7 @@ purpose, same access rules as above. Creating one sends that email address a one
 "your account is ready" email (via Resend) pointing at the login page; it contains no
 sign-in link or code.
 | Full shipping address | `orders.shipping*` | Only collected for physical orders, only via Stripe's own checkout page — never stored anywhere except what Stripe's Checkout session collects |
-| Login timestamps + user agent | `login_events` | Access/engagement reporting (`/admin/reports/engagement`) |
+| Login timestamps, user agent, active time | `login_events` (`activeSeconds` added 2026-11-13) | Access/engagement reporting (`/admin/reports/engagement`) |
 | Study, devotional and book answers | `responses.answerText` | The product's actual function — saving a user's own study responses, devotional "A Question to Sit With" reflections (added 2026-11-06; previously the devotional question was display-only and never persisted), and answers to a book chapter's "To Sit With" questions (Revive Me's book reader, added 2026-11-13), shown back to them in that book's Journal |
 | Role, purchase history | `users.role`, `orders`/`order_items` | Access control; sales reporting |
 | Amazon order number | `amazon_claims.amazon_order_number` | Only when a reader claims the digital edition of a printed book bought on Amazon (`/claim`): proves the claim, stops one order unlocking a title for several accounts, and lets an admin check it against Amazon's sales report (`/admin/reports/amazon-claims`). Linked to the account; removed with it when the account row is deleted outright (FK cascade); an anonymized account keeps it, like its orders. |
@@ -138,7 +138,7 @@ implementation.
 
 ## Engagement/access data specifically
 `login_events` stores a timestamp and user-agent string per login, plus a
-heartbeat-updated `lastActiveAt` — deliberately **not** IP address, precise geolocation,
+heartbeat-updated `lastActiveAt` and `activeSeconds` (seconds spent on the site under that sign-in, each once-a-minute ping adding at most two minutes) — deliberately **not** IP address, precise geolocation,
 or device fingerprinting, to keep this dataset as minimal as it can be while still
 answering "how often, how long." If IP logging is ever added (e.g., for fraud
 detection), treat it as personal data requiring the same consideration as everything

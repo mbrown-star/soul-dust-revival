@@ -1,0 +1,1 @@
+ALTER TABLE "login_events" ADD COLUMN "active_seconds" integer DEFAULT 0 NOT NULL;

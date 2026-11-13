@@ -30,6 +30,12 @@ test.describe("admin reports, as qa-admin", () => {
     const res = await page.goto("/admin/reports/engagement");
     expect(res?.status()).toBe(200);
     await expect(page.locator("body")).not.toContainText(/application error/i);
+    // Audit 2026-11-13: an average session of 945 minutes. It now counts
+    // time on the site, from activity pings, and says so.
+    await expect(page.getByText(/time spent on the site per sign-in/)).toBeVisible();
+    for (const cell of await page.locator("tbody tr td:last-child").allTextContents()) {
+      expect(cell).toMatch(/^(—|\d+(\.\d)? min)$/);
+    }
   });
 
   test("Social analytics report loads without error for qa-admin", async ({ page }) => {

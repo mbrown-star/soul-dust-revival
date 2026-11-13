@@ -12,7 +12,7 @@ export default async function EngagementReportPage() {
     .select({
       userId: loginEvents.userId,
       loginAt: loginEvents.loginAt,
-      lastActiveAt: loginEvents.lastActiveAt,
+      activeSeconds: loginEvents.activeSeconds,
       email: users.email,
     })
     .from(loginEvents)
@@ -20,14 +20,16 @@ export default async function EngagementReportPage() {
     .orderBy(desc(loginEvents.loginAt))
     .limit(2000); // bounded for a scaffold — move to a real SQL aggregate at scale
 
-  // Group in JS: per user, login count, most recent login, average session
-  // length. "Session length" here is lastActiveAt - loginAt for each login
-  // event — an approximation driven by the heartbeat ping, not an exact
-  // measurement, since there's no persistent connection telling us the
-  // precise moment someone closes a tab. See PRIVACY.md.
+  // Group in JS: per user, sign-in count, most recent sign-in, and average
+  // time on the site per sign-in, from activeSeconds (each once-a-minute
+  // ping adds the gap since the last, at most two minutes; see
+  // app/api/activity/ping). Sign-ins with none recorded (before
+  // active time was counted, or closed before the first ping) are left out
+  // of the average. It used to be lastActiveAt - loginAt, which counted the
+  // days between visits under one sign-in (945 minutes in the 2026-11-13 audit).
   const byUser = new Map<
     string,
-    { email: string | null; logins: number; lastLogin: Date | null; totalMinutes: number }
+    { email: string | null; logins: number; lastLogin: Date | null; activeSeconds: number; timedLogins: number }
   >();
 
   for (const row of allLogins) {
@@ -35,15 +37,16 @@ export default async function EngagementReportPage() {
       email: row.email,
       logins: 0,
       lastLogin: null,
-      totalMinutes: 0,
+      activeSeconds: 0,
+      timedLogins: 0,
     };
     existing.logins += 1;
     if (row.loginAt && (!existing.lastLogin || row.loginAt > existing.lastLogin)) {
       existing.lastLogin = row.loginAt;
     }
-    if (row.loginAt && row.lastActiveAt) {
-      const minutes = (row.lastActiveAt.getTime() - row.loginAt.getTime()) / 60_000;
-      existing.totalMinutes += Math.max(minutes, 0);
+    if (row.activeSeconds > 0) {
+      existing.activeSeconds += row.activeSeconds;
+      existing.timedLogins += 1;
     }
     byUser.set(row.userId, existing);
   }
@@ -52,7 +55,7 @@ export default async function EngagementReportPage() {
     .map(([userId, data]) => ({
       userId,
       ...data,
-      avgMinutes: data.logins > 0 ? data.totalMinutes / data.logins : 0,
+      avgMinutes: data.timedLogins > 0 ? data.activeSeconds / 60 / data.timedLogins : null,
     }))
     .sort((a, b) => (b.lastLogin?.getTime() ?? 0) - (a.lastLogin?.getTime() ?? 0));
 
@@ -64,8 +67,9 @@ export default async function EngagementReportPage() {
         </Link>
         <h1 className="text-xl font-semibold">Engagement</h1>
         <p className="text-sm text-moss mt-1">
-          Session length is approximate — based on periodic activity pings while a page
-          is open, not an exact measurement of when someone closes a tab.
+          Average session is time spent on the site per sign-in, counted from activity pings
+          sent once a minute while a page is open. Time away doesn&apos;t count, even when a
+          sign-in stays open for days. Sign-ins from before November 13, 2026 aren&apos;t counted.
         </p>
       </div>
 
@@ -87,7 +91,7 @@ export default async function EngagementReportPage() {
                 <td className="py-3 pr-4 text-moss">
                   {row.lastLogin ? formatDateTime(row.lastLogin) : "—"}
                 </td>
-                <td className="py-3">{row.avgMinutes.toFixed(1)} min</td>
+                <td className="py-3">{row.avgMinutes === null ? "—" : `${row.avgMinutes.toFixed(1)} min`}</td>
               </tr>
             ))}
             {rows.length === 0 && (
