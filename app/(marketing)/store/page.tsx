@@ -8,6 +8,7 @@ import { CatalogBrowser } from "@/components/catalog/CatalogBrowser";
 import { FeaturedJourneyBanner } from "@/components/commerce/FeaturedJourneyBanner";
 import { loadFeaturedJourney } from "@/lib/journey/featured";
 import { normalizeSearchText, parseCatalogFilters, type CatalogSearchParams } from "@/lib/catalog/filter";
+import { storePriceLine } from "@/lib/commerce/priceSummary";
 
 // Rendered dynamically per-request rather than statically at build time —
 // this reads live product/post data an admin can change anytime, and a
@@ -74,7 +75,7 @@ export default async function BooksPage({ searchParams }: { searchParams: Promis
                     <p className="font-sans text-xs uppercase tracking-wide text-moss mb-1">{eyebrow}</p>
                     <h2 className="font-display font-semibold text-ink group-hover:text-moss">{p.title}</h2>
                     <p className="font-sans text-sm text-moss mt-1">
-                      {p.comingSoon ? "Coming soon" : `$${(p.priceCents / 100).toFixed(2)}`}
+                      {p.comingSoon ? "Coming soon" : storePriceLine(p)}
                     </p>
                   </Link>
                 ),

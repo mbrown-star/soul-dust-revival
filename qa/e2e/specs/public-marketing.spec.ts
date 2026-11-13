@@ -23,6 +23,16 @@ test.describe("Homepage", () => {
     await expect(page).toHaveURL(/\/store\/qa-digital-study-not-started/);
   });
 
+  // Audit 2026-11-13: a title sold both ways showed only its printed price,
+  // the higher one. Its tiles now show both, as the Store banner does.
+  test("a title sold both ways shows both prices on its homepage and Store tiles", async ({ page }) => {
+    for (const path of ["/", "/store"]) {
+      await page.goto(path);
+      const tile = page.getByRole("link", { name: /QA Bundle — Both Formats/ });
+      await expect(tile).toContainText("Digital $15.99 · Printed $24.99");
+    }
+  });
+
   test("shows the 'From the blog' section with only published posts", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator("body")).toContainText("QA Fixture: Published Post");

@@ -7,6 +7,7 @@ import { productEyebrowLabel } from "@/lib/commerce/productEyebrow";
 import { CoverThumbnail } from "@/components/commerce/CoverThumbnail";
 import { isSneakPeek } from "@/lib/launchMode";
 import { formatDate } from "@/lib/format/date";
+import { storePriceLine } from "@/lib/commerce/priceSummary";
 
 // The homepage's "Featured content" section -- an admin picks up to this
 // many products as "featured" (enforced in app/api/admin/products/route.ts);
@@ -85,7 +86,7 @@ export default async function HomePage() {
                       {p.title}
                     </h3>
                     <p className="font-sans text-sm text-moss mt-1">
-                      {sneakPeek ? "Coming at launch" : p.comingSoon ? "Coming soon" : `$${(p.priceCents / 100).toFixed(2)}`}
+                      {sneakPeek ? "Coming at launch" : p.comingSoon ? "Coming soon" : storePriceLine(p)}
                     </p>
                   </>
                 );

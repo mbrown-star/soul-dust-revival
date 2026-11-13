@@ -14,6 +14,7 @@ import { includesDigitalEdition, productIdsWithDigitalEdition } from "@/lib/comm
 import { getSession } from "@/lib/auth/session";
 import { PrintedPurchaseNote } from "@/components/commerce/PrintedPurchaseNote";
 import type { Metadata } from "next";
+import { storePriceLine } from "@/lib/commerce/priceSummary";
 
 // Rendered dynamically per-request rather than statically at build time —
 // this reads live product/post data an admin can change anytime, and a
@@ -264,7 +265,7 @@ export default async function BookDetailPage({
                     {component.comingSoon
                       ? "Coming soon"
                       : component.format === "both"
-                      ? `$${(component.priceCents / 100).toFixed(2)} printed · $${((component.digitalPriceCents ?? 0) / 100).toFixed(2)} digital`
+                      ? storePriceLine(component)
                       : `$${(component.priceCents / 100).toFixed(2)} on its own`}
                   </p>
                 </div>

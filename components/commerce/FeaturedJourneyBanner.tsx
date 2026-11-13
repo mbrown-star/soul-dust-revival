@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { coverAspectRatio } from "@/lib/images/coverAspectRatio";
 import type { FeaturedJourney } from "@/lib/journey/featured";
+import { storePriceLine } from "@/lib/commerce/priceSummary";
 
 function price(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -17,9 +18,7 @@ function countWord(n: number): string {
 /** "Digital $75.00 · Printed $90.00", by the bundle's format. */
 function priceLine(product: FeaturedJourney["product"]): string {
   if (product.comingSoon) return "Coming soon";
-  if (product.format === "both" && product.digitalPriceCents != null) {
-    return `Digital ${price(product.digitalPriceCents)} · Printed ${price(product.priceCents)}`;
-  }
+  if (product.format === "both" && product.digitalPriceCents != null) return storePriceLine(product);
   return `${product.format === "physical" ? "Printed" : "Digital"} ${price(product.priceCents)}`;
 }
 
