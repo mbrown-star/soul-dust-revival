@@ -1,5 +1,9 @@
 import { CONTACT_INBOX } from "@/lib/contact/inbox";
 
+// Change this whenever the policy's text changes. It used to be rendered from
+// new Date(), so it always showed today's date.
+const POLICY_LAST_UPDATED = "November 13, 2026";
+
 export const metadata = {
   title: "Privacy Policy",
 };
@@ -9,8 +13,7 @@ export default function PrivacyPage() {
     <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16">
       <h1 className="font-display font-bold text-3xl text-ink mb-2">Privacy Policy</h1>
       <p className="font-sans text-sm text-moss mb-10">
-        Last updated:{" "}
-        {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+        Last updated: {POLICY_LAST_UPDATED}
       </p>
 
       <div className="prose max-w-none font-serif prose-headings:font-display prose-a:text-moss space-y-6">

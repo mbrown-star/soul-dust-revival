@@ -160,6 +160,13 @@ test.describe("/privacy", () => {
     await page.goto("/privacy");
     await expect(page.locator("h1")).toContainText("Privacy Policy");
   });
+
+  // Audit 2026-11-13: the date was new Date() on the server, so it always read
+  // as the day of the visit. (This fails on the old code any day but that one.)
+  test("shows the policy's own fixed date, not today's", async ({ page }) => {
+    await page.goto("/privacy");
+    await expect(page.getByText("Last updated: November 13, 2026")).toBeVisible();
+  });
 });
 
 // Audit 2026-11-13 fixes: the footer named the Store "Books & Studies" and
