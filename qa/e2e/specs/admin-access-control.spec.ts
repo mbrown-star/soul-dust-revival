@@ -73,6 +73,21 @@ test.describe("admin access control", () => {
   // Pages that need a real row id -- resolved via the admin UI itself
   // (list -> first matching link) rather than hardcoded ids, so this
   // doesn't break if seed-qa.ts's insert order changes.
+  // Audit 2026-11-13: /admin itself returned 404.
+  test.describe("/admin with no section", () => {
+    test.describe("as qa-admin", () => {
+      test.use({ storageState: "qa/.auth/admin.json" });
+      test("opens Products", async ({ page }) => {
+        await page.goto("/admin");
+        await expect(page).toHaveURL(/\/admin\/products$/);
+      });
+    });
+    test("sends a guest to sign in", async ({ page }) => {
+      await page.goto("/admin");
+      await expect(page).toHaveURL(/\/login\?next=\/admin\/products/);
+    });
+  });
+
   test.describe("pages needing a real id, as qa-admin", () => {
     test.use({ storageState: "qa/.auth/admin.json" });
 
