@@ -58,6 +58,12 @@ webhook/entitlement changes done.
 - **Scaffold code is in scope for both reviews.** Inherited code, dependencies, default configs, and seed data are reviewed too. Report scaffold-origin findings separately from new-code findings.
 - **On scaffold updates,** re-run both reviews against the whole updated scaffold, not just the diff.
 
+- **2026-11-13 (latest) — "Sign in" and "Sign out" everywhere, not "Log in" and "Log out".** From the staging audit; the user chose "Yes, switch them".
+  - **Changed:** nav and footer links, the sign-out buttons (`SiteNav`, `AdminNav`: "Signing out..."), the sign-in page's heading and tab title (`AuthForm`, `login/page.tsx`), checkout's "Already have an account? Sign in", the guest Contact page, Account's delete warning, the checkout API's sign-in messages, ContactForm's expired-session message, the order email button ("Sign in to access your content"), `/privacy`'s "Sign-in activity", and the Engagement report's "Sign-ins" / "Last sign-in". Addresses (`/login`, `/api/auth/logout`) and code names are unchanged.
+  - **Tests:** e2e specs and QA checklists updated to the new labels. `npm run verify` clean; checkout and email unit tests 22/22; marketing, contact, smoke, auth, checkout and accessibility 89/89 desktop; marketing, contact and auth 52/52 mobile.
+  - **Review:** text only, no routes, input or behavior changed. No findings.
+  - **Shipped** `87acc9c` (`npm run deploy -- both --yes`): **staging `804b9b27`**, **production `0f45b51e`**, every check passing. Checked live: no "Log in" left on production's /blog or /login; the sign-in tab reads "Sign in — Soul Dust Revival".
+  - The staging audit now marks 7 items Fixed.
 - **2026-11-13 (later) — Five more staging-audit fixes: footer Store and Contact, guests can reach us, NKJV quote, a branded 404, the nav's current section.** Each approved on its own item in the audit's comment threads ("Yes fix", "yes fix", "NKJV please", "fix please", "fix").
   - **Footer** (`SiteFooter.tsx`): the store link reads Store (Try a sample under sneak peek), and a Contact link shows for everyone.
   - **Guests can reach us:** a guest on `/contact` sees "Email us at admin@souldustrevival.com" and a log-in link (`/login?next=/contact`) instead of being redirected to sign in; the form and `POST /api/contact` stay signed-in only. `/privacy`'s Questions section gives the same address. The address lives in new `lib/contact/inbox.ts` (`CONTACT_INBOX`, re-exported from `lib/email/send.ts`).
