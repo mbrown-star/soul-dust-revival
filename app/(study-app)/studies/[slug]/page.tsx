@@ -13,6 +13,7 @@ import { StudyResources } from "@/components/study/StudyResources";
 import { getDisplayStudyTitle } from "@/lib/study/displayTitle";
 import { studyKindLabel } from "@/lib/study/studyKindLabel";
 import type { Metadata } from "next";
+import { countedLessons, displayLessonTitle, ownLessonNumber, unitNoun } from "@/lib/study/lessonUnits";
 
 export const dynamic = "force-dynamic";
 
@@ -105,7 +106,9 @@ export default async function StudyPage({
             and(eq(lessonProgress.userId, session.userId), inArray(lessonProgress.lessonId, lessonIds))
           );
   const progressByLesson = new Map(progressRows.map((p) => [p.lessonId, p.status]));
-  const completed = openLessons.filter((l) => progressByLesson.get(l.id) === "completed").length;
+  // Counted in weeks, days or chapters, as the reader's own ring is.
+  const countedOpen = countedLessons(study.kind, openLessons);
+  const completed = countedOpen.filter((l) => progressByLesson.get(l.id) === "completed").length;
   const displayTitle = await getDisplayStudyTitle(db, study);
   const resources = await db
     .select({
@@ -121,6 +124,10 @@ export default async function StudyPage({
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16">
+      <Link href="/library" className="inline-block mb-4 text-sm text-moss hover:text-ink underline underline-offset-2">
+        ← My Library
+      </Link>
+      <br />
       <span className="inline-block text-xs font-sans font-medium uppercase tracking-wide text-ember-700 mb-2">
         {studyKindLabel(study.kind)}
         {sampleOnly && " · Sneak peek"}
@@ -136,10 +143,11 @@ export default async function StudyPage({
       {openLessons.length > 0 && (
         <div className="flex items-center gap-3 mb-8">
           <div className="flex-1">
-            <ProgressBar completed={completed} total={openLessons.length} />
+            <ProgressBar completed={completed} total={countedOpen.length} />
           </div>
           <span className="font-sans text-xs text-moss whitespace-nowrap">
-            {completed}/{openLessons.length} {sampleOnly ? "sample lessons" : "lessons"}
+            {completed}/{countedOpen.length} {sampleOnly ? "sample " : ""}
+            {unitNoun(study.kind, countedOpen.length)}
           </span>
         </div>
       )}
@@ -148,14 +156,13 @@ export default async function StudyPage({
         <p className="font-serif text-moss">Lessons for this study are coming soon.</p>
       ) : (
         <ol className="space-y-2">
-          {studyLessons.map((lesson, i) => {
+          {studyLessons.map((lesson) => {
             if (isLocked(lesson)) {
               return (
                 <li key={lesson.id}>
                   <div className="flex items-center justify-between gap-4 bg-dusk/5 border border-dusk/10 rounded-lg px-4 py-3 min-h-[44px]">
                     <span className="font-sans text-ink/60">
-                      <span className="text-moss mr-2">{i + 1}.</span>
-                      {lesson.title}
+                      <LessonTitle title={lesson.title} />
                     </span>
                     <span className="flex items-center gap-1.5 font-sans text-xs text-moss whitespace-nowrap">
                       <LockIcon className="w-3.5 h-3.5" />
@@ -174,8 +181,7 @@ export default async function StudyPage({
                   className="flex items-center justify-between gap-4 bg-white border border-dusk/10 rounded-lg px-4 py-3 min-h-[44px] hover:border-dusk/30 transition-colors focus:outline-none focus:ring-2 focus:ring-ink"
                 >
                   <span className="font-sans text-ink">
-                    <span className="text-moss mr-2">{i + 1}.</span>
-                    {lesson.title}
+                    <LessonTitle title={lesson.title} />
                   </span>
                   {status !== "not_started" && (
                     <span className="font-sans text-xs uppercase tracking-wide text-moss whitespace-nowrap">
@@ -192,4 +198,13 @@ export default async function StudyPage({
       <StudyResources resources={resources} locked={sampleOnly} lockedNote={lockedLessonNote()} />
     </div>
   );
+}
+
+/**
+ * A lesson's name in the contents list. Its own number ("Week 3", "Day 12")
+ * is the only one shown: the list's own index used to sit in front of it
+ * ("2. Week 1: …"). Day labels read in sentence case.
+ */
+function LessonTitle({ title }: { title: string }) {
+  return <>{ownLessonNumber(title) ? displayLessonTitle(title) : title}</>;
 }

@@ -17,7 +17,7 @@ test.describe("The Journey, as qa-leader", () => {
     await page.goto("/library");
     await expect(page.getByRole("heading", { name: "QA Journey" })).toBeVisible();
     await expect(page.getByText("3/5 weeks")).toBeVisible();
-    await expect(page.getByText("This week: Part Two: Introduction")).toBeVisible();
+    await expect(page.getByText("This week: Part Two introduction")).toBeVisible();
     await expect(page.getByText("QA Journey Part One")).toHaveCount(0);
     await expect(page.getByText("Part One — Out of the Dust")).toHaveCount(0);
   });
@@ -29,6 +29,8 @@ test.describe("The Journey, as qa-leader", () => {
 
   test("the map shows each stop's state, and only open stops are links", async ({ page }) => {
     await page.goto(HOME);
+    // Audit 2026-11-13: no way back to My Library from the Journey home.
+    await expect(page.getByRole("link", { name: "← My Library" })).toHaveAttribute("href", "/library");
     await expect(page.getByRole("heading", { level: 1, name: "QA Journey" })).toBeVisible();
     await expect(page.getByRole("img", { name: "3 of 5 weeks walked" })).toBeVisible();
 
@@ -37,7 +39,7 @@ test.describe("The Journey, as qa-leader", () => {
     await expect(partOne.getByText("3 of 3 done")).toBeVisible();
 
     const partTwo = page.locator("section", { has: page.getByRole("heading", { name: "Formed and Sent" }) });
-    await expect(partTwo.getByRole("link", { name: /Part Two: Introduction/ })).toHaveAttribute("aria-current", "step");
+    await expect(partTwo.getByRole("link", { name: /Part Two introduction/ })).toHaveAttribute("aria-current", "step");
     await expect(partTwo.getByText(/^Opens /)).toBeVisible();
     await expect(partTwo.getByRole("link", { name: /Week 3/ })).toHaveCount(0);
 
@@ -63,6 +65,8 @@ test.describe("The Journey, as qa-leader", () => {
     await page.getByRole("link", { name: /Continue/ }).click();
     await expect(page.getByText("The Journey · Threshold")).toBeVisible();
     await expect(page.getByRole("heading", { level: 1, name: "Part Two — Formed and Sent" })).toBeVisible();
+    // Audit 2026-11-13: every threshold's tab read "Introduction".
+    await expect(page).toHaveTitle(/^Part Two introduction · /);
 
     // The introduction's sections read as tabs.
     await expect(page.getByRole("tab", { name: "Foreword" })).toHaveAttribute("aria-selected", "true");

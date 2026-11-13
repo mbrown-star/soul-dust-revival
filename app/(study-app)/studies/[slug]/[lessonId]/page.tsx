@@ -23,7 +23,7 @@ import type { YearDay } from "@/components/devotional/YearView";
 import type { JournalEntry } from "@/components/devotional/JournalView";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getJourneyForStudy, loadJourneyProgress } from "@/lib/journey/load";
+import { getJourneyForStudy, loadJourneyMap, loadJourneyProgress } from "@/lib/journey/load";
 import { journeyLessonNav } from "@/lib/journey/nav";
 import { loadLookBack } from "@/lib/journey/lookBack";
 import { CompleteStopButton } from "@/components/journey/CompleteStopButton";
@@ -68,6 +68,13 @@ export async function generateMetadata({
 
   const access = await getLessonAccess(session, study, lesson);
   if (!access.allowed || (!access.isAdminPreview && (!lesson.published || !study.published))) return { title: "Studies" };
+  // A Journey Part's introduction is its threshold: name the Part, not just
+  // "Introduction" (every threshold's tab read the same).
+  if (lesson.title.trim().toLowerCase() === "introduction") {
+    const journey = await getJourneyForStudy(db, study.id);
+    const part = journey ? (await loadJourneyMap(db, journey)).parts.find((p) => p.studyId === study.id) : undefined;
+    if (journey && part) return { title: `${part.shortLabel} introduction · ${journey.title}` };
+  }
   if (study.kind === "devotional" && parseDayLabel(lesson.title)) {
     // The day's own title is in its text block: the published snapshot's
     // when there is one (what readers see), else the working copy.

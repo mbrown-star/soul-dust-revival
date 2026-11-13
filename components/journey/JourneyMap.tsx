@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { JourneyPart, JourneyStop } from "@/lib/journey/load";
 import { formatOpensOn, type StopState } from "@/lib/journey/schedule";
 import { LockIcon } from "@/components/study/LockIcon";
+import { journeyStopTitle } from "@/lib/journey/stopTitle";
 
 // "Part Two — Formed and Sent" -> { eyebrow: "Part Two", name: "Formed and Sent" }
 function splitPartLabel(label: string): { eyebrow: string; name: string } {
@@ -77,7 +78,7 @@ export function JourneyMap({
                     </span>
                     <span className="block min-w-0">
                       <span className={`block font-sans font-semibold ${readable ? "text-ink" : "text-ink/60"}`}>
-                        {stop.isThreshold ? `${stop.label}: Introduction` : stop.title}
+                        {journeyStopTitle(stop)}
                       </span>
                       <span className={`block font-sans text-xs ${isOpen ? "text-ember-700 font-semibold" : "text-moss"}`}>
                         {statusText(state, isAdminPreview)}

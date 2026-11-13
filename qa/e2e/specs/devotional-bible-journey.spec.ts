@@ -10,7 +10,7 @@ test.describe("A day-by-day Bible devotional", () => {
 
   async function openDay(page: import("@playwright/test").Page, label: string) {
     await page.goto("/studies/qa-bible-journey");
-    await page.getByRole("link", { name: new RegExp(label) }).click();
+    await page.getByRole("link", { name: new RegExp(label, "i") }).click();
     await expect(page).toHaveURL(/\/studies\/qa-bible-journey\/[^/]+$/);
   }
 

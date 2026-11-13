@@ -27,6 +27,17 @@ test.describe("Interactive Study reader", () => {
     }
   });
 
+  // Audit 2026-11-13: the contents page numbered every row on top of its own
+  // week number ("2. Week 1: …"), counted the Introduction, and had no way
+  // back to My Library.
+  test("the contents page counts weeks and shows each week's own number once", async ({ page }) => {
+    await page.goto("/studies/qa-study-not-started");
+    await expect(page.getByRole("link", { name: "← My Library" })).toHaveAttribute("href", "/library");
+    await expect(page.getByText(/^0\/3\s+weeks$/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Week 1: Grace and Truth" })).toBeVisible();
+    await expect(page.getByRole("link", { name: /^\d+\.\s/ })).toHaveCount(0);
+  });
+
   // Audit 2026-11-13: the back link, the week count and the phone header.
   test("names the study in its back link, counts only weeks, and stacks the header on a phone", async ({ page }, testInfo) => {
     await openLesson1(page);

@@ -1,5 +1,6 @@
 import { canReadStop, formatOpensOn, hasStopOpened } from "./schedule";
 import { journeyHref, rhythmOf, type JourneyPart, type JourneyProgress, type JourneyStop } from "./load";
+import { journeyStopTitle } from "./stopTitle";
 
 export type JourneyPickerItem = {
   id: string;
@@ -67,7 +68,7 @@ export function journeyLessonNav(progress: JourneyProgress, lessonId: string, is
       const locked = !readable(s.index);
       return {
         id: s.lessonId,
-        title: s.isThreshold ? `${s.label}: Introduction` : s.title,
+        title: journeyStopTitle(s),
         href: s.href,
         isCurrent: s.index === index,
         locked,

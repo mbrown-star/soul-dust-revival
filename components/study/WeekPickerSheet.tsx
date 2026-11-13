@@ -5,6 +5,7 @@ import { readTabProgressPercent } from "./useStudyProgress";
 import { Sheet } from "./Sheet";
 import { LockIcon } from "./LockIcon";
 import { lockedLessonNote } from "@/lib/launchMode";
+import { ownLessonNumber } from "@/lib/study/lessonUnits";
 
 export type WeekPickerItem = {
   id: string;
@@ -54,13 +55,13 @@ export function WeekPickerSheet({
                 {week.group}
               </p>
             ) : null;
-          return [groupHeading, renderWeek(week, i)];
+          return [groupHeading, renderWeek(week)];
         })}
       </div>
     </Sheet>
   );
 
-  function renderWeek(week: WeekPickerItem, i: number) {
+  function renderWeek(week: WeekPickerItem) {
     if (week.locked) {
       // Past the free sample: listed so the reader sees what's coming,
       // but not a link.
@@ -84,7 +85,8 @@ export function WeekPickerSheet({
             week.isCurrent ? "border-ember text-ember-700" : "border-dusk/20 text-moss"
           }`}
         >
-          {i + 1}
+          {/* The week's own number; an Introduction gets a dot, not a count. */}
+          {ownLessonNumber(week.title) ?? "•"}
         </span>
         <span className="flex-1 min-w-0 font-sans font-semibold text-ink truncate">{week.title}</span>
         {percent > 0 && <span className="shrink-0 font-sans text-xs font-bold text-moss tabular-nums">{percent}%</span>}

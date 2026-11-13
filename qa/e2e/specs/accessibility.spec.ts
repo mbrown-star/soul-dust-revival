@@ -65,7 +65,7 @@ test.describe("axe: as qa-user", () => {
   test("a Devotional-kind lesson (4-tab app shell, every tab)", async ({ page }) => {
     await page.goto("/studies/qa-devotional-fixture");
     await expectNoSeriousViolations(page);
-    await page.getByRole("link", { name: /DAY 1/ }).click();
+    await page.getByRole("link", { name: /DAY 1/i }).click();
     await expect(page).toHaveURL(/\/studies\/qa-devotional-fixture\/[^/]+$/);
 
     const tablist = page.getByRole("tablist", { name: "Devotional sections" });

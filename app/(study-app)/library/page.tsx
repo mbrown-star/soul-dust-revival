@@ -14,6 +14,8 @@ import { CatalogBrowser, type CatalogBrowserItem } from "@/components/catalog/Ca
 import { JourneyCard } from "@/components/journey/JourneyCard";
 import { completedCount, currentStopIndex, journeyHref, loadJourneyProgress } from "@/lib/journey/load";
 import { formatOpensOn } from "@/lib/journey/schedule";
+import { countedLessons, unitNoun } from "@/lib/study/lessonUnits";
+import { journeyStopTitle } from "@/lib/journey/stopTitle";
 import {
   normalizeSearchText,
   parseCatalogFilters,
@@ -40,6 +42,8 @@ type LibraryEntry = {
   };
   total: number;
   completed: number;
+  /** "weeks", "days" or "chapters": what total counts. */
+  unit: string;
   resumeHref: string;
   /** Read as a free sample -- the reader doesn't own this study. */
   sampleOnly: boolean;
@@ -104,7 +108,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
     const begun = !!progress.enrollment;
     const current = begun && total > 0 ? progress.stops[currentStopIndex(progress)] : undefined;
     const currentState = current ? progress.states[current.index] : undefined;
-    const currentTitle = current ? (current.isThreshold ? `${current.label}: Introduction` : current.title) : "";
+    const currentTitle = current ? journeyStopTitle(current) : "";
     const nextLine = !current
       ? null
       : currentState?.state === "waiting"
@@ -159,7 +163,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
     studyIds.length === 0
       ? []
       : await db
-          .select({ id: lessons.id, studyId: lessons.studyId, orderIndex: lessons.orderIndex, isSample: lessons.isSample })
+          .select({ id: lessons.id, studyId: lessons.studyId, title: lessons.title, orderIndex: lessons.orderIndex, isSample: lessons.isSample })
           .from(lessons)
           .where(and(inArray(lessons.studyId, studyIds), eq(lessons.published, true)))
           .orderBy(asc(lessons.orderIndex));
@@ -190,19 +194,26 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
     const sampleOnly = sampleOnlyIds.has(study.id);
     const studyLessons = sampleOnly ? allStudyLessons.filter((l) => l.isSample) : allStudyLessons;
     const lockedCount = allStudyLessons.length - studyLessons.length;
-    const total = studyLessons.length;
-    const completed = studyLessons.filter((l) => statusByLessonId.get(l.id) === "completed").length;
+    // Counted in weeks, days or chapters, matching each reader's own ring.
+    const units = countedLessons(study.kind, studyLessons);
+    const total = units.length;
+    const completed = units.filter((l) => statusByLessonId.get(l.id) === "completed").length;
     const anyStarted = studyLessons.some((l) => statusByLessonId.get(l.id) !== undefined);
+    const unitsStarted = units.some((l) => statusByLessonId.get(l.id) !== undefined);
 
     // Resume at the first lesson that isn't already completed, so
     // "Continue"/"Start" always lands exactly where the reader left off,
     // never back at page one of a study they're partway through.
-    const nextLesson = studyLessons.find((l) => statusByLessonId.get(l.id) !== "completed") ?? studyLessons[0];
+    // Once a reader has walked any week or day, Continue goes to the next one
+    // not finished, past an Introduction left unmarked (the Psalms card
+    // reopened the Introduction with four days walked).
+    const nextLesson =
+      (unitsStarted ? units : studyLessons).find((l) => statusByLessonId.get(l.id) !== "completed") ?? studyLessons[0];
     const resumeHref = nextLesson ? `/studies/${study.slug}/${nextLesson.id}` : `/studies/${study.slug}`;
 
     const status: CatalogStatus =
       total > 0 && completed === total ? "completed" : anyStarted ? "in_progress" : "not_started";
-    entries.push({ study, total, completed, resumeHref, sampleOnly, lockedCount, status });
+    entries.push({ study, total, completed, unit: unitNoun(study.kind, total), resumeHref, sampleOnly, lockedCount, status });
   }
 
   const isEmpty = myStudies.length === 0 && journeyItems.length === 0;
@@ -247,6 +258,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
                 study={entry.study}
                 completed={entry.completed}
                 total={entry.total}
+                unit={entry.unit}
                 resumeHref={entry.resumeHref}
                 showRestart={entry.status === "completed"}
                 sampleOnly={entry.sampleOnly}

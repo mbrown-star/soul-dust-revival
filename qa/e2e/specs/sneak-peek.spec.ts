@@ -33,7 +33,7 @@ test.describe("Free sample (sneak peek)", () => {
 
   async function lessonHref(page: Page, day: number): Promise<string> {
     await page.goto(STUDY);
-    const href = await page.getByRole("link", { name: new RegExp(`DAY ${day} ·`) }).getAttribute("href");
+    const href = await page.getByRole("link", { name: new RegExp(`DAY ${day} ·`, "i") }).getAttribute("href");
     expect(href).toBeTruthy();
     return href!;
   }
@@ -48,13 +48,13 @@ test.describe("Free sample (sneak peek)", () => {
   test("the lesson list links the sample days and locks the rest", async ({ page }) => {
     await page.goto(STUDY);
     await expect(page.getByText(/Sneak peek/)).toBeVisible();
-    await expect(page.getByText("0/3 sample lessons")).toBeVisible();
+    await expect(page.getByText("0/3 sample days")).toBeVisible();
     for (const day of [1, 2, 3]) {
-      await expect(page.getByRole("link", { name: new RegExp(`DAY ${day} ·`) })).toBeVisible();
+      await expect(page.getByRole("link", { name: new RegExp(`DAY ${day} ·`, "i") })).toBeVisible();
     }
     for (const day of [4, 5]) {
-      await expect(page.getByRole("link", { name: new RegExp(`DAY ${day} ·`) })).toHaveCount(0);
-      await expect(page.getByText(new RegExp(`DAY ${day} ·`))).toBeVisible();
+      await expect(page.getByRole("link", { name: new RegExp(`DAY ${day} ·`, "i") })).toHaveCount(0);
+      await expect(page.getByText(new RegExp(`DAY ${day} ·`, "i"))).toBeVisible();
     }
   });
 

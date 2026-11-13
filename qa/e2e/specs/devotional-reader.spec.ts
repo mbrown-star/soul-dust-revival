@@ -13,18 +13,18 @@ test.describe("Devotional reader", () => {
 
   async function openDay(page: Page, dayTitleSubstring: string) {
     await page.goto("/studies/qa-devotional-fixture");
-    await page.getByRole("link", { name: new RegExp(dayTitleSubstring) }).click();
+    await page.getByRole("link", { name: new RegExp(dayTitleSubstring, "i") }).click();
     await expect(page).toHaveURL(/\/studies\/qa-devotional-fixture\/[^/]+$/);
   }
 
   test("study listing page shows the real per-day status badges", async ({ page }) => {
     await page.goto("/studies/qa-devotional-fixture");
     await expect(page.getByText("Devotional").first()).toBeVisible(); // kind eyebrow
-    await expect(page.getByText("1/5 lessons")).toBeVisible();
+    await expect(page.getByText("1/5 days")).toBeVisible();
 
-    const day1Row = page.getByRole("link", { name: /DAY 1 · JANUARY 1 · PSALM 1/ });
-    const day2Row = page.getByRole("link", { name: /DAY 2 · JANUARY 2 · PSALM 2/ });
-    const day3Row = page.getByRole("link", { name: /DAY 3 · JANUARY 3 · PSALM 3/ });
+    const day1Row = page.getByRole("link", { name: /Day 1 · January 1 · Psalm 1/ });
+    const day2Row = page.getByRole("link", { name: /Day 2 · January 2 · Psalm 2/ });
+    const day3Row = page.getByRole("link", { name: /Day 3 · January 3 · Psalm 3/ });
     await expect(day1Row.getByText("Completed")).toBeVisible();
     await expect(day2Row.getByText("In progress")).toBeVisible();
     await expect(day3Row.getByText(/Completed|In progress/)).toHaveCount(0); // not_started shows no badge

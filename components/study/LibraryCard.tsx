@@ -20,6 +20,7 @@ export function LibraryCard({
   study,
   completed,
   total,
+  unit,
   resumeHref,
   showRestart,
   sampleOnly = false,
@@ -28,6 +29,7 @@ export function LibraryCard({
   study: LibraryCardStudy;
   completed: number;
   total: number;
+  unit: string;
   resumeHref: string;
   showRestart: boolean;
   /**
@@ -82,7 +84,7 @@ export function LibraryCard({
               <ProgressBar completed={completed} total={total} />
             </div>
             <span className="font-sans text-xs text-moss whitespace-nowrap">
-              {completed}/{total}
+              {completed}/{total} {unit}
             </span>
           </div>
         )}

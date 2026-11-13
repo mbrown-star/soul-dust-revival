@@ -65,6 +65,9 @@ export default async function JourneyPage({ params }: { params: Promise<{ slug: 
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 sm:py-10 space-y-10">
+      <Link href="/library" className="inline-block text-sm text-moss hover:text-ink underline underline-offset-2">
+        ← My Library
+      </Link>
       {!journey.published && (
         <p role="status" className="text-sm rounded-lg bg-gold/20 text-ink px-4 py-2">
           Admin preview: this Journey isn&apos;t published, so readers still see its Parts as separate studies.
@@ -76,8 +79,9 @@ export default async function JourneyPage({ params }: { params: Promise<{ slug: 
           <p className="font-sans text-xs font-semibold uppercase tracking-wide text-gold">Soul Dust Revival</p>
           <h1 className="font-display font-bold text-4xl sm:text-5xl">{journey.title}</h1>
           <p className="font-serif text-lg text-parchment/85 max-w-xl">
-            {total} weeks. {countWord(progress.parts.length)} {progress.parts.length === 1 ? "Part" : "Parts"}. One road out of
-            the dust and into life, walked one week at a time.
+            {total} weeks: {total - progress.parts.length} weeks of study and {progress.parts.length} Part
+            {progress.parts.length === 1 ? " introduction" : " introductions"}. One road out of the dust and into life,
+            walked one week at a time.
           </p>
         </div>
         {begun && <YearRing done={done} total={total} />}
