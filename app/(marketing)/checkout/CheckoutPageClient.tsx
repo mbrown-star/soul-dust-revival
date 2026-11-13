@@ -68,7 +68,7 @@ export default function CheckoutPageClient({ initialLoggedIn }: { initialLoggedI
             ? "Your cart includes digital content, which requires an account."
             : "Your book comes with its digital edition in the Soul Dust Revival app, so we'll set up your account first. It only takes your email."}
         </p>
-        {/* Two distinct actions rather than one ambiguous "log in or sign up"
+        {/* Two distinct actions rather than one ambiguous "sign in or sign up"
             link — a first-time buyer (the common case here) needs signup,
             not login, and the two now behave differently under the hood
             (see AuthForm: signup can create an account, login cannot). */}
@@ -83,7 +83,7 @@ export default function CheckoutPageClient({ initialLoggedIn }: { initialLoggedI
             href={`/login?next=/checkout`}
             className="font-sans text-sm underline text-moss focus:outline-none focus:ring-2 focus:ring-ink rounded"
           >
-            Already have an account? Log in
+            Already have an account? Sign in
           </Link>
         </div>
       </div>

@@ -44,7 +44,7 @@ export function AuthForm({
     ? "First, sign in or create your account"
     : isSignup
     ? "Create your account"
-    : "Log in";
+    : "Sign in";
 
   async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -309,7 +309,7 @@ export function AuthForm({
           <>
             Already have an account?{" "}
             <Link href={`/login?next=${encodeURIComponent(next)}`} className="underline font-medium">
-              Log in
+              Sign in
             </Link>
           </>
         ) : (

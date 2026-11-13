@@ -210,10 +210,10 @@ test.describe("Nav current section", () => {
 });
 
 test.describe("Footer account links", () => {
-  test("guest sees Log in and Sign up, not App or Account", async ({ page }) => {
+  test("guest sees Sign in and Sign up, not App or Account", async ({ page }) => {
     await page.goto("/blog");
     const footer = page.getByRole("navigation", { name: "Footer" });
-    await expect(footer.getByRole("link", { name: "Log in" })).toBeVisible();
+    await expect(footer.getByRole("link", { name: "Sign in" })).toBeVisible();
     await expect(footer.getByRole("link", { name: "Sign up" })).toBeVisible();
     await expect(footer.getByRole("link", { name: "App" })).toHaveCount(0);
     await expect(footer.getByRole("link", { name: "Account" })).toHaveCount(0);
@@ -221,14 +221,14 @@ test.describe("Footer account links", () => {
 
   test.describe("as qa-user", () => {
     test.use({ storageState: "qa/.auth/user.json" });
-    // Audit 2026-11-13: the footer offered Log in and Sign up to people
+    // Audit 2026-11-13: the footer offered Sign in and Sign up to people
     // already signed in.
-    test("sees App and Account, not Log in or Sign up", async ({ page }) => {
+    test("sees App and Account, not Sign in or Sign up", async ({ page }) => {
       await page.goto("/blog");
       const footer = page.getByRole("navigation", { name: "Footer" });
       await expect(footer.getByRole("link", { name: "App" })).toBeVisible();
       await expect(footer.getByRole("link", { name: "Account" })).toBeVisible();
-      await expect(footer.getByRole("link", { name: "Log in" })).toHaveCount(0);
+      await expect(footer.getByRole("link", { name: "Sign in" })).toHaveCount(0);
       await expect(footer.getByRole("link", { name: "Sign up" })).toHaveCount(0);
     });
   });
@@ -245,7 +245,7 @@ test.describe("Nav bar", () => {
   // element's implicit role), so it's queried by that role, not "link".
   const isMobile = (testInfo: { project: { name: string } }) => testInfo.project.name === "mobile-chromium";
 
-  test("guest sees Store, Blog, Cart, Log in -- not App or an account menu", async ({ page }, testInfo) => {
+  test("guest sees Store, Blog, Cart, Sign in -- not App or an account menu", async ({ page }, testInfo) => {
     await page.goto("/");
     const nav = page.getByRole("navigation", { name: "Primary" });
 
@@ -253,12 +253,12 @@ test.describe("Nav bar", () => {
       await nav.getByRole("button", { name: "Open menu" }).click();
       await expect(page.getByRole("menuitem", { name: "Store" })).toBeVisible();
       await expect(page.getByRole("menuitem", { name: "Blog" })).toBeVisible();
-      await expect(page.getByRole("menuitem", { name: "Log in" })).toBeVisible();
+      await expect(page.getByRole("menuitem", { name: "Sign in" })).toBeVisible();
       await expect(page.getByRole("menuitem", { name: "App" })).toHaveCount(0);
     } else {
       await expect(nav.getByRole("link", { name: "Store" })).toBeVisible();
       await expect(nav.getByRole("link", { name: "Blog" })).toBeVisible();
-      await expect(nav.getByRole("link", { name: "Log in" })).toBeVisible();
+      await expect(nav.getByRole("link", { name: "Sign in" })).toBeVisible();
       await expect(nav.getByRole("link", { name: "App" })).toHaveCount(0);
     }
   });

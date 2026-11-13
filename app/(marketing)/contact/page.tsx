@@ -34,7 +34,7 @@ export default async function ContactPage() {
         <p className="font-serif text-moss max-w-2xl">
           Have an account?{" "}
           <Link href="/login?next=/contact" className="text-ink underline hover:text-moss">
-            Log in
+            Sign in
           </Link>{" "}
           to send a message from here, with screenshots if they help.
         </p>

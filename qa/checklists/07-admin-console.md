@@ -51,7 +51,7 @@ destructive action appropriately guarded, is anything visually inconsistent.
    next action (e.g. "Connect your first platform").
 9. Resize the browser to ~768px (the documented breakpoint where the admin nav's horizontal
    scroll is "genuine," per the code comment in `AdminNav.tsx`). → **Expect:** the nav scrolls
-   horizontally without visually clipping "Log out"; confirm there's some visual affordance (e.g.
+   horizontally without visually clipping "Sign out"; confirm there's some visual affordance (e.g.
    a partially-cut-off link) hinting that more items exist off-screen, since the scrollbar itself
    is deliberately hidden (`no-scrollbar`) — a user unaware they can scroll the nav may not
    discover Social/Users/Reports/Settings at all on a narrow screen.

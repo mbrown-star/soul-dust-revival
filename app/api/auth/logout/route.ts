@@ -23,7 +23,7 @@ function expireCookie(name: string, domain?: string): string {
  * shared parent domain, a browser can still hold an older host-only copy
  * with the same name (from a build where the split wasn't configured). The
  * browser sends both, signOut() deletes only the parent-domain one, and the
- * next page load is still signed in by the leftover copy -- so "Log out"
+ * next page load is still signed in by the leftover copy -- so "Sign out"
  * appeared to do nothing. This route expires every `sb-` cookie it receives
  * in both forms (host-only and parent-domain).
  *

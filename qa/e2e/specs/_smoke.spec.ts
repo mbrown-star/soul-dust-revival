@@ -17,7 +17,7 @@ test.describe("QA infra smoke test", () => {
     test("can reach /library while logged in", async ({ page }) => {
       await page.goto("/library");
       await expect(page).toHaveURL(/\/library/);
-      await expect(page.locator("body")).not.toContainText("Log in");
+      await expect(page.locator("body")).not.toContainText("Sign in");
     });
     test("is blocked from /admin/products", async ({ page }) => {
       await page.goto("/admin/products");

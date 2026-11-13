@@ -26,7 +26,7 @@
    published test card number (4242 4242 4242 4242, any future expiry/CVC) on the real
    `checkout.stripe.com` page. → **Expect:** redirects back to `/checkout/success?orderId=...`
    showing the real order total and items.
-6. For a digital/mixed order, confirm `/checkout/success` shows "Log in to access your content"
+6. For a digital/mixed order, confirm `/checkout/success` shows "Sign in to access your content"
    (if not already logged in) or that the item actually appears in My Library shortly after (once
    the webhook has run — see step 8).
 7. For a physical order, confirm the cart is empty on return to the site (per

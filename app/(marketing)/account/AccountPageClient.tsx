@@ -114,7 +114,7 @@ export default function AccountPageClient({
       <div className="border border-error/20 rounded-lg p-4">
         <h2 className="font-medium mb-1 text-error">Delete your account</h2>
         <p className="text-sm text-moss mb-3">
-          This permanently removes your ability to log in and deletes your study
+          This permanently removes your ability to sign in and deletes your study
           responses and login history. Order records are kept for financial
           record-keeping, with your personal details removed from them. This
           can&apos;t be undone.

@@ -124,7 +124,7 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
           {!sneakPeek && <CartLink />}
           {!loggedIn && (
             <Link href="/login" className={linkClass}>
-              Log in
+              Sign in
             </Link>
           )}
           {loggedIn && (
@@ -198,7 +198,7 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
                   onClick={handleLogOut}
                   className={`${menuItemClass} w-full disabled:opacity-50`}
                 >
-                  {loggingOut ? "Logging out..." : "Log out"}
+                  {loggingOut ? "Signing out..." : "Sign out"}
                 </button>
               </div>
             )}
@@ -212,7 +212,7 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
           that there was anything to scroll to -- "App" (then "My Library")
           could land fully off-screen with nothing on screen suggesting it
           existed. One menu with everything in it (links, Cart, Account/
-          Admin/Log out) removes the scrolling entirely instead of just
+          Admin/Sign out) removes the scrolling entirely instead of just
           making it reachable. */}
       <div className="sm:hidden relative flex-shrink-0" ref={mobileMenuRef}>
         <button
@@ -264,7 +264,7 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
 
             {!loggedIn && (
               <Link href="/login" role="menuitem" onClick={() => setMobileMenuOpen(false)} className={menuItemClass}>
-                Log in
+                Sign in
               </Link>
             )}
 
@@ -307,7 +307,7 @@ export function SiteNav({ loggedIn, isAdmin = false }: { loggedIn: boolean; isAd
                   onClick={handleLogOut}
                   className={`${menuItemClass} w-full disabled:opacity-50`}
                 >
-                  {loggingOut ? "Logging out..." : "Log out"}
+                  {loggingOut ? "Signing out..." : "Sign out"}
                 </button>
               </>
             )}

@@ -85,7 +85,7 @@ export function ContactForm({ initialName, initialEmail }: { initialName: string
         kind: "error",
         message:
           res.status === 401
-            ? "Your session has ended. Please log in again, then send your message."
+            ? "Your session has ended. Please sign in again, then send your message."
             : json?.message ?? "Your message didn't send. Please try again.",
       });
     } catch {

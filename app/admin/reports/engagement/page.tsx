@@ -73,8 +73,8 @@ export default async function EngagementReportPage() {
           <thead>
             <tr className="border-b text-moss">
               <th scope="col" className="py-2 pr-4 font-medium">User</th>
-              <th scope="col" className="py-2 pr-4 font-medium">Logins</th>
-              <th scope="col" className="py-2 pr-4 font-medium">Last login</th>
+              <th scope="col" className="py-2 pr-4 font-medium">Sign-ins</th>
+              <th scope="col" className="py-2 pr-4 font-medium">Last sign-in</th>
               <th scope="col" className="py-2 font-medium">Avg. session</th>
             </tr>
           </thead>
@@ -92,7 +92,7 @@ export default async function EngagementReportPage() {
             {rows.length === 0 && (
               <tr>
                 <td colSpan={4} className="py-6 text-center text-moss">
-                  No logins recorded yet.
+                  No sign-ins recorded yet.
                 </td>
               </tr>
             )}

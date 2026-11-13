@@ -29,7 +29,7 @@ test.describe("Guest (logged out)", () => {
 
   test("/login and /signup both render the real form", async ({ page }) => {
     await page.goto("/login");
-    await expect(page.locator("h1")).toContainText("Log in");
+    await expect(page.locator("h1")).toContainText("Sign in");
     await page.goto("/signup");
     await expect(page.locator("h1")).toContainText("Create your account");
   });
@@ -70,7 +70,7 @@ test.describe("Already-authenticated visitor", () => {
   test("/login?next=... still shows the form rather than blindly trusting an explicit next", async ({ page }) => {
     await page.goto("/login?next=/account");
     await expect(page).toHaveURL(/\/login\?next=\/account/);
-    await expect(page.locator("h1")).toContainText("Log in");
+    await expect(page.locator("h1")).toContainText("Sign in");
   });
 });
 
@@ -91,7 +91,7 @@ test.describe("Open-redirect guard on /login and /signup's next param", () => {
     test(`${path}?next=https://evil.example renders the form, doesn't auto-redirect anywhere`, async ({ page }) => {
       await page.goto(`${path}?next=https://evil.example`);
       expect(new URL(page.url()).hostname).toBe("localhost");
-      await expect(page.locator("h1")).toContainText(path === "/login" ? "Log in" : "Create your account");
+      await expect(page.locator("h1")).toContainText(path === "/login" ? "Sign in" : "Create your account");
     });
   }
 });

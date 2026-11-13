@@ -39,7 +39,7 @@ export function AdminNav() {
 
   return (
     // overflow-x-auto lets the nav scroll horizontally on narrow/tablet
-    // widths, where these 8 sections plus the divider and Log out genuinely
+    // widths, where these 8 sections plus the divider and Sign out genuinely
     // don't fit regardless of spacing, instead of wrapping into a cramped
     // multi-line stack or overflowing the viewport. The gap is deliberately
     // tighter than the public nav's (gap-4/gap-6) to avoid also triggering
@@ -48,7 +48,7 @@ export function AdminNav() {
     // can still tip it back into a 1-2px "overflow" that's invisible as
     // content but still shows a scrollbar track. no-scrollbar (same utility
     // CoverGallery.tsx uses) hides that track either way, so it can't show
-    // up as a stray sliver next to "Log out" regardless of those variations.
+    // up as a stray sliver next to "Sign out" regardless of those variations.
     <nav
       aria-label="Admin"
       className="no-scrollbar flex items-center gap-2.5 sm:gap-3 pr-1 font-sans text-sm font-medium overflow-x-auto whitespace-nowrap"
@@ -76,7 +76,7 @@ export function AdminNav() {
       })}
       <div aria-hidden="true" className="w-px h-5 bg-parchment/20 flex-shrink-0" />
       <button type="button" disabled={loggingOut} onClick={handleLogOut} className={`${linkClass} disabled:opacity-50`}>
-        {loggingOut ? "Logging out..." : "Log out"}
+        {loggingOut ? "Signing out..." : "Sign out"}
       </button>
     </nav>
   );

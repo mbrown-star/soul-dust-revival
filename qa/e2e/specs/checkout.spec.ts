@@ -67,7 +67,7 @@ test.describe("Checkout — logged-in digital purchase ('both' format bundle)", 
 test.describe("Checkout — guest with a printed book", () => {
   // A printed book includes its digital edition (2026-11-11), so every order
   // now needs an account: no guest-email checkout any more.
-  test("asks them to sign up or log in first, and explains why", async ({ page }) => {
+  test("asks them to sign up or sign in first, and explains why", async ({ page }) => {
     await page.goto("/store/qa-physical-amazon-and-stripe");
     await page.getByRole("button", { name: /Buy Now/i }).click();
 

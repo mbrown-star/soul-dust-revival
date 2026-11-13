@@ -7,7 +7,7 @@ import type { Metadata } from "next";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Log in",
+  title: "Sign in",
 };
 
 export default async function LoginPage({

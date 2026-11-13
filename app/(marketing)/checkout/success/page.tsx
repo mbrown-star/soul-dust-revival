@@ -67,7 +67,7 @@ export default async function CheckoutSuccessPage({
       // and isDigitalVariant/isPhysicalVariant both return false for
       // format:"both" with no variant (found in review), which would show
       // this page's visitor NEITHER the shipping-confirmation copy nor the
-      // "log in to access your content" link, no guidance at all. Treating
+      // "sign in to access your content" link, no guidance at all. Treating
       // an ambiguous "both" item as counting toward both is the safer
       // failure mode -- worst case is one extra, harmless line of copy.
       const variantKnown = product.format !== "both" || item.variant !== null;

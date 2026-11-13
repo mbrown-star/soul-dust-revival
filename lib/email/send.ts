@@ -19,7 +19,7 @@ type OrderConfirmationParams = {
  * Sends the order confirmation email via Resend, with content tailored to
  * the order's composition:
  * - anything with something to read in the app (hasWebAppAccess, which a
- *   printed book with a digital edition has too): a link to log in to it
+ *   printed book with a digital edition has too): a link to sign in to it
  * - a shipping note whenever something ships
  */
 export async function sendOrderConfirmationEmail(params: OrderConfirmationParams) {
@@ -39,7 +39,7 @@ export async function sendOrderConfirmationEmail(params: OrderConfirmationParams
           : ""
       }<p style="margin-top:24px;">
          <a href="${params.appUrl}/login?next=/library" style="background:#171717;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block;">
-           Log in to access your content
+           Sign in to access your content
          </a>
        </p>`
     : "";

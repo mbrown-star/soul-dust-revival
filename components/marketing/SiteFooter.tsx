@@ -4,7 +4,7 @@ import { appUrl } from "@/lib/domains";
 
 const linkClass = "hover:text-gold focus:outline-none focus:ring-2 focus:ring-gold rounded p-1 -m-1";
 
-/** `loggedIn` decides the account links, matching the header's: Log in and
+/** `loggedIn` decides the account links, matching the header's: Sign in and
  *  Sign up when signed out, App and Account when signed in. */
 export function SiteFooter({ loggedIn }: { loggedIn: boolean }) {
   return (
@@ -54,7 +54,7 @@ export function SiteFooter({ loggedIn }: { loggedIn: boolean }) {
           ) : (
             <>
               <Link href="/login" className={linkClass}>
-                Log in
+                Sign in
               </Link>
               <Link href="/signup" className={linkClass}>
                 Sign up

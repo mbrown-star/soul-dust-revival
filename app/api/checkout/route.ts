@@ -110,8 +110,8 @@ export async function POST(req: NextRequest) {
       {
         error: "login_required",
         message: hasDigital
-          ? "Please log in to purchase digital content."
-          : "Please log in or create an account: your book comes with its digital edition in the app.",
+          ? "Please sign in to purchase digital content."
+          : "Please sign in or create an account: your book comes with its digital edition in the app.",
       },
       { status: 401 }
     );

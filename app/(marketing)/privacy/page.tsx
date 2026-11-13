@@ -26,7 +26,7 @@ export default function PrivacyPage() {
           <li><strong>Country</strong> — collected at checkout for every order, so we can apply the right data-protection rules for where you are.</li>
           <li><strong>Shipping address</strong> — only if you buy a physical book, collected securely through our payment processor.</li>
           <li><strong>Study answers</strong> — the responses you write inside a study, saved so you can pick up where you left off.</li>
-          <li><strong>Login activity</strong> — when you log in and roughly how long you are active, so we can understand how the app is used. We do not log your IP address or precise location for this.</li>
+          <li><strong>Sign-in activity</strong> — when you sign in and roughly how long you are active, so we can understand how the app is used. We do not log your IP address or precise location for this.</li>
           <li><strong>Purchase history</strong> — what you have bought, so we can grant access to digital studies you have purchased.</li>
         </ul>
 
