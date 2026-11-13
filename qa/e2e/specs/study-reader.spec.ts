@@ -27,6 +27,27 @@ test.describe("Interactive Study reader", () => {
     }
   });
 
+  // Audit 2026-11-13: the back link, the week count and the phone header.
+  test("names the study in its back link, counts only weeks, and stacks the header on a phone", async ({ page }, testInfo) => {
+    await openLesson1(page);
+    await expect(page.getByRole("link", { name: "← QA Colossians-Shaped Study" })).toBeVisible();
+
+    // The fixture has Weeks 1–3 and an Introduction: three weeks, not four.
+    await page.getByRole("button", { name: /Soul Dust Revival · QA Colossians-Shaped Study · Week 1/ }).click();
+    await expect(page.getByRole("dialog").getByRole("heading", { name: "QA Colossians-Shaped Study · 3 Weeks" })).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    const title = await page.getByRole("heading", { name: "Grace and Truth", level: 1 }).boundingBox();
+    const ring = await page.getByLabel("Week progress").boundingBox();
+    if (testInfo.project.name === "mobile-chromium") {
+      // Title on its own row, above the ring and arrows.
+      expect(title!.y + title!.height).toBeLessThanOrEqual(ring!.y);
+    } else {
+      // Side by side on a wide screen.
+      expect(ring!.y).toBeLessThan(title!.y + title!.height);
+    }
+  });
+
   test("Study tab shows the key verse, sections, and Four Parts accordion", async ({ page }) => {
     await openLesson1(page);
     await expect(page.getByText("Grace to you and peace from God our Father.").first()).toBeVisible();
@@ -54,9 +75,10 @@ test.describe("Interactive Study reader", () => {
     await page.getByRole("tab", { name: "Passage" }).click();
 
     // Two stations whose anchor word is found inline in the passage text --
-    // rendered as real underlined buttons, not plain text.
-    await expect(page.getByRole("button", { name: "Grace" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "faith" })).toBeVisible();
+    // rendered as real underlined buttons, not plain text. Each says what it
+    // opens (audit 2026-11-13: they were named only by the word).
+    await expect(page.getByRole("button", { name: "Word study: grace (χάρις)" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Word study: faith \(/ })).toBeVisible();
 
     // Station 3 (ref "1:11") has anchor: null -- must still be reachable via
     // a fallback button, not silently missing.
@@ -71,9 +93,11 @@ test.describe("Interactive Study reader", () => {
     // "Open the Greek · χάρις" disclosure button stays mounted (hidden) in
     // the DOM per the 5-tab shell's keep-all-panels-mounted pattern, so
     // assertions are scoped to the sheet dialog to avoid matching it too.
-    await page.getByRole("button", { name: "Grace" }).click();
+    await page.getByRole("button", { name: "Word study: grace (χάρις)" }).click();
     const sheet = page.getByRole("dialog");
     await expect(sheet.getByText("χάρις")).toBeVisible();
+    // The fixture, like Colossians, has no `lang`: the script says Greek.
+    await expect(sheet.getByText(/^The Greek · /)).toBeVisible();
     await expect(sheet.getByText("grace, unearned favor")).toBeVisible();
     // On a narrow mobile viewport this button sits flush against the very
     // bottom of the sheet with no safe-area bottom padding
@@ -162,8 +186,8 @@ test.describe("Interactive Study reader", () => {
     await page.getByRole("tab", { name: "Passage", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Numbers 6:24–26" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Deuteronomy 6:24" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "bless", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "preserve", exact: true }).click();
+    await expect(page.getByRole("button", { name: /^Word study: bless \(/ })).toBeVisible();
+    await page.getByRole("button", { name: /^Word study: preserve \(/ }).click();
     await expect(page.getByRole("dialog")).toContainText("shamar");
     // A modal sheet: focus moves into it, Escape closes it, focus goes back.
     await expect(page.getByRole("dialog").getByRole("button", { name: "Close" })).toBeFocused();
@@ -174,7 +198,7 @@ test.describe("Interactive Study reader", () => {
     }
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "preserve", exact: true })).toBeFocused();
+    await expect(page.getByRole("button", { name: /^Word study: preserve \(/ })).toBeFocused();
 
     // Live It: the printed prayer as lines, not the five-minute timer.
     await page.getByRole("tab", { name: "Live It" }).click();
@@ -257,8 +281,8 @@ test.describe("Interactive Study reader", () => {
     await openLesson1(page);
     await page.getByRole("button", { name: /Part 1/ }).click();
     await expect(page.getByText("1 of 2 parts read")).toBeVisible();
-    await page.getByRole("button", { name: "Finished the study" }).click();
-    await expect(page.getByRole("button", { name: "✓ Finished the study" })).toBeVisible();
+    await page.getByRole("button", { name: "Done with the reading" }).click();
+    await expect(page.getByRole("button", { name: "✓ Done with the reading" })).toBeVisible();
     await page.getByRole("tab", { name: "Live It" }).click();
     await page.getByRole("checkbox").first().check();
 
@@ -266,7 +290,7 @@ test.describe("Interactive Study reader", () => {
     await page.reload();
     // Saved progress still shows once the page has loaded.
     await expect(page.getByText("1 of 2 parts read")).toBeVisible();
-    await expect(page.getByRole("button", { name: "✓ Finished the study" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "✓ Done with the reading" })).toBeVisible();
     await expect(page.getByText("20%")).toBeVisible();
     await page.getByRole("tab", { name: "Live It" }).click();
     await expect(page.getByRole("checkbox").first()).toBeChecked();

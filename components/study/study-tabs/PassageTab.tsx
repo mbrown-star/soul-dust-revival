@@ -30,16 +30,16 @@ export function PassageTab({
 }) {
   // An anchor in a gathered passage names its part too, since "3:5" can be
   // printed twice (John 3:5 and Titus 3:5).
-  const anchorByVerse = new Map<string, { stationId: string; word: string }>();
+  const anchorByVerse = new Map<string, { stationId: string; word: string; headword: string }>();
   for (const st of content.stations) {
     if (st.anchor) {
       const key = st.anchor.part ? `${st.anchor.part}|${st.anchor.v}` : st.anchor.v;
-      anchorByVerse.set(key, { stationId: st.questionBlockId, word: st.anchor.word });
+      anchorByVerse.set(key, { stationId: st.questionBlockId, word: st.anchor.word, headword: wordStudyHeadword(st) });
     }
   }
 
   const matchedStationIds = new Set<string>();
-  type Span = { v: StudyWeekContent["passage"][number]; showChapter: boolean; match: { stationId: string; word: string; idx: number } | null; startsPart: boolean };
+  type Span = { v: StudyWeekContent["passage"][number]; showChapter: boolean; match: AnchorMatch | null; startsPart: boolean };
   const passageSpans: Span[] = [];
   let part: string | undefined;
   for (const [i, v] of content.passage.entries()) {
@@ -47,7 +47,7 @@ export function PassageTab({
     part = v.ref ?? part;
     const verseKey = `${v.c}:${v.n}`;
     const anchor = (part && anchorByVerse.get(`${part}|${verseKey}`)) || anchorByVerse.get(verseKey);
-    let match: { stationId: string; word: string; idx: number } | null = null;
+    let match: AnchorMatch | null = null;
     if (anchor && !matchedStationIds.has(anchor.stationId)) {
       const idx = v.text.toLowerCase().indexOf(anchor.word.toLowerCase());
       if (idx !== -1) {
@@ -137,13 +137,15 @@ export function PassageTab({
   );
 }
 
+type AnchorMatch = { stationId: string; word: string; headword: string; idx: number };
+
 function VerseTextWithAnchor({
   text,
   match,
   onOpenGreek,
 }: {
   text: string;
-  match: { stationId: string; word: string; idx: number };
+  match: AnchorMatch;
   onOpenGreek: (stationId: string) => void;
 }) {
   const before = text.slice(0, match.idx);
@@ -156,6 +158,7 @@ function VerseTextWithAnchor({
       <button
         type="button"
         onClick={() => onOpenGreek(match.stationId)}
+        aria-label={`Word study: ${matchedText.toLowerCase()} (${match.headword})`}
         className="underline decoration-ember decoration-2 underline-offset-2 text-ink font-semibold"
       >
         {matchedText}

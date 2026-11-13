@@ -142,9 +142,14 @@ export type StudyStation = {
   media?: WeekMedia[];
 };
 
-/** "The Greek" or "The Hebrew", as the manuscript labels the station's word study. */
-export function wordStudyLanguage(station: Pick<StudyStation, "lang">): "Greek" | "Hebrew" {
-  return station.lang === "hebrew" ? "Hebrew" : "Greek";
+/**
+ * "The Greek" or "The Hebrew", as the manuscript labels the station's word
+ * study. Studies loaded before `lang` existed (Colossians) don't say, so
+ * the word's own script decides.
+ */
+export function wordStudyLanguage(station: Pick<StudyStation, "lang"> & { greek?: string }): "Greek" | "Hebrew" {
+  if (station.lang) return station.lang === "hebrew" ? "Hebrew" : "Greek";
+  return /[\u0590-\u05FF]/.test(station.greek ?? "") ? "Hebrew" : "Greek";
 }
 
 /**

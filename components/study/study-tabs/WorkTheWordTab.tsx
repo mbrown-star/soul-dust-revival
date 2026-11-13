@@ -96,7 +96,7 @@ export function WorkTheWordTab({
     <div className="space-y-4">
       <div>
         <h2 className="font-display font-bold text-xl text-ink">{content.stationsLabel}</h2>
-        <p className="font-serif text-ink mt-2">{content.stationsIntro} Answer first; the word study opens after.</p>
+        <p className="font-serif text-ink mt-2">{content.stationsIntro} Answer first, then open the word study.</p>
       </div>
 
       {/* As many columns as fit at 2.5rem or more: up to 12 stations wrap

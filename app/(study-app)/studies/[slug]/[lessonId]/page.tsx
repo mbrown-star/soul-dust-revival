@@ -637,7 +637,7 @@ export default async function LessonPage({
         previousHref={previousHref}
         nextHref={nextHref}
         position="bottom"
-        backLabel={journeyNav ? "Back to The Journey" : undefined}
+        backLabel={journeyNav ? "The Journey" : undefined}
         continueHref={journeyNav?.continueHref}
         // Hidden for both custom-header cases, each for its own real
         // completion control that already covers this: a devotional's

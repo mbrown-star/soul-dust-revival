@@ -20,7 +20,9 @@ export function GreekSheet({
 }) {
   return (
     <Sheet label={`${wordStudyLanguage(station)} word study: ${wordStudyHeadword(station)}`} onClose={onClose}>
-      <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700">{station.ref}</p>
+      <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700">
+        The {wordStudyLanguage(station)} · {station.ref}
+      </p>
       <p className="font-serif text-2xl text-ink">
         {station.greek ? (
           <>

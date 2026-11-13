@@ -139,7 +139,7 @@ export function StudyTab({
           isDone ? "bg-moss text-white" : "bg-ink text-parchment"
         }`}
       >
-        {isDone ? "✓ Finished the study" : "Finished the study"}
+        {isDone ? "✓ Done with the reading" : "Done with the reading"}
       </button>
     </div>
   );

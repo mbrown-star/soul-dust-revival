@@ -15,6 +15,7 @@ import type { LessonStatus } from "@/lib/study/lessonProgress";
 import { ScrollFadeTabs } from "@/components/ui/ScrollFadeTabs";
 import { WeekMediaContext } from "./WeekMediaSlot";
 import type { WeekMediaSlot as WeekMediaSlotKey } from "@/lib/study/weekMedia";
+import { shortStudyTitle } from "@/lib/study/shortStudyTitle";
 
 const TABS = [
   { key: "study", label: "Study" },
@@ -33,16 +34,6 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 function splitLessonTitle(lessonTitle: string): { weekLabel: string; weekTitle: string } {
   const match = /^(Week \d+):\s*(.*)$/.exec(lessonTitle);
   return match ? { weekLabel: match[1]!, weekTitle: match[2]! } : { weekLabel: lessonTitle, weekTitle: lessonTitle };
-}
-
-// "Soul Dust Revival Colossians" -> "Colossians" -- the breadcrumb prefixes its
-// own "Soul Dust Revival ·" (matching soul-dust-interactive's own
-// study_template.html: `"Soul Dust Revival · "+META.book+" · Week "+W.week`),
-// so the study's own title needs that shared brand prefix stripped first or
-// it shows up twice.
-function deriveBookLabel(studyTitle: string): string {
-  const stripped = studyTitle.replace(/^soul dust revival:?\s*/i, "").trim();
-  return stripped || studyTitle;
 }
 
 /**
@@ -105,7 +96,7 @@ export function StudyLessonView({
   const { done, setDone, percent } = useTabProgress(lessonId);
 
   const { weekLabel, weekTitle } = splitLessonTitle(lessonTitle);
-  const shortBookLabel = deriveBookLabel(bookLabel);
+  const shortBookLabel = shortStudyTitle(bookLabel);
   const greekStation = content.stations.find((s) => s.questionBlockId === greekStationId) ?? null;
   const showPassage = hasPassage(content);
   const tabs = TABS.filter((t) => showPassage || t.key !== "passage");
@@ -132,10 +123,12 @@ export function StudyLessonView({
         href={journey?.homeHref ?? studyHref}
         className="inline-block text-sm text-moss hover:text-ink underline underline-offset-2"
       >
-        {journey ? "← The Journey" : "← Back to table of contents"}
+        {journey ? "← The Journey" : `← ${shortBookLabel}`}
       </Link>
 
-      <div className="flex items-start gap-3">
+      {/* Under 640px the title gets the full width on its own row, with the
+          arrows and progress ring on a row beneath it (staging audit). */}
+      <div className="flex flex-wrap sm:flex-nowrap items-center sm:items-start gap-3">
         {previousHref ? (
           <Link
             href={previousHref}
@@ -148,7 +141,7 @@ export function StudyLessonView({
           <span className="w-11 h-11 shrink-0" aria-hidden="true" />
         )}
 
-        <div className="flex-1 min-w-0">
+        <div className="order-first basis-full sm:order-none sm:basis-auto sm:flex-1 min-w-0">
           <button
             type="button"
             onClick={() => setPickerOpen(true)}
@@ -160,7 +153,7 @@ export function StudyLessonView({
           <p className="font-serif italic text-moss">{content.subtitle}</p>
         </div>
 
-        <div className="relative w-14 h-14 shrink-0" aria-label="Week progress">
+        <div className="relative w-14 h-14 shrink-0 ml-auto sm:ml-0" aria-label="Week progress">
           <svg viewBox="0 0 40 40" className="w-full h-full -rotate-90">
             <circle cx="20" cy="20" r={RING_RADIUS} fill="none" strokeWidth="4" className="stroke-dusk/15" />
             <circle

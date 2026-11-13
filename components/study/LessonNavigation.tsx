@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { type LessonStatus, postLessonProgress, pendingLessonProgressPings } from "@/lib/study/lessonProgress";
+import { shortStudyTitle } from "@/lib/study/shortStudyTitle";
 
 /**
  * Sits at the top and bottom of a lesson: a "back to contents" link plus
@@ -37,7 +38,7 @@ export function LessonNavigation({
   // mounts normally and just renders nothing rather than being left out of
   // the tree entirely.
   visible?: boolean;
-  /** Bottom back link's text; defaults to "Back to table of contents". */
+  /** Bottom back link's text; defaults to the study's short title, as the top one. */
   backLabel?: string;
   /** Where "Mark complete" leads; defaults to the next lesson, else the contents. */
   continueHref?: string;
@@ -78,7 +79,7 @@ export function LessonNavigation({
     return (
       <nav aria-label="Lesson navigation" className="flex flex-wrap items-center justify-between gap-3 text-sm">
         <Link href={studyHref} className="text-moss hover:text-ink underline underline-offset-2">
-          ← {studyTitle}
+          ← {shortStudyTitle(studyTitle)}
         </Link>
         <div className="flex items-center gap-4">
           {previousHref && (
@@ -99,7 +100,7 @@ export function LessonNavigation({
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 border-t border-moss/10 pt-6">
       <Link href={studyHref} className="text-sm text-moss hover:text-ink underline underline-offset-2">
-        ← {backLabel ?? "Back to table of contents"}
+        ← {backLabel ?? shortStudyTitle(studyTitle)}
       </Link>
       <div className="flex items-center gap-4">
         {previousHref && (

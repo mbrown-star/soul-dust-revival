@@ -36,10 +36,12 @@ export function WeekPickerSheet({
   heading?: string;
   onClose: () => void;
 }) {
+  // The list includes the Introduction; the count is of weeks only.
+  const weekCount = weeks.filter((w) => /^week \d+/i.test(w.title)).length || weeks.length;
   return (
     <Sheet label={`${bookLabel} · Choose a week`} onClose={onClose}>
       <h2 className="font-display font-bold text-lg text-ink pr-8">
-        {heading ?? `${bookLabel} · ${weeks.length} ${weeks.length === 1 ? "Week" : "Weeks"}`}
+        {heading ?? `${bookLabel} · ${weekCount} ${weekCount === 1 ? "Week" : "Weeks"}`}
       </h2>
       <div className="divide-y divide-dusk/10">
         {weeks.map((week, i) => {

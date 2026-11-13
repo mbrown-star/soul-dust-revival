@@ -7,6 +7,7 @@ import { YearView, type YearDay } from "./YearView";
 import { JournalView, type JournalEntry } from "./JournalView";
 import { SixFacesOfTheDust } from "./SixFacesOfTheDust";
 import { ScrollFadeTabs } from "@/components/ui/ScrollFadeTabs";
+import { shortStudyTitle } from "@/lib/study/shortStudyTitle";
 
 const TABS = [
   { key: "today", label: "Today" },
@@ -19,16 +20,6 @@ type TabKey = (typeof TABS)[number]["key"];
 
 const RING_RADIUS = 16;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
-
-// "Soul Dust Revival: 365 Days of Psalms Devotional for Everyone" ->
-// "365 Days of Psalms Devotional for Everyone" -- the header prefixes its
-// own "Soul Dust Revival ·" eyebrow (matching soul-dust-psalms-365's own
-// devotional_template.html), so the stored title needs that shared brand
-// prefix stripped first or it shows up twice.
-function deriveAppTitle(studyTitle: string): string {
-  const stripped = studyTitle.replace(/^soul dust revival:?\s*/i, "").trim();
-  return stripped || studyTitle;
-}
 
 /**
  * The devotional reader's own 4-view app shell (Today / The Year / Journal /
@@ -77,13 +68,13 @@ export function DevotionalAppView({
 }) {
   const [tab, setTab] = useState<TabKey>("today");
   const tabs = TABS.filter((t) => (t.key === "journal" ? hasQuestions : t.key === "faces" ? psalmsEdition : true));
-  const appTitle = deriveAppTitle(studyTitle);
+  const appTitle = shortStudyTitle(studyTitle);
   const percent = totalDays > 0 ? Math.round((daysWalked / totalDays) * 100) : 0;
 
   return (
     <div className="space-y-6">
       <Link href={studyHref} className="inline-block text-sm text-moss hover:text-ink underline underline-offset-2">
-        ← Back to table of contents
+        ← {appTitle}
       </Link>
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">

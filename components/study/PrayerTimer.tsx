@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { StudyWeekContent } from "@/lib/study/studyContent";
 
 const TOTAL_SECONDS = 5 * 60;
+const BEGIN_PRAYER = "Be still. Come to the Father as you are, through the Son, in the Spirit.";
 
 /**
  * A guided 5-minute prayer: the lead-in, then each Father/Son/Spirit beat in
@@ -21,8 +22,11 @@ export function PrayerTimer({
   beats: StudyWeekContent["prayerBeats"];
   close: string;
 }) {
+  // The book's lead-in is an instruction ("Keep it to five minutes."), shown
+  // before starting. Once the timer runs, the first step needs words to pray
+  // from (staging audit, 2026-11-13).
   const steps = [
-    { label: "Begin", body: lead },
+    { label: "Begin", body: BEGIN_PRAYER },
     ...beats.map((b) => ({ label: `${b.person}, ${b.verb}`, body: b.words })),
     { label: "Close", body: close },
   ];

@@ -3,17 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ScrollFadeTabs } from "@/components/ui/ScrollFadeTabs";
+import { shortStudyTitle } from "@/lib/study/shortStudyTitle";
 
 const RING_RADIUS = 16;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 type TabKey = "read" | "contents" | "journal";
-
-/** "Soul Dust Revival: Revive Me - A Journey Out of the Dust" -> "Revive Me - A Journey Out of the Dust". */
-function deriveBookTitle(title: string): string {
-  const stripped = title.replace(/^soul dust revival:?\s*/i, "").trim();
-  return stripped || title;
-}
 
 /**
  * The book reader's shell (study kind "book", e.g. Revive Me): Read (the
@@ -51,12 +46,12 @@ export function BookAppView({
   return (
     <div className="space-y-6">
       <Link href={studyHref} className="inline-block text-sm text-moss hover:text-ink underline underline-offset-2">
-        ← Back to table of contents
+        ← {shortStudyTitle(title)}
       </Link>
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
           <p className="font-sans text-xs font-semibold uppercase tracking-wide text-ember-700">Soul Dust Revival · Book</p>
-          <h1 className="font-display font-bold text-2xl sm:text-3xl text-ink mt-0.5">{deriveBookTitle(title)}</h1>
+          <h1 className="font-display font-bold text-2xl sm:text-3xl text-ink mt-0.5">{shortStudyTitle(title)}</h1>
         </div>
         <div
           className="relative w-14 h-14 shrink-0"
