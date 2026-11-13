@@ -36,5 +36,9 @@ test.describe("admin reports, as qa-admin", () => {
     const res = await page.goto("/admin/reports/social");
     expect(res?.status()).toBe(200);
     await expect(page.locator("body")).not.toContainText(/application error/i);
+    // Audit 2026-11-13: the note pointed admins at SOCIAL.md, a code file.
+    await expect(page.getByText(/refreshed once a day/)).toBeVisible();
+    await expect(page.getByText(/Last refreshed .* UTC\.|Not refreshed yet\./)).toBeVisible();
+    await expect(page.locator("body")).not.toContainText("SOCIAL.md");
   });
 });

@@ -3,7 +3,7 @@ import { socialPostTargets, socialPosts, socialPostMetrics } from "@/lib/db/sche
 import { eq, desc, inArray } from "drizzle-orm";
 import Link from "next/link";
 import { PLATFORM_LABELS } from "@/lib/data/socialPlatforms";
-import { formatDate } from "@/lib/format/date";
+import { formatDate, formatDateTime } from "@/lib/format/date";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +39,13 @@ export default async function SocialAnalyticsPage() {
 
   const latestByTarget = new Map(latestMetrics.map((m) => [m.targetId, m]));
 
+  // When the numbers were last fetched from the platforms: the newest of
+  // each post's latest refresh, or none yet.
+  const lastRefreshed = latestMetrics.reduce<Date | null>(
+    (latest, m) => (m.fetchedAt && (!latest || m.fetchedAt > latest) ? m.fetchedAt : latest),
+    null
+  );
+
   const totals = { likes: 0, comments: 0, shares: 0 };
   for (const m of latestByTarget.values()) {
     totals.likes += m.likes;
@@ -52,8 +59,9 @@ export default async function SocialAnalyticsPage() {
         <Link href="/admin/reports" className="text-sm text-moss">← Reports</Link>
         <h1 className="text-xl font-semibold">Social analytics</h1>
         <p className="text-sm text-moss mt-1">
-          Metrics refresh periodically via a scheduled job — see SOCIAL.md — so numbers
-          here may lag a live view on the platform itself by up to that job&apos;s interval.
+          Numbers come from each platform and are refreshed once a day, so they can be up to a day
+          behind the platform itself.{" "}
+          {lastRefreshed ? `Last refreshed ${formatDateTime(lastRefreshed)}.` : "Not refreshed yet."}
         </p>
       </div>
 
