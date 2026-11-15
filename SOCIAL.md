@@ -87,6 +87,13 @@ the next run.
 traffic). Uploading and promoting a version never does, which is why the first deploy
 of this left the schedules unregistered.
 
+**The Meta app must be published (Live).** In development mode Meta hides the app's
+posts from anyone without a role on the app, so a post can be published and Public yet
+missing from the Page's feed (found 2026-11-15). Live mode also needs a Privacy Policy
+URL; without one Meta switches off Facebook Login ("Feature Unavailable"). Each
+platform's allowed callback list needs every host you connect from (staging and
+production), and X is pay-per-use: calls stop at a $0 credit balance.
+
 **X images** go through `POST https://api.x.com/2/media/upload`, which needs the
 `media.write` scope (added 2026-11-15). A connection made before then lacks it: X
 refuses the upload with a 403 until X is reconnected in Settings → Connections.
