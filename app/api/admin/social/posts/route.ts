@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
 
   if (!post) return NextResponse.json({ error: "post_creation_failed" }, { status: 500 });
 
-  await db.insert(socialPostTargets).values(
+  const created = await db.insert(socialPostTargets).values(
     body.targets.map((t) => {
       const parts = t.timeOfDay.split(":").map(Number);
       const hours = parts[0];
@@ -98,9 +98,9 @@ export async function POST(req: NextRequest) {
         status: "scheduled" as const,
       };
     })
-  );
+  ).returning({ id: socialPostTargets.id, platform: socialPostTargets.platform });
 
-  return NextResponse.json({ postId: post.id });
+  return NextResponse.json({ postId: post.id, targets: created });
 }
 
 export async function GET() {

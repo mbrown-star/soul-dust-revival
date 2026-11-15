@@ -777,6 +777,13 @@ export const socialPostTargetUpdateSchema = z.object({
   status: z.enum(["draft", "scheduled", "sending", "published", "failed", "paused"]).optional(),
 });
 
+/** "Publish now": up to one target per platform of a post. */
+export const socialPublishNowSchema = z
+  .object({
+    targetIds: z.array(z.string().uuid()).min(1).max(3),
+  })
+  .strict();
+
 export const socialSuggestSchema = z.object({
   customInstruction: z.string().max(2_000).optional(),
   platforms: z.array(platformSchema).min(1).max(3),

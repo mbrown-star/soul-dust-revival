@@ -1,3 +1,4 @@
+import { PLATFORM_LABELS } from "@/lib/data/socialPlatforms";
 import { getConnection, upsertConnection } from "@/lib/social/connections";
 import { publishToX, refreshXTokenIfNeeded } from "@/lib/social/publishers/x";
 import { publishToFacebook } from "@/lib/social/publishers/facebook";
@@ -10,7 +11,7 @@ export async function publishTarget(params: {
 }): Promise<{ externalPostId: string }> {
   const connection = await getConnection(params.platform);
   if (!connection || connection.status !== "connected" || !connection.accessToken) {
-    throw new Error(`${params.platform} is not connected`);
+    throw new Error(`${PLATFORM_LABELS[params.platform]} isn't connected. Connect it in Settings → Connections.`);
   }
 
   let accessToken = connection.accessToken;

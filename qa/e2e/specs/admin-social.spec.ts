@@ -42,6 +42,47 @@ test.describe("Admin: Social scheduling", () => {
       await expect(page.getByRole("button", { name: /Schedule post/i })).toBeDisabled();
     });
 
+    test.describe("in the browser's own time zone", () => {
+      test.use({ timezoneId: "America/New_York" });
+
+      test("composer labels the time with the local zone and gives the UTC equivalent", async ({ page }) => {
+        await page.goto("/admin/social/new");
+        await page.getByRole("checkbox").first().check(); // X
+        await expect(page.getByText(/Time \(America\/New_York \(E[SD]T\)\)/)).toBeVisible();
+        const date = page.locator('input[type="date"]').first();
+        await date.fill("2030-01-15");
+        await page.locator('input[type="time"]').first().fill("09:00");
+        await expect(page.getByText(/First goes out .*Jan 15.*9:00.*\(14:00 UTC\)/)).toBeVisible();
+      });
+    });
+
+    test("composer flags a time that has already passed", async ({ page }) => {
+      await page.goto("/admin/social/new");
+      await page.getByRole("checkbox").first().check();
+      await page.locator('input[type="date"]').first().fill("2020-01-01");
+      await expect(page.getByText(/has already passed, so this goes out on the next run/)).toBeVisible();
+    });
+
+    test("Publish now saves the post and reports a platform that can't publish", async ({ page }) => {
+      // The QA database has no connected accounts, so this exercises the whole
+      // path without posting anywhere: the X target is saved, claimed, and
+      // comes back failed with the reason.
+      await page.goto("/admin/social/new");
+      const body = `QA publish-now ${Date.now()}`;
+      await page.locator("textarea").fill(body);
+      await page.getByRole("checkbox").first().check();
+      page.once("dialog", (d) => d.accept());
+      await page.getByRole("button", { name: "Publish now" }).click();
+      const alert = page.getByRole("alert").filter({ hasText: "some platforms didn't publish" });
+      await expect(alert).toContainText("X: X isn't connected. Connect it in Settings → Connections.");
+
+      await page.goto("/admin/social");
+      const row = page.locator("div.p-4", { hasText: body });
+      await expect(row.getByText("X · failed")).toBeVisible();
+      await expect(row.getByText("X isn't connected. Connect it in Settings → Connections.")).toBeVisible();
+      await expect(row.getByRole("button", { name: "Publish now to X" })).toBeVisible();
+    });
+
     test("social list page renders without error and shows a new-post link", async ({ page }) => {
       const res = await page.goto("/admin/social");
       expect(res?.status()).toBe(200);

@@ -80,8 +80,20 @@ doesn't matter) with the Worker's `CRON_SECRET`. The schedules are `triggers.cro
 `wrangler.jsonc`, set on `env.production` only; staging's list is empty on purpose.
 Both Workers share one database, so one scheduler publishes posts scheduled from either
 admin. Change a schedule in both `wrangler.jsonc` and `CRON_ROUTES` (a test checks they
-match). Times in the composer are UTC; a post saved for a time already past goes out on
-the next run.
+match).
+
+**Times in the composer are the admin's local time** (labelled with the browser's time
+zone); `lib/social/localSchedule.ts` converts them to the UTC date, time and weekday the
+server stores. A daily or weekly post is fixed in UTC, so it moves an hour at
+daylight-saving changes. A time already past goes out on the next run, and the
+composer says so.
+
+**Publish now** (composer button, and per platform on the Social list for anything
+scheduled, failed, paused or draft) posts immediately through
+`POST /api/admin/social/targets/publish`. It and the scheduler share
+`claimAndPublish` (`lib/social/publishClaimed.ts`), whose atomic claim stops a click
+racing the cron from posting twice. Publishing a recurring post now leaves its schedule
+where it was.
 
 **`npm run deploy` applies the triggers** (`wrangler triggers deploy` after switching
 traffic). Uploading and promoting a version never does, which is why the first deploy

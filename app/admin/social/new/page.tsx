@@ -1,16 +1,37 @@
 "use client";
 
-import { useState, useId } from "react";
+import { useState, useId, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { ALL_PLATFORMS, PLATFORM_LIMITS, PLATFORM_LABELS, SocialPlatform } from "@/lib/data/socialPlatforms";
 import { UploadError, uploadFileToR2 } from "@/lib/r2/browserUpload";
 import { IMAGE_UPLOAD_MAX_BYTES } from "@/lib/uploads/limits";
+import { firstLocalRun, localTimeZoneLabel, localToday, toUtcSchedule } from "@/lib/social/localSchedule";
 
+// The browser's own date and time zone. The server renders with neither, so
+// these read as "" until hydration (no mismatch), then the real values.
+const noSubscribe = () => () => {};
+function useLocalToday(): string {
+  return useSyncExternalStore(noSubscribe, () => localToday(), () => "");
+}
+function useTimeZoneLabel(): string {
+  return useSyncExternalStore(noSubscribe, () => localTimeZoneLabel(), () => "");
+}
+// The current minute (0 on the server), so "has already passed" updates as time moves on.
+const minuteTicker = (onChange: () => void) => {
+  const id = setInterval(onChange, 30_000);
+  return () => clearInterval(id);
+};
+function useCurrentMinute(): number {
+  return useSyncExternalStore(minuteTicker, () => Math.floor(Date.now() / 60_000) * 60_000, () => 0);
+}
+
+// Dates and times here are the admin's local ones; they're converted to UTC
+// (what the server stores and fires on) only when the post is sent.
 type TargetConfig = {
   frequency: "once" | "daily" | "weekly";
   dayOfWeek: number;
   timeOfDay: string;
-  startDate: string;
+  startDate: string; // "" means today
   endDate: string;
 };
 
@@ -18,9 +39,11 @@ const defaultTargetConfig: TargetConfig = {
   frequency: "once",
   dayOfWeek: 1,
   timeOfDay: "09:00",
-  startDate: new Date().toISOString().slice(0, 10),
+  startDate: "",
   endDate: "",
 };
+
+type PublishResult = { targetId: string; ok: boolean; error?: string };
 
 export default function NewSocialPostPage() {
   const router = useRouter();
@@ -41,7 +64,10 @@ export default function NewSocialPostPage() {
   const [customInstruction, setCustomInstruction] = useState("");
   const [suggesting, setSuggesting] = useState(false);
   const [drafts, setDrafts] = useState<string[]>([]);
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState<"schedule" | "now" | null>(null);
+  const [publishFailures, setPublishFailures] = useState<string[]>([]);
+  const today = useLocalToday();
+  const timeZone = useTimeZoneLabel();
   const [error, setError] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const bodyId = useId();
@@ -92,20 +118,27 @@ export default function NewSocialPostPage() {
     setSuggesting(false);
   }
 
-  async function handleSubmit() {
-    setSaving(true);
-    setError(null);
-
+  async function createPost(publishNow: boolean) {
     const targets = activePlatforms.map((platform) => {
       const c = configs[platform];
-      return {
-        platform,
+      if (publishNow) {
+        // Saved as a one-off at this moment, then published straight away below.
+        const now = new Date();
+        return {
+          platform,
+          frequency: "once" as const,
+          timeOfDay: now.toISOString().slice(11, 16),
+          startDate: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString(),
+        };
+      }
+      const utc = toUtcSchedule({
         frequency: c.frequency,
         dayOfWeek: c.frequency === "weekly" ? c.dayOfWeek : undefined,
+        startDate: c.startDate || today,
         timeOfDay: c.timeOfDay,
-        startDate: new Date(c.startDate).toISOString(),
-        endDate: c.endDate ? new Date(c.endDate).toISOString() : undefined,
-      };
+        endDate: c.endDate || undefined,
+      });
+      return { platform, frequency: c.frequency, ...utc };
     });
 
     const res = await fetch("/api/admin/social/posts", {
@@ -120,16 +153,53 @@ export default function NewSocialPostPage() {
         targets,
       }),
     });
-    const data = (await res.json()) as { message?: string };
+    const data = (await res.json().catch(() => ({}))) as {
+      message?: string;
+      targets?: { id: string; platform: SocialPlatform }[];
+    };
+    if (!res.ok) throw new Error(data.message ?? "Couldn't save that post.");
+    return data.targets ?? [];
+  }
 
-    if (!res.ok) {
-      setError(data.message ?? "Couldn't schedule that post.");
-      setSaving(false);
-      return;
+  async function handleSubmit(publishNow: boolean) {
+    if (publishNow) {
+      const names = activePlatforms.map((p) => PLATFORM_LABELS[p]).join(", ");
+      if (!window.confirm(`Publish this post to ${names} right now?`)) return;
     }
+    setSaving(publishNow ? "now" : "schedule");
+    setError(null);
+    setPublishFailures([]);
 
-    router.push("/admin/social");
-    router.refresh();
+    try {
+      const created = await createPost(publishNow);
+
+      if (publishNow) {
+        const res = await fetch("/api/admin/social/targets/publish", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ targetIds: created.map((t) => t.id) }),
+        });
+        const data = (await res.json().catch(() => ({}))) as { results?: PublishResult[] };
+        if (!res.ok || !data.results) throw new Error("The post was saved, but publishing didn't start. Try Publish now from the Social list.");
+        const failures = data.results
+          .filter((r) => !r.ok)
+          .map((r) => {
+            const platform = created.find((t) => t.id === r.targetId)?.platform;
+            return `${platform ? PLATFORM_LABELS[platform] : "A platform"}: ${r.error ?? "failed"}`;
+          });
+        if (failures.length > 0) {
+          setPublishFailures(failures);
+          setSaving(null);
+          return;
+        }
+      }
+
+      router.push("/admin/social");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setSaving(null);
+    }
   }
 
   const canSubmit =
@@ -271,12 +341,14 @@ export default function NewSocialPostPage() {
                   <input
                     type="date"
                     className="w-full border rounded-lg p-2 text-sm"
-                    value={configs[platform].startDate}
+                    value={configs[platform].startDate || today}
                     onChange={(e) => setConfigs((c) => ({ ...c, [platform]: { ...c[platform], startDate: e.target.value } }))}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-moss mb-1">Time (UTC)</label>
+                  <label className="block text-xs text-moss mb-1">
+                    Time{timeZone ? ` (${timeZone})` : ""}
+                  </label>
                   <input
                     type="time"
                     className="w-full border rounded-lg p-2 text-sm"
@@ -297,6 +369,7 @@ export default function NewSocialPostPage() {
                 )}
               </div>
             )}
+            {selected[platform] && today && <ScheduleHint config={configs[platform]} today={today} />}
             {selected[platform] && platform === "instagram" && !imageUrl && (
               <p className="text-xs text-error pl-6 mt-2">Instagram requires an image.</p>
             )}
@@ -305,14 +378,66 @@ export default function NewSocialPostPage() {
       </div>
 
       {error && <p role="alert" className="text-sm text-error">{error}</p>}
+      {publishFailures.length > 0 && (
+        <div role="alert" className="text-sm text-error space-y-1">
+          <p>The post was saved, but some platforms didn&apos;t publish:</p>
+          <ul className="list-disc pl-5">
+            {publishFailures.map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+          <p>
+            Fix the cause, then use Publish now on the{" "}
+            <a href="/admin/social" className="underline">
+              Social list
+            </a>
+            .
+          </p>
+        </div>
+      )}
 
-      <button
-        onClick={handleSubmit}
-        disabled={!canSubmit || saving}
-        className="bg-ink text-white rounded-lg px-6 py-3 disabled:opacity-50"
-      >
-        {saving ? "Scheduling..." : "Schedule post"}
-      </button>
+      <div className="flex flex-wrap gap-3">
+        <button
+          onClick={() => handleSubmit(false)}
+          disabled={!canSubmit || saving !== null}
+          className="bg-ink text-white rounded-lg px-6 py-3 disabled:opacity-50"
+        >
+          {saving === "schedule" ? "Scheduling..." : "Schedule post"}
+        </button>
+        <button
+          onClick={() => handleSubmit(true)}
+          disabled={!canSubmit || saving !== null}
+          className="border border-ink text-ink rounded-lg px-6 py-3 disabled:opacity-50"
+        >
+          {saving === "now" ? "Publishing..." : "Publish now"}
+        </button>
+      </div>
+      <p className="text-xs text-moss">
+        Publish now posts to the selected platforms immediately, once, and ignores the schedule above.
+      </p>
     </div>
+  );
+}
+
+function ScheduleHint({ config, today }: { config: TargetConfig; today: string }) {
+  const nowMs = useCurrentMinute();
+  const local = {
+    frequency: config.frequency,
+    dayOfWeek: config.frequency === "weekly" ? config.dayOfWeek : undefined,
+    startDate: config.startDate || today,
+    timeOfDay: config.timeOfDay,
+  };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(local.startDate) || !/^\d{2}:\d{2}$/.test(local.timeOfDay)) return null;
+  const run = firstLocalRun(local);
+  const when = run.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const utc = toUtcSchedule(local).timeOfDay;
+  const past = run.getTime() < nowMs;
+  return (
+    <p className={`text-xs pl-6 mt-2 ${past ? "text-error" : "text-moss"}`}>
+      {past
+        ? `${when} has already passed, so this goes out on the next run (within 10 minutes).`
+        : `First goes out ${when} (${utc} UTC), within 10 minutes of that time.`}
+      {config.frequency !== "once" && " Repeats at the same UTC time, so it shifts an hour at daylight-saving changes."}
+    </p>
   );
 }

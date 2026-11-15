@@ -3,6 +3,9 @@ import { socialPosts, socialPostTargets } from "@/lib/db/schema";
 import { desc, inArray } from "drizzle-orm";
 import Link from "next/link";
 import { PLATFORM_LABELS } from "@/lib/data/socialPlatforms";
+import { PUBLISH_NOW_FROM } from "@/lib/social/publishClaimed";
+import { PublishNowButton } from "@/components/admin/social/PublishNowButton";
+import { LocalDateTime } from "@/components/admin/social/LocalDateTime";
 
 import type { Metadata } from "next";
 
@@ -50,14 +53,32 @@ export default async function SocialPostsPage() {
           return (
             <div key={post.id} className="p-4">
               <p className="text-sm mb-2 line-clamp-2">{post.body}</p>
-              <div className="flex flex-wrap gap-2">
+              <ul className="space-y-2">
                 {targets.map((t) => (
-                  <span key={t.id} className={`text-xs px-2 py-1 rounded-full ${STATUS_STYLES[t.status]}`}>
-                    {PLATFORM_LABELS[t.platform]} · {t.status}
-                    {t.frequency !== "once" && ` · ${t.frequency}`}
-                  </span>
+                  <li key={t.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                    <span className={`px-2 py-1 rounded-full ${STATUS_STYLES[t.status]}`}>
+                      {PLATFORM_LABELS[t.platform]} · {t.status}
+                      {t.frequency !== "once" && ` · ${t.frequency}`}
+                    </span>
+                    {t.status === "scheduled" && (
+                      <span className="text-moss">
+                        Next: <LocalDateTime iso={t.nextRunAt.toISOString()} />
+                      </span>
+                    )}
+                    {t.status === "published" && t.publishedAt && (
+                      <span className="text-moss">
+                        Published <LocalDateTime iso={t.publishedAt.toISOString()} />
+                      </span>
+                    )}
+                    {PUBLISH_NOW_FROM.includes(t.status) && (
+                      <PublishNowButton targetId={t.id} platformLabel={PLATFORM_LABELS[t.platform]} />
+                    )}
+                    {t.status === "failed" && t.lastError && (
+                      <span className="basis-full text-error break-words">{t.lastError.slice(0, 300)}</span>
+                    )}
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
           );
         })}
