@@ -67,46 +67,21 @@ Anthropic API key at rest (see `lib/crypto/tokenCipher.ts`) — losing this key 
 every stored connection needs to be reconnected, so store it somewhere durable (your
 host's secret manager), not just in a local `.env` file.
 
-### 3. Deploy a cron trigger — Cloudflare Pages has no built-in cron
-Two endpoints need to be hit on a schedule by something external:
-- `POST /api/cron/social-publish` — every 5–15 minutes, checks for due scheduled posts
-- `POST /api/cron/social-metrics` — daily or a few times a day, refreshes engagement stats
+### 3. Cron triggers (built in, production Worker only)
+Three endpoints run on a schedule, each requiring `Authorization: Bearer {CRON_SECRET}`:
+- `POST /api/cron/social-publish` — every 10 minutes, publishes due scheduled posts
+- `POST /api/cron/social-metrics` — daily at 06:00 UTC, refreshes engagement stats
+- `POST /api/cron/prune-login-events` — daily at 06:00 UTC (see PRIVACY.md)
 
-Both require `Authorization: Bearer {CRON_SECRET}` — set `CRON_SECRET` to a long random
-string in `.env`, and configure whatever calls these endpoints to send that same value.
-
-**This app's own Worker doesn't run cron itself.** It's deployed via the OpenNext
-Cloudflare adapter (see BUILD_TASKS.md's Deployment section), whose generated
-`worker.js` only exports a `fetch` handler, not `scheduled` — and that file is fully
-regenerated on every build, so hand-adding a `scheduled` export to it directly doesn't
-stick. The simplest path is still a small, separate companion Cloudflare Worker that
-just calls this app's cron endpoints over HTTP on a schedule:
-
-```toml
-# wrangler.toml for the companion worker (separate from this app's own Worker)
-name = "soul-dust-social-cron"
-main = "src/index.ts"
-compatibility_date = "2026-01-01"
-
-[triggers]
-crons = ["*/10 * * * *"]  # every 10 minutes
-```
-
-```ts
-// src/index.ts
-export default {
-  async scheduled(event: ScheduledEvent, env: { CRON_SECRET: string; APP_URL: string }) {
-    await fetch(`${env.APP_URL}/api/cron/social-publish`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${env.CRON_SECRET}` },
-    });
-  },
-};
-```
-Run a second, less-frequent cron (e.g. daily) the same way for `/api/cron/social-metrics`.
-An external scheduled-job service (GitHub Actions on a `schedule:` trigger, cron-job.org,
-etc.) works exactly as well if you'd rather not run a second Worker — the endpoints
-don't care who calls them, only that the bearer secret matches.
+Since 2026-11-15 the app's own Worker runs them: `custom-worker.ts` exports a
+`scheduled` handler that passes each Cron Trigger to `lib/cron/scheduledJobs.ts`, which
+calls the matching routes inside the same Worker (no network hop, so Cloudflare Access
+doesn't matter) with the Worker's `CRON_SECRET`. The schedules are `triggers.crons` in
+`wrangler.jsonc`, set on `env.production` only; staging's list is empty on purpose.
+Both Workers share one database, so one scheduler publishes posts scheduled from either
+admin. Change a schedule in both `wrangler.jsonc` and `CRON_ROUTES` (a test checks they
+match). Times in the composer are UTC; a post saved for a time already past goes out on
+the next run.
 
 ## Character limits
 Enforced both live in the composer and again server-side at post-creation time

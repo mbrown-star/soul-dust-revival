@@ -32,6 +32,12 @@
   "limits": {
     "cpu_ms": 60000
   },
+  // Cron Triggers run on the production Worker only (see env.production):
+  // both Workers share one database, so one scheduler publishes social
+  // posts for both. Staging is set empty explicitly so it never inherits.
+  "triggers": {
+    "crons": []
+  },
   // The production Worker (souldustrevival.com, app.souldustrevival.com),
   // deployed with `--env production`. Same database and Supabase project as
   // staging, but its own Worker, secrets, and Hyperdrive config (caching
@@ -55,7 +61,12 @@
           "binding": "HYPERDRIVE",
           "id": "8279fc0c3ba24f2f99461f8b26fd61d1"
         }
-      ]
+      ],
+      // Must match CRON_ROUTES in lib/cron/scheduledJobs.ts: social posts
+      // every 10 minutes; metrics and login-history pruning daily at 06:00 UTC.
+      "triggers": {
+        "crons": ["*/10 * * * *", "0 6 * * *"]
+      }
     }
   }
 }

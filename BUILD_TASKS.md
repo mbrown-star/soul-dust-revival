@@ -426,15 +426,10 @@ what's left, roughly in the order they need doing.
       (Access blocks `staging.souldustrevival.com`). Before the store opens on
       `souldustrevival.com`, point it (or a second endpoint) at production and set
       that Worker's secret.
-- [ ] Set up a scheduler to call `/api/cron/social-publish` every 5-15 min,
-      `/api/cron/social-metrics` daily, and `/api/cron/prune-login-events` daily or
-      weekly (see PRIVACY.md), all three with the `CRON_SECRET` bearer token —
-      see SOCIAL.md (a companion Worker or an external scheduler like
-      cron-job.org/GitHub Actions both still work unchanged; this app's own Worker
-      doesn't export a native `scheduled` handler, so a native Cron Trigger on the
-      same Worker isn't wired up — not attempted here, since OpenNext's generated
-      `worker.js` is fully regenerated on every build and wrapping it safely with a
-      custom entrypoint needs real deploy testing to verify)
+- [x] Scheduler for `/api/cron/social-publish` (every 10 min), `/api/cron/social-metrics`
+      and `/api/cron/prune-login-events` (daily 06:00 UTC): native Cron Triggers on the
+      production Worker, through `custom-worker.ts`'s `scheduled` handler (2026-11-15,
+      see SOCIAL.md)
 
 ### Sneak-peek production launch (souldustrevival.com)
 A second Worker, separate from staging, built with `NEXT_PUBLIC_LAUNCH_MODE=sneak_peek`
