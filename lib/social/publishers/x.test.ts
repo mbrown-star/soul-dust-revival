@@ -40,7 +40,7 @@ describe("publishToX", () => {
   it("allows an imageUrl on the configured R2 public host", async () => {
     fetchMock
       .mockResolvedValueOnce({ ok: true, arrayBuffer: async () => new ArrayBuffer(4) } as Response)
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ media_id_string: "media-1" }) } as Response)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { id: "media-1" } }) } as Response)
       .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { id: "tweet-1" } }) } as Response);
 
     const result = await publishToX({
@@ -51,6 +51,11 @@ describe("publishToX", () => {
 
     expect(result).toEqual({ externalPostId: "tweet-1" });
     expect(fetchMock).toHaveBeenCalledTimes(3);
+    const [uploadUrl, uploadInit] = fetchMock.mock.calls[1]!;
+    expect(uploadUrl).toBe("https://api.x.com/2/media/upload");
+    expect(JSON.parse(uploadInit.body as string)).toEqual({ media: "AAAAAA==", media_category: "tweet_image" });
+    const tweetInit = fetchMock.mock.calls[2]![1];
+    expect(JSON.parse(tweetInit.body as string).media).toEqual({ media_ids: ["media-1"] });
   });
 
   it("posts without touching fetch's image path when no imageUrl is given", async () => {

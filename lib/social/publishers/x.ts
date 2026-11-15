@@ -1,8 +1,9 @@
 /**
- * Posts to X via API v2. Image upload still goes through the legacy v1.1
- * media/upload endpoint (as of this writing, X hasn't moved media upload to
- * v2) — the OAuth 2.0 user access token from the connection is accepted
- * there directly, so no separate OAuth 1.0a credential is needed.
+ * Posts to X via API v2, images included: `POST /2/media/upload` takes the
+ * connection's OAuth 2.0 user token when it carries the `media.write` scope
+ * (requested by the authorize route). The legacy v1.1 media/upload endpoint
+ * this used to call refuses OAuth 2.0 tokens with a bare 403 (found
+ * 2026-11-15, the first real scheduled post with an image).
  */
 
 /**
@@ -73,21 +74,22 @@ export async function publishToX(params: {
     if (!imageRes.ok) throw new Error(`Couldn't fetch image for upload: ${imageRes.status}`);
     const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
 
-    const form = new FormData();
-    form.append("media", new Blob([imageBuffer]));
-
-    const uploadRes = await fetch("https://upload.twitter.com/1.1/media/upload.json", {
+    const uploadRes = await fetch("https://api.x.com/2/media/upload", {
       method: "POST",
-      headers: { Authorization: `Bearer ${params.accessToken}` },
-      body: form,
+      headers: {
+        Authorization: `Bearer ${params.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ media: imageBuffer.toString("base64"), media_category: "tweet_image" }),
     });
 
     if (!uploadRes.ok) {
       const detail = await uploadRes.text();
       throw new Error(`X media upload failed: ${uploadRes.status} ${detail}`);
     }
-    const uploadData = (await uploadRes.json()) as { media_id_string: string };
-    mediaId = uploadData.media_id_string;
+    const uploadData = (await uploadRes.json()) as { data?: { id?: string } };
+    if (!uploadData.data?.id) throw new Error("X media upload returned no media id");
+    mediaId = uploadData.data.id;
   }
 
   const tweetRes = await fetch("https://api.twitter.com/2/tweets", {

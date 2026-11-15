@@ -215,6 +215,13 @@ async function ship(target: Target, sha: string): Promise<Shipped> {
       run(`${target}-rollback`, "npx", ["wrangler", "versions", "deploy", `${previous}@100%`, "--name", config.worker, "-y", "--message", `Roll back ${versionId.slice(0, 8)}: live checks failed`]);
       throw new DeployError(`Live checks failed, so ${config.worker} was rolled back to ${previous}.`);
     }
+
+    // `versions upload` + `versions deploy` never apply wrangler.jsonc's
+    // `triggers.crons`, so the Cron Triggers that publish scheduled social
+    // posts would silently stay unregistered (found 2026-11-15). Apply them
+    // from the same checkout after traffic has switched.
+    step("Applying cron triggers from wrangler.jsonc");
+    run(`${target}-triggers`, "npx", ["wrangler", "triggers", "deploy", ...(config.wranglerEnv ? ["--env", config.wranglerEnv] : [])], dir);
     return { target, versionId, previewUrl, promoted: true, previous };
   } finally {
     spawnSync("git", ["worktree", "remove", "--force", dir], { cwd: ROOT });

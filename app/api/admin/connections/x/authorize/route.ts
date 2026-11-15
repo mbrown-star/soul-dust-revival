@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   // tweet.write: posting. users.read: identify the connected account.
   // offline.access: issues a refresh token, since posts are scheduled and
   // may fire long after the initial connection.
-  authorizeUrl.searchParams.set("scope", "tweet.write tweet.read users.read offline.access");
+  authorizeUrl.searchParams.set("scope", "tweet.write tweet.read users.read media.write offline.access");
   authorizeUrl.searchParams.set("state", state);
   authorizeUrl.searchParams.set("code_challenge", challenge);
   authorizeUrl.searchParams.set("code_challenge_method", "S256");

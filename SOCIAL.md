@@ -83,6 +83,14 @@ admin. Change a schedule in both `wrangler.jsonc` and `CRON_ROUTES` (a test chec
 match). Times in the composer are UTC; a post saved for a time already past goes out on
 the next run.
 
+**`npm run deploy` applies the triggers** (`wrangler triggers deploy` after switching
+traffic). Uploading and promoting a version never does, which is why the first deploy
+of this left the schedules unregistered.
+
+**X images** go through `POST https://api.x.com/2/media/upload`, which needs the
+`media.write` scope (added 2026-11-15). A connection made before then lacks it: X
+refuses the upload with a 403 until X is reconnected in Settings → Connections.
+
 ## Character limits
 Enforced both live in the composer and again server-side at post-creation time
 (`lib/data/socialPlatforms.ts`, checked in `app/api/admin/social/posts/route.ts`) —
