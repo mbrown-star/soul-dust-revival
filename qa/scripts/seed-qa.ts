@@ -121,6 +121,15 @@ async function main() {
   await pg.query(`DELETE FROM products WHERE slug LIKE $1`, [qaSlugPrefix]);
   await pg.query(`DELETE FROM posts WHERE slug LIKE $1`, [qaSlugPrefix]);
   await pg.query(`DELETE FROM leader_resources WHERE title LIKE 'QA %'`);
+  // Social posts the admin-social spec creates as qa-admin ("Publish now")
+  // reference the QA user, so they go before the users (targets and their
+  // metrics first).
+  const qaSocialPosts = `SELECT id FROM social_posts WHERE created_by_user_id IN (SELECT id FROM users WHERE email LIKE 'qa-%@soul-dust-revival.test')`;
+  await pg.query(
+    `DELETE FROM social_post_metrics WHERE target_id IN (SELECT id FROM social_post_targets WHERE post_id IN (${qaSocialPosts}))`
+  );
+  await pg.query(`DELETE FROM social_post_targets WHERE post_id IN (${qaSocialPosts})`);
+  await pg.query(`DELETE FROM social_posts WHERE id IN (${qaSocialPosts})`);
   await pg.query(`DELETE FROM login_events WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'qa-%@soul-dust-revival.test')`);
   await pg.query(`DELETE FROM users WHERE email LIKE 'qa-%@soul-dust-revival.test'`);
 

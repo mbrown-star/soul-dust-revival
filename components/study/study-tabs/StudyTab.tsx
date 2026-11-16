@@ -63,7 +63,10 @@ export function StudyTab({
         <p className="font-sans text-xs font-bold tracking-[0.2em] text-moss text-center mt-4">READ · REFLECT · RETURN</p>
       </div>
 
-      <ReadAloudButton text={readAloudText} />
+      <ReadAloudButton
+        text={readAloudText}
+        hint="Reads this week's key verse and the main study text below it. The Parts aren't read aloud."
+      />
 
       <p className="font-sans text-xs font-bold uppercase tracking-wide text-moss">Scripture Study · Dive</p>
 

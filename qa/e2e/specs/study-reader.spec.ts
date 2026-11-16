@@ -81,6 +81,39 @@ test.describe("Interactive Study reader", () => {
     await expect(page.getByText("2 of 2 parts read")).toBeVisible();
   });
 
+  // 2026-11-16: the Study tab's Read it to me reads only the key verse and the
+  // opening study text, so an info button beside it says so.
+  test("Study tab's Read it to me has a tooltip saying what it reads", async ({ page }, testInfo) => {
+    await openLesson1(page);
+    const studyPanel = page.locator('[role="tabpanel"]:not([hidden])');
+    const info = studyPanel.getByRole("button", { name: "What does Read it to me read?" });
+    const tip = studyPanel.getByRole("tooltip");
+    await expect(tip).toBeHidden();
+    await expect(info).toHaveAccessibleDescription(/key verse and the main study text/);
+
+    await info.click();
+    await expect(tip).toBeVisible();
+    await expect(tip).toHaveText(/The Parts aren't read aloud\./);
+
+    // Beside the button on a wide screen, below it on a phone; never off-screen.
+    const tipBox = (await tip.boundingBox())!;
+    const infoBox = (await info.boundingBox())!;
+    if (testInfo.project.name === "mobile-chromium") {
+      expect(tipBox.y).toBeGreaterThanOrEqual(infoBox.y + infoBox.height);
+    } else {
+      expect(tipBox.x).toBeGreaterThanOrEqual(infoBox.x + infoBox.width);
+    }
+    const viewport = page.viewportSize()!;
+    expect(tipBox.x + tipBox.width).toBeLessThanOrEqual(viewport.width);
+
+    await page.keyboard.press("Escape");
+    await expect(tip).toBeHidden();
+
+    // The Passage tab's button reads only the passage and needs no tooltip.
+    await page.getByRole("tab", { name: "Passage" }).click();
+    await expect(page.locator('[role="tabpanel"]:not([hidden])').getByRole("button", { name: "What does Read it to me read?" })).toHaveCount(0);
+  });
+
   test("Passage tab shows inline Greek matches, a fallback button for the unmatched station, and Hide It in Your Heart", async ({ page }) => {
     await openLesson1(page);
     await page.getByRole("tab", { name: "Passage" }).click();
