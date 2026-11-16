@@ -236,6 +236,24 @@ test.describe("Footer links", () => {
     await expect(footer.getByRole("link", { name: "Contact" })).toHaveAttribute("href", "/contact");
     await expect(page.locator("footer")).toContainText("My soul clings to the dust");
   });
+
+  test("links each social profile in a new tab", async ({ page }) => {
+    await page.goto("/blog");
+    const social = page.getByRole("list", { name: "Follow Soul Dust Revival" });
+    const expected: [string, string][] = [
+      ["Facebook", "https://www.facebook.com/profile.php?id=61595896905911"],
+      ["Instagram", "https://www.instagram.com/souldustrevival/"],
+      ["X", "https://x.com/souldustrevival"],
+    ];
+    for (const [name, url] of expected) {
+      const link = social.getByRole("link", { name: `Soul Dust Revival on ${name} (opens in a new tab)` });
+      await expect(link).toHaveAttribute("href", url);
+      await expect(link).toHaveAttribute("target", "_blank");
+      await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+      const box = await link.boundingBox();
+      expect(box?.width).toBeGreaterThanOrEqual(44);
+    }
+  });
 });
 
 test.describe("Not-found page", () => {

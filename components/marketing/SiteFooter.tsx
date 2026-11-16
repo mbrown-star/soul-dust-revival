@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { isSneakPeek } from "@/lib/launchMode";
 import { appUrl } from "@/lib/domains";
+import { SocialLinks } from "@/components/marketing/SocialLinks";
 
 const linkClass = "hover:text-gold focus:outline-none focus:ring-2 focus:ring-gold rounded p-1 -m-1";
 
@@ -63,7 +64,11 @@ export function SiteFooter({ loggedIn }: { loggedIn: boolean }) {
           )}
         </nav>
 
-        <p className="font-sans text-xs text-parchment/50 mt-8">
+        <div className="mt-6">
+          <SocialLinks />
+        </div>
+
+        <p className="font-sans text-xs text-parchment/50 mt-4">
           © {new Date().getFullYear()} Soul Dust Revival.
         </p>
       </div>
