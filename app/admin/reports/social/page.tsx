@@ -52,9 +52,9 @@ export default async function SocialAnalyticsPage() {
 
   const totals = { likes: 0, comments: 0, shares: 0 };
   for (const m of latestByTarget.values()) {
-    totals.likes += m.likes;
-    totals.comments += m.comments;
-    totals.shares += m.shares;
+    totals.likes += m.likes ?? 0;
+    totals.comments += m.comments ?? 0;
+    totals.shares += m.shares ?? 0;
   }
 
   return (
@@ -64,7 +64,7 @@ export default async function SocialAnalyticsPage() {
         <h1 className="text-xl font-semibold">Social analytics</h1>
         <p className="text-sm text-moss mt-1">
           Numbers come from each platform and are refreshed once a day, so they can be up to a day
-          behind the platform itself.{" "}
+          behind the platform itself. A dash means the platform didn&apos;t give that number.{" "}
           {lastRefreshed ? `Last refreshed ${formatDateTime(lastRefreshed)}.` : "Not refreshed yet."}
         </p>
       </div>

@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
       const metrics = await fetchMetrics(target.platform, target.externalPostId);
       await db.insert(socialPostMetrics).values({ targetId: target.id, ...metrics });
       succeeded += 1;
-    } catch {
+    } catch (err) {
+      console.error(`Social metrics failed for ${target.platform} target ${target.id}:`, err instanceof Error ? err.message : err);
       // A single platform's metrics endpoint being down/rate-limited
       // shouldn't stop the rest of the batch from being fetched.
       failed += 1;

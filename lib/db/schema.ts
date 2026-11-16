@@ -568,8 +568,10 @@ export const socialPostMetrics = pgTable("social_post_metrics", {
   id: uuid("id").primaryKey().defaultRandom(),
   targetId: uuid("target_id").references(() => socialPostTargets.id).notNull(),
   fetchedAt: timestamp("fetched_at", { withTimezone: true }).defaultNow(),
-  likes: integer("likes").notNull().default(0),
-  comments: integer("comments").notNull().default(0),
-  shares: integer("shares").notNull().default(0), // retweets/reposts for X, shares for Facebook, not applicable for Instagram
+  // Null when the platform wouldn't give that number (a missing permission),
+  // shown as "—" rather than a misleading 0.
+  likes: integer("likes"),
+  comments: integer("comments"),
+  shares: integer("shares"), // reposts + quotes on X, shares on Facebook, Insights shares on Instagram
   impressions: integer("impressions"), // not available from every platform's API tier — nullable
 });

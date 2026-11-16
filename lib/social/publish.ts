@@ -1,6 +1,7 @@
 import { PLATFORM_LABELS } from "@/lib/data/socialPlatforms";
-import { getConnection, upsertConnection } from "@/lib/social/connections";
-import { publishToX, refreshXTokenIfNeeded } from "@/lib/social/publishers/x";
+import { getConnection } from "@/lib/social/connections";
+import { freshXAccessToken } from "@/lib/social/xToken";
+import { publishToX } from "@/lib/social/publishers/x";
 import { publishToFacebook } from "@/lib/social/publishers/facebook";
 import { publishToInstagram } from "@/lib/social/publishers/instagram";
 
@@ -14,26 +15,8 @@ export async function publishTarget(params: {
     throw new Error(`${PLATFORM_LABELS[params.platform]} isn't connected. Connect it in Settings → Connections.`);
   }
 
-  let accessToken = connection.accessToken;
-
-  if (params.platform === "x") {
-    const refreshed = await refreshXTokenIfNeeded({
-      accessToken: connection.accessToken,
-      refreshToken: connection.refreshToken,
-      tokenExpiresAt: connection.tokenExpiresAt,
-    });
-    if (refreshed) {
-      accessToken = refreshed.accessToken;
-      await upsertConnection({
-        provider: "x",
-        displayName: connection.displayName,
-        externalAccountId: connection.externalAccountId,
-        accessToken: refreshed.accessToken,
-        refreshToken: refreshed.refreshToken,
-        tokenExpiresAt: refreshed.expiresAt,
-      });
-    }
-  }
+  const accessToken =
+    params.platform === "x" ? await freshXAccessToken({ ...connection, accessToken: connection.accessToken }) : connection.accessToken;
 
   switch (params.platform) {
     case "x":

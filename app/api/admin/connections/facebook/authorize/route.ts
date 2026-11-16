@@ -18,12 +18,14 @@ export async function GET(req: NextRequest) {
   authorizeUrl.searchParams.set("client_id", appId);
   authorizeUrl.searchParams.set("redirect_uri", redirectUri);
   authorizeUrl.searchParams.set("state", state);
-  // pages_manage_posts/pages_read_engagement: posting + metrics on the Page.
+  // pages_manage_posts/pages_read_engagement: posting, and shares on the Page.
+  // pages_read_user_content: likes and comments on the Page's posts.
+  // instagram_manage_insights: Instagram shares (only available via Insights).
   // instagram_basic/instagram_content_publish: covers Instagram too, since
   // IG posting goes through the same Page's connected IG business account.
   authorizeUrl.searchParams.set(
     "scope",
-    "pages_show_list,pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish,business_management"
+    "pages_show_list,pages_manage_posts,pages_read_engagement,pages_read_user_content,instagram_basic,instagram_content_publish,instagram_manage_insights,business_management"
   );
 
   const response = NextResponse.redirect(authorizeUrl.toString());
