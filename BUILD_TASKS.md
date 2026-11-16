@@ -578,10 +578,12 @@ deployment before treating any of it as launch-ready:
       for each platform
 - [ ] Confirm the cron worker actually fires `/api/cron/social-publish` and the post
       appears live on each platform
-- [ ] Confirm `/api/cron/social-metrics` populates `social_post_metrics` and the
-      analytics report shows real numbers
-- [ ] Let an X connection sit past its token expiry and confirm the scheduled post
-      still fires (tests the refresh-token logic actually works, not just compiles)
+- [x] Confirm `/api/cron/social-metrics` populates `social_post_metrics` and the
+      analytics report shows real numbers (2026-11-16: 3 of 3 on production)
+- [x] Let an X connection sit past its token expiry and confirm the refresh works
+      (2026-11-16: the metrics job refreshed an expired token and read X)
+- [ ] Reconnect Facebook so it grants `pages_read_user_content` and
+      `instagram_manage_insights` (Facebook likes/comments, Instagram shares)
 
 **Blog**
 - [ ] Get AI suggestions for a blog post, accept one, publish it, confirm it's live

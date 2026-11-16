@@ -70,7 +70,11 @@ host's secret manager), not just in a local `.env` file.
 ### 3. Cron triggers (built in, production Worker only)
 Three endpoints run on a schedule, each requiring `Authorization: Bearer {CRON_SECRET}`:
 - `POST /api/cron/social-publish` — every 10 minutes, publishes due scheduled posts
-- `POST /api/cron/social-metrics` — daily at 06:00 UTC, refreshes engagement stats
+- `POST /api/cron/social-metrics` — daily at 06:00 UTC, refreshes engagement stats.
+  Shares/reposts: X reposts plus quotes; Facebook `shares` (needs only
+  `pages_read_engagement`; likes and comments need `pages_read_user_content`);
+  Instagram from Insights (`instagram_manage_insights`). A number a platform
+  refuses is stored as null and shown as "—".
 - `POST /api/cron/prune-login-events` — daily at 06:00 UTC (see PRIVACY.md)
 
 Since 2026-11-15 the app's own Worker runs them: `custom-worker.ts` exports a
