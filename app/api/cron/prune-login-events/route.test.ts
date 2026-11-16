@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
 import { NextRequest } from "next/server";
 import { getDb, type Db } from "@/lib/db/client";
-import { loginEvents, users } from "@/lib/db/schema";
+import { activityVisits, loginEvents, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 const { POST } = await import("./route");
@@ -30,6 +30,7 @@ describe("POST /api/cron/prune-login-events", () => {
 
   afterEach(async () => {
     await db.delete(loginEvents).where(eq(loginEvents.userId, userId));
+    await db.delete(activityVisits).where(eq(activityVisits.userId, userId));
     await db.delete(users).where(eq(users.id, userId));
   });
 
@@ -56,5 +57,17 @@ describe("POST /api/cron/prune-login-events", () => {
       "recent-10mo",
       "recent-1mo",
     ]);
+  });
+
+  it("deletes page visits older than the same window", async () => {
+    await db.insert(activityVisits).values([
+      { userId, area: "app", section: "library", path: "/old", startedAt: monthsAgo(14), lastSeenAt: monthsAgo(14) },
+      { userId, area: "website", section: "store", path: "/recent", startedAt: monthsAgo(2), lastSeenAt: monthsAgo(2) },
+    ]);
+
+    expect((await POST(cronRequest(process.env.CRON_SECRET))).status).toBe(200);
+
+    const remaining = await db.select().from(activityVisits).where(eq(activityVisits.userId, userId));
+    expect(remaining.map((r) => r.path)).toEqual(["/recent"]);
   });
 });

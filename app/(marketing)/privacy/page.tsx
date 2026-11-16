@@ -2,7 +2,7 @@ import { CONTACT_INBOX } from "@/lib/contact/inbox";
 
 // Change this whenever the policy's text changes. It used to be rendered from
 // new Date(), so it always showed today's date.
-const POLICY_LAST_UPDATED = "November 13, 2026";
+const POLICY_LAST_UPDATED = "November 16, 2026";
 
 export const metadata = {
   title: "Privacy Policy",
@@ -29,7 +29,7 @@ export default function PrivacyPage() {
           <li><strong>Country</strong> — collected at checkout for every order, so we can apply the right data-protection rules for where you are.</li>
           <li><strong>Shipping address</strong> — only if you buy a physical book, collected securely through our payment processor.</li>
           <li><strong>Your answers</strong> — what you write to the questions in a study, devotional or book, saved so you can pick up where you left off and see them in your Journal.</li>
-          <li><strong>Sign-in activity</strong> — when you sign in and roughly how long you are active, so we can understand how the app is used. We do not log your IP address or precise location for this.</li>
+          <li><strong>Sign-in activity and pages visited</strong> — when you sign in, which pages of the site and app you open while signed in (for example a study or lesson), and roughly how long each is open, so we can understand how the site and app are used. We keep this for 13 months. We do not log your IP address or precise location for this, and we don&apos;t track visitors who aren&apos;t signed in.</li>
           <li><strong>Purchase history</strong> — what you have bought, so we can grant access to digital studies you have purchased.</li>
           <li><strong>Amazon order numbers</strong> — if you claim a book&apos;s digital edition on the claim page, the order number you enter, kept with the claim so it can&apos;t be used twice.</li>
           <li><strong>Reminder emails</strong> — if you ask us to email you the claim link before buying on Amazon, we keep a scrambled (hashed) form of your email and connection for a week, only to limit how many we send. We don&apos;t keep the address itself.</li>

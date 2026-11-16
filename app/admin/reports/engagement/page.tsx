@@ -1,8 +1,12 @@
 import { getDb } from "@/lib/db/client";
-import { loginEvents, users } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { activityVisits, loginEvents, users } from "@/lib/db/schema";
+import { eq, desc, sql } from "drizzle-orm";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { requireAdmin } from "@/lib/admin/guard";
 import { formatDateTime } from "@/lib/format/date";
+import { formatDuration } from "@/lib/format/duration";
+import { ACTIVITY_AREAS, AREA_LABELS } from "@/lib/activity/classifyPath";
 
 import type { Metadata } from "next";
 
@@ -10,7 +14,9 @@ export const metadata: Metadata = { title: "Engagement" };
 
 export const dynamic = "force-dynamic";
 
+
 export default async function EngagementReportPage() {
+  if (!(await requireAdmin())) redirect("/login?next=/admin/reports/engagement");
   const db = await getDb();
   const allLogins = await db
     .select({
@@ -55,6 +61,28 @@ export default async function EngagementReportPage() {
     byUser.set(row.userId, existing);
   }
 
+  // Time per area (website, app, Leader Resources, admin) from the page
+  // visit log, one aggregate row per user and area.
+  const areaTotals = await db
+    .select({
+      userId: activityVisits.userId,
+      email: users.email,
+      area: activityVisits.area,
+      seconds: sql<number>`sum(${activityVisits.activeSeconds})::integer`,
+    })
+    .from(activityVisits)
+    .leftJoin(users, eq(activityVisits.userId, users.id))
+    .groupBy(activityVisits.userId, users.email, activityVisits.area);
+  const secondsByUserArea = new Map<string, number>();
+  for (const t of areaTotals) {
+    secondsByUserArea.set(`${t.userId}:${t.area}`, t.seconds);
+    // Someone with page visits but no recorded sign-in (the sign-in record
+    // can fail on its own; see 2026-11-12 in CLAUDE.md) is still listed.
+    if (!byUser.has(t.userId)) {
+      byUser.set(t.userId, { email: t.email, logins: 0, lastLogin: null, activeSeconds: 0, timedLogins: 0 });
+    }
+  }
+
   const rows = [...byUser.entries()]
     .map(([userId, data]) => ({
       userId,
@@ -75,6 +103,11 @@ export default async function EngagementReportPage() {
           sent once a minute while a page is open. Time away doesn&apos;t count, even when a
           sign-in stays open for days. Sign-ins from before November 13, 2026 aren&apos;t counted.
         </p>
+        <p className="text-sm text-moss mt-1">
+          Website, App, Leader and Admin are total time on each part of the site, logged page
+          by page from November 16, 2026. Before that, only App and Leader pages were timed.
+          Select a person to see their history.
+        </p>
       </div>
 
       <div className="overflow-x-auto">
@@ -82,25 +115,39 @@ export default async function EngagementReportPage() {
           <thead>
             <tr className="border-b text-moss">
               <th scope="col" className="py-2 pr-4 font-medium">User</th>
-              <th scope="col" className="py-2 pr-4 font-medium">Sign-ins</th>
+              <th scope="col" className="py-2 pr-4 font-medium whitespace-nowrap">Sign-ins</th>
               <th scope="col" className="py-2 pr-4 font-medium">Last sign-in</th>
-              <th scope="col" className="py-2 font-medium">Avg. session</th>
+              <th scope="col" className="py-2 pr-4 font-medium whitespace-nowrap">Avg. session</th>
+              {ACTIVITY_AREAS.map((area) => (
+                <th key={area} scope="col" className="py-2 pr-4 font-medium whitespace-nowrap">
+                  {area === "leader" ? "Leader" : AREA_LABELS[area]}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
               <tr key={row.userId} className="border-b border-moss/20">
-                <td className="py-3 pr-4">{row.email ?? row.userId}</td>
+                <td className="py-3 pr-4">
+                  <Link href={`/admin/reports/engagement/${row.userId}`} className="text-ink underline underline-offset-2 hover:text-moss">
+                    {row.email ?? row.userId}
+                  </Link>
+                </td>
                 <td className="py-3 pr-4">{row.logins}</td>
                 <td className="py-3 pr-4 text-moss">
                   {row.lastLogin ? formatDateTime(row.lastLogin) : "—"}
                 </td>
-                <td className="py-3">{row.avgMinutes === null ? "—" : `${row.avgMinutes.toFixed(1)} min`}</td>
+                <td className="py-3 pr-4">{row.avgMinutes === null ? "—" : `${row.avgMinutes.toFixed(1)} min`}</td>
+                {ACTIVITY_AREAS.map((area) => (
+                  <td key={area} className="py-3 pr-4 whitespace-nowrap">
+                    {formatDuration(secondsByUserArea.get(`${row.userId}:${area}`) ?? 0)}
+                  </td>
+                ))}
               </tr>
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={4} className="py-6 text-center text-moss">
+                <td colSpan={4 + ACTIVITY_AREAS.length} className="py-6 text-center text-moss">
                   No sign-ins recorded yet.
                 </td>
               </tr>

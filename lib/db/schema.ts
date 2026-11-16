@@ -70,6 +70,36 @@ export const loginEvents = pgTable("login_events", {
   userAgent: text("user_agent"),
 });
 
+// One row per page a signed-in person spent time on: where (area: the
+// marketing website, the reading app, Leader Resources or the admin), what
+// (section, and the study, lesson or product when the page is about one),
+// when it started and how long it was actually open and visible. Written by
+// /api/activity/ping (lib/activity/recordVisit.ts) from the same once-a-minute
+// heartbeat as login_events.activeSeconds; each ping adds the gap since the
+// last one, at most ACTIVE_PING_CAP_SECONDS. Two tabs open at once each log
+// their own time, so per-page totals can exceed a sign-in's activeSeconds.
+// Path only, never a query string. Pruned with login_events (13 months).
+export const activityVisits = pgTable(
+  "activity_visits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+    area: text("area").notNull().$type<"website" | "app" | "leader" | "admin">(),
+    section: text("section").notNull(),
+    path: text("path").notNull(),
+    studyId: uuid("study_id").references(() => studies.id, { onDelete: "set null" }),
+    lessonId: uuid("lesson_id").references(() => lessons.id, { onDelete: "set null" }),
+    productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    activeSeconds: integer("active_seconds").notNull().default(0),
+  },
+  (t) => [
+    index("activity_visits_user_last_seen_idx").on(t.userId, t.lastSeenAt),
+    index("activity_visits_started_at_idx").on(t.startedAt),
+  ],
+);
+
 // Leader-only content — kept as a simple flat resource list (title + rich
 // text + optional file link) rather than the full study/lesson block model,
 // since leader material is typically a handful of guides/notes, not a

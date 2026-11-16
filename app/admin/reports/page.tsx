@@ -19,7 +19,7 @@ export default function ReportsIndexPage() {
         </Link>
         <Link href="/admin/reports/engagement" className="block p-4 hover:bg-moss/5">
           <p className="font-medium">Engagement</p>
-          <p className="text-sm text-moss">Sign-in frequency and approximate session length per user.</p>
+          <p className="text-sm text-moss">Sign-ins, time on the website and in the app, and each person&apos;s page history.</p>
         </Link>
         <Link href="/admin/reports/social" className="block p-4 hover:bg-moss/5">
           <p className="font-medium">Social analytics</p>

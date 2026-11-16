@@ -131,6 +131,7 @@ async function main() {
   await pg.query(`DELETE FROM social_post_targets WHERE post_id IN (${qaSocialPosts})`);
   await pg.query(`DELETE FROM social_posts WHERE id IN (${qaSocialPosts})`);
   await pg.query(`DELETE FROM login_events WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'qa-%@soul-dust-revival.test')`);
+  await pg.query(`DELETE FROM activity_visits WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'qa-%@soul-dust-revival.test')`);
   await pg.query(`DELETE FROM users WHERE email LIKE 'qa-%@soul-dust-revival.test'`);
 
   console.log("Seeding QA users...");

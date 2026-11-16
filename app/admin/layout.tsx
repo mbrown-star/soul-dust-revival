@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/admin/guard";
 import { redirect } from "next/navigation";
 import { SiteHeaderShell } from "@/components/marketing/SiteHeaderShell";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { ActivityHeartbeat } from "@/components/study/ActivityHeartbeat";
 import type { Metadata } from "next";
 
 // Each admin tab names its page ("Products — Admin", "Edit: Colossians — Admin");
@@ -14,6 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div>
+      <ActivityHeartbeat />
       {/* Same shell as the public site header -- logo/wordmark (routes home),
           sizing, and bg-ink color -- so the admin area can't drift from the
           rest of the site's nav bar. See SiteHeaderShell.tsx. */}

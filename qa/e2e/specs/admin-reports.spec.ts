@@ -33,7 +33,7 @@ test.describe("admin reports, as qa-admin", () => {
     // Audit 2026-11-13: an average session of 945 minutes. It now counts
     // time on the site, from activity pings, and says so.
     await expect(page.getByText(/time spent on the site per sign-in/)).toBeVisible();
-    for (const cell of await page.locator("tbody tr td:last-child").allTextContents()) {
+    for (const cell of await page.locator("tbody tr td:nth-child(4)").allTextContents()) {
       expect(cell).toMatch(/^(—|\d+(\.\d)? min)$/);
     }
   });
@@ -46,5 +46,41 @@ test.describe("admin reports, as qa-admin", () => {
     await expect(page.getByText(/refreshed once a day/)).toBeVisible();
     await expect(page.getByText(/Last refreshed .* UTC\.|Not refreshed yet\./)).toBeVisible();
     await expect(page.locator("body")).not.toContainText("SOCIAL.md");
+  });
+
+  test("Engagement splits time by website and app, with each person's page history", async ({ browser, page }) => {
+    // qa-user spends a few seconds on an app page and a website page. Leaving
+    // each sends the ping that counts that time against it.
+    const reader = await browser.newContext({ storageState: "qa/.auth/user.json" });
+    const readerPage = await reader.newPage();
+    for (const path of ["/library", "/store", "/studies/qa-study-not-started"]) {
+      await readerPage.goto(path);
+      await readerPage.waitForLoadState("networkidle");
+      await readerPage.waitForTimeout(2500);
+    }
+    await readerPage.goto("/blog");
+    await readerPage.waitForLoadState("networkidle");
+    await reader.close();
+
+    await page.goto("/admin/reports/engagement");
+    for (const header of ["Website", "App", "Leader", "Admin"]) {
+      await expect(page.getByRole("columnheader", { name: header, exact: true })).toBeVisible();
+    }
+    await page.getByRole("link", { name: "qa-user@soul-dust-revival.test" }).click();
+    await expect(page.getByRole("heading", { name: "qa-user@soul-dust-revival.test" })).toBeVisible();
+
+    const sections = page.getByRole("table").first();
+    await expect(sections.getByRole("row", { name: /^App\s+My Library\s+\d/ })).toBeVisible();
+    await expect(sections.getByRole("row", { name: /^Website\s+Store\s+\d/ })).toBeVisible();
+    await expect(sections.getByRole("row", { name: /^App\s+My Library\s+\d/ })).toContainText(/\d+ sec|\d+ min/);
+
+    // A study's page is logged against the study itself.
+    const studiesTable = page.locator("section", { has: page.getByRole("heading", { name: "Studies and devotionals" }) });
+    await expect(studiesTable.getByRole("row", { name: /QA Colossians-Shaped Study/ })).toContainText(/\d+ sec|\d+ min/);
+
+    // Recent pages are newest first, and never show a query string.
+    const recent = page.locator("section", { has: page.getByRole("heading", { name: "Recent pages" }) });
+    await expect(recent.getByRole("row").nth(1)).toContainText("Blog");
+    await expect(recent).not.toContainText("?");
   });
 });

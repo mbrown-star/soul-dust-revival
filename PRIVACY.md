@@ -25,6 +25,7 @@ purpose, same access rules as above. Creating one sends that email address a one
 sign-in link or code.
 | Full shipping address | `orders.shipping*` | Only collected for physical orders, only via Stripe's own checkout page — never stored anywhere except what Stripe's Checkout session collects |
 | Login timestamps, user agent, active time | `login_events` (`activeSeconds` added 2026-11-13) | Access/engagement reporting (`/admin/reports/engagement`) |
+| Pages visited while signed in, with start time and active time | `activity_visits` (added 2026-11-16): area (website / app / leader / admin), section, path without query string, and the study, lesson or product the page is about | Engagement reporting: time on the website vs the app, and each person's page history (`/admin/reports/engagement/[userId]`, admins only). Signed-in people only; never guests. Included in the data export, deleted with the account, pruned after 13 months. |
 | Study, devotional and book answers | `responses.answerText` | The product's actual function — saving a user's own study responses, devotional "A Question to Sit With" reflections (added 2026-11-06; previously the devotional question was display-only and never persisted), and answers to a book chapter's "To Sit With" questions (Revive Me's book reader, added 2026-11-13), shown back to them in that book's Journal |
 | Role, purchase history | `users.role`, `orders`/`order_items` | Access control; sales reporting |
 | Amazon order number | `amazon_claims.amazon_order_number` | Only when a reader claims the digital edition of a printed book bought on Amazon (`/claim`): proves the claim, stops one order unlocking a title for several accounts, and lets an admin check it against Amazon's sales report (`/admin/reports/amazon-claims`). Linked to the account; removed with it when the account row is deleted outright (FK cascade); an anonymized account keeps it, like its orders. |
@@ -107,8 +108,8 @@ implementation.
   design. Unblocking deletes the row and the placeholder (or lifts the ban). The
   privacy policy doesn't mention blocking yet; add a line before relying on it for
   real enforcement.
-- **A retention window on `login_events`** — `POST /api/cron/prune-login-events`
-  deletes rows older than 13 months (covers a full year of year-over-year engagement
+- **A retention window on `login_events` and `activity_visits`** — `POST /api/cron/prune-login-events`
+  deletes rows of both older than 13 months (covers a full year of year-over-year engagement
   reporting at `/admin/reports/engagement` plus a one-month buffer), addressing the
   GDPR Art. 5 data-minimization concern of otherwise-indefinite access-log retention.
   Like the social-publish/social-metrics cron endpoints, it's authenticated via the
@@ -137,6 +138,15 @@ implementation.
   your actual infrastructure choices.
 
 ## Engagement/access data specifically
+`activity_visits` (2026-11-16) logs, for signed-in people only, each page they had open
+and visible: its area and section, its path (never a query string), the study, lesson
+or product it's about, when it started and how many seconds it was active (from the
+same heartbeat, each ping adding at most two minutes). No IP address or device data.
+This is a page-level browsing history of a named person, so it's more sensitive than
+the per-sign-in totals: only admins can see it, it's in the person's data export
+(`pageVisits`), deleted with their account, and pruned after 13 months by the same
+cron as `login_events`. The public privacy policy says so (updated 2026-11-16).
+
 `login_events` stores a timestamp and user-agent string per login, plus a
 heartbeat-updated `lastActiveAt` and `activeSeconds` (seconds spent on the site under that sign-in, each once-a-minute ping adding at most two minutes) — deliberately **not** IP address, precise geolocation,
 or device fingerprinting, to keep this dataset as minimal as it can be while still

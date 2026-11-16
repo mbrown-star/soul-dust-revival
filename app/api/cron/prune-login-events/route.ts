@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isValidCronRequest } from "@/lib/social/cronAuth";
 import { getDb } from "@/lib/db/client";
-import { loginEvents } from "@/lib/db/schema";
+import { activityVisits, loginEvents } from "@/lib/db/schema";
 import { lt } from "drizzle-orm";
 
 export const runtime = "nodejs";
 
-// Retention window for login_events (timestamp + user agent per login — see
-// PRIVACY.md). 13 months: covers a full year of year-over-year engagement
+// Retention window for login_events (timestamp + user agent per login) and
+// activity_visits (the pages a signed-in person spent time on) — see
+// PRIVACY.md. 13 months: covers a full year of year-over-year engagement
 // reporting (admin/reports/engagement) plus a one-month buffer, while still
 // giving indefinite retention a real ceiling, which GDPR Art. 5's
 // data-minimization principle expects. Adjust here if the retention policy
@@ -25,5 +26,10 @@ export async function POST(req: NextRequest) {
 
   const deleted = await db.delete(loginEvents).where(lt(loginEvents.loginAt, cutoff)).returning({ id: loginEvents.id });
 
-  return NextResponse.json({ deleted: deleted.length, cutoff: cutoff.toISOString() });
+  const deletedVisits = await db
+    .delete(activityVisits)
+    .where(lt(activityVisits.startedAt, cutoff))
+    .returning({ id: activityVisits.id });
+
+  return NextResponse.json({ deleted: deleted.length, deletedVisits: deletedVisits.length, cutoff: cutoff.toISOString() });
 }

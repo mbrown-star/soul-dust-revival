@@ -148,6 +148,13 @@
       "when": 1794601269781,
       "tag": "0020_jittery_ser_duncan",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794852938587,
+      "tag": "0021_chemical_excalibur",
+      "breakpoints": true
     }
   ]
 }

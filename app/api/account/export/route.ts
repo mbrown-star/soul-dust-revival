@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/client";
-import { users, orders, orderItems, products, responses, loginEvents, entitlements, journeyEnrollments, journeys } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { users, orders, orderItems, products, responses, loginEvents, activityVisits, entitlements, journeyEnrollments, journeys } from "@/lib/db/schema";
+import { asc, eq } from "drizzle-orm";
 
 /**
  * Returns everything this app has stored about the requesting user, as a
@@ -33,6 +33,18 @@ export async function GET() {
 
   const myResponses = await db.select().from(responses).where(eq(responses.userId, session.userId));
   const myLogins = await db.select().from(loginEvents).where(eq(loginEvents.userId, session.userId));
+  const myVisits = await db
+    .select({
+      area: activityVisits.area,
+      section: activityVisits.section,
+      path: activityVisits.path,
+      startedAt: activityVisits.startedAt,
+      lastSeenAt: activityVisits.lastSeenAt,
+      activeSeconds: activityVisits.activeSeconds,
+    })
+    .from(activityVisits)
+    .where(eq(activityVisits.userId, session.userId))
+    .orderBy(asc(activityVisits.startedAt));
   const myEntitlements = await db.select().from(entitlements).where(eq(entitlements.userId, session.userId));
   const myJourneys = await db
     .select({ journey: journeys.title, enrollment: journeyEnrollments })
@@ -54,7 +66,8 @@ export async function GET() {
       items: myOrderItems.filter((i) => i.orderId === o.id).map((i) => ({ product: i.productTitle, quantity: i.quantity })),
     })),
     studyResponses: myResponses.map((r) => ({ answerText: r.answerText, createdAt: r.createdAt, updatedAt: r.updatedAt })),
-    loginHistory: myLogins.map((l) => ({ loginAt: l.loginAt, lastActiveAt: l.lastActiveAt })),
+    loginHistory: myLogins.map((l) => ({ loginAt: l.loginAt, lastActiveAt: l.lastActiveAt, activeSeconds: l.activeSeconds })),
+    pageVisits: myVisits,
     entitlements: myEntitlements.map((e) => ({ grantedAt: e.grantedAt, source: e.source })),
     journeys: myJourneys.map(({ journey, enrollment }) => ({
       journey,

@@ -931,3 +931,16 @@ export const amazonReminderSchema = z
   .strict();
 
 export const amazonClaimRevokeSchema = z.object({ id: z.string().uuid() }).strict();
+
+// POST /api/activity/ping (ActivityHeartbeat). Both optional: a tab still
+// running the pre-history heartbeat sends no body, and is counted as before.
+// `path` is the page's pathname (classified and stripped of any query string
+// by lib/activity/classifyPath.ts); `resume` means tracking is starting again
+// on this page (first load, or the tab became visible), so the time since the
+// last ping was spent away and isn't added.
+export const activityPingSchema = z
+  .object({
+    path: z.string().min(1).max(300).optional(),
+    resume: z.boolean().optional(),
+  })
+  .strict();

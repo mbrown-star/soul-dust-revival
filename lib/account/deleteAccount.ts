@@ -1,13 +1,14 @@
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
-import { users, responses, loginEvents, entitlements, lessonProgress, journeyEnrollments } from "@/lib/db/schema";
+import { users, responses, loginEvents, activityVisits, entitlements, lessonProgress, journeyEnrollments } from "@/lib/db/schema";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/admin";
 
 /**
  * Deletes an account: the person's own request (/api/account/delete) and an
  * admin's (/admin/users) both come here. Callers check who may be deleted.
  *
- * Saved answers, progress, access and login history are deleted outright.
+ * Saved answers, progress, access, login history and page-visit history
+ * are deleted outright.
  * The `users` row is deleted too when nothing else points at it; when
  * something must be kept (orders, which have their own retention needs --
  * see PRIVACY.md -- or a blog/social post they wrote) the row is anonymized
@@ -69,6 +70,7 @@ async function clearAppData(userId: string): Promise<DeleteAccountResult["usersR
   return db.transaction(async (tx) => {
     await tx.delete(responses).where(eq(responses.userId, userId));
     await tx.delete(loginEvents).where(eq(loginEvents.userId, userId));
+    await tx.delete(activityVisits).where(eq(activityVisits.userId, userId));
     await tx.delete(entitlements).where(eq(entitlements.userId, userId));
     await tx.delete(lessonProgress).where(eq(lessonProgress.userId, userId));
     await tx.delete(journeyEnrollments).where(eq(journeyEnrollments.userId, userId));
