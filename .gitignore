@@ -33,9 +33,6 @@ pnpm-debug.log*
 .vscode/
 *.swp
 
-# Separate repo, not part of this project's history
-/Soul Dust Revival Design System/
-
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts

@@ -25,13 +25,6 @@ const eslintConfig = [
       "next-env.d.ts",
       "tailwind.config.js",
       "postcss.config.js",
-      // Separate, independently-versioned repo of brand assets that lives
-      // inside this folder but isn't part of the app's source.
-      "Soul Dust Revival Design System/**",
-      // A Claude Code skill package (prototyping reference components/docs
-      // for AI-assisted design work, not imported anywhere in app/lib) that
-      // came in with the scaffold copy. Not app source, so not linted.
-      "design-system/**",
     ],
   },
   // eslint-config-next@16 ships as a native ESLint 9 flat config array
