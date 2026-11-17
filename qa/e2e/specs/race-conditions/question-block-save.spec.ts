@@ -12,7 +12,7 @@ test.describe("Question-block save survives navigating away immediately", () => 
 
   async function openDay(page: Page, dayTitleSubstring: string) {
     await page.goto("/studies/qa-devotional-fixture");
-    await page.getByRole("link", { name: new RegExp(dayTitleSubstring) }).click();
+    await page.getByRole("link", { name: new RegExp(dayTitleSubstring, "i") }).click();
     await expect(page).toHaveURL(/\/studies\/qa-devotional-fixture\/[^/]+$/);
   }
 

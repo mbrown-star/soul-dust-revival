@@ -220,7 +220,7 @@ test.describe("/privacy", () => {
   // as the day of the visit. (This fails on the old code any day but that one.)
   test("shows the policy's own fixed date, not today's", async ({ page }) => {
     await page.goto("/privacy");
-    await expect(page.getByText("Last updated: November 13, 2026")).toBeVisible();
+    await expect(page.getByText("Last updated: November 16, 2026")).toBeVisible();
   });
 });
 
