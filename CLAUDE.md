@@ -4,11 +4,11 @@ Soul Dust Revival is built on **study-platform-scaffold**: a Next.js app combini
 
 ## Build foundation: study-platform-scaffold
 
-- **Scaffold location:** `/Users/matthewbrown/study-platform-scaffold/` (its own git repo)
+- **Scaffold location:** GitHub only, `mbrown-star/study-platform-scaffold`. The local clone at `~/study-platform-scaffold/` was deleted 2026-11-17; clone it again to compare against upstream fixes.
 - **Scaffold commit in use:** `1e497e7` (copied into this project 2026-11-02; the scaffold's `design-system/` folder came along at copy time and was removed 2026-11-17 as stale)
 - **Where the build happens:** here, in `/Users/matthewbrown/Soul Dust Revival/`. The scaffold was copied in (excluding `.git`, `node_modules`, `.env*`) and this folder now has its own git history, per the recommendation below.
 
-### Read these first (they live in the scaffold)
+### Read these first (copies live in this repo)
 Before building anything, read the scaffold docs relevant to the task and follow them:
 
 | File | Covers |
@@ -68,7 +68,7 @@ Every past build is recorded in **`docs/BUILD_LOG.md`**, newest first. Read the 
 - **Reader prototypes kept in the repo**: `soul-dust-interactive/` and `soul-dust-psalms-365/` (scripts read `soul-dust-interactive/data/`).
 
 ### Where the build happens (resolved)
-Copied the scaffold into this folder (without `.git`/`node_modules`/`.env*`) and ran `git init` here on 2026-11-02. That keeps the scaffold pristine at `/Users/matthewbrown/study-platform-scaffold/` for future diffing against upstream fixes, and gives this project its own history for review diffs.
+Copied the scaffold into this folder (without `.git`/`node_modules`/`.env*`) and ran `git init` here on 2026-11-02. The scaffold itself stays on GitHub (`mbrown-star/study-platform-scaffold`, at commit `1e497e7` when copied) for diffing against upstream fixes; this gives this project its own history for review diffs.
 
 ## Required review on every build
 
