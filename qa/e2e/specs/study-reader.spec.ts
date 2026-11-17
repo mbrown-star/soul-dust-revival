@@ -39,7 +39,7 @@ test.describe("Interactive Study reader", () => {
   });
 
   // Audit 2026-11-13: the back link, the week count and the phone header.
-  test("names the study in its back link, counts only weeks, and stacks the header on a phone", async ({ page }, testInfo) => {
+  test("names the study in its back link, counts only weeks, and puts the week tracker under the title", async ({ page }) => {
     await openLesson1(page);
     await expect(page.getByRole("link", { name: "← QA Colossians-Shaped Study" })).toBeVisible();
 
@@ -48,15 +48,10 @@ test.describe("Interactive Study reader", () => {
     await expect(page.getByRole("dialog").getByRole("heading", { name: "QA Colossians-Shaped Study · 3 Weeks" })).toBeVisible();
     await page.keyboard.press("Escape");
 
+    // The week tracker sits on its own row under the title at every width.
     const title = await page.getByRole("heading", { name: "Grace and Truth", level: 1 }).boundingBox();
-    const ring = await page.getByLabel("Week progress").boundingBox();
-    if (testInfo.project.name === "mobile-chromium") {
-      // Title on its own row, above the ring and arrows.
-      expect(title!.y + title!.height).toBeLessThanOrEqual(ring!.y);
-    } else {
-      // Side by side on a wide screen.
-      expect(ring!.y).toBeLessThan(title!.y + title!.height);
-    }
+    const tracker = await page.getByRole("group", { name: "This week’s progress" }).boundingBox();
+    expect(title!.y + title!.height).toBeLessThanOrEqual(tracker!.y);
   });
 
   test("Study tab shows the key verse, sections, and Four Parts accordion", async ({ page }) => {
@@ -309,10 +304,10 @@ test.describe("Interactive Study reader", () => {
   });
 
   test("a week with saved progress reloads without a hydration mismatch", async ({ page }) => {
-    // Progress (tabs done, parts read, practices checked) lives only in the
-    // browser. The server can't know it, so the first render has to match
-    // the server's "nothing done" and pick saved progress up afterward;
-    // reading it during that first render made React throw error #418.
+    // Parts read and practices checked live only in the browser, so the first
+    // render has to match the server's "nothing done" and pick them up
+    // afterward (reading them during that render made React throw #418). The
+    // week's finished parts are saved on the account and render from the server.
     const hydrationErrors: string[] = [];
     const isHydration = (text: string) => /hydrat|#418|#423|#425|did not match/i.test(text);
     page.on("console", (msg) => {
@@ -325,20 +320,67 @@ test.describe("Interactive Study reader", () => {
     await openLesson1(page);
     await page.getByRole("button", { name: /Part 1/ }).click();
     await expect(page.getByText("1 of 2 parts read")).toBeVisible();
+    const saved = page.waitForResponse((r) => r.url().endsWith("/api/progress/parts") && r.ok());
     await page.getByRole("button", { name: "Done with the reading" }).click();
+    await saved;
     await expect(page.getByRole("button", { name: "✓ Done with the reading" })).toBeVisible();
     await page.getByRole("tab", { name: "Live It" }).click();
     await page.getByRole("checkbox").first().check();
 
     hydrationErrors.length = 0;
     await page.reload();
-    // Saved progress still shows once the page has loaded.
+    // The week reopens on the next unfinished step; Study's saved progress is still there.
+    await expect(page.getByRole("tab", { name: "Passage", selected: true })).toBeVisible();
+    await page.getByRole("tab", { name: "Study (done)" }).click();
     await expect(page.getByText("1 of 2 parts read")).toBeVisible();
     await expect(page.getByRole("button", { name: "✓ Done with the reading" })).toBeVisible();
-    await expect(page.getByText("20%")).toBeVisible();
+    await expect(page.getByText("1 of 5 steps done")).toBeVisible();
     await page.getByRole("tab", { name: "Live It" }).click();
     await expect(page.getByRole("checkbox").first()).toBeChecked();
     expect(hydrationErrors).toEqual([]);
+
+    // Leave the week as the other tests expect it.
+    await page.getByRole("tab", { name: /^Study/ }).click();
+    const undone = page.waitForResponse((r) => r.url().endsWith("/api/progress/parts") && r.ok());
+    await page.getByRole("button", { name: "✓ Done with the reading" }).click();
+    await undone;
+    await expect(page.getByText("0 of 5 steps done")).toBeVisible();
+  });
+
+  // Feedback 2026-11-17: the percentage ring was confusing.
+  test("the week tracker counts the five steps, follows the reader, and opens where they left off", async ({ page }) => {
+    await openLesson1(page);
+    const tracker = page.getByRole("group", { name: "This week’s progress" });
+    await expect(tracker.getByText("0 of 5 steps done")).toBeVisible();
+    await expect(tracker.getByRole("button")).toHaveCount(5);
+    await expect(page.getByText(/^Step 1 of 5 · /)).toBeVisible();
+
+    // Finish Study: its step and tab turn done, saved to the account.
+    const saved = page.waitForResponse((r) => r.url().endsWith("/api/progress/parts") && r.ok());
+    await page.getByRole("button", { name: "Done with the reading" }).click();
+    await saved;
+    await expect(tracker.getByText("1 of 5 steps done")).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Study (done)" })).toBeVisible();
+    await expect(tracker.getByRole("button", { name: "Step 1, Study: done" })).toBeVisible();
+
+    // A step opens its tab.
+    await tracker.getByRole("button", { name: /^Step 4, Live It/ }).click();
+    await expect(page.getByRole("tab", { name: "Live It", selected: true })).toBeVisible();
+
+    // Coming back (in a fresh browser, so nothing is kept locally) opens the next part, with a note.
+    await page.evaluate(() => window.localStorage.clear());
+    await page.reload();
+    await expect(page.getByText("Welcome back. You’ve finished Study. Pick up at Passage.")).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Passage", selected: true })).toBeVisible();
+    await expect(tracker.getByText("1 of 5 steps done")).toBeVisible();
+
+    // Leave the week as the other tests expect it.
+    await page.getByRole("tab", { name: "Study (done)" }).click();
+    await expect(page.getByText("Welcome back.")).toHaveCount(0);
+    const undone = page.waitForResponse((r) => r.url().endsWith("/api/progress/parts") && r.ok());
+    await page.getByRole("button", { name: "✓ Done with the reading" }).click();
+    await undone;
+    await expect(tracker.getByText("0 of 5 steps done")).toBeVisible();
   });
 
   test("a study-kind lesson with no studyContent falls back to the plain reading view, not an error or empty tabs", async ({ page }) => {

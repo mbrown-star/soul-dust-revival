@@ -25,6 +25,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getJourneyForStudy, loadJourneyMap, loadJourneyProgress } from "@/lib/journey/load";
 import { journeyLessonNav } from "@/lib/journey/nav";
+import type { WeekPickerItem } from "@/components/study/WeekPickerSheet";
+import { finishedWeekParts } from "@/lib/study/weekParts";
 import { loadLookBack } from "@/lib/journey/lookBack";
 import { CompleteStopButton } from "@/components/journey/CompleteStopButton";
 import { LookBackList } from "@/components/journey/LookBackList";
@@ -186,7 +188,7 @@ export default async function LessonPage({
   const studyContent = content.studyContent;
 
   const [progressRow] = await db
-    .select({ status: lessonProgress.status })
+    .select({ status: lessonProgress.status, partsDone: lessonProgress.partsDone })
     .from(lessonProgress)
     .where(and(eq(lessonProgress.userId, session.userId), eq(lessonProgress.lessonId, lesson.id)))
     .limit(1);
@@ -482,6 +484,41 @@ export default async function LessonPage({
     ? blocks.filter((b) => b.id !== dayTextBlock?.id && b.id !== devotionalProps?.questionBlockId)
     : [];
 
+  // A tabbed week's picker shows each week's saved progress (one query for
+  // every week listed).
+  const pickerWeeks: WeekPickerItem[] = studyContent
+    ? journeyNav
+      ? journeyNav.pickerItems
+      : studyLessons.map((l) => ({
+          id: l.id,
+          title: l.title,
+          href: `${studyHref}/${l.id}`,
+          isCurrent: l.id === lesson.id,
+          locked: isLocked(l),
+        }))
+    : [];
+  const pickerProgressRows =
+    pickerWeeks.length === 0
+      ? []
+      : await db
+          .select({ lessonId: lessonProgress.lessonId, status: lessonProgress.status, partsDone: lessonProgress.partsDone })
+          .from(lessonProgress)
+          .where(
+            and(
+              eq(lessonProgress.userId, session.userId),
+              inArray(
+                lessonProgress.lessonId,
+                pickerWeeks.map((w) => w.id)
+              )
+            )
+          );
+  const pickerProgress = new Map(
+    pickerProgressRows.map((r) => {
+      const completed = r.status === "completed";
+      return [r.lessonId, { partsDone: finishedWeekParts(r.partsDone, completed).size, completed }];
+    })
+  );
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 sm:py-10 space-y-8 study-content-protected">
       {isDraftPreview ? (
@@ -554,17 +591,7 @@ export default async function LessonPage({
           previousHref={previousHref}
           nextHref={nextHref}
           bookLabel={study.title}
-          weeks={
-            journeyNav
-              ? journeyNav.pickerItems
-              : studyLessons.map((l) => ({
-                  id: l.id,
-                  title: l.title,
-                  href: `${studyHref}/${l.id}`,
-                  isCurrent: l.id === lesson.id,
-                  locked: isLocked(l),
-                }))
-          }
+          weeks={pickerWeeks.map((w) => ({ ...w, progress: pickerProgress.get(w.id) }))}
           journey={
             journeyNav
               ? {
@@ -577,6 +604,7 @@ export default async function LessonPage({
           }
           studyHref={studyHref}
           initialStatus={progressRow?.status ?? "not_started"}
+          initialPartsDone={progressRow?.partsDone ?? []}
           media={Object.fromEntries(
             [...weekMediaBySlot(studyContent).entries()].map(([slot, items]) => [
               slot,

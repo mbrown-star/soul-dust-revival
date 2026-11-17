@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { hasPassage, type StudyWeekContent } from "@/lib/study/studyContent";
 import { StudyTab } from "./study-tabs/StudyTab";
@@ -10,25 +10,21 @@ import { LiveItTab } from "./study-tabs/LiveItTab";
 import { LiftUpTab } from "./study-tabs/LiftUpTab";
 import { GreekSheet } from "./GreekSheet";
 import { WeekPickerSheet, type WeekPickerItem } from "./WeekPickerSheet";
-import { useTabProgress } from "./useStudyProgress";
-import type { LessonStatus } from "@/lib/study/lessonProgress";
+import { useWeekParts } from "./useStudyProgress";
+import {
+  WEEK_PART_HINTS,
+  WEEK_PART_LABELS,
+  finishedWeekParts,
+  firstUnfinishedPart,
+  listPartLabels,
+  type WeekPart,
+} from "@/lib/study/weekParts";
 import { ScrollFadeTabs } from "@/components/ui/ScrollFadeTabs";
 import { WeekMediaContext } from "./WeekMediaSlot";
 import type { WeekMediaSlot as WeekMediaSlotKey } from "@/lib/study/weekMedia";
 import { shortStudyTitle } from "@/lib/study/shortStudyTitle";
 
-const TABS = [
-  { key: "study", label: "Study" },
-  { key: "passage", label: "Passage" },
-  { key: "work", label: "Work the Word" },
-  { key: "live", label: "Live It" },
-  { key: "lift", label: "Lift Up" },
-] as const;
-
-type TabKey = (typeof TABS)[number]["key"];
-
-const RING_RADIUS = 16;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+const TABS: readonly WeekPart[] = ["study", "passage", "work", "live", "lift"];
 
 // "Week 7: Alive Together with Him" -> { weekLabel: "Week 7", weekTitle: "Alive Together with Him" }
 function splitLessonTitle(lessonTitle: string): { weekLabel: string; weekTitle: string } {
@@ -40,8 +36,10 @@ function splitLessonTitle(lessonTitle: string): { weekLabel: string; weekTitle: 
  * The 5-tab interactive Study reader (Study / Passage / Work the Word /
  * Live It / Lift Up), following the printed order of each week -- see
  * soul-dust-interactive/HANDOFF.md and its own study_template.html for the
- * full design this is built from (sticky header with a week-progress ring
- * and a week picker, a dotted tab bar, a per-tab "done" flag). Renders only
+ * design this started from (a week picker, a tab per part). Progress is a
+ * labelled five-step tracker ("2 of 5 steps done") and numbered tabs that
+ * turn into checkmarks, saved on the reader's account (useWeekParts); the
+ * week opens on the first unfinished part. Renders only
  * when the lesson has studyContent (see lib/study/studyContent.ts); a
  * Study-kind lesson without it (the "Introduction" lesson, or any lesson
  * imported before this existed) falls back to the plain content-block
@@ -63,6 +61,7 @@ export function StudyLessonView({
   weeks,
   studyHref,
   initialStatus,
+  initialPartsDone,
   media = {},
   journey,
 }: {
@@ -75,7 +74,10 @@ export function StudyLessonView({
   bookLabel: string;
   weeks: WeekPickerItem[];
   studyHref: string;
-  initialStatus: LessonStatus;
+  /** The week's saved status: Lift Up is done when it's "completed". */
+  initialStatus: "not_started" | "in_progress" | "completed";
+  /** The other parts this reader has finished (lesson_progress.parts_done). */
+  initialPartsDone: string[];
   /** Server-rendered media placed inside the week, keyed by where it goes. */
   media?: Partial<Record<WeekMediaSlotKey, ReactNode>>;
   /** Set when this week is a stop in The Journey (see lib/journey/nav.ts). */
@@ -88,29 +90,66 @@ export function StudyLessonView({
     continueHref: string;
   };
 }) {
-  const [tab, setTab] = useState<TabKey>("study");
+  const showPassage = hasPassage(content);
+  const tabs = TABS.filter((t) => showPassage || t !== "passage");
+  // Where the reader left off, from what the server loaded (so the first
+  // render matches its HTML).
+  const [opening] = useState(() => {
+    const done = finishedWeekParts(initialPartsDone, initialStatus === "completed");
+    const finished = tabs.filter((t) => done.has(t));
+    const next = firstUnfinishedPart(tabs, done);
+    return {
+      tab: next ?? "study",
+      welcome:
+        finished.length > 0 && next
+          ? `Welcome back. You’ve finished ${listPartLabels(finished)}. Pick up at ${WEEK_PART_LABELS[next]}.`
+          : null,
+    };
+  });
+  const [tab, setTab] = useState<WeekPart>(opening.tab);
+  const [showWelcome, setShowWelcome] = useState(opening.welcome !== null);
   // Stations are identified by their question block: two can quote the same verse.
   const [greekStationId, setGreekStationId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [workStationIndex, setWorkStationIndex] = useState(0);
-  const { done, setDone, percent } = useTabProgress(lessonId);
+  const { done, setPartDone, completed, setCompleted, error } = useWeekParts(
+    lessonId,
+    initialPartsDone,
+    initialStatus === "completed",
+    tabs
+  );
+  const doneCount = tabs.filter((t) => done.has(t)).length;
+  const progressLabel = completed
+    ? doneCount === tabs.length
+      ? "Week complete"
+      : `${doneCount} of ${tabs.length} steps done · Week complete`
+    : `${doneCount} of ${tabs.length} steps done`;
+
+  function partHint(part: WeekPart) {
+    return (
+      <p className="mb-5 font-sans text-sm text-moss">
+        Step {tabs.indexOf(part) + 1} of {tabs.length} · {WEEK_PART_HINTS[part]}
+      </p>
+    );
+  }
+  function openTab(next: WeekPart) {
+    setShowWelcome(false);
+    setTab(next);
+  }
+  function markPart(part: WeekPart, value: boolean) {
+    setShowWelcome(false);
+    void setPartDone(part, value);
+  }
 
   const { weekLabel, weekTitle } = splitLessonTitle(lessonTitle);
   const shortBookLabel = shortStudyTitle(bookLabel);
   const greekStation = content.stations.find((s) => s.questionBlockId === greekStationId) ?? null;
-  const showPassage = hasPassage(content);
-  const tabs = TABS.filter((t) => showPassage || t.key !== "passage");
-  // A week with no passage has nothing to finish there: count that tab done,
-  // so the week's ring (and the week picker's) can still reach 100%.
-  useEffect(() => {
-    if (!showPassage && !done.has("passage")) setDone("passage", true);
-  }, [showPassage, done, setDone]);
 
   function goToStation(stationId: string) {
     setGreekStationId(null);
     const index = content.stations.findIndex((s) => s.questionBlockId === stationId);
     if (index !== -1) setWorkStationIndex(index);
-    setTab("work");
+    openTab("work");
     requestAnimationFrame(() => {
       document.getElementById(`station-${stationId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -127,13 +166,13 @@ export function StudyLessonView({
       </Link>
 
       {/* Under 640px the title gets the full width on its own row, with the
-          arrows and progress ring on a row beneath it (staging audit). */}
-      <div className="flex flex-wrap sm:flex-nowrap items-center sm:items-start gap-3">
+          week arrows and the step tracker on a row beneath it (staging audit). */}
+      <div className="flex flex-wrap items-center sm:items-start gap-x-3 gap-y-2">
         {previousHref ? (
           <Link
             href={previousHref}
             aria-label="Previous week"
-            className="flex items-center justify-center w-11 h-11 rounded-full border border-moss/30 hover:border-moss/60 shrink-0 mt-1"
+            className="flex items-center justify-center w-11 h-11 rounded-full border border-moss/30 hover:border-moss/60 shrink-0 sm:mt-1"
           >
             ←
           </Link>
@@ -153,31 +192,45 @@ export function StudyLessonView({
           <p className="font-serif italic text-moss">{content.subtitle}</p>
         </div>
 
-        <div className="relative w-14 h-14 shrink-0 ml-auto sm:ml-0" aria-label="Week progress">
-          <svg viewBox="0 0 40 40" className="w-full h-full -rotate-90">
-            <circle cx="20" cy="20" r={RING_RADIUS} fill="none" strokeWidth="4" className="stroke-dusk/15" />
-            <circle
-              cx="20"
-              cy="20"
-              r={RING_RADIUS}
-              fill="none"
-              strokeWidth="4"
-              strokeLinecap="round"
-              className="stroke-ember transition-[stroke-dashoffset] duration-500 ease-out motion-reduce:transition-none"
-              strokeDasharray={RING_CIRCUMFERENCE}
-              strokeDashoffset={RING_CIRCUMFERENCE * (1 - percent / 100)}
-            />
-          </svg>
-          <span className="absolute inset-0 flex items-center justify-center font-sans font-bold text-xs text-ink tabular-nums">
-            {percent}%
-          </span>
+        {/* The week's steps, one per tab, always in view (the tab row scrolls
+            sideways on a phone). Each step opens its tab. Between the week
+            arrows on a phone; its own row under the title from 640px. */}
+        <div
+          role="group"
+          aria-label="This week’s progress"
+          className="flex-1 min-w-0 sm:order-last sm:basis-full"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex flex-1 gap-1.5">
+              {tabs.map((t, i) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => openTab(t)}
+                  aria-label={`Step ${i + 1}, ${WEEK_PART_LABELS[t]}: ${done.has(t) ? "done" : "not done yet"}`}
+                  aria-current={tab === t ? "step" : undefined}
+                  className="group flex-1 py-2 min-w-0"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`block h-2 rounded-full transition-colors motion-reduce:transition-none ${
+                      done.has(t) ? "bg-moss" : "bg-dusk/15 group-hover:bg-dusk/25"
+                    } ${tab === t ? "ring-2 ring-ember ring-offset-2 ring-offset-parchment" : ""}`}
+                  />
+                </button>
+              ))}
+            </div>
+            <p className="shrink-0 font-sans text-xs font-semibold text-ink tabular-nums" aria-live="polite">
+              {progressLabel}
+            </p>
+          </div>
         </div>
 
         {nextHref ? (
           <Link
             href={nextHref}
             aria-label="Next week"
-            className="flex items-center justify-center w-11 h-11 rounded-full border border-moss/30 hover:border-moss/60 shrink-0 mt-1"
+            className="flex items-center justify-center w-11 h-11 rounded-full border border-moss/30 hover:border-moss/60 shrink-0 sm:mt-1"
           >
             →
           </Link>
@@ -186,25 +239,37 @@ export function StudyLessonView({
         )}
       </div>
 
+      {showWelcome && opening.welcome && (
+        <p className="rounded-lg bg-dusk/5 px-3 py-2 font-sans text-sm text-dusk">{opening.welcome}</p>
+      )}
+      {error && (
+        <p role="alert" className="font-sans text-sm text-error">
+          {error}
+        </p>
+      )}
+
       <ScrollFadeTabs ariaLabel="Week sections">
-        {tabs.map((t) => (
+        {tabs.map((t, i) => (
           <button
-            key={t.key}
+            key={t}
             type="button"
             role="tab"
-            aria-selected={tab === t.key}
-            onClick={() => setTab(t.key)}
-            className={`shrink-0 flex items-center gap-1.5 px-4 py-3 text-sm font-sans font-semibold border-b-2 -mb-px whitespace-nowrap min-h-[44px] ${
-              tab === t.key ? "border-ember text-ink" : "border-transparent text-moss hover:text-ink"
+            aria-selected={tab === t}
+            onClick={() => openTab(t)}
+            className={`shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-sans font-semibold border-b-2 -mb-px whitespace-nowrap min-h-[44px] ${
+              tab === t ? "border-ember text-ink" : "border-transparent text-moss hover:text-ink"
             }`}
           >
             <span
               aria-hidden="true"
-              className={`w-2 h-2 rounded-full border ${
-                done.has(t.key) ? "bg-moss border-moss" : "border-moss/40"
+              className={`w-5 h-5 rounded-full border flex items-center justify-center text-[11px] leading-none tabular-nums ${
+                done.has(t) ? "bg-moss border-moss text-white" : "border-moss/50 text-moss"
               }`}
-            />
-            {t.label}
+            >
+              {done.has(t) ? "✓" : i + 1}
+            </span>
+            {WEEK_PART_LABELS[t]}
+            {done.has(t) && <span className="sr-only">(done)</span>}
           </button>
         ))}
       </ScrollFadeTabs>
@@ -216,52 +281,62 @@ export function StudyLessonView({
           intact when a reader bounces between tabs, instead of resetting on
           every switch. */}
       <div role="tabpanel" hidden={tab !== "study"}>
+        {partHint("study")}
         <StudyTab
           lessonId={lessonId}
           content={content}
           isDone={done.has("study")}
-          onSetDone={(v) => setDone("study", v)}
+          onSetDone={(v) => markPart("study", v)}
         />
       </div>
       {showPassage && (
         <div role="tabpanel" hidden={tab !== "passage"}>
+          {partHint("passage")}
           <PassageTab
             content={content}
             onOpenGreek={setGreekStationId}
             isDone={done.has("passage")}
-            onSetDone={(v) => setDone("passage", v)}
+            onSetDone={(v) => markPart("passage", v)}
           />
         </div>
       )}
       <div role="tabpanel" hidden={tab !== "work"}>
+        {partHint("work")}
         <WorkTheWordTab
           content={content}
           initialAnswers={initialAnswers}
           current={workStationIndex}
           onCurrentChange={setWorkStationIndex}
-          onAllStationsDone={() => setDone("work", true)}
-          onAdvanceToLive={() => setTab("live")}
+          onAllStationsDone={() => {
+            if (!done.has("work")) markPart("work", true);
+          }}
+          onAdvanceToLive={() => openTab("live")}
         />
       </div>
       <div role="tabpanel" hidden={tab !== "live"}>
+        {partHint("live")}
         <LiveItTab
           lessonId={lessonId}
           weekLabel={weekLabel}
           content={content}
           isDone={done.has("live")}
-          onSetDone={(v) => setDone("live", v)}
+          onSetDone={(v) => markPart("live", v)}
         />
       </div>
       <div role="tabpanel" hidden={tab !== "lift"}>
+        {partHint("lift")}
         <LiftUpTab
           lessonId={lessonId}
           content={content}
-          initialStatus={initialStatus}
+          completed={completed}
+          onCompletedChange={(v) => {
+            setShowWelcome(false);
+            setCompleted(v);
+          }}
+          otherPartsDone={tabs.some((t) => t !== "lift" && done.has(t))}
           nextHref={journey ? journey.continueHref : nextHref}
           nextLabel={journey ? (journey.continueHref === journey.homeHref ? "Back to The Journey →" : "Next week →") : undefined}
           keepCompleted={!!journey}
-          isDone={done.has("lift")}
-          onSetDone={(v) => setDone("lift", v)}
         />
       </div>
 

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { readTabProgressPercent } from "./useStudyProgress";
 import { Sheet } from "./Sheet";
 import { LockIcon } from "./LockIcon";
 import { lockedLessonNote } from "@/lib/launchMode";
@@ -18,12 +17,14 @@ export type WeekPickerItem = {
   lockedNote?: string;
   /** A section heading shown above the first item of each group (a Journey's Parts). */
   group?: string;
+  /** A Study week's saved progress: parts finished (Lift Up included) and whether the week is complete. */
+  progress?: { partsDone: number; completed: boolean };
 };
 
 /**
  * Opened from the lesson header's breadcrumb -- lets a reader jump straight
- * to any week in the study, each row showing that week's own saved progress
- * (read from its own localStorage key, not this week's).
+ * to any week in the study, each row showing that week's saved progress
+ * (from the reader's account, loaded with the page).
  */
 export function WeekPickerSheet({
   bookLabel,
@@ -77,7 +78,12 @@ export function WeekPickerSheet({
         </div>
       );
     }
-    const percent = readTabProgressPercent(week.id);
+    const progress = week.progress;
+    const progressText = progress?.completed
+      ? "✓ Complete"
+      : progress && progress.partsDone > 0
+        ? `${progress.partsDone} ${progress.partsDone === 1 ? "step" : "steps"} done`
+        : null;
     return (
       <Link key={week.id} href={week.href} onClick={onClose} className="flex items-center gap-4 py-3 min-h-[44px]">
         <span
@@ -89,7 +95,9 @@ export function WeekPickerSheet({
           {ownLessonNumber(week.title) ?? "•"}
         </span>
         <span className="flex-1 min-w-0 font-sans font-semibold text-ink truncate">{week.title}</span>
-        {percent > 0 && <span className="shrink-0 font-sans text-xs font-bold text-moss tabular-nums">{percent}%</span>}
+        {progressText && (
+          <span className="shrink-0 font-sans text-xs font-bold text-moss tabular-nums">{progressText}</span>
+        )}
       </Link>
     );
   }

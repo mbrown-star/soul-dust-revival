@@ -99,6 +99,16 @@ export const progressSchema = z.object({
   status: z.enum(["not_started", "in_progress", "completed"]),
 });
 
+// One part of a tabbed Study week marked finished or not (Lift Up is the
+// week's completion and goes through progressSchema instead).
+export const weekPartProgressSchema = z
+  .object({
+    lessonId: z.string().uuid(),
+    part: z.enum(["study", "passage", "work", "live"]),
+    done: z.boolean(),
+  })
+  .strict();
+
 export const progressResetSchema = z.object({
   studyId: z.string().uuid(),
 });

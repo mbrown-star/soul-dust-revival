@@ -162,6 +162,13 @@
       "when": 1794852862179,
       "tag": "0022_married_mad_thinker",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794926448987,
+      "tag": "0023_messy_shinobi_shaw",
+      "breakpoints": true
     }
   ]
 }

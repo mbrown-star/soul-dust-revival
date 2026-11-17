@@ -10,6 +10,7 @@ import {
   date,
   index,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import type { StudyWeekContent } from "@/lib/study/studyContent";
 import type { ContentBlockType } from "@/lib/content/blocks";
 import type { PublishedLessonContent } from "@/lib/lessons/publishedContentTypes";
@@ -419,6 +420,11 @@ export const lessonProgress = pgTable(
     lessonId: uuid("lesson_id").references(() => lessons.id).notNull(),
     status: text("status").notNull().default("not_started").$type<"not_started" | "in_progress" | "completed">(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
+    // A tabbed Study week's finished parts ("study", "passage", "work",
+    // "live"), so the week's tracker follows the reader across devices. Lift
+    // Up is never stored here: it is `status === "completed"` (see
+    // lib/study/weekParts.ts).
+    partsDone: text("parts_done").array().notNull().default(sql`'{}'::text[]`),
   },
   (table) => [
     // Without this, two near-simultaneous writes for the same user+lesson
