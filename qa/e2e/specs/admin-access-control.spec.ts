@@ -223,6 +223,43 @@ test.describe("Admin nav active-section indicator (qa/findings/FINDINGS_2026-11-
     await expect(item("Blog")).toHaveCSS("color", "rgb(246, 196, 83)");
   });
 
+  test("phone menu: arrow keys move between items, Tab out and Escape close it", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile-chromium", "the hamburger only shows below sm:");
+    await page.goto("/admin/blog");
+    const nav = page.getByRole("navigation", { name: "Admin" });
+    const button = nav.getByRole("button", { name: "Open menu" });
+    const item = (name: string) => nav.getByRole("menuitem", { name, exact: true });
+
+    await button.focus();
+    await page.keyboard.press("ArrowDown");
+    await expect(item("Products")).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(item("Studies")).toBeFocused();
+    await page.keyboard.press("End");
+    await expect(item("Sign out")).toBeFocused();
+    await page.keyboard.press("ArrowDown"); // wraps
+    await expect(item("Products")).toBeFocused();
+    await page.keyboard.press("ArrowUp"); // wraps back
+    await expect(item("Sign out")).toBeFocused();
+    await page.keyboard.press("Home");
+    await expect(item("Products")).toBeFocused();
+
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("menu")).toHaveCount(0);
+    await expect(nav.getByRole("button", { name: "Open menu" })).toBeFocused();
+
+    // ArrowUp on the button opens on the last item; Tab past it closes.
+    await page.keyboard.press("ArrowUp");
+    await expect(item("Sign out")).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("menu")).toHaveCount(0);
+
+    // A tap opens it without moving focus into it.
+    await button.click();
+    await expect(page.getByRole("menu")).toBeVisible();
+    await expect(item("Products")).not.toBeFocused();
+  });
+
   test("a sub-route still highlights its own top-level section", async ({ page }, testInfo) => {
     await page.goto("/admin/studies");
     await page.getByRole("link", { name: /QA Colossians-Shaped Study/i }).click();

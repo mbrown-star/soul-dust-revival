@@ -390,5 +390,30 @@ test.describe("Nav bar", () => {
       await nav.getByRole("button", { name: buttonName }).click();
       await expect(page.getByRole("menuitem", { name: "Admin" })).toBeVisible();
     });
+
+    test("arrow keys move through the menu, Escape returns to its button", async ({ page }, testInfo) => {
+      await page.goto("/");
+      const nav = page.getByRole("navigation", { name: "Primary" });
+      const button = nav.getByRole("button", { name: isMobile(testInfo) ? "Open menu" : /Profile/i });
+
+      await button.focus();
+      await page.keyboard.press("ArrowUp");
+      await expect(page.getByRole("menuitem", { name: "Sign out" })).toBeFocused();
+      await page.keyboard.press("Home");
+      const first = isMobile(testInfo) ? page.getByRole("menuitem").first() : page.getByRole("menuitem", { name: "Account" });
+      await expect(first).toBeFocused();
+
+      if (isMobile(testInfo) && !(await page.getByRole("menuitem", { name: "Try a sample" }).count())) {
+        // Full-store build: the Cart row wraps its own link, which is what
+        // gets focus (Store, Blog, then Cart).
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("ArrowDown");
+        await expect(page.getByRole("menu").getByRole("link", { name: /Cart/ })).toBeFocused();
+      }
+
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("menu")).toHaveCount(0);
+      await expect(button).toBeFocused();
+    });
   });
 });
