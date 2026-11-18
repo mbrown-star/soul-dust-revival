@@ -36,6 +36,7 @@ npm run verify       # typecheck + lint + build — must pass clean
 npm run preview      # build + run in the real Workers runtime locally (wrangler)
 npm run deploy       # ship the pushed commit: staging, checks, then production (scripts/deploy/deploy.ts)
 npm run deploy -- staging --no-promote   # build, upload and check one site without switching traffic
+npm run test:hooks   # unit tests for the Claude Code hooks in .claude/hooks/ (no database)
 npm run db:generate && npm run db:migrate
 npm run db:seed
 ```
@@ -57,6 +58,9 @@ webhook/entitlement changes done.
 - **Brand:** keep the design system (ink, dusk, parchment, ember, gold, moss — the "sunset" values, see the 2026-11-05 entries in `docs/BUILD_LOG.md`; Anton, Source Serif 4, Archivo) unless told otherwise.
 - **Scaffold code is in scope for both reviews.** Inherited code, dependencies, default configs, and seed data are reviewed too. Report scaffold-origin findings separately from new-code findings.
 - **On scaffold updates,** re-run both reviews against the whole updated scaffold, not just the diff.
+
+### Claude Code hooks
+`.claude/settings.json` (committed) wires `.claude/hooks/*.mjs`: they block secret env files, force pushes, direct `wrangler`/`opennextjs-cloudflare` deploys and hand edits to generated reader files, ask before DB writes and `wrangler secret`, lint each edited file, and run `npm run verify` before a turn ends. A hook's block is a rule, not a bug: follow it rather than working around it. Details in the 2026-11-18 `docs/BUILD_LOG.md` entry.
 
 ### Build history
 Every past build is recorded in **`docs/BUILD_LOG.md`**, newest first. Read the entries relevant to the area you're changing before you start, and add your own build's entry at the top of that file, not in this one.
