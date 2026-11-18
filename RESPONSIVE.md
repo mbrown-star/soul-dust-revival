@@ -25,8 +25,13 @@ design for a phone first, then expand.
 - Multi-column rows (price/format fields, cart line items, admin list headers) stack
   vertically below the `sm:` breakpoint (`flex-col sm:flex-row`) rather than
   compressing into a cramped horizontal squeeze on narrow screens.
-- The admin nav scrolls horizontally on narrow phones (`overflow-x-auto
-  whitespace-nowrap`) instead of wrapping into a cramped multi-line stack.
+- Below `sm:` (640px) both top nav bars collapse into a single hamburger menu
+  (`SiteNav.tsx`, and since 2026-11-18 `AdminNav.tsx`): one button, a dropdown
+  of 44px rows that closes on outside tap, Escape, or choosing an item. The
+  admin nav used to scroll sideways inside the sticky header on phones, which
+  shifted as the page scrolled. From `sm:` up it is still a horizontal row,
+  with `overflow-x-auto` as a fallback at tablet widths where its sections
+  don't all fit.
 - The public `SiteHeader` originally used that same horizontal-scroll pattern,
   but a scrolling primary nav turned out to be an unwanted interaction on
   every viewport, not just a mobile-only compromise — replaced (2026-11-04)

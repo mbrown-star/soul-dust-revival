@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page, type TestInfo } from "@playwright/test";
 
 // Every /admin/* page is gated by ONE place: app/admin/layout.tsx's
 // `requireAdmin()` call, which redirects to `/login?next=/admin/products`
@@ -199,20 +199,36 @@ test.describe("admin API route access control (a sample, not exhaustive)", () =>
 test.describe("Admin nav active-section indicator (qa/findings/FINDINGS_2026-11-07.md #10)", () => {
   test.use({ storageState: "qa/.auth/admin.json" });
 
-  test("the current section's link is marked aria-current, others are not", async ({ page }) => {
-    await page.goto("/admin/blog");
+  // mobile-chromium (412px, below sm:) shows the sections inside a
+  // hamburger menu (as role="menuitem"), same as the public nav, so open it
+  // first; returns a lookup for one section's item in whichever layout shows.
+  async function adminNavItem(page: Page, testInfo: TestInfo) {
     const nav = page.getByRole("navigation", { name: "Admin" });
-    await expect(nav.getByRole("link", { name: "Blog" })).toHaveAttribute("aria-current", "page");
-    await expect(nav.getByRole("link", { name: "Products" })).not.toHaveAttribute("aria-current", "page");
+    if (testInfo.project.name === "mobile-chromium") {
+      await nav.getByRole("button", { name: "Open menu" }).click();
+      return (name: string) => nav.getByRole("menuitem", { name, exact: true });
+    }
+    return (name: string) => nav.getByRole("link", { name, exact: true });
+  }
+
+  test("the current section's link is marked aria-current, others are not", async ({ page }, testInfo) => {
+    await page.goto("/admin/blog");
+    const item = await adminNavItem(page, testInfo);
+    await expect(item("Blog")).toHaveAttribute("aria-current", "page");
+    await expect(item("Products")).not.toHaveAttribute("aria-current", "page");
+    if (testInfo.project.name === "mobile-chromium") {
+      // Regression: the menu row's own text-parchment/90 used to override an
+      // appended text-gold (Tailwind's CSS order), so the current section
+      // never actually showed gold -- see navMenuItemActiveClass.
+      await expect(item("Blog")).toHaveCSS("color", "rgb(246, 196, 83)");
+    }
   });
 
-  test("a sub-route still highlights its own top-level section", async ({ page }) => {
+  test("a sub-route still highlights its own top-level section", async ({ page }, testInfo) => {
     await page.goto("/admin/studies");
     await page.getByRole("link", { name: /QA Colossians-Shaped Study/i }).click();
     await expect(page).toHaveURL(/\/admin\/studies\/[0-9a-f-]+$/);
-    await expect(page.getByRole("navigation", { name: "Admin" }).getByRole("link", { name: "Studies" })).toHaveAttribute(
-      "aria-current",
-      "page"
-    );
+    const item = await adminNavItem(page, testInfo);
+    await expect(item("Studies")).toHaveAttribute("aria-current", "page");
   });
 });

@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { CartLink } from "./CartLink";
 import { logOut } from "@/lib/auth/logOut";
 import { marketingUrl, appUrl, pathMatchesPrefix } from "@/lib/domains";
-import { activeNavLinkClass } from "@/lib/ui/navStyles";
+import { activeNavLinkClass, navMenuItemActiveClass, navMenuItemClass } from "@/lib/ui/navStyles";
 import { isSneakPeek } from "@/lib/launchMode";
+import { useDismissibleMenu } from "@/lib/ui/useDismissibleMenu";
 
 // `paths`: the sections that count as this item's page, for the current-
 // section mark (the href itself may be an absolute cross-domain URL).
@@ -17,42 +18,9 @@ type NavItem = { label: string; href: string; paths: string[] };
 // visible (WCAG 2.4.7), just via the same text-color change already used
 // for hover, rather than an outline.
 const linkClass = "text-parchment/80 hover:text-gold focus:outline-none focus:text-gold p-1 -m-1";
-// Shared row styling for an item inside a dropdown panel (Profile, or the
-// mobile hamburger menu) -- a block-level row with its own padding and hit
-// area, as opposed to linkClass's inline text treatment.
-const menuItemClass =
-  "flex items-center min-h-[44px] px-4 text-parchment/90 hover:bg-parchment/10 hover:text-gold focus:outline-none focus:text-gold";
-
-// Closes a dropdown/menu on an outside click or Escape -- shared by the
-// Profile dropdown and the mobile hamburger menu below, which would
-// otherwise each need the identical pointerdown/keydown wiring. Takes the
-// state setter directly (not a generic callback) so it can stay out of the
-// effect's own deps safely: a useState setter is referentially stable across
-// renders, the same way the original single-menu version of this effect
-// relied on without needing an eslint-disable.
-function useDismissibleMenu(open: boolean, setOpen: (open: boolean) => void) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-
-    function handlePointerDown(e: PointerEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open, setOpen]);
-
-  return ref;
-}
+// Row styling for an item inside a dropdown panel (Profile, or the mobile
+// hamburger menu), shared with AdminNav's hamburger.
+const menuItemClass = navMenuItemClass;
 
 export function SiteNav({
   loggedIn,
@@ -268,7 +236,7 @@ export function SiteNav({
                 role="menuitem"
                 aria-current={isCurrent(item) ? "page" : undefined}
                 onClick={() => setMobileMenuOpen(false)}
-                className={isCurrent(item) ? `${menuItemClass} text-gold` : menuItemClass}
+                className={isCurrent(item) ? navMenuItemActiveClass : menuItemClass}
               >
                 {item.label}
               </Link>
@@ -296,7 +264,7 @@ export function SiteNav({
                     role="menuitem"
                     aria-current={isCurrent(item) ? "page" : undefined}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={isCurrent(item) ? `${menuItemClass} text-gold` : menuItemClass}
+                    className={isCurrent(item) ? navMenuItemActiveClass : menuItemClass}
                   >
                     {item.label}
                   </Link>
