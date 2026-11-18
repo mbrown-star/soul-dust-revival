@@ -216,12 +216,11 @@ test.describe("Admin nav active-section indicator (qa/findings/FINDINGS_2026-11-
     const item = await adminNavItem(page, testInfo);
     await expect(item("Blog")).toHaveAttribute("aria-current", "page");
     await expect(item("Products")).not.toHaveAttribute("aria-current", "page");
-    if (testInfo.project.name === "mobile-chromium") {
-      // Regression: the menu row's own text-parchment/90 used to override an
-      // appended text-gold (Tailwind's CSS order), so the current section
-      // never actually showed gold -- see navMenuItemActiveClass.
-      await expect(item("Blog")).toHaveCSS("color", "rgb(246, 196, 83)");
-    }
+    // Regression: the item's own parchment text color used to override an
+    // appended text-gold (Tailwind's CSS order), so the current section never
+    // actually showed gold in either layout -- see navLinkActiveClass /
+    // navMenuItemActiveClass (lib/ui/navStyles.ts).
+    await expect(item("Blog")).toHaveCSS("color", "rgb(246, 196, 83)");
   });
 
   test("a sub-route still highlights its own top-level section", async ({ page }, testInfo) => {

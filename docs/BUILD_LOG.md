@@ -4,6 +4,11 @@ Every build's record, newest first: what changed, tests, review results, what sh
 
 **Add each new build's entry at the top of the list below.** Entries describing a change to scaffold-origin code are this project's "Scaffold deviations" (search for "scaffold-origin" and "Scaffold deviation").
 
+- **2026-11-18 — Desktop nav: the current link's text is gold too.** Follow-up to the entry below, asked for by the user. On desktop the current section in both nav bars only ever had its gold underline; its `text-gold` lost to the link's own `text-parchment/80` (Tailwind's CSS order), the same bug just fixed in the phone menus.
+  - **Changed:** `lib/ui/navStyles.ts` now has `navLinkClass` and `navLinkActiveClass` (gold text plus the gold underline, without the parchment color) in place of `activeNavLinkClass`. `SiteNav.tsx` and `AdminNav.tsx` both use them instead of their own copies of the link class.
+  - **Tests:** the admin-nav regression check for the gold color now runs on `chromium` as well as `mobile-chromium`. Admin and public nav specs pass on both (113 each). Computed colors on desktop: current link `rgb(246, 196, 83)` with its 2px underline, others parchment. `npm run verify` clean; `npm test` 1018 passed (the one hook test that fails only with a linked `.env.local` passes in `npm run test:hooks`, 109 passed).
+  - **Reviews:** security pass, nothing found (CSS classes only). Code quality pass, nothing found.
+  - **Scaffold deviations:** none.
 - **2026-11-18 — Admin nav: hamburger menu on phones, like the public nav.** Asked for after the admin section links, a sideways-scrolling strip inside the sticky header, kept shifting up and down while scrolling a page on a phone.
   - **Changed:** `components/admin/AdminNav.tsx` keeps its horizontal row from `sm:` (640px) up; below that it shows one hamburger button whose menu lists every section, a divider, and Sign out (44px rows, current section in gold with `aria-current="page"`, closes on outside tap, Escape or choosing an item, `max-h` + `overflow-y-auto` for short landscape screens). Same markup and behavior as `SiteNav.tsx`'s phone menu, still inside `SiteHeaderShell`.
   - **Shared rather than copied:** `useDismissibleMenu` moved out of `SiteNav.tsx` into `lib/ui/useDismissibleMenu.ts`; the menu-row class moved into `lib/ui/navStyles.ts` as `navMenuItemClass`, used by both navs.

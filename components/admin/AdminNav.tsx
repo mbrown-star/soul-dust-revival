@@ -5,16 +5,13 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { logOut } from "@/lib/auth/logOut";
 import { pathMatchesPrefix } from "@/lib/domains";
-import { activeNavLinkClass, navMenuItemActiveClass, navMenuItemClass } from "@/lib/ui/navStyles";
+import { navLinkActiveClass, navLinkClass, navMenuItemActiveClass, navMenuItemClass } from "@/lib/ui/navStyles";
 import { useDismissibleMenu } from "@/lib/ui/useDismissibleMenu";
 
-// Same focus/hover treatment as the public SiteNav's linkClass -- no ring,
-// just a color change, so the two nav bars read as one system.
-const linkClass = "text-parchment/80 hover:text-gold focus:outline-none focus:text-gold p-1 -m-1";
-// REAL FIX (qa/findings/FINDINGS_2026-11-07.md #10): the admin nav had no
-// active-section indicator at all -- an admin on, say, /admin/blog had no
-// visual confirmation of which section they were in.
-const activeLinkClass = activeNavLinkClass;
+// Same link classes as the public SiteNav, so the two nav bars read as one
+// system. REAL FIX (qa/findings/FINDINGS_2026-11-07.md #10): the admin nav
+// had no active-section indicator at all until navLinkActiveClass.
+const linkClass = navLinkClass;
 
 const ADMIN_LINKS = [
   { label: "Products", href: "/admin/products" },
@@ -66,7 +63,7 @@ export function AdminNav() {
             key={item.href}
             href={item.href}
             aria-current={isActive(item.href) ? "page" : undefined}
-            className={isActive(item.href) ? `${linkClass} ${activeLinkClass}` : linkClass}
+            className={isActive(item.href) ? navLinkActiveClass : linkClass}
           >
             {item.label}
           </Link>

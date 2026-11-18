@@ -6,7 +6,7 @@ import { useState } from "react";
 import { CartLink } from "./CartLink";
 import { logOut } from "@/lib/auth/logOut";
 import { marketingUrl, appUrl, pathMatchesPrefix } from "@/lib/domains";
-import { activeNavLinkClass, navMenuItemActiveClass, navMenuItemClass } from "@/lib/ui/navStyles";
+import { navLinkActiveClass, navLinkClass, navMenuItemActiveClass, navMenuItemClass } from "@/lib/ui/navStyles";
 import { isSneakPeek } from "@/lib/launchMode";
 import { useDismissibleMenu } from "@/lib/ui/useDismissibleMenu";
 
@@ -17,7 +17,7 @@ type NavItem = { label: string; href: string; paths: string[] };
 // No ring/box around a focused or just-clicked item -- focus is still
 // visible (WCAG 2.4.7), just via the same text-color change already used
 // for hover, rather than an outline.
-const linkClass = "text-parchment/80 hover:text-gold focus:outline-none focus:text-gold p-1 -m-1";
+const linkClass = navLinkClass;
 // Row styling for an item inside a dropdown panel (Profile, or the mobile
 // hamburger menu), shared with AdminNav's hamburger.
 const menuItemClass = navMenuItemClass;
@@ -93,7 +93,7 @@ export function SiteNav({
               key={item.href}
               href={item.href}
               aria-current={isCurrent(item) ? "page" : undefined}
-              className={isCurrent(item) ? `${linkClass} ${activeNavLinkClass}` : linkClass}
+              className={isCurrent(item) ? navLinkActiveClass : linkClass}
             >
               {item.label}
             </Link>
@@ -112,7 +112,7 @@ export function SiteNav({
                   key={item.href}
                   href={item.href}
                   aria-current={isCurrent(item) ? "page" : undefined}
-                  className={isCurrent(item) ? `${linkClass} ${activeNavLinkClass}` : linkClass}
+                  className={isCurrent(item) ? navLinkActiveClass : linkClass}
                 >
                   {item.label}
                 </Link>
