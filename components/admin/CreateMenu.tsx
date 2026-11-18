@@ -1,16 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useState } from "react";
+import { useDismissibleMenu } from "@/lib/ui/useDismissibleMenu";
 
 /**
  * A "+ Add X" button that opens a small dropdown of creation links, used
  * where the admin products/studies list pages now offer "New bundle"
  * alongside their existing plain create link. Same WAI-ARIA menu-button
  * semantics as a standard WAI-ARIA menu button (aria-haspopup/aria-expanded,
- * role="menu"/"menuitem", Escape closes and returns focus to the trigger) —
- * these are navigation links, not in-place actions, so each item is a real
- * `<Link>` rather than a button with an onClick.
+ * role="menu"/"menuitem") — these are navigation links, not in-place
+ * actions, so each item is a real `<Link>` rather than a button with an
+ * onClick. Keyboard and dismiss behavior (arrow keys, Home/End, Escape back
+ * to the button, Tab out or an outside click closes) comes from the same
+ * useDismissibleMenu hook as the nav menus.
  */
 export function CreateMenu({
   label,
@@ -21,23 +24,11 @@ export function CreateMenu({
 }) {
   const [open, setOpen] = useState(false);
   const menuId = useId();
-  const buttonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && open) {
-        setOpen(false);
-        buttonRef.current?.focus();
-      }
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open]);
+  const menuRef = useDismissibleMenu(open, setOpen);
 
   return (
-    <div className="relative inline-block">
+    <div className="relative inline-block" ref={menuRef}>
       <button
-        ref={buttonRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"

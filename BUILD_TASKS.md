@@ -648,7 +648,8 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
-- **2026-11-18 — Arrow keys in the nav menus.** Phone menus (public and admin) and the Profile dropdown: arrow keys, Home/End, Escape back to the button, Tab out closes. Shared hook `lib/ui/useDismissibleMenu.ts`. `CreateMenu.tsx` not done yet. See `docs/BUILD_LOG.md`.
+- **2026-11-18 — Arrow keys in the admin "+ Add" menus.** `CreateMenu.tsx` now uses the shared menu hook: same keys as the nav menus, and it closes on an outside click. See `docs/BUILD_LOG.md`.
+- **2026-11-18 — Arrow keys in the nav menus.** Phone menus (public and admin) and the Profile dropdown: arrow keys, Home/End, Escape back to the button, Tab out closes. Shared hook `lib/ui/useDismissibleMenu.ts`. See `docs/BUILD_LOG.md`.
 - **2026-11-18 — Desktop nav current link in gold.** The current section's text in both desktop nav bars is now gold, not just underlined (`navLinkActiveClass` in `lib/ui/navStyles.ts`). See `docs/BUILD_LOG.md`.
 - **2026-11-18 — Admin nav hamburger on phones.** `AdminNav.tsx` collapses into one menu below `sm:`, like `SiteNav.tsx`; the shared dismiss hook and menu-row classes moved to `lib/ui/`. Also fixed the phone menus' current item never showing gold. See `docs/BUILD_LOG.md`.
 - **2026-11-18 — Claude Code hooks committed (`.claude/settings.json`, `.claude/hooks/`).** Block secret env files, force pushes, hand-rolled deploys and hand edits to generated reader files; ask before DB writes and `wrangler secret`; rebuild-and-check after reader tool edits; ESLint per edited file; `npm run verify` (and `npm test` for checkout/webhook/entitlement/schema changes) before a turn ends. `npm run test:hooks` (109 tests). Not deployed: nothing in the site changed. pdfplumber now installed and the rebuild hook run for real (passes); `build.sh` now creates the git-ignored `dist/` itself.

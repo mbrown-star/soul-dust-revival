@@ -3,6 +3,36 @@ import { test, expect } from "@playwright/test";
 test.describe("admin products list and form, as qa-admin", () => {
   test.use({ storageState: "qa/.auth/admin.json" });
 
+  test('"Add product" menu: arrow keys, Escape back to the button, outside click closes', async ({ page }) => {
+    await page.goto("/admin/products");
+    const button = page.getByRole("button", { name: "Add product" });
+    const item = (name: string) => page.getByRole("menuitem", { name, exact: true });
+
+    await button.focus();
+    await page.keyboard.press("ArrowDown");
+    await expect(item("New product")).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(item("New bundle")).toBeFocused();
+    await page.keyboard.press("ArrowDown"); // wraps
+    await expect(item("New product")).toBeFocused();
+    await page.keyboard.press("End");
+    await expect(item("New bundle")).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("menu")).toHaveCount(0);
+    await expect(button).toBeFocused();
+
+    await page.keyboard.press("ArrowUp");
+    await expect(item("New bundle")).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/admin\/bundles\/new$/);
+
+    await page.goto("/admin/products");
+    await page.getByRole("button", { name: "Add product" }).click();
+    await expect(page.getByRole("menu")).toBeVisible();
+    await page.getByRole("heading", { name: "Products" }).click();
+    await expect(page.getByRole("menu")).toHaveCount(0);
+  });
+
   test("list shows the inactive QA fixture (admin list is unfiltered, unlike /store)", async ({ page }) => {
     // app/admin/products/page.tsx queries db.select().from(products) with no
     // `active` filter -- the public /store page filters to active only. The

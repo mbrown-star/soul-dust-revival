@@ -123,14 +123,14 @@ are outside what code can determine.
 
 **Menus**
 - The nav menus (`SiteNav.tsx`'s phone menu and Profile dropdown, `AdminNav.tsx`'s phone
-  menu) follow the WAI-ARIA menu-button pattern through the shared
+  menu) and the admin "+ Add" menus (`CreateMenu.tsx`, on Products and Studies) follow the WAI-ARIA menu-button pattern through the shared
   `lib/ui/useDismissibleMenu.ts`: on the button, ArrowDown/ArrowUp open the menu on its
   first/last item; inside, ArrowDown/ArrowUp move between items (wrapping) and Home/End
   jump to the ends; Escape closes and returns focus to the button; Tab past the last item
   or a tap outside closes it. Opening by tap/click doesn't move focus into the menu, so a
   touch user never sees a focus-gold item that looks like the current section. Tested in
-  `admin-access-control.spec.ts` and `public-marketing.spec.ts` (since 2026-11-18).
-  `components/admin/CreateMenu.tsx` (the admin "+ Add" menus) still has Escape only.
+  `admin-access-control.spec.ts`, `public-marketing.spec.ts` and `admin-products.spec.ts`
+  (since 2026-11-18).
 - The block-type picker is now the lesson builder's palette (plain buttons in a labelled
   `<nav aria-label="Add a block">`) plus the inline "+ Insert here" toggles, which
   replaced `AddBlockButton`'s menu button in 2026-11-10.
