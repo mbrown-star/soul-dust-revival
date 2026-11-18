@@ -3,6 +3,8 @@
 # Needs Python 3 and pdfplumber:  pip install -r requirements.txt
 set -euo pipefail
 cd "$(dirname "$0")"
+# dist/ is git-ignored, so a fresh clone or worktree doesn't have it.
+mkdir -p dist/artifact
 
 echo "== Colossians (12-week study) =="
 python3 tools/study/parse_study.py source/Soul_Dust_Revival_Colossians_WEB_version.pdf data/colossians-weeks.json
