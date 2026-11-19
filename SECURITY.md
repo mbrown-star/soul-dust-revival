@@ -535,6 +535,13 @@ a fresh, random nonce generated per request:
   `remotePatterns` does), and Cloudflare Stream (direct creator upload + signed HLS
   playback). Stripe checkout needs no entry — it's a full top-level redirect
   (`window.location.href`), not an embedded fetch or frame.
+- Google Tag Manager / Analytics (added 2026-11-19, `components/analytics/GoogleTag.tsx`):
+  `gtm.js` and its inline init carry the request's nonce, and the scripts GTM injects
+  are trusted through `'strict-dynamic'`; `connect-src` adds `*.googletagmanager.com`,
+  `*.google-analytics.com`, `*.analytics.google.com`. **Trust boundary:** anyone who
+  can publish the GTM container can run script on the public site, reading app and
+  leader pages (including reading the non-HttpOnly Supabase session cookie). The tag
+  is kept off `/admin`, but keep GTM publish access to the owner's account, with 2FA.
 - `frame-ancestors 'none'` is the modern equivalent of the `X-Frame-Options: DENY`
   header above; both are set, since older browsers only understand the latter.
 

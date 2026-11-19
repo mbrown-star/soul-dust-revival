@@ -1,3 +1,4 @@
+import { GoogleTag } from "@/components/analytics/GoogleTag";
 import { ActivityHeartbeat } from "@/components/study/ActivityHeartbeat";
 import { SiteHeader } from "@/components/marketing/SiteHeader";
 
@@ -10,6 +11,7 @@ export default function StudyAppLayout({ children }: { children: React.ReactNode
       <ActivityHeartbeat />
       <SiteHeader />
       {children}
+      <GoogleTag />
     </>
   );
 }

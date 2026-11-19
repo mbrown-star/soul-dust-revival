@@ -29,7 +29,8 @@ export default function PrivacyPage() {
           <li><strong>Country</strong> — collected at checkout for every order, so we can apply the right data-protection rules for where you are.</li>
           <li><strong>Shipping address</strong> — only if you buy a physical book, collected securely through our payment processor.</li>
           <li><strong>Your answers</strong> — what you write to the questions in a study, devotional or book, saved so you can pick up where you left off and see them in your Journal.</li>
-          <li><strong>Sign-in activity and pages visited</strong> — when you sign in, which pages of the site and app you open while signed in (for example a study or lesson), and roughly how long each is open, so we can understand how the site and app are used. We keep this for 13 months. We do not log your IP address or precise location for this, and we don&apos;t track visitors who aren&apos;t signed in.</li>
+          <li><strong>Sign-in activity and pages visited</strong> — when you sign in, which pages of the site and app you open while signed in (for example a study or lesson), and roughly how long each is open, so we can understand how the site and app are used. We keep this for 13 months. We do not log your IP address or precise location for this.</li>
+          <li><strong>Site analytics</strong> — we use Google Analytics (through Google Tag Manager) to count visits and see which pages are read, for everyone who visits, signed in or not. Google receives the page address, your browser and device type, and an approximate location derived from your connection. Outside the EU, UK and Switzerland it sets analytics cookies to recognise a returning browser; in those regions it runs without cookies. We don&apos;t send Google your name, email or answers, and we turn off Google&apos;s advertising features.</li>
           <li><strong>Purchase history</strong> — what you have bought, so we can grant access to digital studies you have purchased.</li>
           <li><strong>Amazon order numbers</strong> — if you claim a book&apos;s digital edition on the claim page, the order number you enter, kept with the claim so it can&apos;t be used twice.</li>
           <li><strong>Reminder emails</strong> — if you ask us to email you the claim link before buying on Amazon, we keep a scrambled (hashed) form of your email and connection for a week, only to limit how many we send. We don&apos;t keep the address itself.</li>
@@ -50,8 +51,8 @@ export default function PrivacyPage() {
         <p>
           We use a small number of service providers to run this platform, each of whom
           only sees the data needed to do their part: Supabase (accounts and database),
-          Stripe (payments), Cloudflare (hosting, video, file storage), and Resend
-          (sign-in codes, order emails and contact messages). Each has its own privacy and security practices.
+          Stripe (payments), Cloudflare (hosting, video, file storage), Resend
+          (sign-in codes, order emails and contact messages), and Google (site analytics). Each has its own privacy and security practices.
         </p>
 
         <h2>Your choices</h2>

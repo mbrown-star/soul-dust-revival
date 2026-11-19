@@ -26,6 +26,7 @@ sign-in link or code.
 | Full shipping address | `orders.shipping*` | Only collected for physical orders, only via Stripe's own checkout page — never stored anywhere except what Stripe's Checkout session collects |
 | Login timestamps, user agent, active time | `login_events` (`activeSeconds` added 2026-11-13) | Access/engagement reporting (`/admin/reports/engagement`) |
 | Pages visited while signed in, with start time and active time | `activity_visits` (added 2026-11-16): area (website / app / leader / admin), section, path without query string, and the study, lesson or product the page is about | Engagement reporting: time on the website vs the app, and each person's page history (`/admin/reports/engagement/[userId]`, admins only). Signed-in people only; never guests. Included in the data export, deleted with the account, pruned after 13 months. |
+| Page views and device/browser info, via Google Analytics | Google (GTM container `GTM-5R5NC44H`, added 2026-11-19; `components/analytics/GoogleTag.tsx`) | Aggregate site analytics. Every visitor, signed in or not, on the public site, reading app and leader pages; never `/admin`. Production only (staging and local builds have no tag). Consent Mode defaults: ad signals denied everywhere; analytics cookies denied in the EEA/UK/CH (cookieless pings) and granted elsewhere. Nothing from our database (email, name, answers) is sent. Page addresses include query strings, e.g. `/checkout/success?orderId=<uuid>`. Disclosed on `/privacy`. |
 | Reading progress | `lesson_progress` (`status`; `parts_done` added 2026-11-17: which of a Study week's steps are finished) | Showing a reader where they left off, on any device; My Library's Continue / Completed. Deleted with the account; reset by "Start over" |
 | Study, devotional and book answers | `responses.answerText` | The product's actual function — saving a user's own study responses, devotional "A Question to Sit With" reflections (added 2026-11-06; previously the devotional question was display-only and never persisted), and answers to a book chapter's "To Sit With" questions (Revive Me's book reader, added 2026-11-13), shown back to them in that book's Journal |
 | Role, purchase history | `users.role`, `orders`/`order_items` | Access control; sales reporting |
@@ -121,11 +122,16 @@ implementation.
   `RETENTION_MONTHS` in that route if your actual retention policy differs.
 
 ## What a real compliance posture still needs (not built here)
-- **Cookie/tracking consent**, if you ever add analytics, ads, or any non-essential
-  cookie — currently there's no third-party analytics or tracking pixel in this
-  scaffold, and the Supabase auth cookie is generally treated as "strictly necessary"
-  (not requiring consent under most cookie-law frameworks), but re-evaluate this the
-  moment any tracking/analytics tool gets added.
+- **Cookie/tracking consent.** Google Analytics was added 2026-11-19 without a consent
+  banner. Instead its Consent Mode defaults deny analytics cookies to EEA/UK/Swiss
+  visitors (Google then sends cookieless pings) and grant them elsewhere; ad signals
+  are denied everywhere. That is a reasonable interim posture, not a substitute for
+  legal review: a consent banner (or a Google-certified CMP) would be needed to set
+  analytics cookies for EEA/UK visitors, and some US states (e.g. California) expect an
+  opt-out. The Supabase auth cookie is generally treated as "strictly necessary".
+- **Google data processing terms.** Accept Google Analytics' data processing terms and
+  review its data retention setting (Admin → Data settings) in the GA property; that's
+  account configuration, not code.
 - **Sub-processor agreements.** Supabase, Stripe, Cloudflare, and Resend are all
   reputable processors with their own compliance programs, but *you* (the business)
   are still the data controller and are responsible for having appropriate data

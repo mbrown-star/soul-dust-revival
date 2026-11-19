@@ -648,6 +648,7 @@ deployment before treating any of it as launch-ready:
 ---
 
 ## Recently completed (most recent first)
+- **2026-11-19 — Google Analytics via Google Tag Manager (`GTM-5R5NC44H`).** `components/analytics/GoogleTag.tsx` on the public, reading-app and leader layouts (not `/admin`), production builds only; CSP `connect-src` widened for Google; `/privacy` discloses it. Still open: a consent banner if EEA/UK analytics cookies are wanted, and accepting Google's data processing terms in the GA property (see `PRIVACY.md`). See `docs/BUILD_LOG.md`.
 - **2026-11-18 — Arrow keys in the admin "+ Add" menus.** `CreateMenu.tsx` now uses the shared menu hook: same keys as the nav menus, and it closes on an outside click. See `docs/BUILD_LOG.md`.
 - **2026-11-18 — Arrow keys in the nav menus.** Phone menus (public and admin) and the Profile dropdown: arrow keys, Home/End, Escape back to the button, Tab out closes. Shared hook `lib/ui/useDismissibleMenu.ts`. See `docs/BUILD_LOG.md`.
 - **2026-11-18 — Desktop nav current link in gold.** The current section's text in both desktop nav bars is now gold, not just underlined (`navLinkActiveClass` in `lib/ui/navStyles.ts`). See `docs/BUILD_LOG.md`.

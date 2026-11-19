@@ -35,6 +35,12 @@ const envSchema = z.object({
   // Optional: "sneak_peek" builds the limited pre-launch site (see
   // lib/launchMode.ts); unset (or left blank, as .env.example ships it)
   // means the full site.
+  // Optional: the Google Tag Manager container ID (components/analytics/
+  // GoogleTag.tsx). scripts/deploy sets it for production builds only.
+  NEXT_PUBLIC_GTM_ID: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().regex(/^GTM-[A-Z0-9]+$/, "NEXT_PUBLIC_GTM_ID must look like GTM-XXXXXXX").optional()
+  ),
   NEXT_PUBLIC_LAUNCH_MODE: z.preprocess(
     (value) => (value === "" ? undefined : value),
     z.enum(["sneak_peek", "full"]).optional()

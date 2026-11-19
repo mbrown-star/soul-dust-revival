@@ -1,3 +1,4 @@
+import { GoogleTag } from "@/components/analytics/GoogleTag";
 import { getSession } from "@/lib/auth/session";
 import { requireLeaderOrAdmin } from "@/lib/admin/guard";
 import { redirect } from "next/navigation";
@@ -34,6 +35,7 @@ export default async function LeaderLayout({ children }: { children: React.React
           /leader had no header or nav at all). */}
       <SiteHeader session={session} />
       {children}
+      <GoogleTag />
     </>
   );
 }

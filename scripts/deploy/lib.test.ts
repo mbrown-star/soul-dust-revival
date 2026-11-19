@@ -47,6 +47,7 @@ describe("placeholderEnv", () => {
     expect(env.get("NEXT_PUBLIC_APP_HOSTNAME")).toBe("app.souldustrevival.com");
     expect(env.get("NEXT_PUBLIC_COOKIE_DOMAIN")).toBe(".souldustrevival.com");
     expect(env.get("NEXT_PUBLIC_LAUNCH_MODE")).toBe("sneak_peek");
+    expect(env.get("NEXT_PUBLIC_GTM_ID")).toBe("GTM-5R5NC44H");
     expect(env.get("CLOUDFLARE_ACCOUNT_ID")).toBe("");
   });
 
@@ -56,6 +57,8 @@ describe("placeholderEnv", () => {
     expect(text).not.toContain("sk_test_");
     expect(parseEnvFile(text).get("STRIPE_SECRET_KEY")).toBe("placeholder");
     expect(parseEnvFile(text).get("NEXT_PUBLIC_LAUNCH_MODE")).toBe("");
+    // Staging builds carry no analytics tag.
+    expect(parseEnvFile(text).get("NEXT_PUBLIC_GTM_ID")).toBe("");
   });
 
   it("copies the old R2 address when set, and never reports it missing", () => {

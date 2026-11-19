@@ -62,6 +62,10 @@ export async function proxy(request: NextRequest) {
   // https-only -- see httpsUrlSchema in lib/validation/schemas.ts). Images
   // and media can't execute script, so this widens what can be displayed,
   // not what can run; script-src/connect-src are unchanged.
+  //
+  // Google Tag Manager/Analytics (components/analytics/GoogleTag.tsx): its
+  // scripts run through the nonce + 'strict-dynamic' above, and send hits to
+  // the Google hosts in connect-src (pixels are covered by img-src https:).
   const cspHeader = `
     default-src 'self';
     script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""};
@@ -69,7 +73,7 @@ export async function proxy(request: NextRequest) {
     img-src 'self' blob: data: https:;
     media-src 'self' https:;
     font-src 'self';
-    connect-src 'self' https://*.supabase.co https://*.r2.cloudflarestorage.com https://api.cloudflare.com https://upload.videodelivery.net https://*.cloudflarestream.com;
+    connect-src 'self' https://*.supabase.co https://*.r2.cloudflarestorage.com https://api.cloudflare.com https://upload.videodelivery.net https://*.cloudflarestream.com https://*.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com;
     object-src 'none';
     base-uri 'self';
     form-action 'self';

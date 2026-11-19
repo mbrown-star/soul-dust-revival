@@ -19,6 +19,8 @@ export type TargetConfig = {
   cookieDomain: string;
   /** NEXT_PUBLIC_LAUNCH_MODE: "" builds the full site, "sneak_peek" closes the store. */
   launchMode: "" | "sneak_peek";
+  /** NEXT_PUBLIC_GTM_ID: the Google Tag Manager container, "" for none. */
+  gtmId: string;
   /** Where the live site can be checked without a Cloudflare Access login. */
   liveUrl: string;
 };
@@ -31,6 +33,8 @@ export const TARGETS: Record<Target, TargetConfig> = {
     appHost: "app.staging.souldustrevival.com",
     cookieDomain: ".staging.souldustrevival.com",
     launchMode: "",
+    // No analytics on staging: its visits would pollute the live property.
+    gtmId: "",
     // staging.souldustrevival.com is behind Cloudflare Access; the workers.dev
     // address serves the same Worker without it.
     liveUrl: "https://soul-dust-revival.matt-brown-8a1.workers.dev",
@@ -42,6 +46,7 @@ export const TARGETS: Record<Target, TargetConfig> = {
     appHost: "app.souldustrevival.com",
     cookieDomain: ".souldustrevival.com",
     launchMode: "sneak_peek",
+    gtmId: "GTM-5R5NC44H",
     liveUrl: "https://souldustrevival.com",
   },
 };
@@ -94,6 +99,7 @@ export function placeholderEnv(
     NEXT_PUBLIC_APP_HOSTNAME: target.appHost,
     NEXT_PUBLIC_COOKIE_DOMAIN: target.cookieDomain,
     NEXT_PUBLIC_LAUNCH_MODE: target.launchMode,
+    NEXT_PUBLIC_GTM_ID: target.gtmId,
     CLOUDFLARE_ACCOUNT_ID: "",
   };
   const missing: string[] = [];
