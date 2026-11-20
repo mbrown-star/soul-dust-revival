@@ -235,7 +235,7 @@ export default function NewSocialPostPage() {
           </button>
         </div>
         <p className="text-xs text-moss mt-1">
-          Drafts are grounded in your recent published studies and blog posts, and fit
+          Drafts promote only what&apos;s public now (the free sample and recent blog posts), and fit
           the character limit of whichever platforms are selected below.
         </p>
         {drafts.length > 0 && (

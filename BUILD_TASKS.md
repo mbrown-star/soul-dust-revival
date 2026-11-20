@@ -508,6 +508,10 @@ the mode set.
       directly. Still to confirm: My Library on `app.souldustrevival.com` (the user's
       home router was still holding a cached "no such host" for it) — both samples as
       "Sneak peek", Week 1/Day 1 open, Week 4/Day 4 locked.
+- [ ] **At full launch:** widen `lib/ai/projectContext.ts` (social/blog AI suggestions)
+      to include the store catalog. Since 2026-11-20 it sends only the free sample and
+      blog posts and tells Claude the store is closed, regardless of which site the admin
+      uses, because staging (where admins work) can't see production's launch mode.
 
 ## 5. Platform-specific approval steps (these take real calendar time — start early)
 - [ ] Submit Meta App Review for `pages_manage_posts` and `instagram_content_publish`

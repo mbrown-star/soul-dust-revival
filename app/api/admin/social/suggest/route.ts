@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/guard";
 import { getConnection } from "@/lib/social/connections";
-import { gatherProjectContext } from "@/lib/ai/projectContext";
+import { gatherProjectContext, PROMOTION_RULES } from "@/lib/ai/projectContext";
 import { requestClaudeText } from "@/lib/ai/claude";
 import { socialSuggestSchema } from "@/lib/validation/schemas";
 import { PLATFORM_LIMITS } from "@/lib/data/socialPlatforms";
 
 /**
- * Generates draft post text grounded in this project's own recent content
- * — published blog posts, and published studies including a sample of
- * their actual lesson content, not just the study's title/description —
- * rather than a generic prompt. "Based on a Project" here means based on
+ * Generates draft post text grounded in this project's own public content
+ * — the free sample (with excerpts of its lessons) and recent blog posts,
+ * see lib/ai/projectContext.ts — rather than a generic prompt. "Based on a Project" here means based on
  * Soul Dust Revival's actual content, not Claude.ai's Projects feature
  * specifically, since that has no API for fetching project knowledge
  * programmatically.
@@ -39,6 +38,8 @@ export async function POST(req: NextRequest) {
   const limitsNote = platforms.map((p) => `${p}: ${PLATFORM_LIMITS[p]} characters max`).join(", ");
 
   const systemPrompt = `You write social media posts for Soul Dust Revival, a Christian men's discipleship platform centered on Psalm 119:25 ("My soul clings to the dust; Revive me according to Your word.", NKJV). Voice: direct, honest, unadorned — never sales-y, never using more than one exclamation point in a post, no hashtag stuffing (0-2 relevant hashtags at most).
+
+${PROMOTION_RULES}
 
 Respond with ONLY a JSON array of 3 draft post strings, nothing else — no preamble, no markdown code fences. Each draft must independently satisfy the strictest of these limits: ${limitsNote}.`;
 

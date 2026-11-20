@@ -8,9 +8,12 @@ setup outside this codebase before any of it actually posts anywhere: registerin
 app with each platform, deploying a cron trigger, and generating an encryption key.
 
 ## "Based on a Project" — interpretation
-AI suggestions are grounded in **this project's own content** — recent published blog
-posts, published studies, and a sample of actual lesson text content (not just the
-study's title/description) — pulled live from the database via the shared
+AI suggestions are grounded in **what a visitor can read today** — the free sample
+(published `isSample` lessons of published studies, the same rule as `/sneak-peek`, each
+labeled Study/Devotional with an excerpt of its first lessons) and the 3 most recent
+published blog posts. Published studies with no free sample (e.g. the Revive Me book
+during the sneak peek) are left out, and both prompts tell Claude to promote nothing the
+context doesn't list (`PROMOTION_RULES`). Pulled live from the database via the shared
 `lib/ai/projectContext.ts`, not Claude.ai's "Projects" feature, which has no API for
 fetching project knowledge programmatically. If you meant something more specific by
 "a Project" (a particular study, a particular campaign), say so and the context

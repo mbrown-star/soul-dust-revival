@@ -172,7 +172,7 @@ export function BlogPostForm({ initial }: { initial?: Partial<BlogFormValues> })
           </button>
         </div>
         <p className="text-xs text-moss mt-1">
-          Drafts are grounded in your recent published studies, lessons, and blog posts.
+          Drafts promote only what&apos;s public now: the free sample and recent blog posts.
         </p>
         {drafts.length > 0 && (
           <div className="space-y-2 mt-3">
